@@ -110,6 +110,7 @@ export type BrandProposal = {
     status: string
     created_at: string
     brand_name?: string
+    influencer_name?: string
     event_id?: string
 }
 
@@ -507,19 +508,20 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 setCampaigns(mappedCampaigns)
             }
 
-            // 2. Fetch Brand Proposals (if user is influencer)
-            if (userId) { // Fetch all relevant to this user
+            // 2. Fetch Brand Proposals (Both sent and received)
+            if (userId) {
                 const { data: bpData } = await supabase
                     .from('brand_proposals')
-                    .select('*, profiles!brand_id(display_name)')
-                    .eq('influencer_id', userId)
+                    .select('*, brand_profile:profiles!brand_id(display_name), influencer_profile:profiles!influencer_id(display_name)')
+                    .or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
                     .order('created_at', { ascending: false })
 
                 if (bpData) {
-                    console.log('[fetchEvents] Fetched brand proposals:', bpData.length)
+                    console.log('[fetchEvents] Fetched proposals:', bpData.length)
                     const mappedBP: BrandProposal[] = bpData.map((b: any) => ({
                         ...b,
-                        brand_name: b.profiles?.display_name || 'Brand'
+                        brand_name: b.brand_profile?.display_name || 'Brand',
+                        influencer_name: b.influencer_profile?.display_name || 'Creator'
                     }))
                     setBrandProposals(mappedBP)
                 }
@@ -895,13 +897,53 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const addProposal = (newProposal: Omit<Proposal, "id" | "date">) => {
-        const proposal: Proposal = {
-            ...newProposal,
-            id: Date.now(),
-            date: new Date().toISOString().split('T')[0]
+    const addProposal = async (newProposal: Omit<Proposal, "id" | "date">) => {
+        try {
+            // Check if user is logged in
+            if (!user) {
+                alert("로그인이 필요합니다.")
+                return
+            }
+
+            // Find product name and image if productId is provided
+            let productName = "새로운 제안"
+            if (newProposal.productId) {
+                const product = products.find(p => String(p.id) === String(newProposal.productId))
+                if (product) productName = product.name
+            }
+
+            // Map Proposal to brand_proposals table
+            const { data, error } = await supabase
+                .from('brand_proposals')
+                .insert({
+                    brand_id: newProposal.toId,
+                    influencer_id: newProposal.fromId,
+                    product_name: productName,
+                    product_type: newProposal.dealType === 'ad' ? 'gift' : 'loan', // Simple mapping
+                    compensation_amount: newProposal.cost ? `${newProposal.cost.toLocaleString()}원` : "협의",
+                    has_incentive: !!newProposal.commission,
+                    incentive_detail: newProposal.commission ? `${newProposal.commission}% 수수료` : null,
+                    message: newProposal.requestDetails,
+                    status: 'applied', // status for creator-initiated
+                })
+                .select()
+                .single()
+
+            if (error) throw error
+
+            if (data) {
+                console.log('Proposal submitted successfully:', data)
+                // Update local state for immediate feedback
+                setBrandProposals(prev => [{ ...data, brand_name: 'Brand' }, ...prev])
+                alert("협업 제안이 성공적으로 전달되었습니다!")
+
+                // Also send a message if needed
+                await sendMessage(newProposal.toId, `[협업 제안] ${productName} 제품에 대한 제안이 도착했습니다.`, data.id)
+            }
+        } catch (e: any) {
+            console.error("Failed to add proposal:", e)
+            alert(`제안 전송에 실패했습니다: ${e.message}`)
         }
-        setProposals(prev => [proposal, ...prev])
     }
 
     const updateProposal = (id: number, data: Partial<Proposal>) => {

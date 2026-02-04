@@ -52,16 +52,16 @@ export default function ProductDetailPage() {
         )
     }
 
-    const handlePropose = () => {
+    const handlePropose = async () => {
         if (!user) {
             alert("로그인이 필요합니다.")
             return
         }
 
-        addProposal({
+        await addProposal({
             type: "creator_apply",
-            dealType: "ad", // Defaulting to ad for now, logic can be refined
-            productId: product.id, // Now using string ID from the updated type
+            dealType: "ad",
+            productId: product.id,
             cost: Number(cost),
             commission: Number(commission),
             requestDetails: message,
@@ -71,7 +71,6 @@ export default function ProductDetailPage() {
         })
 
         setIsOpen(false)
-        alert("제안이 성공적으로 전송되었습니다! 브랜드의 응답을 기다리세요.")
         router.push("/influencer")
     }
 
@@ -127,64 +126,38 @@ export default function ProductDetailPage() {
                                             <Send className="mr-2 h-5 w-5" /> 협업 제안하기
                                         </Button>
                                     </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[500px]">
+                                    <DialogContent className="sm:max-w-md">
                                         <DialogHeader>
-                                            <DialogTitle className="text-2xl font-bold">협업 제안서 작성</DialogTitle>
-                                            <DialogDescription>
-                                                브랜드에게 희망하는 광고비와 수수료를 제안하세요. 세부 사항은 나중에 채팅으로 조율 가능합니다.
+                                            <DialogTitle className="text-xl font-bold">협업 제안하기</DialogTitle>
+                                            <DialogDescription className="text-xs">
+                                                브랜드에게 제안할 협업 조건을 입력해주세요.
                                             </DialogDescription>
                                         </DialogHeader>
 
-                                        <div className="space-y-5 py-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="cost" className="font-bold">희망 광고비 (원)</Label>
-                                                <div className="relative">
-                                                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        id="cost"
-                                                        type="number"
-                                                        placeholder="예: 500,000"
-                                                        className="pl-9 h-11"
-                                                        value={cost}
-                                                        onChange={(e) => setCost(e.target.value)}
-                                                    />
+                                        <div className="flex flex-col gap-4 py-4">
+                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                <Label htmlFor="cost" className="text-right text-xs font-bold">광고비</Label>
+                                                <div className="col-span-3 relative">
+                                                    <DollarSign className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                                    <Input id="cost" type="number" placeholder="0" className="pl-9 h-9 text-sm" value={cost} onChange={(e) => setCost(e.target.value)} />
                                                 </div>
-                                                <p className="text-[11px] text-muted-foreground">콘텐츠 1회 제작 및 업로드에 대한 고정 비용입니다.</p>
                                             </div>
-
-                                            <div className="space-y-2">
-                                                <Label htmlFor="commission" className="font-bold">희망 판매 수수료 (%)</Label>
-                                                <div className="relative">
-                                                    <Percent className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        id="commission"
-                                                        type="number"
-                                                        placeholder="예: 10"
-                                                        className="pl-9 h-11"
-                                                        max={100}
-                                                        value={commission}
-                                                        onChange={(e) => setCommission(e.target.value)}
-                                                    />
+                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                <Label htmlFor="commission" className="text-right text-xs font-bold">수수료</Label>
+                                                <div className="col-span-3 relative">
+                                                    <Percent className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                                    <Input id="commission" type="number" placeholder="0" className="pl-9 h-9 text-sm" value={commission} onChange={(e) => setCommission(e.target.value)} />
                                                 </div>
-                                                <p className="text-[11px] text-muted-foreground">공동구매 진행 시 발생하는 매출에 대한 배분 비율입니다.</p>
                                             </div>
-
-                                            <div className="space-y-2">
-                                                <Label htmlFor="message" className="font-bold">전달 메시지</Label>
-                                                <Textarea
-                                                    id="message"
-                                                    placeholder="제품에 대한 관심도나 제작하고 싶은 콘텐츠 컨셉을 자유롭게 적어주세요."
-                                                    className="resize-none min-h-[100px]"
-                                                    value={message}
-                                                    onChange={(e) => setMessage(e.target.value)}
-                                                />
+                                            <div className="grid grid-cols-4 items-start gap-4">
+                                                <Label htmlFor="message" className="text-right pt-2 text-xs font-bold">메시지</Label>
+                                                <Textarea id="message" placeholder="제작하고 싶은 콘텐츠의 방향성을 설명해주세요." className="col-span-3 min-h-[100px] text-sm" value={message} onChange={(e) => setMessage(e.target.value)} />
                                             </div>
                                         </div>
 
                                         <DialogFooter>
-                                            <Button type="button" onClick={handlePropose} className="w-full h-12 text-base font-bold">
-                                                제안 전송하기
-                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={() => setIsOpen(false)}>취소</Button>
+                                            <Button size="sm" onClick={handlePropose} className="font-bold">제안서 전송</Button>
                                         </DialogFooter>
                                     </DialogContent>
                                 </Dialog>
@@ -199,20 +172,20 @@ export default function ProductDetailPage() {
 
                         <Separator className="bg-border/60" />
 
-                        <div className="space-y-6">
-                            <div className="space-y-3">
-                                <h3 className="font-bold text-lg flex items-center gap-2">
-                                    <div className="h-6 w-1 bg-primary rounded-full" /> ✨ 주요 소구 포인트
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <h3 className="font-bold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-tight">
+                                    <CheckCircle2 className="h-4 w-4 text-primary" /> 주요 소구 포인트
                                 </h3>
-                                <div className="bg-background p-5 rounded-xl border border-border/60 text-sm leading-relaxed text-foreground/80 shadow-sm whitespace-pre-wrap">
+                                <div className="bg-background p-4 rounded-xl border border-border/60 text-xs leading-relaxed text-foreground/80 shadow-sm whitespace-pre-wrap">
                                     {product.points || "브랜드에서 등록한 소구 포인트가 없습니다."}
                                 </div>
                             </div>
-                            <div className="space-y-3">
-                                <h3 className="font-bold text-lg flex items-center gap-2">
-                                    <div className="h-6 w-1 bg-primary rounded-full" /> 📸 필수 촬영 컷
+                            <div className="space-y-2">
+                                <h3 className="font-bold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-tight">
+                                    <CheckCircle2 className="h-4 w-4 text-primary" /> 필수 촬영 컷
                                 </h3>
-                                <div className="bg-background p-5 rounded-xl border border-border/60 text-sm leading-relaxed text-foreground/80 shadow-sm whitespace-pre-wrap">
+                                <div className="bg-background p-4 rounded-xl border border-border/60 text-xs leading-relaxed text-foreground/80 shadow-sm whitespace-pre-wrap">
                                     {product.shots || "브랜드에서 등록한 필수 촬영 가이드가 없습니다."}
                                 </div>
                             </div>

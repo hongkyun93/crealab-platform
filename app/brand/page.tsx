@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 
 const POPULAR_TAGS = [
     "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
@@ -462,35 +463,89 @@ function BrandDashboardContent() {
                     </div>
                 )
             case "proposals":
+                const myReceivedProposals = brandProposals.filter(p => p.brand_id === user?.id && p.status === 'applied')
+                const sentProposals = brandProposals.filter(p => p.brand_id === user?.id && p.status !== 'applied')
+
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        <h1 className="text-3xl font-bold tracking-tight">보낸 제안서</h1>
-                        <div className="space-y-4">
-                            {mySentProposals.length === 0 ? (
-                                <Card className="p-12 text-center text-muted-foreground">보낸 제안서가 없습니다.</Card>
-                            ) : (
-                                mySentProposals.map((p: any) => (
-                                    <Card key={p.id}>
-                                        <CardHeader className="pb-3">
-                                            <div className="flex justify-between items-center">
-                                                <CardTitle className="text-base">{p.product_name}</CardTitle>
-                                                <span className={`text-xs px-2 py-1 rounded-full ${p.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                    {p.status === 'offered' ? '대기 중' : p.status}
-                                                </span>
-                                            </div>
-                                            <CardDescription>
-                                                {p.influencer_name || "크리에이터"} | {new Date(p.created_at).toLocaleDateString()}
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardFooter className="border-t py-3">
-                                            <Button variant="outline" size="sm" asChild>
-                                                <Link href="/message">채팅방으로 이동</Link>
-                                            </Button>
-                                        </CardFooter>
-                                    </Card>
-                                ))
-                            )}
+                        <div className="flex flex-col gap-4">
+                            <h1 className="text-3xl font-bold tracking-tight">협업 제안 관리</h1>
+                            <p className="text-muted-foreground">크리에이터와 진행 중인 모든 제안을 한눈에 관리하세요.</p>
                         </div>
+
+                        <Tabs defaultValue="sent" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2 lg:max-w-md">
+                                <TabsTrigger value="sent">보낸 제안 ({sentProposals.length})</TabsTrigger>
+                                <TabsTrigger value="received">받은 지원 ({myReceivedProposals.length})</TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="sent" className="space-y-4 mt-6">
+                                {sentProposals.length === 0 ? (
+                                    <Card className="p-12 text-center text-muted-foreground border-dashed bg-muted/20">보낸 제안서가 없습니다.</Card>
+                                ) : (
+                                    sentProposals.map((p: any) => (
+                                        <Card key={p.id} className="hover:shadow-sm transition-shadow">
+                                            <CardHeader className="pb-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <CardTitle className="text-lg font-bold">{p.product_name}</CardTitle>
+                                                        <CardDescription>
+                                                            {p.influencer_name || "크리에이터"} | {new Date(p.created_at).toLocaleDateString()}
+                                                        </CardDescription>
+                                                    </div>
+                                                    <Badge variant={p.status === 'accepted' ? 'default' : 'secondary'}>
+                                                        {p.status === 'offered' ? '대기 중' : p.status === 'accepted' ? '수락됨' : p.status}
+                                                    </Badge>
+                                                </div>
+                                            </CardHeader>
+                                            <CardFooter className="border-t py-3 bg-muted/5">
+                                                <Button variant="ghost" size="sm" className="gap-2" asChild>
+                                                    <Link href="/message"><Bell className="h-4 w-4" /> 채팅방으로 이동</Link>
+                                                </Button>
+                                            </CardFooter>
+                                        </Card>
+                                    ))
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="received" className="space-y-4 mt-6">
+                                {myReceivedProposals.length === 0 ? (
+                                    <Card className="p-12 text-center text-muted-foreground border-dashed bg-muted/20">받은 지원서가 없습니다.</Card>
+                                ) : (
+                                    myReceivedProposals.map((p: any) => (
+                                        <Card key={p.id} className="border-l-4 border-l-primary hover:shadow-sm transition-shadow">
+                                            <CardHeader className="pb-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <CardTitle className="text-lg font-bold">{p.product_name} <Badge className="ml-2 bg-primary/10 text-primary border-none text-[10px]">NEW 지원</Badge></CardTitle>
+                                                        <CardDescription>
+                                                            {p.influencer_name || "크리에이터"} | {new Date(p.created_at).toLocaleDateString()}
+                                                        </CardDescription>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button size="sm" onClick={() => updateBrandProposal(p.id, 'accepted')}>수락</Button>
+                                                        <Button size="sm" variant="outline" onClick={() => updateBrandProposal(p.id, 'rejected')}>거절</Button>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="pb-3 italic text-sm text-foreground/80 bg-primary/5 p-4 rounded-md mx-6 mb-4">
+                                                "{p.message}"
+                                            </CardContent>
+                                            <CardFooter className="border-t py-3 bg-muted/5">
+                                                <div className="flex justify-between w-full items-center">
+                                                    <div className="text-xs text-muted-foreground">
+                                                        희망 광고비: <span className="font-bold text-foreground">{p.compensation_amount}</span>
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" className="gap-2" asChild>
+                                                        <Link href="/message"><Bell className="h-4 w-4" /> 채팅방으로 이동</Link>
+                                                    </Button>
+                                                </div>
+                                            </CardFooter>
+                                        </Card>
+                                    ))
+                                )}
+                            </TabsContent>
+                        </Tabs>
                     </div>
                 )
             case "my-products":

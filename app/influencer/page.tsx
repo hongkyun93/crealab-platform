@@ -148,8 +148,9 @@ function InfluencerDashboardContent() {
     }
 
     const filteredProposals = (status: string) => {
-        if (status === 'new') return brandProposals?.filter(p => !p.status || p.status === 'offered')
-        return brandProposals?.filter(p => p.status === status)
+        if (status === 'new') return brandProposals?.filter(p => (!p.status || p.status === 'offered') && p.influencer_id === user.id)
+        if (status === 'applied') return brandProposals?.filter(p => p.status === 'applied' && p.influencer_id === user.id)
+        return brandProposals?.filter(p => p.status === status && p.influencer_id === user.id)
     }
 
 
@@ -467,14 +468,15 @@ function InfluencerDashboardContent() {
 
                         {/* Proposal Status Tabs */}
                         <Tabs defaultValue="new" value={activeProposalTab} onValueChange={setActiveProposalTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-4 lg:max-w-xl">
-                                <TabsTrigger value="new">새로운 제안</TabsTrigger>
+                            <TabsList className="grid w-full grid-cols-5 lg:max-w-2xl">
+                                <TabsTrigger value="new">받은 제안</TabsTrigger>
+                                <TabsTrigger value="applied">내 지원</TabsTrigger>
                                 <TabsTrigger value="accepted">수락됨</TabsTrigger>
                                 <TabsTrigger value="pending">보류됨</TabsTrigger>
                                 <TabsTrigger value="rejected">거절됨</TabsTrigger>
                             </TabsList>
 
-                            {["new", "accepted", "pending", "rejected"].map((tab: any) => (
+                            {["new", "applied", "accepted", "pending", "rejected"].map((tab: any) => (
                                 <TabsContent key={tab} value={tab} className="space-y-4 mt-6">
                                     {filteredProposals(tab)?.length > 0 ? (
                                         filteredProposals(tab).map((proposal: any) => (
@@ -515,10 +517,13 @@ function InfluencerDashboardContent() {
                                                         <div className="flex flex-wrap gap-2 pt-2">
                                                             {tab === 'new' && (
                                                                 <>
-                                                                    <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleStatusUpdate(proposal.id, 'accepted')}>수락하기</Button>
-                                                                    <Button variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" onClick={() => handleStatusUpdate(proposal.id, 'pending')}>보류하기</Button>
-                                                                    <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleStatusUpdate(proposal.id, 'rejected')}>거절하기</Button>
+                                                                    <Button className="bg-emerald-600 hover:bg-emerald-700 font-bold" onClick={() => handleStatusUpdate(proposal.id, 'accepted')}>수락하기</Button>
+                                                                    <Button variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 font-bold" onClick={() => handleStatusUpdate(proposal.id, 'pending')}>보류하기</Button>
+                                                                    <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50 font-bold" onClick={() => handleStatusUpdate(proposal.id, 'rejected')}>거절하기</Button>
                                                                 </>
+                                                            )}
+                                                            {tab === 'applied' && (
+                                                                <Button variant="secondary" disabled className="font-bold">응답 대기 중</Button>
                                                             )}
                                                             {(tab === 'accepted' || tab === 'pending') && (
                                                                 <Button
