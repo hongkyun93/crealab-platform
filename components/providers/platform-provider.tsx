@@ -687,7 +687,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
         try {
             // 2. Prepare Profile Update (MUST run first to ensure row exists)
             const profileUpdates: any = {
-                id: user.id,
                 updated_at: new Date().toISOString(),
             }
             if (data.name !== undefined) profileUpdates.display_name = data.name
@@ -695,9 +694,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (data.avatar !== undefined) profileUpdates.avatar_url = data.avatar
             if (data.website !== undefined) profileUpdates.website = data.website
 
-            // Execute Profile Update FIRST (creates row if missing)
+            // Execute Profile Update FIRST
             console.log('[updateUser] Updating profiles table with data:', profileUpdates)
-            const profileResult = await supabase.from('profiles').upsert(profileUpdates)
+            const profileResult = await supabase
+                .from('profiles')
+                .update(profileUpdates)
+                .eq('id', user.id)
+
             if (profileResult.error) {
                 console.error('[updateUser] Profile update error:', profileResult.error)
                 throw profileResult.error
@@ -706,7 +709,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // 3. Influencer Details Update (AFTER profile exists)
             if (user.type === 'influencer' || updatedUser.type === 'influencer') {
                 const detailsUpdates: any = {
-                    id: user.id,
                     updated_at: new Date().toISOString(),
                 }
                 if (data.tags !== undefined) detailsUpdates.tags = data.tags
@@ -724,7 +726,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 }
 
                 console.log('[updateUser] Updating influencer_details table...', detailsUpdates)
-                const detailsResult = await supabase.from('influencer_details').upsert(detailsUpdates)
+                const detailsResult = await supabase
+                    .from('influencer_details')
+                    .update(detailsUpdates)
+                    .eq('id', user.id)
+
                 if (detailsResult.error) {
                     console.error('[updateUser] Influencer details error:', detailsResult.error)
                     throw detailsResult.error
