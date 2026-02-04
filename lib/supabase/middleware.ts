@@ -7,8 +7,8 @@ export async function updateSession(request: NextRequest) {
     })
 
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        "https://wbeyxjoqcwjbcuwvjrsa.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndiZXl4am9xY3dqYmN1d3ZqcnNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMjE2NjYsImV4cCI6MjA4NTY5NzY2Nn0.dd42_fmkAw67xYMztVnu_8i7W3N2cya-4oJw-R0NUb8",
         {
             cookies: {
                 getAll() {
@@ -29,24 +29,11 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    // IMPORTANT: Avoid writing any logic between createServerClient and
-    // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-    // issues with users being randomly logged out.
-
+    // Refresh session if expired - required for Server Components
+    // https://supabase.com/docs/guides/auth/server-side/nextjs
     const {
         data: { user },
     } = await supabase.auth.getUser()
-
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        !request.nextUrl.pathname.startsWith('/signup') &&
-        request.nextUrl.pathname !== '/'
-    ) {
-        // optional: force redirect to login if no user
-        // return NextResponse.redirect(new URL('/login', request.url))
-    }
 
     return supabaseResponse
 }

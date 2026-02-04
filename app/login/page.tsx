@@ -1,4 +1,5 @@
 "use client"
+// Updated: 2026-02-03 20:47 - Force cache invalidation
 
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
@@ -24,20 +25,42 @@ export default function LoginPage() {
     const [password, setPassword] = useState("")
 
     const handleSocialLogin = async (provider: 'google' | 'kakao', role: 'brand' | 'influencer') => {
-        const supabase = createClient()
-        // Determine redirect URL based on environment
-        // Append role_type to the redirect URL so we can handle it in the callback
-        const redirectUrl = `${window.location.origin}/auth/callback?role_type=${role}`
+        setIsLoading(true)
+        setError("")
+        try {
+            const supabase = createClient()
+            const redirectUrl = `${window.location.origin}/auth/callback?role_type=${role}`
 
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider,
-            options: {
-                redirectTo: redirectUrl,
-            },
-        })
+            console.log('[OAuth Debug] Starting Social Login...', { provider, role, redirectUrl })
 
-        if (error) {
-            setError(error.message)
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: {
+                    redirectTo: redirectUrl,
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent',
+                    },
+                },
+            })
+
+            console.log('[OAuth Debug] signInWithOAuth returned:', { data, error })
+
+            if (error) {
+                console.error('[OAuth Error] signInWithOAuth error:', error)
+                setError(error.message)
+                setIsLoading(false)
+            } else if (data?.url) {
+                console.log('[OAuth Debug] Success! Redirecting to:', data.url)
+                // The browser should redirect automatically, but we can log the URL
+            } else {
+                console.log('[OAuth Debug] No error but no redirect URL either.')
+                setIsLoading(false)
+            }
+        } catch (err: any) {
+            console.error('[OAuth Exception] Caught exception:', err)
+            setError(err.message || "알 수 없는 오류가 발생했습니다.")
+            setIsLoading(false)
         }
     }
 

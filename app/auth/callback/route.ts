@@ -11,40 +11,47 @@ export async function GET(request: Request) {
 
     if (code) {
         const supabase = await createClient()
+        console.log('[Auth Callback] Exchanging code for session...')
+
         const { error, data } = await supabase.auth.exchangeCodeForSession(code)
 
         if (!error && data?.user) {
-            // Determine where to redirect based on user role
-            // First check if specific next was provided, otherwise try to deduce
-            if (next === '/') {
-                // Fetch user profile or metadata to determine role
-                // We preferred the metadata way in our trigger using role_type
+            console.log('[Auth Callback] Session exchange successful for user:', data.user.id)
 
-                // If we know the intent from the URL (role_type), we can hint the redirect
-                // But safer is to check the actual profile in case they are already signed up
+            try {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', data.user.id)
+                    .single()
 
-                try {
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('role')
-                        .eq('id', data.user.id)
-                        .single()
+                // Detect if it's a new user (signup)
+                // If created_at is very close to last_sign_in_at, it's likely a new user.
+                // However, last_sign_in_at is updated on login.
+                // A safer bet for "first time" is often checking if profile is fully set up, but relying on timestamps is a common heuristic.
+                // Let's assume if created_at and last_sign_in_at are within a few seconds, it's a signup.
+                const createdAt = new Date(data.user.created_at)
+                // last_sign_in_at might not be updated yet in the session object returned by exchangeCodeForSession?
+                // Actually, let's treat it as: if we can't find specific profile info, it's new.
+                // But the user asked for "If signup -> settings".
 
-                    if (profile?.role === 'brand') {
-                        next = '/brand'
-                    } else if (profile?.role === 'influencer') {
-                        next = '/influencer'
-                    } else if (profile?.role === 'admin') {
-                        next = '/admin'
-                    } else if (roleType === 'brand') {
-                        // Fallback if profile creation is lagging (though trigger is sync)
-                        next = '/brand'
-                    } else if (roleType === 'influencer') {
-                        next = '/influencer'
-                    }
-                } catch (e) {
-                    console.error('Profile fetch error', e)
+                // Let's check if the user is "new" by checking if the creation time is very recent (e.g. within 1 minute of now)
+                // This is a robust enough check for the immediate callback after signup.
+                const isNewUser = (new Date().getTime() - createdAt.getTime()) < 60 * 1000 // 1 minute
+
+                if (profile?.role === 'brand') {
+                    next = isNewUser ? '/brand/settings' : '/brand'
+                } else if (profile?.role === 'influencer') {
+                    next = isNewUser ? '/influencer?view=settings' : '/influencer'
+                } else if (profile?.role === 'admin') {
+                    next = '/admin'
+                } else if (roleType === 'brand') {
+                    next = isNewUser ? '/brand/settings' : '/brand'
+                } else if (roleType === 'influencer') {
+                    next = isNewUser ? '/influencer?view=settings' : '/influencer'
                 }
+            } catch (e) {
+                console.error('Profile fetch error', e)
             }
 
             const isLocalEnv = process.env.NODE_ENV === 'development'
@@ -52,9 +59,6 @@ export async function GET(request: Request) {
             if (isLocalEnv) {
                 return NextResponse.redirect(`${origin}${next}`)
             } else {
-                // In generic environment, prefer using request origin but ensure protocol is https if forwarded host implies it
-                // Actually, Vercel sets request.url correctly. 
-                // However, standard safety pattern:
                 const forwardedHost = request.headers.get('x-forwarded-host')
                 if (forwardedHost) {
                     return NextResponse.redirect(`https://${forwardedHost}${next}`)
@@ -62,7 +66,8 @@ export async function GET(request: Request) {
                 return NextResponse.redirect(`${origin}${next}`)
             }
         } else if (error) {
-            return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${error.message}`)
+            console.error('[Auth Callback] Exchange error:', error)
+            return NextResponse.redirect(`${origin}/auth/debug?error=${encodeURIComponent(JSON.stringify(error))}&message=${encodeURIComponent(error.message)}`)
         }
     }
 

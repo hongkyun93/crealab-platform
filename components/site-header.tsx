@@ -1,7 +1,5 @@
 "use client"
 
-"use client"
-
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { usePlatform } from "@/components/providers/platform-provider"
@@ -21,8 +19,8 @@ export function SiteHeader() {
     const router = useRouter()
     const pathname = usePathname()
 
-    const handleLogout = () => {
-        logout()
+    const handleLogout = async () => {
+        await logout()
         router.push("/")
     }
 
@@ -78,19 +76,23 @@ export function SiteHeader() {
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" className="rounded-full">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
-                                            {user.avatar || user.name[0]}
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold overflow-hidden">
+                                            {user.avatar ? (
+                                                <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                user.name[0]
+                                            )}
                                         </div>
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>내 계정</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={handleProfileClick} className="cursor-pointer">
+                                    <DropdownMenuItem onSelect={handleProfileClick} className="cursor-pointer">
                                         {user.type === 'brand' ? <Settings className="mr-2 h-4 w-4" /> : <User className="mr-2 h-4 w-4" />}
                                         프로필 설정
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 focus:text-red-500">
+                                    <DropdownMenuItem onSelect={handleLogout} className="cursor-pointer text-red-500 focus:text-red-500">
                                         <LogOut className="mr-2 h-4 w-4" />
                                         로그아웃
                                     </DropdownMenuItem>

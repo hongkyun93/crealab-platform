@@ -11,7 +11,7 @@ import Link from "next/link"
 import { usePlatform } from "@/components/providers/platform-provider"
 import { useEffect, useState } from "react"
 
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 // Removed static MY_EVENTS
 
@@ -23,10 +23,14 @@ const POPULAR_TAGS = [
     "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
 ]
 
-export default function InfluencerDashboard() {
+import { Suspense } from "react"
+
+function InfluencerDashboardContent() {
     const { user, updateUser, campaigns, events, isLoading, notifications, resetData } = usePlatform()
     const router = useRouter()
-    const [currentView, setCurrentView] = useState("dashboard")
+    const searchParams = useSearchParams()
+    const initialView = searchParams.get('view') || "dashboard"
+    const [currentView, setCurrentView] = useState(initialView)
 
     // Filter My Events
     const myEvents = user ? events.filter(e => e.influencer === user.name) : []
@@ -422,5 +426,13 @@ export default function InfluencerDashboard() {
                 </div>
             </main>
         </div>
+    )
+}
+
+export default function InfluencerDashboard() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <InfluencerDashboardContent />
+        </Suspense>
     )
 }

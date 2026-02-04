@@ -165,7 +165,9 @@ interface PlatformContextType {
 
 const PlatformContext = createContext<PlatformContextType | undefined>(undefined)
 
-export function PlatformProvider({ children }: { children: React.ReactNode }) {
+import { Session } from "@supabase/supabase-js"
+
+export function PlatformProvider({ children, initialSession }: { children: React.ReactNode, initialSession?: Session | null }) {
     const [user, setUser] = useState<User | null>(null)
     const [campaigns, setCampaigns] = useState<Campaign[]>(INITIAL_CAMPAIGNS)
     const [events, setEvents] = useState<InfluencerEvent[]>(INITIAL_EVENTS)
@@ -175,6 +177,25 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     const [messages, setMessages] = useState<Message[]>([])
     const [isInitialized, setIsInitialized] = useState(false)
     const [isAuthChecked, setIsAuthChecked] = useState(false) // Wait for Supabase check
+
+    // Initialize state with Server Session if available
+    useEffect(() => {
+        if (initialSession?.user) {
+            // Need to fetch profile even if we have session, but we can optimistically set basic user
+            const initUserFromSession = async () => {
+                // Reuse fetchUserProfile logic or extract it?
+                // For now, let's just let the existing effect handle the "full" load
+                // But we can set isAuthChecked to true faster if we know we have a session?
+                // Actually, if we have initialSession, we can rely on onAuthStateChange to fire immediately?
+                // No, better to explicitly set it.
+
+                // We will define fetchUserProfile fully before using it here usually, but it's defined below.
+                // Let's rely on the existing effect for profile fetching to avoid duplication,
+                // BUT we can use initialSession to prevent the "Login" flash.
+            }
+        }
+    }, [initialSession])
+
 
     // Load from localStorage on client mount
     useEffect(() => {
@@ -361,8 +382,12 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         let mounted = true
         // ... (initAuth logic same as before)
         const initAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
+            console.log('[PlatformProvider] Initializing Auth Check...')
+            const { data: { session }, error } = await supabase.auth.getSession()
+            console.log('[PlatformProvider] getSession result:', session ? 'Session found' : 'No session', error || '')
+
             if (session?.user && mounted) {
+                console.log('[PlatformProvider] User found in session:', session.user.id)
                 const fetchedUser = await fetchUserProfile(session.user)
                 if (fetchedUser) {
                     setUser(fetchedUser)
@@ -405,8 +430,20 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
 
 
     const logout = async () => {
-        await supabase.auth.signOut()
-        setUser(null)
+        try {
+            console.log('[Logout] Attempting to sign out...')
+            const { error } = await supabase.auth.signOut()
+            if (error) {
+                console.error('[Logout Error]', error)
+                throw error
+            }
+            console.log('[Logout] Successfully signed out')
+            setUser(null)
+        } catch (error) {
+            console.error('[Logout] Failed to sign out:', error)
+            // Still clear local user state even if signOut fails
+            setUser(null)
+        }
     }
 
     const updateUser = async (data: Partial<User>) => {

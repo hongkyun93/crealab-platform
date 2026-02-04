@@ -19,17 +19,24 @@ export const metadata: Metadata = {
   description: "Influencer-Brand Connection Platform",
 };
 
-export default function RootLayout({
+import { createClient } from "@/lib/supabase/server";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <PlatformProvider>
+        <PlatformProvider initialSession={session}>
           {children}
         </PlatformProvider>
       </body>
