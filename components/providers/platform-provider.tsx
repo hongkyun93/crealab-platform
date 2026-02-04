@@ -413,8 +413,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 const fetchedUser = await fetchUserProfile(session.user)
                 if (fetchedUser) {
                     setUser(fetchedUser)
-                    fetchEvents(session.user.id) // Fetch events for this user (or all if public?)
+                    fetchEvents(session.user.id)
                 }
+            } else if (mounted) {
+                // IMPORTANT: If no session, clear local user state to prevent "ghost login"
+                console.log('[PlatformProvider] No session found, clearing user state')
+                setUser(null)
             }
             if (mounted) setIsAuthChecked(true)
         }
@@ -435,10 +439,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     fetchEvents(session.user.id)
                 }
             } else if (!session && mounted) {
-                if (event === 'SIGNED_OUT') {
-                    setUser(null)
-                    setEvents([])
-                }
+                setUser(null)
+                setEvents([])
             }
             if (mounted) setIsAuthChecked(true)
         })
@@ -569,6 +571,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const updateUser = async (data: Partial<User>) => {
+        // 0. Check Supabase Session First
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+            console.error('[updateUser] No active session found')
+            throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해주세요.')
+        }
+
         if (!user) return
 
         // 1. Update Local State immediately for UI responsiveness
