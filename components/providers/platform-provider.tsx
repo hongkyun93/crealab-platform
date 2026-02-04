@@ -293,12 +293,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             })
 
             if (error) {
-                // Check if it matches mock credentials for testing fallback
-                if ((id === "brand1" && pw === "1234") || (id === "creator1" && pw === "1234") || (id === "admin" && pw === "admin")) {
-                    // Fallthrough to mock logic below
-                } else {
-                    throw error
-                }
+                throw error
             } else {
                 // Success! onAuthStateChange will handle setting the user
                 // But we can return the user object derived from session here for immediate UI feedback
@@ -320,42 +315,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // (Keep existing mock logic for demo purposes if desired, or remove)
         }
 
-        // Mock Login Logic (Fallback)
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                if (id === "brand1" && pw === "1234") {
-                    const user: User = {
-                        id: "brand1",
-                        name: "SAMSUNG",
-                        type: "brand",
-                        avatar: "S",
-                        bio: "세계 최고의 기술 기업 삼성전자입니다.",
-                        website: "https://samsung.com"
-                    }
-                    setUser(user)
-                    resolve(user)
-                } else if (id === "creator1" && pw === "1234") {
-                    const user: User = {
-                        id: "creator1",
-                        name: "김세라",
-                        type: "influencer",
-                        avatar: "김",
-                        handle: "@sarah_life",
-                        bio: "매일 반복되는 일상을 특별하게 기록합니다. 📸",
-                        tags: ["라이프스타일", "인테리어", "카페"],
-                        followers: 45000,
-                    }
-                    setUser(user)
-                    resolve(user)
-                } else if (id === "admin" && pw === "admin") {
-                    const user: User = { id: "admin", name: "관리자", type: "admin" }
-                    setUser(user)
-                    resolve(user)
-                } else {
-                    reject(new Error("아이디 또는 비밀번호가 일치하지 않습니다."))
-                }
-            }, 500)
-        })
+        // Mock logic removed - only real DB authentication allowed.
+        throw new Error("아이디 또는 비밀번호가 일치하지 않습니다.")
     }
 
     // --- Supabase Auth Integration ---

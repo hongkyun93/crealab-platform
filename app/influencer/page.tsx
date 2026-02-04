@@ -61,16 +61,15 @@ function InfluencerDashboardContent() {
         }
     }, [user, currentView])
 
-    // Onboarding Check: Disabled to allow users to freely navigate to dashboard
-    // Users can manually go to settings if needed via the sidebar
-    // useEffect(() => {
-    //     if (user && !isLoading) {
-    //         const isMissingInfo = !user.handle || !user.name
-    //         if (isMissingInfo && currentView !== 'settings') {
-    //             setCurrentView("settings")
-    //         }
-    //     }
-    // }, [user, isLoading])
+    // Onboarding Check: Automatically show settings if crucial info is missing
+    useEffect(() => {
+        if (user && !isLoading && user.type === 'influencer') {
+            const isMissingInfo = !user.handle || user.followers === undefined || user.followers === 0
+            if (isMissingInfo && currentView !== 'settings' && initialView !== 'settings') {
+                setCurrentView("settings")
+            }
+        }
+    }, [user, isLoading, currentView, initialView])
 
     useEffect(() => {
         if (!isLoading && !user) {
