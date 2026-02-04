@@ -16,6 +16,7 @@ export default function MessagePage() {
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
     const [messageInput, setMessageInput] = useState("")
     const [isComposing, setIsComposing] = useState(false)
+    const [isSending, setIsSending] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
 
     // Compute threads from messages
@@ -85,8 +86,9 @@ export default function MessagePage() {
     }, [activeThread?.messages])
 
     const handleSendMessage = async () => {
-        if (!messageInput.trim() || !activeThreadId) return
+        if (!messageInput.trim() || !activeThreadId || isSending) return
 
+        setIsSending(true)
         const content = messageInput
         setMessageInput("") // Optimistic clear
 
@@ -95,12 +97,14 @@ export default function MessagePage() {
         } catch (e) {
             console.error("Failed to send message:", e)
             setMessageInput(content) // Restore on error
+        } finally {
+            setIsSending(false)
         }
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        // Don't send if still composing Korean
-        if (e.key === "Enter" && !e.shiftKey && !isComposing) {
+        // Don't send if still composing Korean or already sending
+        if (e.key === "Enter" && !e.shiftKey && !isComposing && !isSending) {
             e.preventDefault()
             handleSendMessage()
         }
@@ -307,7 +311,7 @@ export default function MessagePage() {
                                         </div>
                                         <Button
                                             onClick={handleSendMessage}
-                                            disabled={!messageInput.trim()}
+                                            disabled={!messageInput.trim() || isSending}
                                             size="icon"
                                             className="h-9 w-9 shrink-0 rounded-lg transition-all"
                                         >
