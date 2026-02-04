@@ -6,13 +6,21 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User } from "lucide-react"
+import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil } from "lucide-react"
 import Link from "next/link"
 import { usePlatform } from "@/components/providers/platform-provider"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog"
 import { useEffect, useState } from "react"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Loader2 } from "lucide-react"
 
 // Removed static MY_EVENTS
@@ -28,7 +36,10 @@ const POPULAR_TAGS = [
 import { Suspense } from "react"
 
 function InfluencerDashboardContent() {
-    const { user, updateUser, campaigns, events, isLoading, notifications, resetData, brandProposals } = usePlatform()
+    const {
+        user, updateUser, campaigns, events, isLoading, notifications, resetData,
+        brandProposals, updateBrandProposal, sendMessage, messages: allMessages, deleteEvent
+    } = usePlatform()
     const router = useRouter()
     const searchParams = useSearchParams()
     const initialView = searchParams.get('view') || "dashboard"
@@ -37,9 +48,13 @@ function InfluencerDashboardContent() {
 
     // Filter My Events
     // Filter My Events
-    const myEvents = user ? events.filter(e => e.influencerId === user.id) : []
-    const pastMoments = myEvents.filter(e => (e as any).status === 'completed')
-    const upcomingMoments = myEvents.filter(e => (e as any).status !== 'completed')
+    const myEvents = user ? events.filter((e: any) => e.influencerId === user.id) : []
+    const pastMoments = myEvents.filter((e: any) => e.status === 'completed')
+    const upcomingMoments = myEvents.filter((e: any) => e.status !== 'completed')
+
+    const filteredProposalsByMoment = selectedMomentId
+        ? (brandProposals?.filter((p: any) => p.event_id === selectedMomentId) || [])
+        : []
 
     // Profile Edit States
     const [editName, setEditName] = useState("")
@@ -49,6 +64,12 @@ function InfluencerDashboardContent() {
     const [selectedTags, setSelectedTags] = useState<string[]>([])
     const [isSaving, setIsSaving] = useState(false)
     const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+
+    // Chat states
+    const [isChatOpen, setIsChatOpen] = useState(false)
+    const [chatProposal, setChatProposal] = useState<any>(null)
+    const [chatMessage, setChatMessage] = useState("")
+    const [activeProposalTab, setActiveProposalTab] = useState<string>("new")
 
     // Initialize state when user loads or view changes
     useEffect(() => {
@@ -64,12 +85,22 @@ function InfluencerDashboardContent() {
     // Onboarding Check: Automatically show settings if crucial info is missing
     useEffect(() => {
         if (user && !isLoading && user.type === 'influencer') {
-            const isMissingInfo = !user.handle || user.followers === undefined || user.followers === 0
-            if (isMissingInfo && currentView !== 'settings' && initialView !== 'settings') {
+            // Only force settings if name or handle is truly missing
+            const isMissingInfo = !user.handle || !user.name
+            if (isMissingInfo && currentView !== 'settings' && initialView !== 'settings' && currentView !== 'profile') {
                 setCurrentView("settings")
             }
         }
     }, [user, isLoading, currentView, initialView])
+
+    // Sync currentView with URL changes (e.g., when clicking "View Profile" from header)
+    useEffect(() => {
+        const view = searchParams.get('view')
+        if (view && view !== currentView) {
+            setCurrentView(view)
+        }
+    }, [searchParams, currentView])
+
 
     useEffect(() => {
         if (!isLoading && !user) {
@@ -79,6 +110,8 @@ function InfluencerDashboardContent() {
 
     if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>
     if (!user) return null
+
+
 
     const handleSaveProfile = async () => {
         setIsSaving(true)
@@ -99,6 +132,27 @@ function InfluencerDashboardContent() {
         }
     }
 
+    const handleStatusUpdate = async (proposalId: string, status: string) => {
+        await updateBrandProposal(proposalId, status)
+        if (status === 'accepted' || status === 'pending') {
+            const proposal = brandProposals.find(p => p.id === proposalId)
+            setChatProposal(proposal)
+            setIsChatOpen(true)
+        }
+    }
+
+    const handleSendMessage = async () => {
+        if (!chatMessage.trim() || !chatProposal) return
+        await sendMessage(chatProposal.brand_id, chatMessage, chatProposal.id)
+        setChatMessage("")
+    }
+
+    const filteredProposals = (status: string) => {
+        if (status === 'new') return brandProposals?.filter(p => !p.status || p.status === 'offered')
+        return brandProposals?.filter(p => p.status === status)
+    }
+
+
     const handleFollowerPreset = (val: number) => {
         setEditFollowers(val.toString())
     }
@@ -113,6 +167,72 @@ function InfluencerDashboardContent() {
 
     const renderContent = () => {
         switch (currentView) {
+            case "profile":
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex items-center justify-between">
+                            <h1 className="text-3xl font-bold tracking-tight">내 프로필 미리보기</h1>
+                            <Button onClick={() => setCurrentView('settings')}>편집하기</Button>
+                        </div>
+
+                        <Card className="overflow-hidden">
+                            <div className="h-32 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+                            <CardContent className="relative pt-12 pb-8 px-6">
+                                <div className="absolute -top-12 left-6 h-24 w-24 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden flex items-center justify-center font-bold text-3xl text-primary">
+                                    {user.avatar ? (
+                                        <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                                    ) : (
+                                        user.name[0]
+                                    )}
+                                </div>
+
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-2xl font-bold">{user.name}</h2>
+                                        {user.handle && <span className="text-primary font-medium">{user.handle}</span>}
+                                    </div>
+                                    <p className="text-muted-foreground">{user.bio || "아직 소개글이 없습니다."}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                                    <div className="p-4 bg-muted/50 rounded-xl text-center">
+                                        <div className="text-2xl font-bold text-primary">{user.followers?.toLocaleString() || 0}</div>
+                                        <div className="text-xs text-muted-foreground">팔로워</div>
+                                    </div>
+                                    <div className="p-4 bg-muted/50 rounded-xl text-center">
+                                        <div className="text-2xl font-bold text-primary">{myEvents.length}</div>
+                                        <div className="text-xs text-muted-foreground">등록된 모먼트</div>
+                                    </div>
+                                    <div className="p-4 bg-muted/50 rounded-xl text-center">
+                                        <div className="text-2xl font-bold text-emerald-600">{brandProposals?.filter((p: any) => p.status === 'accepted').length || 0}</div>
+                                        <div className="text-xs text-muted-foreground">진행중 협업</div>
+                                    </div>
+                                    <div className="p-4 bg-muted/50 rounded-xl text-center">
+                                        <div className="text-2xl font-bold text-indigo-600">{user.tags?.length || 0}</div>
+                                        <div className="text-xs text-muted-foreground">보유 태그</div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 space-y-4">
+                                    <h3 className="font-bold flex items-center gap-2">
+                                        <Rocket className="h-4 w-4 text-primary" /> 활동 키워드
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {user.tags && user.tags.length > 0 ? (
+                                            user.tags.map((tag: string) => (
+                                                <div key={tag} className="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full font-medium">
+                                                    {tag}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <span className="text-sm text-muted-foreground italic">아직 태그가 설정되지 않았습니다.</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )
             case "dashboard":
                 return (
                     <div className="flex flex-col gap-8">
@@ -177,14 +297,14 @@ function InfluencerDashboardContent() {
                                         도착한 제안
                                     </h3>
                                     <div className="space-y-3">
-                                        {/* Show ALL proposals for now as we lack event_id linking in DB */}
-                                        {brandProposals && brandProposals.length > 0 ? (
-                                            brandProposals.map((proposal) => (
+                                        {filteredProposalsByMoment.length > 0 ? (
+                                            filteredProposalsByMoment.map((proposal: any) => (
                                                 <Card
                                                     key={proposal.id}
                                                     className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all group"
                                                     onClick={() => {
-                                                        alert(`[${proposal.brand_name || 'Brand'}]의 제안\n\n제품: ${proposal.product_name}\n보상: ${proposal.compensation_amount}\n메시지: ${proposal.message}`)
+                                                        setChatProposal(proposal)
+                                                        setIsChatOpen(true)
                                                     }}
                                                 >
                                                     <div className="flex items-start justify-between mb-2">
@@ -208,7 +328,7 @@ function InfluencerDashboardContent() {
                                             ))
                                         ) : (
                                             <div className="text-center py-8 bg-muted/20 rounded-lg border-dashed border">
-                                                <p className="text-sm text-muted-foreground">아직 도착한 제안이 없습니다.</p>
+                                                <p className="text-sm text-muted-foreground">이 일정에 도착한 제안이 아직 없습니다.</p>
                                             </div>
                                         )}
                                     </div>
@@ -280,10 +400,21 @@ function InfluencerDashboardContent() {
                                                     <div className="flex items-center gap-4 w-full md:w-auto">
                                                         <div className="text-right hidden md:block">
                                                             <div className="font-medium text-emerald-600">
-                                                                {brandProposals?.length || 0}개의 제안
+                                                                {brandProposals?.filter((p: any) => p.event_id === event.id).length || 0}개의 제안
                                                             </div>
                                                             <div className="text-xs text-muted-foreground">확인하기 →</div>
                                                         </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                deleteEvent(event.id);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
                                                 </Card>
                                             ))}
@@ -329,53 +460,150 @@ function InfluencerDashboardContent() {
             case "proposals":
                 return (
                     <div className="space-y-6">
-                        <h1 className="text-3xl font-bold tracking-tight">브랜드 제안함</h1>
-                        <p className="text-muted-foreground">브랜드로부터 도착한 협업 제안을 확인하세요.</p>
-                        <div className="grid gap-4">
-                            {brandProposals && brandProposals.length > 0 ? (
-                                brandProposals.map((proposal) => (
-                                    <Card key={proposal.id} className="p-6">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex gap-4">
-                                                <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                                                    {proposal.brand_name?.[0] || "B"}
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-bold text-lg">{proposal.brand_name}의 제안</h3>
-                                                    <p className="text-sm font-medium text-primary mt-1">
-                                                        {proposal.product_name} ({proposal.product_type === 'gift' ? '제품 협찬' : '대여'})
-                                                    </p>
-                                                    <p className="text-sm text-muted-foreground mt-1">
-                                                        보상: {proposal.compensation_amount}
-                                                        {proposal.has_incentive && ` (+인센티브: ${proposal.incentive_detail})`}
-                                                    </p>
-                                                    <div className="mt-4 p-3 bg-muted/30 rounded-md text-sm">
-                                                        "{proposal.message}"
-                                                    </div>
-                                                    <div className="mt-2 text-xs text-muted-foreground">
-                                                        받은 날짜: {new Date(proposal.created_at).toLocaleDateString()} • 상태: {proposal.status}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Button variant="outline">거절하기</Button>
-                                                <Button onClick={() => alert("제안을 수락했습니다! 채팅방이 연결됩니다.")}>수락하기</Button>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                ))
-                            ) : (
-                                <Card className="p-8 text-center bg-muted/20 border-dashed">
-                                    <div className="mx-auto w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mb-4">
-                                        <Briefcase className="h-6 w-6" />
-                                    </div>
-                                    <h3 className="font-semibold text-lg">아직 받은 제안이 없습니다.</h3>
-                                    <p className="text-muted-foreground mb-4">프로필을 더 매력적으로 꾸며보세요!</p>
-                                </Card>
-                            )}
+                        <div className="flex flex-col gap-4">
+                            <h1 className="text-3xl font-bold tracking-tight">협업 제안 관리</h1>
+                            <p className="text-muted-foreground">도착한 제안을 관리하고 브랜드와 대화하세요.</p>
                         </div>
+
+                        {/* Proposal Status Tabs */}
+                        <Tabs defaultValue="new" value={activeProposalTab} onValueChange={setActiveProposalTab} className="w-full">
+                            <TabsList className="grid w-full grid-cols-4 lg:max-w-xl">
+                                <TabsTrigger value="new">새로운 제안</TabsTrigger>
+                                <TabsTrigger value="accepted">수락됨</TabsTrigger>
+                                <TabsTrigger value="pending">보류됨</TabsTrigger>
+                                <TabsTrigger value="rejected">거절됨</TabsTrigger>
+                            </TabsList>
+
+                            {["new", "accepted", "pending", "rejected"].map((tab: any) => (
+                                <TabsContent key={tab} value={tab} className="space-y-4 mt-6">
+                                    {filteredProposals(tab)?.length > 0 ? (
+                                        filteredProposals(tab).map((proposal: any) => (
+                                            <Card key={proposal.id} className="p-6 overflow-hidden relative border-l-4 border-l-primary/30">
+                                                <div className="flex flex-col md:flex-row gap-6">
+                                                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-xl">
+                                                        {proposal.brand_name?.[0] || "B"}
+                                                    </div>
+                                                    <div className="flex-1 space-y-4">
+                                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                                            <div>
+                                                                <h3 className="font-bold text-xl">{proposal.brand_name}</h3>
+                                                                <p className="text-sm text-primary font-semibold mt-0.5">
+                                                                    {proposal.product_name} • {proposal.product_type === 'gift' ? '제품 협찬' : '대여'}
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                                                {new Date(proposal.created_at).toLocaleDateString()}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="grid md:grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
+                                                            <div>
+                                                                <span className="text-muted-foreground block mb-1">제시 보상</span>
+                                                                <span className="font-bold text-emerald-600">{proposal.compensation_amount}</span>
+                                                                {proposal.has_incentive && <span className="text-[11px] ml-1"> (+인센티브 별도)</span>}
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-muted-foreground block mb-1">희망 콘텐츠</span>
+                                                                <span className="font-medium">{proposal.content_type || "별도 협의"}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 italic text-sm text-foreground/80">
+                                                            "{proposal.message}"
+                                                        </div>
+
+                                                        <div className="flex flex-wrap gap-2 pt-2">
+                                                            {tab === 'new' && (
+                                                                <>
+                                                                    <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleStatusUpdate(proposal.id, 'accepted')}>수락하기</Button>
+                                                                    <Button variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" onClick={() => handleStatusUpdate(proposal.id, 'pending')}>보류하기</Button>
+                                                                    <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleStatusUpdate(proposal.id, 'rejected')}>거절하기</Button>
+                                                                </>
+                                                            )}
+                                                            {(tab === 'accepted' || tab === 'pending') && (
+                                                                <Button
+                                                                    className="gap-2"
+                                                                    onClick={() => {
+                                                                        setChatProposal(proposal)
+                                                                        setIsChatOpen(true)
+                                                                    }}
+                                                                >
+                                                                    <Briefcase className="h-4 w-4" /> 브랜드와 대화하기
+                                                                </Button>
+                                                            )}
+                                                            {tab === 'rejected' && (
+                                                                <Button variant="ghost" disabled>거절된 제안입니다</Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        ))
+                                    ) : (
+                                        <Card className="p-12 text-center bg-muted/20 border-dashed">
+                                            <div className="mx-auto w-16 h-16 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mb-4">
+                                                <Briefcase className="h-8 w-8" />
+                                            </div>
+                                            <h3 className="font-semibold text-lg">이 함에는 아직 제안이 없습니다.</h3>
+                                            <p className="text-muted-foreground">다른 탭을 확인하거나 프로필을 더 매력적으로 꾸며보세요!</p>
+                                        </Card>
+                                    )}
+                                </TabsContent>
+                            ))}
+                        </Tabs>
+
+                        {/* Chat Dialog */}
+                        <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+                            <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col p-0 overflow-hidden">
+                                <DialogHeader className="p-6 border-b">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                                            {chatProposal?.brand_name?.[0] || "B"}
+                                        </div>
+                                        <div>
+                                            <DialogTitle>{chatProposal?.brand_name}</DialogTitle>
+                                            <DialogDescription className="text-xs">
+                                                {chatProposal?.product_name} 협업 관련 대화
+                                            </DialogDescription>
+                                        </div>
+                                    </div>
+                                </DialogHeader>
+
+                                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/10">
+                                    {allMessages
+                                        .filter((m: any) => m.proposalId === chatProposal?.id || (m.senderId === chatProposal?.brand_id && m.receiverId === user.id) || (m.senderId === user.id && m.receiverId === chatProposal?.brand_id))
+                                        .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                                        .map((msg: any, idx: any) => (
+                                            <div key={idx} className={`flex ${msg.senderId === user.id ? 'justify-end' : 'justify-start'}`}>
+                                                <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.senderId === user.id
+                                                    ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                                    : 'bg-white border rounded-tl-none'
+                                                    }`}>
+                                                    {msg.content}
+                                                    <span className="block text-[10px] opacity-70 mt-1">
+                                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+
+                                <div className="p-4 border-t bg-white">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="메시지를 입력하세요..."
+                                            value={chatMessage}
+                                            onChange={(e) => setChatMessage(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                        />
+                                        <Button onClick={handleSendMessage}>전송</Button>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 )
+
             case "past_moments":
                 return (
                     <div className="space-y-6">

@@ -15,7 +15,7 @@ import {
 import { useRouter, usePathname } from "next/navigation"
 
 export function SiteHeader() {
-    const { user, logout } = usePlatform()
+    const { user, messages, logout } = usePlatform()
     const router = useRouter()
     const pathname = usePathname()
 
@@ -25,8 +25,8 @@ export function SiteHeader() {
     }
 
     const handleProfileClick = () => {
-        if (user?.type === 'brand') router.push('/brand/settings')
-        else router.push('/influencer')
+        if (user?.type === 'brand') router.push('/brand?view=settings')
+        else router.push('/influencer?view=settings')
     }
 
     const isActive = (path: string) => pathname?.startsWith(path)
@@ -57,12 +57,15 @@ export function SiteHeader() {
                         >
                             크리에이터
                         </Link>
-                        {user && (isActive('/message') || true) && (
+                        {user && (
                             <Link
                                 href="/message"
-                                className={`transition-colors hover:text-foreground/80 ${isActive('/message') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                                className={`relative transition-colors hover:text-foreground/80 ${isActive('/message') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
                             >
                                 메시지
+                                {messages.filter(m => m.receiverId === user.id && !m.read).length > 0 && (
+                                    <span className="absolute -top-1 -right-2 h-2 w-2 bg-red-500 rounded-full border border-background"></span>
+                                )}
                             </Link>
                         )}
                     </nav>
@@ -88,8 +91,12 @@ export function SiteHeader() {
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>내 계정</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => router.push(user.type === 'brand' ? '/brand' : '/influencer?view=profile')} className="cursor-pointer">
+                                        <User className="mr-2 h-4 w-4" />
+                                        프로필 보기
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onSelect={handleProfileClick} className="cursor-pointer">
-                                        {user.type === 'brand' ? <Settings className="mr-2 h-4 w-4" /> : <User className="mr-2 h-4 w-4" />}
+                                        <Settings className="mr-2 h-4 w-4" />
                                         프로필 설정
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onSelect={handleLogout} className="cursor-pointer text-red-500 focus:text-red-500">

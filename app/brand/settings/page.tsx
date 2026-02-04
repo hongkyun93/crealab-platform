@@ -28,14 +28,19 @@ export default function BrandSettingsPage() {
         }
     }, [user])
 
-    const handleSave = () => {
-        updateUser({
-            name,
-            website,
-            bio
-        })
-        alert("브랜드 정보가 저장되었습니다.")
-        router.push("/brand")
+    const handleSave = async () => {
+        try {
+            await updateUser({
+                name,
+                website,
+                bio
+            })
+            alert("브랜드 정보가 저장되었습니다.")
+            router.push("/brand")
+        } catch (error) {
+            console.error("Failed to save brand settings:", error)
+            alert("저장에 실패했습니다. 다시 시도해주세요.")
+        }
     }
 
     return (

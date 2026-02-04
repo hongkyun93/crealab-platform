@@ -25,7 +25,8 @@ export type Notification = {
 }
 
 export type Campaign = {
-    id: number
+    id: number | string
+    brandId?: string
     brand: string // For now, we'll hardcode or randomise this
     product: string
     category: string
@@ -55,16 +56,18 @@ export type InfluencerEvent = {
 }
 
 export type Product = {
-    id: number
+    id: string
     brandId: string
-    brandName: string
+    brandName?: string
     name: string
     price: number
-    image: string
-    link: string
-    points: string // 소구 포인트
-    shots: string // 필수 촬영 컷
+    image: string // image_url
+    link: string // website_url
+    points: string // selling_points
+    shots: string // required_shots
     category: string
+    description?: string
+    createdAt?: string
 }
 
 export type Proposal = {
@@ -74,7 +77,7 @@ export type Proposal = {
 
     // Brand Invite Specific
     eventId?: number
-    productId?: number
+    productId?: string
     requestDetails?: string
 
     // Creator Apply Specific
@@ -107,6 +110,7 @@ export type BrandProposal = {
     status: string
     created_at: string
     brand_name?: string
+    event_id?: string
 }
 
 
@@ -148,9 +152,14 @@ export type Message = {
     id: string
     senderId: string
     receiverId: string
+    proposalId?: string // Optional link to a specific proposal
     content: string
     timestamp: string
     read: boolean
+    senderName?: string
+    senderAvatar?: string
+    receiverName?: string
+    receiverAvatar?: string
 }
 
 interface PlatformContextType {
@@ -160,7 +169,7 @@ interface PlatformContextType {
     updateUser: (data: Partial<User>) => void
     campaigns: Campaign[]
     addCampaign: (campaign: Omit<Campaign, "id" | "date" | "matchScore">) => void
-    deleteCampaign: (id: number) => void
+    deleteCampaign: (id: string | number) => void
     events: InfluencerEvent[]
     addEvent: (event: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">) => Promise<void>
     updateEvent: (id: string, data: Partial<InfluencerEvent>) => Promise<void>
@@ -176,7 +185,8 @@ interface PlatformContextType {
     notifications: Notification[]
     sendNotification: (toUserId: string, message: string) => void
     messages: Message[]
-    sendMessage: (toUserId: string, content: string) => void
+    updateBrandProposal: (id: string, status: string) => Promise<void>
+    sendMessage: (toUserId: string, content: string, proposalId?: string) => Promise<void>
     isLoading: boolean
     resetData: () => void
     supabase: any
@@ -332,16 +342,29 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .single()
 
             if (profile) {
+                // Supabase might return influencer_details as an array or a single object depending on the query/schema
+                let details = null;
+                if (Array.isArray(profile.influencer_details)) {
+                    details = profile.influencer_details.length > 0 ? profile.influencer_details[0] : null;
+                } else {
+                    details = profile.influencer_details;
+                }
+
+                console.log('[fetchUserProfile] Extracted details for tags check:', {
+                    hasDetails: !!details,
+                    tags: details?.tags
+                });
+
                 return {
                     id: sessionUser.id,
                     name: profile.display_name || profile.name || sessionUser.email?.split('@')[0] || "User",
                     type: (profile.role as "brand" | "influencer" | "admin") || "influencer",
-                    avatar: profile.avatar_url || sessionUser.user_metadata?.avatar_url,
+                    avatar: profile.avatar_url,
                     bio: profile.bio,
                     website: profile.website,
-                    handle: profile.influencer_details?.[0]?.instagram_handle || profile.username || undefined,
-                    followers: profile.influencer_details?.[0]?.followers_count || profile.followers,
-                    tags: profile.influencer_details?.[0]?.tags || []
+                    handle: details?.instagram_handle || undefined,
+                    followers: details?.followers_count || 0,
+                    tags: details?.tags || []
                 }
             } else {
                 // If no profile, we use session data
@@ -458,6 +481,32 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 console.log('[fetchEvents] Set events state with', mappedEvents.length, 'events')
             }
 
+            // 1.5. Fetch All Active Campaigns
+            const { data: campaignData, error: campaignError } = await supabase
+                .from('campaigns')
+                .select(`
+                    *,
+                    profiles!brand_id(display_name)
+                `)
+                .eq('status', 'active')
+                .order('created_at', { ascending: false })
+
+            if (campaignData) {
+                const mappedCampaigns: Campaign[] = campaignData.map((c: any) => ({
+                    id: c.id,
+                    brandId: c.brand_id,
+                    brand: c.profiles?.display_name || "Unknown Brand",
+                    product: c.product_name || "",
+                    category: c.title.match(/\[(.*?)\]/)?.[1] || "기타",
+                    budget: "제공 내역 상세 참고",
+                    target: "스타일에 맞는 크리에이터",
+                    description: c.description || "",
+                    matchScore: Math.floor(Math.random() * 20) + 80,
+                    date: new Date(c.created_at).toISOString().split('T')[0]
+                }))
+                setCampaigns(mappedCampaigns)
+            }
+
             // 2. Fetch Brand Proposals (if user is influencer)
             if (userId) { // Fetch all relevant to this user
                 const { data: bpData } = await supabase
@@ -476,6 +525,84 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 }
             }
 
+            // 3. Fetch Messages
+            if (userId && typeof userId === 'string') {
+                const { data: msgData, error: msgError } = await supabase
+                    .from('messages')
+                    .select(`
+                        *,
+                        sender:profiles!sender_id(display_name, avatar_url),
+                        receiver:profiles!receiver_id(display_name, avatar_url)
+                    `)
+                    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+                    .order('created_at', { ascending: true })
+
+                if (msgData) {
+                    console.log('[fetchEvents] Fetched messages:', msgData.length)
+                    const mappedMsgs: Message[] = msgData.map((m: any) => ({
+                        id: m.id,
+                        senderId: m.sender_id,
+                        receiverId: m.receiver_id,
+                        content: m.content,
+                        timestamp: m.created_at,
+                        read: m.is_read || false,
+                        senderName: m.sender?.display_name,
+                        senderAvatar: m.sender?.avatar_url,
+                        receiverName: m.receiver?.display_name,
+                        receiverAvatar: m.receiver?.avatar_url
+                    }))
+                    setMessages(mappedMsgs)
+                } else if (msgError) {
+                    console.error('[fetchEvents] Error fetching messages:', {
+                        code: msgError.code,
+                        message: msgError.message,
+                        details: msgError.details,
+                        hint: msgError.hint
+                    })
+
+                    if (msgError.code === '42P01') {
+                        console.warn('The "messages" table is missing. Please run "documents/chat_schema_setup.sql" in Supabase SQL editor.')
+                    }
+                }
+            }
+            // 4. Fetch Brand Products
+            const { data: productData, error: productError } = await supabase
+                .from('brand_products')
+                .select(`
+                    *,
+                    profiles!brand_id(display_name)
+                `)
+                .order('created_at', { ascending: false })
+
+            if (productData) {
+                console.log('[fetchEvents] Fetched products:', productData.length)
+                const mappedProducts: Product[] = productData.map((p: any) => ({
+                    id: p.id,
+                    brandId: p.brand_id,
+                    brandName: p.profiles?.display_name || 'Brand',
+                    name: p.name,
+                    price: p.price || 0,
+                    image: p.image_url || '',
+                    link: p.website_url || '',
+                    points: p.selling_points || '',
+                    shots: p.required_shots || '',
+                    category: p.category || '기타',
+                    description: p.description,
+                    createdAt: p.created_at
+                }))
+                setProducts(mappedProducts)
+            } else if (productError) {
+                console.error('[fetchEvents] Error fetching products:', {
+                    code: productError.code,
+                    message: productError.message,
+                    details: productError.details,
+                    hint: productError.hint
+                })
+
+                if (productError.code === '42P01') {
+                    console.warn('The "brand_products" table is missing. Please run "documents/brand_products_schema.sql" in Supabase SQL editor.')
+                }
+            }
         } catch (err) {
             console.error('[fetchEvents] Fetch exception:', err)
         }
@@ -554,13 +681,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (data.name !== undefined) profileUpdates.display_name = data.name
             if (data.bio !== undefined) profileUpdates.bio = data.bio
             if (data.avatar !== undefined) profileUpdates.avatar_url = data.avatar
+            if (data.website !== undefined) profileUpdates.website = data.website
 
             // Execute Profile Update FIRST (creates row if missing)
-            console.log('[updateUser] Updating profiles table...', profileUpdates)
+            console.log('[updateUser] Updating profiles table with data:', profileUpdates)
             const profileResult = await supabase.from('profiles').upsert(profileUpdates)
             if (profileResult.error) {
-                console.error('[updateUser] Profile update error:', JSON.stringify(profileResult.error, null, 2))
-                console.error('[updateUser] Full error object:', profileResult.error)
+                console.error('[updateUser] Profile update error:', profileResult.error)
                 throw profileResult.error
             }
 
@@ -573,10 +700,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 if (data.tags !== undefined) detailsUpdates.tags = data.tags
                 if (data.handle !== undefined) detailsUpdates.instagram_handle = data.handle
                 if (data.followers !== undefined) {
-                    detailsUpdates.followers_count = data.followers
-
-                    // Validate and ensure non-negative logic or just simple mapping
                     const count = typeof data.followers === 'string' ? parseInt(data.followers) : data.followers
+                    detailsUpdates.followers_count = isNaN(count) ? 0 : count
+
                     let tier = 'Nano'
                     if (count >= 1000000) tier = 'Mega'
                     else if (count >= 100000) tier = 'Macro'
@@ -585,34 +711,23 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     detailsUpdates.tier = tier
                 }
 
-                if (Object.keys(detailsUpdates).length > 2) {
-                    console.log('[updateUser] Updating influencer_details table...', detailsUpdates)
-                    const detailsResult = await supabase.from('influencer_details').upsert(detailsUpdates)
-                    if (detailsResult.error) {
-                        console.error('[updateUser] Influencer details error:', detailsResult.error)
-                        throw detailsResult.error
-                    }
+                console.log('[updateUser] Updating influencer_details table...', detailsUpdates)
+                const detailsResult = await supabase.from('influencer_details').upsert(detailsUpdates)
+                if (detailsResult.error) {
+                    console.error('[updateUser] Influencer details error:', detailsResult.error)
+                    throw detailsResult.error
                 }
             }
 
-            console.log("User profile updated successfully in user DB")
+            console.log("[updateUser] User profile updated successfully")
         } catch (error: any) {
-            // Comprehensive error logging
-            console.error("=== ERROR DETAILS START ===")
-            console.error("Error type:", typeof error)
-            console.error("Error constructor:", error?.constructor?.name)
-            console.error("Error as string:", String(error))
-            console.error("Error message:", error?.message)
-            console.error("Error code:", error?.code)
-            console.error("Error details:", error?.details)
-            console.error("Error hint:", error?.hint)
-            console.error("Error status:", error?.status)
-            console.error("Error statusCode:", error?.statusCode)
-            console.error("All error keys:", Object.keys(error || {}))
-            console.error("All error entries:", Object.entries(error || {}))
-            console.error("Direct error object:", error)
-            console.error("=== ERROR DETAILS END ===")
-            throw error // Propagate error to UI
+            console.error('[updateUser] Detailed Error Info:', {
+                message: error?.message,
+                code: error?.code,
+                details: error?.details,
+                hint: error?.hint
+            })
+            throw error
         }
     }
 
@@ -627,8 +742,16 @@ export function PlatformProvider({ children, initialSession }: { children: React
         setCampaigns([campaign, ...campaigns])
     }
 
-    const deleteCampaign = (id: number) => {
-        setCampaigns(prev => prev.filter(campaign => campaign.id !== id))
+    const deleteCampaign = async (id: number | string) => {
+        try {
+            const { error } = await supabase.from('campaigns').delete().eq('id', id)
+            if (error) throw error
+            setCampaigns(prev => prev.filter(campaign => campaign.id !== id))
+        } catch (e) {
+            console.error("Failed to delete campaign:", e)
+            // Fallback for local-only campaigns if any
+            setCampaigns(prev => prev.filter(campaign => campaign.id !== id))
+        }
     }
 
     const addEvent = async (newEvent: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">) => {
@@ -677,12 +800,33 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const updateEvent = async (id: string, data: Partial<InfluencerEvent>) => {
-        // Optimistic
-        setEvents(prev => prev.map(event => event.id === id ? { ...event, ...data } : event))
+    const updateEvent = async (id: string, updatedData: Partial<InfluencerEvent>) => {
+        const prevEvents = [...events]
+        // Optimistic Update
+        setEvents(prev => prev.map(event => event.id === id ? { ...event, ...updatedData } : event))
 
-        // DB Update (Not fully implemented mapping in this snip, assuming valid fields)
-        // This is a placeholder for actual DB update logic
+        try {
+            // Map common fields to DB columns
+            const dbUpdates: any = {}
+            if (updatedData.event) dbUpdates.title = updatedData.event
+            if (updatedData.description !== undefined) dbUpdates.description = updatedData.description
+            if (updatedData.category) dbUpdates.category = updatedData.category
+            if (updatedData.tags) dbUpdates.tags = updatedData.tags
+            if (updatedData.targetProduct) dbUpdates.target_product = updatedData.targetProduct
+            if (updatedData.eventDate) dbUpdates.event_date = updatedData.eventDate
+            if (updatedData.postingDate) dbUpdates.posting_date = updatedData.postingDate
+
+            const { error } = await supabase
+                .from('influencer_events')
+                .update(dbUpdates)
+                .eq('id', id)
+
+            if (error) throw error
+        } catch (e) {
+            console.error("Failed to update event:", e)
+            setEvents(prevEvents) // Revert
+            alert("이벤트 수정에 실패했습니다.")
+        }
     }
 
     const deleteEvent = async (id: string) => {
@@ -702,14 +846,53 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const addProduct = (newProduct: Omit<Product, "id" | "brandId" | "brandName">) => {
-        const product: Product = {
-            ...newProduct,
-            id: products.length + 1,
-            brandId: user?.id || "unknown",
-            brandName: user?.name || "Unknown Brand"
+    const addProduct = async (newProduct: Omit<Product, "id" | "brandId" | "brandName">) => {
+        if (!user) return
+
+        try {
+            const productData = {
+                brand_id: user.id,
+                name: newProduct.name,
+                description: newProduct.description,
+                image_url: newProduct.image,
+                price: newProduct.price,
+                category: newProduct.category,
+                selling_points: newProduct.points,
+                required_shots: newProduct.shots,
+                website_url: newProduct.link
+            }
+
+            const { data, error } = await supabase
+                .from('brand_products')
+                .insert(productData)
+                .select()
+                .single()
+
+            if (error) throw error
+
+            if (data) {
+                const product: Product = {
+                    id: data.id,
+                    brandId: user.id,
+                    brandName: user.name,
+                    name: data.name,
+                    price: data.price,
+                    image: data.image_url,
+                    link: data.website_url,
+                    points: data.selling_points,
+                    shots: data.required_shots,
+                    category: data.category,
+                    description: data.description,
+                    createdAt: data.created_at
+                }
+                setProducts(prev => [product, ...prev])
+                return product
+            }
+        } catch (e: any) {
+            console.error("Failed to add product:", e)
+            alert(`제품 등록에 실패했습니다: ${e.message}`)
+            throw e
         }
-        setProducts(prev => [product, ...prev])
     }
 
     const addProposal = (newProposal: Omit<Proposal, "id" | "date">) => {
@@ -725,6 +908,23 @@ export function PlatformProvider({ children, initialSession }: { children: React
         setProposals(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     }
 
+    const updateBrandProposal = async (id: string, status: string) => {
+        try {
+            const { error } = await supabase
+                .from('brand_proposals')
+                .update({ status })
+                .eq('id', id)
+
+            if (error) throw error
+
+            // Update local state
+            setBrandProposals(prev => prev.map(p => p.id === id ? { ...p, status } : p))
+        } catch (e) {
+            console.error("Failed to update proposal status:", e)
+            alert("상태 수정에 실패했습니다.")
+        }
+    }
+
     const sendNotification = (toUserId: string, message: string) => {
         const newNotif: Notification = {
             id: Date.now(),
@@ -736,17 +936,45 @@ export function PlatformProvider({ children, initialSession }: { children: React
         setNotifications(prev => [newNotif, ...prev])
     }
 
-    const sendMessage = (toUserId: string, content: string) => {
+    const sendMessage = async (toUserId: string, content: string, proposalId?: string) => {
         if (!user) return
-        const newMessage: Message = {
-            id: Date.now().toString(),
-            senderId: user.id,
-            receiverId: toUserId,
-            content,
-            timestamp: new Date().toISOString(),
-            read: false
+
+        try {
+            const { data, error } = await supabase
+                .from('messages')
+                .insert({
+                    proposal_id: proposalId,
+                    sender_id: user.id,
+                    receiver_id: toUserId,
+                    content
+                })
+                .select()
+                .single()
+
+            if (error) throw error
+
+            const newMessage: Message = {
+                id: data.id,
+                senderId: user.id,
+                receiverId: toUserId,
+                content,
+                timestamp: data.created_at,
+                read: false,
+                senderName: user.name,
+                senderAvatar: user.avatar
+            }
+            setMessages(prev => [...prev, newMessage])
+        } catch (e: any) {
+            console.error("Failed to send message:", e)
+            console.error("Error Code:", e?.code)
+
+            // 42P01: undefined_table
+            if (e?.code === '42P01') {
+                alert("데이터베이스 오류: 'messages' 테이블이 존재하지 않습니다.\n스키마 업데이트가 필요합니다.")
+            } else {
+                alert(`메시지 전송 실패: ${e?.message || "알 수 없는 오류"}`)
+            }
         }
-        setMessages(prev => [...prev, newMessage])
     }
 
     const resetData = () => {
@@ -776,7 +1004,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             campaigns, addCampaign, deleteCampaign,
             events, addEvent, deleteEvent, updateEvent,
             products, addProduct,
-            proposals, addProposal, updateProposal, brandProposals,
+            proposals, addProposal, updateProposal, brandProposals, updateBrandProposal,
             notifications, sendNotification,
             messages, sendMessage,
             isLoading: !isInitialized || !isAuthChecked,

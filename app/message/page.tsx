@@ -8,112 +8,93 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { MoreVertical, Paperclip, Search, Send, Phone, Video } from "lucide-react"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { usePlatform } from "@/components/providers/platform-provider"
 
-// Mock Data
-const THREADS = [
-    {
-        id: "1",
-        user: "미술관 가는 길",
-        handle: "@art_museum_road",
-        avatar: "🎨",
-        lastMessage: "네, 제안주신 내용 확인했습니다! 긍정적으로 검토 중입니다.",
-        time: "방금 전",
-        unread: 2,
-        online: true,
-        status: "accepted" // proposal status
-    },
-    {
-        id: "2",
-        user: "테크 리뷰어 지니",
-        handle: "@genie_tech",
-        avatar: "💻",
-        lastMessage: "제품 배송은 언제쯤 가능할까요?",
-        time: "1시간 전",
-        unread: 0,
-        online: false,
-        status: "negotiating"
-    },
-    {
-        id: "3",
-        user: "데일리 뷰티",
-        handle: "@daily_beauty",
-        avatar: "💄",
-        lastMessage: "안녕하세요! 협업 제안 감사드립니다.",
-        time: "어제",
-        unread: 0,
-        online: false,
-        status: "pending"
-    }
-]
-
-const INITIAL_MESSAGES = [
-    {
-        id: "sys-1",
-        sender: "system",
-        text: "협업 제안이 수락되었습니다. 대화를 시작해보세요!",
-        time: "2026. 08. 14 10:00"
-    },
-    {
-        id: "m-1",
-        sender: "me",
-        text: "안녕하세요 작가님! 저희 브랜드 제안 수락해주셔서 감사합니다.",
-        time: "10:05"
-    },
-    {
-        id: "m-2",
-        sender: "them",
-        text: "안녕하세요! 보내주신 갤럭시 워치6 제품 구성이 마음에 들어서 진행해보고 싶었어요.",
-        time: "10:12"
-    },
-    {
-        id: "m-3",
-        sender: "me",
-        text: "네 감사합니다 :) 제품은 다음주 월요일에 발송 드릴 예정입니다. 혹시 주소지 변경 필요하신가요?",
-        time: "10:15"
-    },
-    {
-        id: "m-4",
-        sender: "them",
-        text: "아니요, 기존 프로필 주소지로 보내주시면 됩니다!",
-        time: "10:18"
-    },
-    {
-        id: "m-5",
-        sender: "them",
-        text: "네, 제안주신 내용 확인했습니다! 긍정적으로 검토 중입니다.",
-        time: "방금 전"
-    }
-]
-
 export default function MessagePage() {
-    const { user } = usePlatform()
-    const [activeThreadId, setActiveThreadId] = useState("1")
+    const { user, messages: allMessages, sendMessage } = usePlatform()
+    const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
     const [messageInput, setMessageInput] = useState("")
-    const [messages, setMessages] = useState(INITIAL_MESSAGES)
     const scrollRef = useRef<HTMLDivElement>(null)
 
-    const activeThread = THREADS.find(t => t.id === activeThreadId)
+    // Compute threads from messages
+    const threads = useMemo(() => {
+        if (!user) return []
+        const groups: Record<string, {
+            id: string,
+            user: string,
+            avatar: string,
+            lastMessage: string,
+            time: string,
+            messages: any[],
+            unread: number,
+            online: boolean,
+            handle: string
+        }> = {}
+
+        allMessages.forEach(msg => {
+            const isMe = msg.senderId === user.id
+            const otherId = isMe ? msg.receiverId : msg.senderId
+            const otherName = isMe ? msg.receiverName : msg.senderName
+            const otherAvatar = isMe ? msg.receiverAvatar : msg.senderAvatar
+
+            if (!groups[otherId]) {
+                groups[otherId] = {
+                    id: otherId,
+                    user: otherName || "사용자",
+                    avatar: otherAvatar || "",
+                    lastMessage: msg.content,
+                    time: msg.timestamp,
+                    messages: [],
+                    unread: 0,
+                    online: false, // In real app, this would come from presence
+                    handle: "" // Could fetch from profile if needed
+                }
+            }
+            groups[otherId].messages.push(msg)
+
+            // Update last message if this one is newer
+            if (new Date(msg.timestamp) >= new Date(groups[otherId].time)) {
+                groups[otherId].lastMessage = msg.content
+                groups[otherId].time = msg.timestamp
+                // Update names if available (helpful if some messages have them and some don't)
+                if (otherName) groups[otherId].user = otherName
+                if (otherAvatar) groups[otherId].avatar = otherAvatar
+            }
+        })
+
+        return Object.values(groups).sort((a, b) =>
+            new Date(b.time).getTime() - new Date(a.time).getTime()
+        )
+    }, [allMessages, user])
+
+    // Set initial active thread if none selected
+    useEffect(() => {
+        if (!activeThreadId && threads.length > 0) {
+            setActiveThreadId(threads[0].id)
+        }
+    }, [threads, activeThreadId])
+
+    const activeThread = threads.find(t => t.id === activeThreadId)
 
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollIntoView({ behavior: "smooth" })
         }
-    }, [messages])
+    }, [activeThread?.messages])
 
-    const handleSendMessage = () => {
-        if (!messageInput.trim()) return
+    const handleSendMessage = async () => {
+        if (!messageInput.trim() || !activeThreadId) return
 
-        const newMessage = {
-            id: `m-${Date.now()}`,
-            sender: "me",
-            text: messageInput,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const content = messageInput
+        setMessageInput("") // Optimistic clear
+
+        try {
+            await sendMessage(activeThreadId, content)
+        } catch (e) {
+            console.error("Failed to send message:", e)
+            setMessageInput(content) // Restore on error
         }
-
-        setMessages([...messages, newMessage])
-        setMessageInput("")
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -121,6 +102,34 @@ export default function MessagePage() {
             e.preventDefault()
             handleSendMessage()
         }
+    }
+
+    const formatTime = (isoString: string) => {
+        const date = new Date(isoString)
+        const now = new Date()
+        const diffMs = now.getTime() - date.getTime()
+        const diffMins = Math.floor(diffMs / 60000)
+
+        if (diffMins < 1) return "방금 전"
+        if (diffMins < 60) return `${diffMins}분 전`
+        if (diffMins < 1440) return `${Math.floor(diffMins / 60)}시간 전`
+        return date.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
+    }
+
+    const formatDetailedTime = (isoString: string) => {
+        return new Date(isoString).toLocaleTimeString('ko-KR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+    }
+
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+                <p className="text-muted-foreground mb-4">로그인이 필요합니다.</p>
+                <Button onClick={() => window.location.href = '/login'}>로그인하러 가기</Button>
+            </div>
+        )
     }
 
     return (
@@ -136,64 +145,75 @@ export default function MessagePage() {
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="크리에이터 검색..."
+                                    placeholder="검색..."
                                     className="pl-9 bg-background/50 border-muted-foreground/20"
                                 />
                             </div>
                         </div>
                         <ScrollArea className="flex-1">
                             <div className="flex flex-col p-2 gap-1">
-                                {THREADS.map((thread) => (
-                                    <button
-                                        key={thread.id}
-                                        onClick={() => setActiveThreadId(thread.id)}
-                                        className={`flex items-start gap-3 p-3 rounded-lg text-left transition-all ${activeThreadId === thread.id
+                                {threads.length === 0 ? (
+                                    <div className="p-8 text-center text-sm text-muted-foreground">
+                                        메시지가 없습니다.
+                                    </div>
+                                ) : (
+                                    threads.map((thread) => (
+                                        <button
+                                            key={thread.id}
+                                            onClick={() => setActiveThreadId(thread.id)}
+                                            className={`flex items-start gap-3 p-3 rounded-lg text-left transition-all ${activeThreadId === thread.id
                                                 ? "bg-primary/10 hover:bg-primary/15"
                                                 : "hover:bg-muted"
-                                            }`}
-                                    >
-                                        <div className="relative">
-                                            <Avatar className="h-10 w-10 border border-border/50">
-                                                <AvatarFallback className="bg-background">{thread.avatar}</AvatarFallback>
-                                            </Avatar>
-                                            {thread.online && (
-                                                <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-background"></span>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0 overflow-hidden">
-                                            <div className="flex items-center justify-between mb-0.5">
-                                                <span className={`font-medium truncate ${activeThreadId === thread.id ? "text-primary" : "text-foreground"}`}>
-                                                    {thread.user}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground shrink-0 ml-2">{thread.time}</span>
+                                                }`}
+                                        >
+                                            <div className="relative">
+                                                <Avatar className="h-10 w-10 border border-border/50">
+                                                    {thread.avatar ? (
+                                                        <AvatarImage src={thread.avatar} />
+                                                    ) : (
+                                                        <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">
+                                                            {thread.user[0]}
+                                                        </AvatarFallback>
+                                                    )}
+                                                </Avatar>
+                                                {thread.online && (
+                                                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-background"></span>
+                                                )}
                                             </div>
-                                            <p className="text-xs text-muted-foreground truncate font-normal">
-                                                {thread.lastMessage}
-                                            </p>
-                                        </div>
-                                        {thread.unread > 0 && (
-                                            <div className="self-center">
-                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                                                    {thread.unread}
-                                                </span>
+                                            <div className="flex-1 min-w-0 overflow-hidden">
+                                                <div className="flex items-center justify-between mb-0.5">
+                                                    <span className={`font-medium truncate ${activeThreadId === thread.id ? "text-primary" : "text-foreground"}`}>
+                                                        {thread.user}
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
+                                                        {formatTime(thread.time)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground truncate font-normal">
+                                                    {thread.lastMessage}
+                                                </p>
                                             </div>
-                                        )}
-                                    </button>
-                                ))}
+                                        </button>
+                                    ))
+                                )}
                             </div>
                         </ScrollArea>
                     </div>
 
                     {/* Chat Window */}
                     <div className="col-span-12 md:col-span-8 lg:col-span-9 flex flex-col bg-background">
-                        {/* Chat Header */}
                         {activeThread ? (
                             <>
+                                {/* Chat Header */}
                                 <div className="h-16 border-b flex items-center justify-between px-6 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                                     <div className="flex items-center gap-3">
                                         <div className="relative">
                                             <Avatar className="h-9 w-9 border">
-                                                <AvatarFallback>{activeThread.avatar}</AvatarFallback>
+                                                {activeThread.avatar ? (
+                                                    <AvatarImage src={activeThread.avatar} />
+                                                ) : (
+                                                    <AvatarFallback>{activeThread.user[0]}</AvatarFallback>
+                                                )}
                                             </Avatar>
                                             {activeThread.online && (
                                                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background"></span>
@@ -203,10 +223,9 @@ export default function MessagePage() {
                                             <div className="flex items-center gap-2">
                                                 <span className="font-semibold">{activeThread.user}</span>
                                                 <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
-                                                    협업 진행중
+                                                    대화 중
                                                 </span>
                                             </div>
-                                            <span className="text-xs text-muted-foreground">{activeThread.handle}</span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1 text-muted-foreground">
@@ -226,38 +245,31 @@ export default function MessagePage() {
                                 {/* Message List */}
                                 <ScrollArea className="flex-1 p-6 bg-muted/5">
                                     <div className="flex flex-col gap-6 max-w-3xl mx-auto">
-                                        {messages.map((msg, index) => {
-                                            const isMe = msg.sender === "me"
-                                            const isSystem = msg.sender === "system"
-
-                                            if (isSystem) {
-                                                return (
-                                                    <div key={msg.id} className="flex justify-center my-4">
-                                                        <span className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-full border">
-                                                            {msg.text}
-                                                        </span>
-                                                    </div>
-                                                )
-                                            }
+                                        {activeThread.messages.map((msg, index) => {
+                                            const isMe = msg.senderId === user.id
 
                                             return (
                                                 <div key={msg.id} className={`flex gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
                                                     {!isMe && (
                                                         <Avatar className="h-8 w-8 mt-1 border">
-                                                            <AvatarFallback>{activeThread.avatar}</AvatarFallback>
+                                                            {activeThread.avatar ? (
+                                                                <AvatarImage src={activeThread.avatar} />
+                                                            ) : (
+                                                                <AvatarFallback>{activeThread.user[0]}</AvatarFallback>
+                                                            )}
                                                         </Avatar>
                                                     )}
                                                     <div className={`flex flex-col max-w-[70%] ${isMe ? "items-end" : "items-start"}`}>
                                                         <div
                                                             className={`px-4 py-2.5 rounded-2xl text-sm shadow-sm ${isMe
-                                                                    ? "bg-primary text-primary-foreground rounded-tr-none"
-                                                                    : "bg-white dark:bg-muted/50 border rounded-tl-none"
+                                                                ? "bg-primary text-primary-foreground rounded-tr-none"
+                                                                : "bg-white dark:bg-muted/50 border rounded-tl-none"
                                                                 }`}
                                                         >
-                                                            {msg.text}
+                                                            {msg.content}
                                                         </div>
                                                         <span className="text-[10px] text-muted-foreground mt-1 px-1">
-                                                            {msg.time}
+                                                            {formatDetailedTime(msg.timestamp)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -279,7 +291,7 @@ export default function MessagePage() {
                                                 onChange={(e) => setMessageInput(e.target.value)}
                                                 onKeyDown={handleKeyDown}
                                                 placeholder="메시지를 입력하세요... (Enter로 전송)"
-                                                className="w-full bg-transparent border-none focus:outline-none text-sm resize-none max-h-32 min-h-[20px] placeholder:text-muted-foreground/70"
+                                                className="w-full bg-transparent border-none focus:outline-none text-sm resize-none max-h-32 min-h-[24px] placeholder:text-muted-foreground/70"
                                                 rows={1}
                                                 style={{ height: 'auto', minHeight: '24px' }}
                                                 onInput={(e) => {
@@ -303,7 +315,7 @@ export default function MessagePage() {
                         ) : (
                             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
                                 <div className="p-4 rounded-full bg-muted mb-4">
-                                    <MoreVertical className="h-8 w-8 text-muted-foreground/50" />
+                                    <Send className="h-8 w-8 text-muted-foreground/50" />
                                 </div>
                                 <p>대화 상대를 선택해주세요</p>
                             </div>
