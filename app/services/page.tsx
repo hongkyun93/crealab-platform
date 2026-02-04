@@ -87,7 +87,7 @@ export default function ServicesPage() {
                                         </div>
                                         <div>
                                             <strong className="block text-foreground">압도적인 진정성</strong>
-                                            <span className="text-sm text-muted-foreground">"필요해서 쓰는 제품"만큼 강력한 광고는 없습니다.</span>
+                                            <span className="text-sm text-muted-foreground">"필요해서 쓰는 제품"만큼 진정성 있고 강력한 광고는 없습니다.</span>
                                         </div>
                                     </li>
                                 </ul>

@@ -46,18 +46,26 @@ export function SiteHeader() {
                         >
                             서비스 소개
                         </Link>
-                        <Link
-                            href="/brand"
-                            className={`transition-colors hover:text-foreground/80 ${isActive('/brand') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
-                        >
-                            브랜드
-                        </Link>
-                        <Link
-                            href="/creator"
-                            className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
-                        >
-                            크리에이터
-                        </Link>
+
+                        {/* Admin sees everything */}
+                        {(!user || user.type === 'admin' || user.type === 'brand') && (
+                            <Link
+                                href="/brand"
+                                className={`transition-colors hover:text-foreground/80 ${isActive('/brand') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                            >
+                                {user?.type === 'brand' ? '모먼트 둘러보기' : '브랜드'}
+                            </Link>
+                        )}
+
+                        {(!user || user.type === 'admin' || user.type === 'influencer') && (
+                            <Link
+                                href="/creator"
+                                className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                            >
+                                크리에이터
+                            </Link>
+                        )}
+
                         {user && (
                             <Link
                                 href="/message"

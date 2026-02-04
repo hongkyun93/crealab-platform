@@ -38,12 +38,24 @@ export async function GET(request: Request) {
                 // Let's check if the user is "new" by checking if the creation time is very recent (e.g. within 1 minute of now)
                 // This is a robust enough check for the immediate callback after signup.
                 const isNewUser = (new Date().getTime() - createdAt.getTime()) < 60 * 1000 // 1 minute
+                let userRole = profile?.role
 
-                if (profile?.role === 'brand') {
+                // If it's a new user and we have a preferred role from the URL, force update it
+                // This handles cases where the DB trigger might have defaulted to 'influencer' (e.g. Social Login)
+                if (isNewUser && roleType && roleType !== userRole) {
+                    console.log(`[Auth Callback] New user detected, forcing role to: ${roleType}`)
+                    await supabase
+                        .from('profiles')
+                        .update({ role: roleType })
+                        .eq('id', data.user.id)
+                    userRole = roleType as any
+                }
+
+                if (userRole === 'brand') {
                     next = isNewUser ? '/brand/settings' : '/brand'
-                } else if (profile?.role === 'influencer') {
+                } else if (userRole === 'influencer') {
                     next = isNewUser ? '/creator?view=settings' : '/creator'
-                } else if (profile?.role === 'admin') {
+                } else if (userRole === 'admin') {
                     next = '/admin'
                 } else if (roleType === 'brand') {
                     next = isNewUser ? '/brand/settings' : '/brand'

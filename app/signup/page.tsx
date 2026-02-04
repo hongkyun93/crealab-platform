@@ -78,6 +78,7 @@ export default function SignupPage() {
                     data: {
                         name: name,
                         role: role,
+                        role_type: role, // Add this to match the DB trigger (handle_new_user)
                     },
                     emailRedirectTo: `${window.location.origin}/auth/callback?role_type=${role}`,
                 },

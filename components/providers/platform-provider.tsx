@@ -421,6 +421,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         // To keep it simple, I'll inline the fetch logic in a separate async checks or just calling it.
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log(`[Auth] onAuthStateChange event: ${event}`, session?.user?.id)
             if (session?.user && mounted) {
                 const fetchedUser = await fetchUserProfile(session.user)
                 if (fetchedUser) {
@@ -443,13 +444,19 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }, [supabase])
 
+    const isFetchingEvents = React.useRef(false)
     const fetchEvents = async (userId?: string) => {
+        if (!userId && !user?.id) return
+        const targetId = userId || user?.id
+        if (!targetId || isFetchingEvents.current) return
+
+        isFetchingEvents.current = true
         try {
-            console.log('[fetchEvents] Starting fetch for userId:', userId)
+            console.log('[PlatformProvider] Fetching data for user:', targetId)
 
 
             // 1. Fetch Events
-            const { data, error } = await supabase
+            const { data: eventsData, error: eventsError } = await supabase
                 .from('influencer_events')
                 .select(`
                     *,
@@ -462,13 +469,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 `)
                 .order('created_at', { ascending: false })
 
-            if (error) {
-                console.error('[fetchEvents] Error fetching events:', error)
+            if (eventsError) {
+                console.error('[fetchEvents] Error fetching events:', eventsError)
             }
 
-            if (data) {
-                console.log('[fetchEvents] Fetched events from DB:', data.length, 'events')
-                const mappedEvents: InfluencerEvent[] = data.map((e: any) => ({
+            if (eventsData) {
+                console.log('[fetchEvents] Fetched events from DB:', eventsData.length, 'events')
+                const mappedEvents: InfluencerEvent[] = eventsData.map((e: any) => ({
                     id: e.id,
                     influencer: e.profiles?.display_name || "Unknown",
                     influencerId: e.influencer_id,
@@ -581,10 +588,16 @@ export function PlatformProvider({ children, initialSession }: { children: React
             }
         } catch (err) {
             console.error('[fetchEvents] Fetch exception:', err)
+        } finally {
+            isFetchingEvents.current = false
         }
     }
 
+    const isFetchingMessages = React.useRef(false)
     const fetchMessages = async (userId: string) => {
+        if (isFetchingMessages.current) return
+        isFetchingMessages.current = true
+
         try {
             console.log('[fetchMessages] Fetching messages for user:', userId)
 
@@ -599,11 +612,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .order('created_at', { ascending: true })
 
             if (error) {
-                console.error('[fetchMessages] Error fetching messages:', error)
+                // Ignore AbortErrors (browser cancellations) as they are common in dev and during navigation
+                if (error.message?.includes('AbortError') || error.code === 'ABORTED') {
+                    console.log('[fetchMessages] Fetch aborted')
+                    return
+                }
 
-                // Detailed logging if properties exist
-                if (error.message) console.error('Message:', error.message)
-                if (error.code) console.error('Code:', error.code)
+                console.error('[fetchMessages] Error fetching messages:', error)
 
                 // Silently skip if table doesn't exist or FK error
                 if (error.code === '42P01' || error.code === '42703' || error.message?.includes('foreign key')) {
@@ -618,10 +633,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     id: msg.id,
                     senderId: msg.sender_id,
                     receiverId: msg.receiver_id,
-                    proposalId: msg.proposal_id, // Added mapping
+                    proposalId: msg.proposal_id,
                     content: msg.content,
                     timestamp: msg.created_at,
-                    read: msg.read || false,
+                    read: msg.is_read || false, // Corrected mapping from is_read
                     senderName: msg.sender?.display_name || 'User',
                     senderAvatar: msg.sender?.avatar_url,
                     receiverName: msg.receiver?.display_name || 'User',
@@ -631,10 +646,16 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 console.log('[fetchMessages] Loaded', formattedMessages.length, 'messages')
             }
         } catch (err: any) {
-            console.error('[fetchMessages] Fetch exception:', {
-                message: err?.message,
-                stack: err?.stack
-            })
+            if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+                // Silent
+            } else {
+                console.error('[fetchMessages] Fetch exception:', {
+                    message: err?.message,
+                    stack: err?.stack
+                })
+            }
+        } finally {
+            isFetchingMessages.current = false
         }
     }
 
