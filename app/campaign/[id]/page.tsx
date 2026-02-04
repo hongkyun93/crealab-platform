@@ -32,7 +32,7 @@ export default function CampaignDetailPage() {
                 <main className="container py-20 text-center">
                     <h1 className="text-2xl font-bold mb-4">캠페인을 찾을 수 없습니다.</h1>
                     <Button asChild>
-                        <Link href="/influencer">돌아가기</Link>
+                        <Link href="/creator">돌아가기</Link>
                     </Button>
                 </main>
             </div>
@@ -45,7 +45,7 @@ export default function CampaignDetailPage() {
             <main className="container py-8 max-w-4xl px-4 mx-auto">
                 <div className="mb-6">
                     <Button variant="ghost" size="sm" asChild className="gap-2">
-                        <Link href="/influencer">
+                        <Link href="/creator">
                             <ArrowLeft className="h-4 w-4" /> 목록으로
                         </Link>
                     </Button>

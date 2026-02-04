@@ -26,7 +26,7 @@ export function SiteHeader() {
 
     const handleProfileClick = () => {
         if (user?.type === 'brand') router.push('/brand?view=settings')
-        else router.push('/influencer?view=settings')
+        else router.push('/creator?view=settings')
     }
 
     const isActive = (path: string) => pathname?.startsWith(path)
@@ -53,8 +53,8 @@ export function SiteHeader() {
                             브랜드
                         </Link>
                         <Link
-                            href="/influencer"
-                            className={`transition-colors hover:text-foreground/80 ${isActive('/influencer') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                            href="/creator"
+                            className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
                         >
                             크리에이터
                         </Link>
@@ -100,7 +100,7 @@ export function SiteHeader() {
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>내 계정</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={() => router.push(user.type === 'brand' ? '/brand' : '/influencer?view=profile')} className="cursor-pointer">
+                                    <DropdownMenuItem onSelect={() => router.push(user.type === 'brand' ? '/brand' : '/creator?view=profile')} className="cursor-pointer">
                                         <User className="mr-2 h-4 w-4" />
                                         프로필 보기
                                     </DropdownMenuItem>

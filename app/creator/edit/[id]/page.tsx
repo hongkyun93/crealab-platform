@@ -40,7 +40,7 @@ export default function EditEventPage() {
                 // Check ownership (simple name check for prototype)
                 if (user && event.influencer !== user.name) {
                     alert("수정 권한이 없습니다.")
-                    router.push("/influencer")
+                    router.push("/creator")
                     return
                 }
 
@@ -56,7 +56,7 @@ export default function EditEventPage() {
                 setSelectedTags(event.tags)
             } else {
                 alert("이벤트를 찾을 수 없습니다.")
-                router.push("/influencer")
+                router.push("/creator")
             }
         }
     }, [params.id, events, user, router])
@@ -78,7 +78,7 @@ export default function EditEventPage() {
         if (confirm("정말로 이 이벤트를 삭제하시겠습니까?")) {
             const eventId = String(params.id)
             deleteEvent(eventId)
-            router.push("/influencer")
+            router.push("/creator")
         }
     }
 
@@ -107,7 +107,7 @@ export default function EditEventPage() {
         })
 
         alert("이벤트가 수정되었습니다!")
-        router.push("/influencer")
+        router.push("/creator")
     }
 
     return (
@@ -118,7 +118,7 @@ export default function EditEventPage() {
                     <div className="mb-8 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Button variant="ghost" size="icon" asChild>
-                                <Link href="/influencer">
+                                <Link href="/creator">
                                     <ArrowLeft className="h-4 w-4" />
                                 </Link>
                             </Button>
@@ -204,7 +204,7 @@ export default function EditEventPage() {
 
                         <div className="flex justify-end gap-4 pt-4">
                             <Button variant="outline" asChild>
-                                <Link href="/influencer">취소</Link>
+                                <Link href="/creator">취소</Link>
                             </Button>
                             <Button size="lg" className="w-full md:w-auto" onClick={handleSubmit}>
                                 <Save className="mr-2 h-4 w-4" /> 변경사항 저장

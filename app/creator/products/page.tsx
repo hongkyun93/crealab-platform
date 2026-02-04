@@ -54,7 +54,7 @@ export default function ProductListPage() {
                     ) : (
                         <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                             {filteredProducts.map((product) => (
-                                <Link href={`/influencer/products/${product.id}`} key={product.id}>
+                                <Link href={`/creator/products/${product.id}`} key={product.id}>
                                     <Card className="h-full overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 bg-background border-border/60">
                                         <div className="aspect-square bg-muted flex items-center justify-center text-6xl overflow-hidden relative group">
                                             {product.image.startsWith('http') ? (

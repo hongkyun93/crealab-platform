@@ -76,7 +76,7 @@ export default function LoginPage() {
             if (user.type === "brand") {
                 router.push("/brand")
             } else if (user.type === "influencer") {
-                router.push("/influencer")
+                router.push("/creator")
             } else if (user.type === "admin") {
                 router.push("/admin")
             }

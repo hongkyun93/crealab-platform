@@ -45,7 +45,7 @@ export default function ProductDetailPage() {
                     <Package className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
                     <h2 className="text-xl font-bold">제품을 찾을 수 없습니다.</h2>
                     <Button variant="link" asChild className="mt-4">
-                        <Link href="/influencer/products">목록으로 돌아가기</Link>
+                        <Link href="/creator/products">목록으로 돌아가기</Link>
                     </Button>
                 </div>
             </div>
@@ -71,7 +71,7 @@ export default function ProductDetailPage() {
         })
 
         setIsOpen(false)
-        router.push("/influencer")
+        router.push("/creator")
     }
 
     return (
@@ -79,7 +79,7 @@ export default function ProductDetailPage() {
             <SiteHeader />
             <main className="container py-8 max-w-5xl px-6 md:px-8">
                 <Button variant="ghost" className="mb-6 pl-0 hover:bg-transparent hover:text-primary group" asChild>
-                    <Link href="/influencer/products">
+                    <Link href="/creator/products">
                         <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" /> 목록으로 돌아가기
                     </Link>
                 </Button>

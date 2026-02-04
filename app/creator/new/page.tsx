@@ -72,7 +72,7 @@ export default function NewEventPage() {
         })
 
         alert("모먼트가 성공적으로 등록되었습니다!")
-        router.push("/influencer")
+        router.push("/creator")
     }
 
     return (
@@ -82,7 +82,7 @@ export default function NewEventPage() {
                 <div className="mx-auto max-w-2xl">
                     <div className="mb-8 flex items-center gap-4">
                         <Button variant="ghost" size="icon" asChild>
-                            <Link href="/influencer">
+                            <Link href="/creator">
                                 <ArrowLeft className="h-4 w-4" />
                             </Link>
                         </Button>
@@ -221,7 +221,7 @@ export default function NewEventPage() {
 
                         <div className="flex justify-end gap-4 pt-4">
                             <Button variant="outline" asChild>
-                                <Link href="/influencer">취소</Link>
+                                <Link href="/creator">취소</Link>
                             </Button>
                             <Button size="lg" className="w-full md:w-auto" onClick={handleSubmit}>
                                 <Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기

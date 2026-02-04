@@ -40,7 +40,7 @@ export default function DebugSessionPage() {
 
             <div className="flex gap-4">
                 <Link href="/login" className="px-4 py-2 bg-blue-500 text-white rounded">Go to Login</Link>
-                <Link href="/influencer" className="px-4 py-2 bg-green-500 text-white rounded">Go to Dashboard</Link>
+                <Link href="/creator" className="px-4 py-2 bg-green-500 text-white rounded">Go to Dashboard</Link>
             </div>
         </div>
     )

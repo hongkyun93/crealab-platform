@@ -42,13 +42,13 @@ export async function GET(request: Request) {
                 if (profile?.role === 'brand') {
                     next = isNewUser ? '/brand/settings' : '/brand'
                 } else if (profile?.role === 'influencer') {
-                    next = isNewUser ? '/influencer?view=settings' : '/influencer'
+                    next = isNewUser ? '/creator?view=settings' : '/creator'
                 } else if (profile?.role === 'admin') {
                     next = '/admin'
                 } else if (roleType === 'brand') {
                     next = isNewUser ? '/brand/settings' : '/brand'
                 } else if (roleType === 'influencer') {
-                    next = isNewUser ? '/influencer?view=settings' : '/influencer'
+                    next = isNewUser ? '/creator?view=settings' : '/creator'
                 }
             } catch (e) {
                 console.error('Profile fetch error', e)

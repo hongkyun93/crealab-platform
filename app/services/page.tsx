@@ -261,7 +261,7 @@ export default function ServicesPage() {
                                 <h3 className="text-2xl font-bold mb-3">당신의 가치를 높이세요</h3>
                                 <p className="text-lg text-muted-foreground mb-8">당신의 라이프스타일을 응원하는 브랜드가 있습니다.</p>
                                 <Button size="lg" className="w-full md:w-auto px-8 py-6 text-lg" asChild>
-                                    <Link href="/influencer">
+                                    <Link href="/creator">
                                         크리에이터로 시작하기 <ArrowRight className="ml-2 h-5 w-5" />
                                     </Link>
                                 </Button>

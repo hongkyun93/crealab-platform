@@ -34,7 +34,7 @@ export default function Home() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild className="h-12 px-8 text-lg">
-                <Link href="/influencer">
+                <Link href="/creator">
                   크리에이터 시작하기
                 </Link>
               </Button>

@@ -290,7 +290,7 @@ function InfluencerDashboardContent() {
                         <div className="flex items-center justify-between">
                             <h1 className="text-3xl font-bold tracking-tight">내 모먼트 관리</h1>
                             <Button className="gap-2" asChild>
-                                <Link href="/influencer/new">
+                                <Link href="/creator/new">
                                     <Plus className="h-4 w-4" /> 새 모먼트 만들기
                                 </Link>
                             </Button>
@@ -319,7 +319,7 @@ function InfluencerDashboardContent() {
                                                     </h2>
                                                 </div>
                                                 <Button variant="outline" size="sm" asChild>
-                                                    <Link href={`/influencer/edit/${selectedMomentId}`}>
+                                                    <Link href={`/creator/edit/${selectedMomentId}`}>
                                                         수정하기
                                                     </Link>
                                                 </Button>
@@ -869,7 +869,7 @@ function InfluencerDashboardContent() {
                         ) : (
                             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                                 {filteredProducts.map((product) => (
-                                    <Link href={`/influencer/products/${product.id}`} key={product.id}>
+                                    <Link href={`/creator/products/${product.id}`} key={product.id}>
                                         <Card className="h-full overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 bg-background border-border/60 group">
                                             <div className="aspect-square bg-muted flex items-center justify-center text-6xl overflow-hidden relative">
                                                 {product.image?.startsWith('http') ? (
