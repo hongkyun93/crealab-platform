@@ -51,6 +51,9 @@ export default function EventDetailPage() {
     }
 
     const handleSubmitProposal = async () => {
+        // Prevent duplicate submissions
+        if (isSubmitting) return
+
         if (!user || !event) return
 
         if (!productName || !proposalMessage) {

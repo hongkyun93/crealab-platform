@@ -205,6 +205,9 @@ function BrandDashboardContent() {
     }
 
     const submitProposal = async () => {
+        // Prevent duplicate submissions
+        if (isSubmitting) return
+
         if (!offerProduct || !compensation || !contentType) {
             alert("필수 항목을 모두 입력해주세요.")
             return
@@ -383,52 +386,65 @@ function BrandDashboardContent() {
 
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredEvents.map((item) => (
-                                <Card key={item.id} className="group overflow-hidden transition-all hover:shadow-lg border-border/60 bg-background flex flex-col h-full">
-                                    <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
-                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
-                                            {item.avatar}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between">
-                                                <h4 className="font-bold truncate">{item.influencer}</h4>
-                                                {user?.type === 'admin' && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-6 w-6 text-muted-foreground hover:text-red-500 rounded-full"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
-                                                                deleteEvent(item.id).catch(() => alert("삭제에 실패했습니다."));
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </Button>
-                                                )}
+                                <Link key={item.id} href={`/event/${item.id}`} className="block group">
+                                    <Card className="overflow-hidden transition-all hover:shadow-lg border-border/60 bg-background flex flex-col h-full cursor-pointer">
+                                        <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
+                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
+                                                {item.avatar}
                                             </div>
-                                            <p className="text-xs text-muted-foreground truncate">{item.handle}</p>
-                                            <span className="text-[10px] font-medium bg-secondary/50 px-2 py-0.5 rounded-full mt-1 inline-block">
-                                                {(item.followers || 0).toLocaleString()} 팔로워
-                                            </span>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="space-y-3 flex-1">
-                                        <h3 className="font-bold text-base line-clamp-2">{item.event}</h3>
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <Calendar className="h-3 w-3" /> {item.eventDate}
-                                        </div>
-                                        <p className="text-sm text-foreground/70 line-clamp-3">{item.description}</p>
-                                        <div className="flex flex-wrap gap-1">
-                                            {item.tags.slice(0, 3).map(t => (
-                                                <span key={t} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">#{t}</span>
-                                            ))}
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter className="p-4 border-t">
-                                        <Button className="w-full" variant="secondary" onClick={() => handlePropose(item)}>협업 제안</Button>
-                                    </CardFooter>
-                                </Card>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="font-bold truncate">{item.influencer}</h4>
+                                                    {user?.type === 'admin' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-muted-foreground hover:text-red-500 rounded-full"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
+                                                                    deleteEvent(item.id).catch(() => alert("삭제에 실패했습니다."));
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground truncate">{item.handle}</p>
+                                                <span className="text-[10px] font-medium bg-secondary/50 px-2 py-0.5 rounded-full mt-1 inline-block">
+                                                    {(item.followers || 0).toLocaleString()} 팔로워
+                                                </span>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="space-y-3 flex-1">
+                                            <h3 className="font-bold text-base line-clamp-2">{item.event}</h3>
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <Calendar className="h-3 w-3" /> {item.eventDate}
+                                            </div>
+                                            <p className="text-sm text-foreground/70 line-clamp-3">{item.description}</p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {item.tags.slice(0, 3).map(t => (
+                                                    <span key={t} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">#{t}</span>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter className="p-4 border-t">
+                                            <Button
+                                                className="w-full"
+                                                variant="secondary"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handlePropose(item);
+                                                }}
+                                            >
+                                                협업 제안
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                </Link>
                             ))}
                         </div>
                     </div>
