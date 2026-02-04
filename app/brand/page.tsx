@@ -231,6 +231,9 @@ function BrandDashboardContent() {
             }
             alert(`${selectedInfluencer?.influencer}님에게 제안서가 성공적으로 발송되었습니다!`)
             setProposeModalOpen(false)
+
+            // Refresh the data to show the new proposal immediately
+            resetData()
         } catch (error: any) {
             console.error("Proposal Error:", error)
             alert(`제안서 발송에 실패했습니다: ${error?.message || "알 수 없는 오류"}`)
