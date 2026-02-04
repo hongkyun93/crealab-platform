@@ -37,9 +37,9 @@ export default function AdminPage() {
         }
     }
 
-    const handleDeleteEvent = (id: number) => {
+    const handleDeleteEvent = (id: string | number) => {
         if (confirm("정말로 이 이벤트를 삭제하시겠습니까?")) {
-            deleteEvent(id)
+            deleteEvent(id as string)
         }
     }
 

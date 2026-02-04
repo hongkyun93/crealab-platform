@@ -33,8 +33,8 @@ export default function EditEventPage() {
     // Load Event Data
     useEffect(() => {
         if (params.id && events.length > 0) {
-            const eventId = typeof params.id === 'string' ? parseInt(params.id) : 0
-            const event = events.find(e => e.id === eventId)
+            const eventId = String(params.id)
+            const event = events.find(e => String(e.id) === eventId)
 
             if (event) {
                 // Check ownership (simple name check for prototype)
@@ -76,7 +76,7 @@ export default function EditEventPage() {
 
     const handleDelete = () => {
         if (confirm("정말로 이 이벤트를 삭제하시겠습니까?")) {
-            const eventId = typeof params.id === 'string' ? parseInt(params.id) : 0
+            const eventId = String(params.id)
             deleteEvent(eventId)
             router.push("/influencer")
         }
@@ -96,7 +96,7 @@ export default function EditEventPage() {
             })
         }
 
-        const eventId = typeof params.id === 'string' ? parseInt(params.id) : 0
+        const eventId = String(params.id)
 
         updateEvent(eventId, {
             category: selectedTags[0] || "기타",

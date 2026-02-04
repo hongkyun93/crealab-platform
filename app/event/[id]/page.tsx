@@ -81,10 +81,13 @@ export default function EventDetailPage() {
                 return
             }
 
-            sendNotification(
-                event.influencerId,
-                `[${user.name}]님이 협업 제안을 보냈습니다!`
-            )
+
+            if (event.influencerId) {
+                sendNotification(
+                    event.influencerId,
+                    `[${user.name}]님이 협업 제안을 보냈습니다!`
+                )
+            }
 
             alert("제안서가 성공적으로 발송되었습니다!")
             setShowProposalDialog(false)
