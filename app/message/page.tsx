@@ -7,17 +7,52 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { MoreVertical, Paperclip, Search, Send, Phone, Video } from "lucide-react"
+import { MoreVertical, Paperclip, Search, Send, Phone, Video, BadgeCheck } from "lucide-react"
 import { useState, useRef, useEffect, useMemo } from "react"
 import { usePlatform } from "@/components/providers/platform-provider"
 
 export default function MessagePage() {
-    const { user, messages: allMessages, sendMessage } = usePlatform()
+    const { user, messages: allMessages, sendMessage, brandProposals } = usePlatform()
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
     const [messageInput, setMessageInput] = useState("")
     const [isComposing, setIsComposing] = useState(false)
     const [isSending, setIsSending] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
+
+    // Helper to render Proposal Card in Chat
+    const renderProposalCard = (proposalId: string) => {
+        const proposal = brandProposals?.find(p => p.id === proposalId)
+        if (!proposal) return null
+
+        return (
+            <Card className="mt-2 border-primary/20 bg-primary/5 p-4 space-y-3 max-w-sm shadow-sm group hover:border-primary/40 transition-all text-foreground text-left">
+                <div className="flex items-center justify-between border-b pb-2">
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-wider">COLLABORATION PROPOSAL</span>
+                    <BadgeCheck className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                    <h4 className="font-bold text-sm">{proposal.product_name}</h4>
+                    <p className="text-[11px] text-muted-foreground">{proposal.product_type === 'gift' ? '제품 협찬' : '제품 대여'}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] bg-white/50 p-2 rounded">
+                    <div>
+                        <p className="text-muted-foreground">제시 원고료</p>
+                        <p className="font-bold text-emerald-600 font-mono">{proposal.compensation_amount}</p>
+                    </div>
+                    <div>
+                        <p className="text-muted-foreground">희망 채널</p>
+                        <p className="font-medium">{proposal.content_type}</p>
+                    </div>
+                </div>
+                <div className="bg-white/80 p-2 rounded text-[11px] text-muted-foreground italic line-clamp-2">
+                    "{proposal.message}"
+                </div>
+                <Button variant="outline" size="sm" className="w-full text-[10px] h-7 font-bold border-primary/30 text-primary hover:bg-primary/10">
+                    상태: {proposal.status === 'accepted' ? '수락됨' : '제안됨'}
+                </Button>
+            </Card>
+        )
+    }
 
     // Compute threads from messages
     const threads = useMemo(() => {
@@ -265,7 +300,7 @@ export default function MessagePage() {
                                                             )}
                                                         </Avatar>
                                                     )}
-                                                    <div className={`flex flex-col max-w-[70%] ${isMe ? "items-end" : "items-start"}`}>
+                                                    <div className={`flex flex-col max-w-[75%] ${isMe ? "items-end" : "items-start"}`}>
                                                         <div
                                                             className={`px-4 py-2.5 rounded-2xl text-sm shadow-sm ${isMe
                                                                 ? "bg-primary text-primary-foreground rounded-tr-none"
@@ -273,6 +308,7 @@ export default function MessagePage() {
                                                                 }`}
                                                         >
                                                             {msg.content}
+                                                            {msg.proposalId && renderProposalCard(msg.proposalId)}
                                                         </div>
                                                         <span className="text-[10px] text-muted-foreground mt-1 px-1">
                                                             {formatDetailedTime(msg.timestamp)}

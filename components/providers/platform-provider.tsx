@@ -167,7 +167,7 @@ interface PlatformContextType {
     user: User | null
     login: (id: string, pw: string) => Promise<User>
     logout: () => void
-    updateUser: (data: Partial<User>) => void
+    updateUser: (data: Partial<User>) => Promise<void>
     campaigns: Campaign[]
     addCampaign: (campaign: Omit<Campaign, "id" | "date" | "matchScore">) => void
     deleteCampaign: (id: string | number) => void
@@ -178,11 +178,13 @@ interface PlatformContextType {
 
     products: Product[]
     addProduct: (product: Omit<Product, "id" | "brandId" | "brandName">) => void
+    updateProduct: (id: string, updates: Partial<Product>) => Promise<any>
     deleteProduct: (id: string) => Promise<void>
     proposals: Proposal[]
     deleteProposal: (id: string) => Promise<void>
     brandProposals: BrandProposal[] // New direct proposals
     addProposal: (proposal: Omit<Proposal, "id" | "date">) => Promise<void>
+    createBrandProposal: (proposal: any) => Promise<any>
     updateProposal: (id: number, data: Partial<Proposal>) => void
     deleteBrandProposal: (id: string) => Promise<void>
 
@@ -203,6 +205,7 @@ const PlatformContext = createContext<PlatformContextType | undefined>(undefined
 import { Session } from "@supabase/supabase-js"
 
 export function PlatformProvider({ children, initialSession }: { children: React.ReactNode, initialSession?: Session | null }) {
+    const [supabase] = useState(() => createClient())
     const [user, setUser] = useState<User | null>(null)
     const [campaigns, setCampaigns] = useState<Campaign[]>(INITIAL_CAMPAIGNS)
     const [events, setEvents] = useState<InfluencerEvent[]>([])
@@ -334,7 +337,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     // --- Supabase Auth Integration ---
-    const [supabase] = useState(() => createClient())
 
     const fetchUserProfile = async (sessionUser: any): Promise<User | null> => {
         try {
@@ -539,46 +541,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 }
             }
 
-            // 3. Fetch Messages
-            if (userId && typeof userId === 'string') {
-                const { data: msgData, error: msgError } = await supabase
-                    .from('messages')
-                    .select(`
-                        *,
-                        sender:profiles!sender_id(display_name, avatar_url),
-                        receiver:profiles!receiver_id(display_name, avatar_url)
-                    `)
-                    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-                    .order('created_at', { ascending: true })
-
-                if (msgData) {
-                    console.log('[fetchEvents] Fetched messages:', msgData.length)
-                    const mappedMsgs: Message[] = msgData.map((m: any) => ({
-                        id: m.id,
-                        senderId: m.sender_id,
-                        receiverId: m.receiver_id,
-                        content: m.content,
-                        timestamp: m.created_at,
-                        read: m.is_read || false,
-                        senderName: m.sender?.display_name,
-                        senderAvatar: m.sender?.avatar_url,
-                        receiverName: m.receiver?.display_name,
-                        receiverAvatar: m.receiver?.avatar_url
-                    }))
-                    setMessages(mappedMsgs)
-                } else if (msgError) {
-                    console.error('[fetchEvents] Error fetching messages:', {
-                        code: msgError.code,
-                        message: msgError.message,
-                        details: msgError.details,
-                        hint: msgError.hint
-                    })
-
-                    if (msgError.code === '42P01') {
-                        console.warn('The "messages" table is missing. Please run "documents/chat_schema_setup.sql" in Supabase SQL editor.')
-                    }
-                }
-            }
             // 4. Fetch Brand Products
             const { data: productData, error: productError } = await supabase
                 .from('brand_products')
@@ -630,16 +592,23 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .from('messages')
                 .select(`
                     *,
-                    sender:profiles!messages_sender_id_fkey(id, display_name, avatar_url, name),
-                    receiver:profiles!messages_receiver_id_fkey(id, display_name, avatar_url, name)
+                    sender:profiles!sender_id(id, display_name, avatar_url),
+                    receiver:profiles!receiver_id(id, display_name, avatar_url)
                 `)
                 .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
                 .order('created_at', { ascending: true })
 
             if (error) {
                 console.error('[fetchMessages] Error fetching messages:', error)
-                if (error.code === '42P01') {
-                    console.warn('Messages table does not exist. Skipping message fetch.')
+
+                // Detailed logging if properties exist
+                if (error.message) console.error('Message:', error.message)
+                if (error.code) console.error('Code:', error.code)
+
+                // Silently skip if table doesn't exist or FK error
+                if (error.code === '42P01' || error.code === '42703' || error.message?.includes('foreign key')) {
+                    console.warn('[fetchMessages] Skipping message fetch due to schema issue')
+                    return
                 }
                 return
             }
@@ -649,19 +618,23 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     id: msg.id,
                     senderId: msg.sender_id,
                     receiverId: msg.receiver_id,
+                    proposalId: msg.proposal_id, // Added mapping
                     content: msg.content,
                     timestamp: msg.created_at,
                     read: msg.read || false,
-                    senderName: msg.sender?.display_name || msg.sender?.name || 'User',
+                    senderName: msg.sender?.display_name || 'User',
                     senderAvatar: msg.sender?.avatar_url,
-                    receiverName: msg.receiver?.display_name || msg.receiver?.name || 'User',
+                    receiverName: msg.receiver?.display_name || 'User',
                     receiverAvatar: msg.receiver?.avatar_url
                 }))
                 setMessages(formattedMessages)
                 console.log('[fetchMessages] Loaded', formattedMessages.length, 'messages')
             }
-        } catch (err) {
-            console.error('[fetchMessages] Fetch exception:', err)
+        } catch (err: any) {
+            console.error('[fetchMessages] Fetch exception:', {
+                message: err?.message,
+                stack: err?.stack
+            })
         }
     }
 
@@ -686,6 +659,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }, 3000)
         return () => clearTimeout(timer)
     }, [])
+
 
 
     const logout = async () => {
@@ -727,21 +701,16 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const updateUser = async (data: Partial<User>) => {
-        // 0. Check Supabase Session First
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-            console.error('[updateUser] No active session found')
-            throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해주세요.')
+        console.log('[updateUser] Start update process matching user.id:', user?.id)
+        console.log('[updateUser] Values to update:', data)
+
+        if (!user) {
+            console.error('[updateUser] No user in state, cannot update')
+            return
         }
 
-        if (!user) return
-
-        // 1. Update Local State immediately for UI responsiveness
-        const updatedUser = { ...user, ...data }
-        setUser(updatedUser)
-
         try {
-            // 2. Prepare Profile Update (MUST run first to ensure row exists)
+            // 1. Prepare Profile Update
             const profileUpdates: any = {
                 updated_at: new Date().toISOString(),
             }
@@ -750,25 +719,28 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (data.avatar !== undefined) profileUpdates.avatar_url = data.avatar
             if (data.website !== undefined) profileUpdates.website = data.website
 
-            // Execute Profile Update FIRST
-            console.log('[updateUser] Updating profiles table with data:', profileUpdates)
+            console.log('[updateUser] Sending profile update to Supabase...', profileUpdates)
             const profileResult = await supabase
                 .from('profiles')
                 .update(profileUpdates)
                 .eq('id', user.id)
 
             if (profileResult.error) {
-                console.error('[updateUser] Profile update error:', profileResult.error)
+                console.error('[updateUser] Profile update DB error:', profileResult.error)
                 throw profileResult.error
             }
+            console.log('[updateUser] Profile table update success')
 
-            // 3. Influencer Details Update (AFTER profile exists)
-            if (user.type === 'influencer' || updatedUser.type === 'influencer') {
+            // 2. Influencer Details Update
+            if (user.type === 'influencer') {
                 const detailsUpdates: any = {
+                    id: user.id, // Primary key for upsert
                     updated_at: new Date().toISOString(),
                 }
-                if (data.tags !== undefined) detailsUpdates.tags = data.tags
-                if (data.handle !== undefined) detailsUpdates.instagram_handle = data.handle
+
+                let hasDetailsFields = false
+                if (data.tags !== undefined) { detailsUpdates.tags = data.tags; hasDetailsFields = true; }
+                if (data.handle !== undefined) { detailsUpdates.instagram_handle = data.handle; hasDetailsFields = true; }
                 if (data.followers !== undefined) {
                     const count = typeof data.followers === 'string' ? parseInt(data.followers) : data.followers
                     detailsUpdates.followers_count = isNaN(count) ? 0 : count
@@ -777,30 +749,30 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     if (count >= 1000000) tier = 'Mega'
                     else if (count >= 100000) tier = 'Macro'
                     else if (count >= 10000) tier = 'Micro'
-
                     detailsUpdates.tier = tier
+                    hasDetailsFields = true
                 }
 
-                console.log('[updateUser] Updating influencer_details table...', detailsUpdates)
+                console.log('[updateUser] Upserting influencer_details...', detailsUpdates)
                 const detailsResult = await supabase
                     .from('influencer_details')
-                    .update(detailsUpdates)
-                    .eq('id', user.id)
+                    .upsert(detailsUpdates, { onConflict: 'id' })
 
                 if (detailsResult.error) {
-                    console.error('[updateUser] Influencer details error:', detailsResult.error)
-                    throw detailsResult.error
+                    console.warn('[updateUser] Influencer details error (non-fatal):', detailsResult.error)
+                    // If it's just a schema mismatch (missing updated_at etc), we log but don't fail profile update
+                } else {
+                    console.log('[updateUser] Influencer details update success')
                 }
             }
 
-            console.log("[updateUser] User profile updated successfully")
+            // 3. Update Local State AFTER successful DB update for consistency
+            const updatedUser = { ...user, ...data }
+            setUser(updatedUser)
+            console.log("[updateUser] Finished - Context state updated")
+
         } catch (error: any) {
-            console.error('[updateUser] Detailed Error Info:', {
-                message: error?.message,
-                code: error?.code,
-                details: error?.details,
-                hint: error?.hint
-            })
+            console.error('[updateUser] Critical Error:', error)
             throw error
         }
     }
@@ -1019,6 +991,38 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
+    const updateProduct = async (id: string, updates: Partial<Product>) => {
+        if (!user) return
+
+        try {
+            console.log('[updateProduct] Updating:', id, updates)
+            const productData: any = {}
+            if (updates.name !== undefined) productData.name = updates.name
+            if (updates.description !== undefined) productData.description = updates.description
+            if (updates.image !== undefined) productData.image_url = updates.image
+            if (updates.price !== undefined) productData.price = updates.price
+            if (updates.category !== undefined) productData.category = updates.category
+            if (updates.points !== undefined) productData.selling_points = updates.points
+            if (updates.shots !== undefined) productData.required_shots = updates.shots
+            if (updates.link !== undefined) productData.website_url = updates.link
+
+            const { data, error } = await supabase
+                .from('brand_products')
+                .update(productData)
+                .eq('id', id)
+                .select()
+                .single()
+
+            if (error) throw error
+
+            setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
+            return data
+        } catch (e: any) {
+            console.error("Failed to update product:", e)
+            throw e
+        }
+    }
+
     const addProposal = async (newProposal: Omit<Proposal, "id" | "date">) => {
         try {
             // Check if user is logged in
@@ -1099,6 +1103,29 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
         setNotifications(prev => [newNotif, ...prev])
     }
+    const createBrandProposal = async (proposalData: any) => {
+        if (!user) return
+
+        try {
+            console.log("Creating proposal with:", proposalData)
+            const { data, error } = await supabase
+                .from('brand_proposals')
+                .insert({
+                    ...proposalData,
+                    status: 'offered'
+                })
+                .select()
+                .single()
+
+            if (error) throw error
+
+            setBrandProposals(prev => [data, ...prev])
+            return data
+        } catch (e: any) {
+            console.error("Failed to create brand proposal:", e)
+            throw e
+        }
+    }
 
     const sendMessage = async (toUserId: string, content: string, proposalId?: string) => {
         if (!user) return
@@ -1121,6 +1148,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 id: data.id,
                 senderId: user.id,
                 receiverId: toUserId,
+                proposalId: proposalId,
                 content,
                 timestamp: data.created_at,
                 read: false,
@@ -1167,8 +1195,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
             user, login, logout, updateUser,
             campaigns, addCampaign, deleteCampaign,
             events, addEvent, deleteEvent, updateEvent,
-            products, addProduct, deleteProduct,
-            proposals, addProposal, updateProposal, deleteProposal,
+            products, addProduct, updateProduct, deleteProduct,
+            proposals, addProposal, updateProposal, deleteProposal, createBrandProposal,
             brandProposals, updateBrandProposal, deleteBrandProposal,
             notifications, sendNotification,
             messages, sendMessage,

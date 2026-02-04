@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil } from "lucide-react"
+import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { usePlatform } from "@/components/providers/platform-provider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import {
     Dialog,
     DialogContent,
@@ -38,7 +39,8 @@ import { Suspense } from "react"
 function InfluencerDashboardContent() {
     const {
         user, updateUser, campaigns, events, isLoading, notifications, resetData,
-        brandProposals, updateBrandProposal, sendMessage, messages: allMessages, deleteEvent
+        brandProposals, updateBrandProposal, sendMessage, messages: allMessages, deleteEvent,
+        products
     } = usePlatform()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -70,6 +72,13 @@ function InfluencerDashboardContent() {
     const [chatProposal, setChatProposal] = useState<any>(null)
     const [chatMessage, setChatMessage] = useState("")
     const [activeProposalTab, setActiveProposalTab] = useState<string>("new")
+    const [productSearchQuery, setProductSearchQuery] = useState("")
+
+    const filteredProducts = products?.filter(p =>
+        p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+        p.brandName?.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(productSearchQuery.toLowerCase())
+    ) || []
 
     // Initialize state when user loads or view changes
     useEffect(() => {
@@ -136,14 +145,55 @@ function InfluencerDashboardContent() {
         await updateBrandProposal(proposalId, status)
         if (status === 'accepted' || status === 'pending') {
             const proposal = brandProposals.find(p => p.id === proposalId)
-            setChatProposal(proposal)
-            setIsChatOpen(true)
+            if (proposal) {
+                setChatProposal(proposal)
+                setIsChatOpen(true)
+
+                // Send confirmation message to brand
+                if (status === 'accepted') {
+                    await sendMessage(proposal.brand_id, "협업 제안을 수락했습니다! 대화를 통해 상세 내용을 협의해요.")
+                }
+            }
         }
+    }
+
+    const renderProposalCard = (proposalId: string) => {
+        const proposal = brandProposals?.find(p => p.id === proposalId)
+        if (!proposal) return null
+
+        return (
+            <Card className="mt-2 border-primary/20 bg-primary/5 p-4 space-y-3 max-w-sm shadow-sm group hover:border-primary/40 transition-all text-foreground">
+                <div className="flex items-center justify-between border-b pb-2">
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-wider">COLLABORATION PROPOSAL</span>
+                    <BadgeCheck className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                    <h4 className="font-bold text-sm">{proposal.product_name}</h4>
+                    <p className="text-[11px] text-muted-foreground">{proposal.product_type === 'gift' ? '제품 협찬' : '제품 대여'}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] bg-white/50 p-2 rounded">
+                    <div>
+                        <p className="text-muted-foreground">제시 원고료</p>
+                        <p className="font-bold text-emerald-600 font-mono">{proposal.compensation_amount}</p>
+                    </div>
+                    <div>
+                        <p className="text-muted-foreground">희망 채널</p>
+                        <p className="font-medium">{proposal.content_type}</p>
+                    </div>
+                </div>
+                <div className="bg-white/80 p-2 rounded text-[11px] text-muted-foreground italic line-clamp-2">
+                    "{proposal.message}"
+                </div>
+                <Button variant="outline" size="sm" className="w-full text-[10px] h-7 font-bold border-primary/30 text-primary hover:bg-primary/10">
+                    상태: {proposal.status === 'accepted' ? '수락됨' : '제안됨'}
+                </Button>
+            </Card>
+        )
     }
 
     const handleSendMessage = async () => {
         if (!chatMessage.trim() || !chatProposal) return
-        await sendMessage(chatProposal.brand_id, chatMessage, chatProposal.id)
+        await sendMessage(chatProposal.brand_id, chatMessage)
         setChatMessage("")
     }
 
@@ -480,7 +530,14 @@ function InfluencerDashboardContent() {
                                 <TabsContent key={tab} value={tab} className="space-y-4 mt-6">
                                     {filteredProposals(tab)?.length > 0 ? (
                                         filteredProposals(tab).map((proposal: any) => (
-                                            <Card key={proposal.id} className="p-6 overflow-hidden relative border-l-4 border-l-primary/30">
+                                            <Card
+                                                key={proposal.id}
+                                                className="p-6 overflow-hidden relative border-l-4 border-l-primary/30 cursor-pointer hover:shadow-lg hover:border-l-primary transition-all"
+                                                onClick={() => {
+                                                    setChatProposal(proposal)
+                                                    setIsChatOpen(true)
+                                                }}
+                                            >
                                                 <div className="flex flex-col md:flex-row gap-6">
                                                     <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-xl">
                                                         {proposal.brand_name?.[0] || "B"}
@@ -502,7 +559,7 @@ function InfluencerDashboardContent() {
                                                             <div>
                                                                 <span className="text-muted-foreground block mb-1">제시 보상</span>
                                                                 <span className="font-bold text-emerald-600">{proposal.compensation_amount}</span>
-                                                                {proposal.has_incentive && <span className="text-[11px] ml-1"> (+인센티브 별도)</span>}
+                                                                {proposal.has_incentive && <span className="text-[11px] ml-1">(+인센티브 별도)</span>}
                                                             </div>
                                                             <div>
                                                                 <span className="text-muted-foreground block mb-1">희망 콘텐츠</span>
@@ -514,7 +571,7 @@ function InfluencerDashboardContent() {
                                                             "{proposal.message}"
                                                         </div>
 
-                                                        <div className="flex flex-wrap gap-2 pt-2">
+                                                        <div className="flex flex-wrap gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
                                                             {tab === 'new' && (
                                                                 <>
                                                                     <Button className="bg-emerald-600 hover:bg-emerald-700 font-bold" onClick={() => handleStatusUpdate(proposal.id, 'accepted')}>수락하기</Button>
@@ -557,57 +614,9 @@ function InfluencerDashboardContent() {
                             ))}
                         </Tabs>
 
-                        {/* Chat Dialog */}
-                        <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-                            <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col p-0 overflow-hidden">
-                                <DialogHeader className="p-6 border-b">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
-                                            {chatProposal?.brand_name?.[0] || "B"}
-                                        </div>
-                                        <div>
-                                            <DialogTitle>{chatProposal?.brand_name}</DialogTitle>
-                                            <DialogDescription className="text-xs">
-                                                {chatProposal?.product_name} 협업 관련 대화
-                                            </DialogDescription>
-                                        </div>
-                                    </div>
-                                </DialogHeader>
-
-                                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/10">
-                                    {allMessages
-                                        .filter((m: any) => m.proposalId === chatProposal?.id || (m.senderId === chatProposal?.brand_id && m.receiverId === user.id) || (m.senderId === user.id && m.receiverId === chatProposal?.brand_id))
-                                        .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                                        .map((msg: any, idx: any) => (
-                                            <div key={idx} className={`flex ${msg.senderId === user.id ? 'justify-end' : 'justify-start'}`}>
-                                                <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.senderId === user.id
-                                                    ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                    : 'bg-white border rounded-tl-none'
-                                                    }`}>
-                                                    {msg.content}
-                                                    <span className="block text-[10px] opacity-70 mt-1">
-                                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                </div>
-
-                                <div className="p-4 border-t bg-white">
-                                    <div className="flex gap-2">
-                                        <Input
-                                            placeholder="메시지를 입력하세요..."
-                                            value={chatMessage}
-                                            onChange={(e) => setChatMessage(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                                        />
-                                        <Button onClick={handleSendMessage}>전송</Button>
-                                    </div>
-                                </div>
-                            </DialogContent>
-                        </Dialog>
                     </div>
                 )
+
 
             case "past_moments":
                 return (
@@ -829,6 +838,74 @@ function InfluencerDashboardContent() {
                         </Dialog>
                     </div>
                 )
+            case "discover-products":
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h1 className="text-3xl font-bold tracking-tight">브랜드 제품 둘러보기</h1>
+                                <p className="text-muted-foreground mt-1 text-sm">
+                                    마음에 들면 광고나 공구를 먼저 제안해보세요.
+                                </p>
+                            </div>
+                            <div className="flex w-full max-w-sm items-center space-x-2">
+                                <div className="relative w-full">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="브랜드, 제품명 검색"
+                                        className="pl-9"
+                                        value={productSearchQuery}
+                                        onChange={(e) => setProductSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {filteredProducts.length === 0 ? (
+                            <Card className="p-20 text-center border-dashed bg-muted/20">
+                                <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
+                                <h3 className="text-lg font-medium text-muted-foreground">검색 결과가 없습니다.</h3>
+                            </Card>
+                        ) : (
+                            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                                {filteredProducts.map((product) => (
+                                    <Link href={`/influencer/products/${product.id}`} key={product.id}>
+                                        <Card className="h-full overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 bg-background border-border/60 group">
+                                            <div className="aspect-square bg-muted flex items-center justify-center text-6xl overflow-hidden relative">
+                                                {product.image?.startsWith('http') ? (
+                                                    <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                ) : (
+                                                    <span className="transition-transform group-hover:scale-125">{product.image || "📦"}</span>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Button variant="secondary" size="sm" className="font-bold">자세히 보기</Button>
+                                                </div>
+                                            </div>
+                                            <CardHeader className="p-4 pb-2">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="text-xs font-bold text-primary uppercase tracking-tight truncate max-w-[120px]">{product.brandName || "브랜드"}</span>
+                                                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium">{product.category}</Badge>
+                                                </div>
+                                                <CardTitle className="text-sm font-bold line-clamp-2 leading-tight h-10">
+                                                    {product.name}
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="p-4 pt-1">
+                                                <p className="font-extrabold text-lg text-foreground">
+                                                    {product.price > 0 ? `${product.price.toLocaleString()}원` : "가격 미정"}
+                                                </p>
+                                            </CardContent>
+                                            <CardFooter className="p-4 pt-0 text-[10px] font-bold text-muted-foreground uppercase flex items-center border-t mt-2 pt-3">
+                                                <span className="text-primary group-hover:underline">협업 제안하기</span>
+                                                <ChevronRight className="ml-auto h-3 w-3 text-primary" />
+                                            </CardFooter>
+                                        </Card>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )
             default:
                 return null
         }
@@ -865,13 +942,11 @@ function InfluencerDashboardContent() {
                                 <Briefcase className="mr-2 h-4 w-4" /> 브랜드 제안
                             </Button>
                             <Button
-                                variant="ghost"
+                                variant={currentView === "discover-products" ? "secondary" : "ghost"}
                                 className="w-full justify-start text-primary font-medium"
-                                asChild
+                                onClick={() => setCurrentView("discover-products")}
                             >
-                                <Link href="/influencer/products">
-                                    <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
-                                </Link>
+                                <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
                             </Button>
                             <Button
                                 variant={currentView === "analysis" ? "secondary" : "ghost"}
@@ -900,6 +975,116 @@ function InfluencerDashboardContent() {
 
                     {/* Main Content */}
                     {renderContent()}
+
+                    {/* Chat Dialog - Moved outside to work in all views */}
+                    <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+                        <DialogContent className="sm:max-w-[500px] h-[650px] flex flex-col p-0 overflow-hidden">
+                            <DialogHeader className="p-6 border-b">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                                        {chatProposal?.brand_name?.[0] || "B"}
+                                    </div>
+                                    <div>
+                                        <DialogTitle>{chatProposal?.brand_name}</DialogTitle>
+                                        <DialogDescription className="text-xs">
+                                            {chatProposal?.product_name} 협업 관련 대화
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                            </DialogHeader>
+
+                            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/10">
+                                {/* Proposal Detail Box (at the top of chat) */}
+                                {chatProposal && (
+                                    <div className="mb-6 p-5 bg-white border border-primary/20 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
+                                        <div className="flex items-center justify-between mb-4 border-b border-primary/10 pb-2">
+                                            <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                                                <BadgeCheck className="h-5 w-5" /> 협업 제안 상세
+                                            </h4>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm ${chatProposal.status === 'accepted' ? 'bg-emerald-500 text-white' :
+                                                chatProposal.status === 'rejected' ? 'bg-red-500 text-white' : 'bg-primary text-white'
+                                                }`}>
+                                                {chatProposal.status === 'accepted' ? '수락됨' :
+                                                    chatProposal.status === 'rejected' ? '거절됨' :
+                                                        chatProposal.status === 'pending' ? '보류 중' : '검토 요청됨'}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4 text-xs">
+                                                <div className="space-y-1">
+                                                    <p className="text-muted-foreground">브랜드 / 제품</p>
+                                                    <p className="font-bold text-sm truncate">{chatProposal.brand_name} / {chatProposal.product_name}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-muted-foreground">제시 원고료</p>
+                                                    <p className="font-bold text-emerald-600 text-sm">{chatProposal.compensation_amount}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-3 bg-muted/20 rounded-lg border border-primary/5">
+                                                <p className="text-[11px] text-muted-foreground mb-1">브랜드 메시지</p>
+                                                <p className="text-xs italic leading-relaxed whitespace-pre-wrap text-foreground/80">"{chatProposal.message}"</p>
+                                            </div>
+
+                                            {/* Action Buttons inside Chat (Available in all views now) */}
+                                            {(chatProposal.status === 'offered' || !chatProposal.status) && (
+                                                <div className="flex gap-2 pt-2">
+                                                    <Button
+                                                        size="sm"
+                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold h-9"
+                                                        onClick={() => handleStatusUpdate(chatProposal.id, 'accepted')}
+                                                    >
+                                                        수락하기
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="flex-1 font-bold h-9 border-amber-200 text-amber-700 hover:bg-amber-50"
+                                                        onClick={() => handleStatusUpdate(chatProposal.id, 'pending')}
+                                                    >
+                                                        보류
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {allMessages
+                                    .filter((m: any) => m.proposalId === chatProposal?.id || (m.senderId === chatProposal?.brand_id && m.receiverId === user?.id) || (m.senderId === user?.id && m.receiverId === chatProposal?.brand_id))
+                                    .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                                    .map((msg: any, idx: any) => (
+                                        <div key={idx} className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[85%] flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
+                                                <div className={`p-3 rounded-2xl text-sm shadow-sm ${msg.senderId === user?.id
+                                                    ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                                    : 'bg-white border rounded-tl-none'
+                                                    }`}>
+                                                    {msg.content}
+                                                    {msg.proposalId && renderProposalCard(msg.proposalId)}
+                                                    <span className="block text-[10px] opacity-70 mt-1">
+                                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                            </div>
+
+                            <div className="p-4 border-t bg-white">
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="메시지를 입력하세요..."
+                                        value={chatMessage}
+                                        onChange={(e) => setChatMessage(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                    />
+                                    <Button onClick={handleSendMessage}>전송</Button>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
                 </div>
             </main>
         </div>

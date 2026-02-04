@@ -33,14 +33,14 @@ import {
     Info,
     ShoppingBag,
     Image as ImageIcon,
-    ExternalLink
+    ExternalLink,
+    Upload
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, Suspense, useRef } from "react"
 import { usePlatform } from "@/components/providers/platform-provider"
 import { useRouter, useSearchParams } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -72,13 +72,12 @@ const POPULAR_TAGS = [
 function BrandDashboardContent() {
     const {
         events, user, resetData, isLoading, campaigns, deleteCampaign,
-        brandProposals, updateBrandProposal, sendMessage, messages: allMessages,
-        updateUser, products, addProduct, deleteProduct, deleteEvent
+        brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages: allMessages,
+        updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal
     } = usePlatform()
 
     const router = useRouter()
     const searchParams = useSearchParams()
-    const supabase = createClient()
 
     const initialView = searchParams.get('view') || "discover"
     const [currentView, setCurrentView] = useState(initialView)
@@ -104,6 +103,7 @@ function BrandDashboardContent() {
 
     // Product Upload State
     const [productModalOpen, setProductModalOpen] = useState(false)
+    const [editingProductId, setEditingProductId] = useState<string | null>(null)
     const [newProductName, setNewProductName] = useState("")
     const [newProductPrice, setNewProductPrice] = useState("")
     const [newProductCategory, setNewProductCategory] = useState("")
@@ -113,6 +113,43 @@ function BrandDashboardContent() {
     const [newProductPoints, setNewProductPoints] = useState("")
     const [newProductShots, setNewProductShots] = useState("")
     const [isUploading, setIsUploading] = useState(false)
+    const [isImageUploading, setIsImageUploading] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        // 300MB limit check
+        if (file.size > 300 * 1024 * 1024) {
+            alert("파일 크기는 300MB 이하여야 합니다.")
+            return
+        }
+
+        setIsImageUploading(true)
+        try {
+            const fileExt = file.name.split('.').pop()
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+            const filePath = `products/${fileName}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('product-images')
+                .upload(filePath, file)
+
+            if (uploadError) throw uploadError
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('product-images')
+                .getPublicUrl(filePath)
+
+            setNewProductImage(publicUrl)
+        } catch (error: any) {
+            console.error('Error uploading image:', error)
+            alert('이미지 업로드에 실패했습니다.')
+        } finally {
+            setIsImageUploading(false)
+        }
+    }
 
     // Settings States
     const [editName, setEditName] = useState("")
@@ -208,6 +245,11 @@ function BrandDashboardContent() {
         // Prevent duplicate submissions
         if (isSubmitting) return
 
+        if (!user) {
+            alert("세션이 만료되었습니다. 다시 로그인해주세요.")
+            return
+        }
+
         if (!offerProduct || !compensation || !contentType) {
             alert("필수 항목을 모두 입력해주세요.")
             return
@@ -224,11 +266,29 @@ function BrandDashboardContent() {
                 incentive_detail: incentiveDetail,
                 event_id: selectedInfluencer?.id,
                 content_type: contentType,
-                message: message,
-                status: 'offered'
+                message: message
             }
-            const { data: insertedProposal, error } = await supabase.from('brand_proposals').insert(proposalData).select().single()
-            if (error) throw error
+
+            // Optional: Remove fields that might not exist in schema if needed
+            // But we created createBrandProposal to handle it more safely
+
+            // Use the provider function instead of direct supabase call
+            let insertedProposal;
+            try {
+                insertedProposal = await createBrandProposal(proposalData);
+            } catch (err: any) {
+                console.warn("Retrying proposal submit...", err)
+                if (err?.code === '42703' || err?.message?.includes('column')) {
+                    const fallbackData: any = { ...proposalData }
+                    delete fallbackData.event_id
+                    delete fallbackData.has_incentive
+                    delete fallbackData.incentive_detail
+                    insertedProposal = await createBrandProposal(fallbackData);
+                } else {
+                    throw err;
+                }
+            }
+
             if (insertedProposal) {
                 await sendMessage(selectedInfluencer?.influencerId, `협업 제안서가 전송되었습니다.\n[${offerProduct}]`, insertedProposal.id)
             }
@@ -239,30 +299,77 @@ function BrandDashboardContent() {
             resetData()
         } catch (error: any) {
             console.error("Proposal Error:", error)
-            alert(`제안서 발송에 실패했습니다: ${error?.message || "알 수 없는 오류"}`)
+
+            // Helpful error message for Schema/Table issues
+            if (error?.code === '42703') { // undefined_column
+                alert(`제안서 발송 실패: 데이터베이스 스키마와 일치하지 않는 필드가 있습니다.\n(${error.message})`)
+            } else if (error?.code === '23503') { // foreign_key_violation
+                alert(`제안서 발송 실패: 참조 데이터 오류 (이벤트 또는 사용자 ID가 유효하지 않음)\n(${error.message})`)
+            } else {
+                alert(`제안서 발송에 실패했습니다: ${error?.message || "알 수 없는 오류"}`)
+            }
         } finally {
             setIsSubmitting(false)
         }
     }
 
+    const handleEditProduct = (product: any) => {
+        setEditingProductId(product.id)
+        setNewProductName(product.name)
+        setNewProductPrice(product.price?.toString() || "")
+        setNewProductCategory(product.category)
+        setNewProductDescription(product.description || "")
+        // Remove emoji if present so user can input URL cleanly
+        setNewProductImage(product.image === "📦" ? "" : (product.image || ""))
+        setNewProductLink(product.link || "")
+        setNewProductPoints(product.points || "")
+        setNewProductShots(product.shots || "")
+        setProductModalOpen(true)
+    }
+
+
     const handleUploadProduct = async () => {
+        // Prevent duplicate submissions
+        if (isUploading) return
+
         if (!newProductName || !newProductCategory) {
             alert("제품명과 카테고리는 필수입니다.")
             return
         }
         setIsUploading(true)
         try {
-            await addProduct({
+            const isEditing = !!editingProductId
+            // Clean up image string (remove emoji if user pasted URL after it)
+            const cleanImage = newProductImage.replace('📦', '').trim()
+
+            const productData = {
                 name: newProductName,
                 price: parseInt(newProductPrice) || 0,
                 category: newProductCategory,
                 description: newProductDescription,
-                image: newProductImage || "📦", // Emoji placeholder if no URL
+                image: cleanImage || "📦",
                 link: newProductLink,
                 points: newProductPoints,
                 shots: newProductShots
-            })
-            setProductModalOpen(false)
+            }
+
+            if (editingProductId) {
+                // Update existing product
+                await updateProduct(editingProductId, {
+                    name: productData.name,
+                    price: productData.price,
+                    category: productData.category,
+                    description: productData.description,
+                    image: productData.image,
+                    link: productData.link,
+                    points: productData.points,
+                    shots: productData.shots
+                })
+            } else {
+                // Create new product
+                await addProduct(productData)
+            }
+
             // Clear inputs
             setNewProductName("")
             setNewProductPrice("")
@@ -272,9 +379,13 @@ function BrandDashboardContent() {
             setNewProductLink("")
             setNewProductPoints("")
             setNewProductShots("")
-            alert("제품이 성공적으로 등록되었습니다.")
-        } catch (e) {
+            setEditingProductId(null)
+
+            setProductModalOpen(false)
+            alert(isEditing ? "제품이 성공적으로 수정되었습니다!" : "제품이 성공적으로 등록되었습니다!")
+        } catch (e: any) {
             console.error("Product upload error:", e)
+            alert(`제품 ${editingProductId ? '수정' : '등록'} 실패: ${e?.message || "알 수 없는 오류가 발생했습니다."}`)
         } finally {
             setIsUploading(false)
         }
@@ -520,23 +631,47 @@ function BrandDashboardContent() {
                                     <Card className="p-12 text-center text-muted-foreground border-dashed bg-muted/20">보낸 제안서가 없습니다.</Card>
                                 ) : (
                                     sentProposals.map((p: any) => (
-                                        <Card key={p.id} className="hover:shadow-sm transition-shadow">
+                                        <Card key={p.id} className="hover:shadow-md transition-all border-border/60">
                                             <CardHeader className="pb-3">
                                                 <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <CardTitle className="text-lg font-bold">{p.product_name}</CardTitle>
-                                                        <CardDescription>
-                                                            {p.influencer_name || "크리에이터"} | {new Date(p.created_at).toLocaleDateString()}
-                                                        </CardDescription>
+                                                    <div className="flex gap-3">
+                                                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
+                                                            {p.influencer_name?.[0] || "C"}
+                                                        </div>
+                                                        <div>
+                                                            <CardTitle className="text-lg font-bold">{p.product_name}</CardTitle>
+                                                            <CardDescription className="flex items-center gap-2 mt-1">
+                                                                <span className="font-medium text-foreground">{p.influencer_name || "크리에이터"}</span>
+                                                                <span className="text-muted-foreground">|</span>
+                                                                <span>{new Date(p.created_at).toLocaleDateString()}</span>
+                                                            </CardDescription>
+                                                        </div>
                                                     </div>
-                                                    <Badge variant={p.status === 'accepted' ? 'default' : 'secondary'}>
-                                                        {p.status === 'offered' ? '대기 중' : p.status === 'accepted' ? '수락됨' : p.status}
-                                                    </Badge>
+                                                    <div className="flex flex-col items-end gap-2">
+                                                        <Badge variant={p.status === 'accepted' ? 'default' : 'secondary'} className={p.status === 'accepted' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}>
+                                                            {p.status === 'offered' ? '제안 보냄' : p.status === 'accepted' ? '수락됨' : p.status === 'pending' ? '보류 중' : p.status}
+                                                        </Badge>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-red-500 rounded-full"
+                                                            onClick={() => {
+                                                                if (confirm("정말로 이 제안서를 삭제하시겠습니까?")) {
+                                                                    deleteBrandProposal(p.id).catch(() => alert("삭제에 실패했습니다."));
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             </CardHeader>
-                                            <CardFooter className="border-t py-3 bg-muted/5">
-                                                <Button variant="ghost" size="sm" className="gap-2" asChild>
-                                                    <Link href="/message"><Bell className="h-4 w-4" /> 채팅방으로 이동</Link>
+                                            <CardFooter className="border-t py-3 bg-muted/5 flex justify-between items-center">
+                                                <div className="text-xs text-muted-foreground italic truncate max-w-[60%]">
+                                                    "{p.message}"
+                                                </div>
+                                                <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs" asChild>
+                                                    <Link href="/message"><Bell className="h-3.5 w-3.5" /> 채팅방으로 이동</Link>
                                                 </Button>
                                             </CardFooter>
                                         </Card>
@@ -559,8 +694,20 @@ function BrandDashboardContent() {
                                                         </CardDescription>
                                                     </div>
                                                     <div className="flex gap-2">
-                                                        <Button size="sm" onClick={() => updateBrandProposal(p.id, 'accepted')}>수락</Button>
-                                                        <Button size="sm" variant="outline" onClick={() => updateBrandProposal(p.id, 'rejected')}>거절</Button>
+                                                        <Button size="sm" onClick={() => updateBrandProposal(p.id, 'accepted')} className="bg-emerald-600 hover:bg-emerald-700">수락</Button>
+                                                        <Button size="sm" variant="outline" onClick={() => updateBrandProposal(p.id, 'rejected')} className="text-red-500 border-red-200 hover:bg-red-50">거절</Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-red-500 rounded-full"
+                                                            onClick={() => {
+                                                                if (confirm("정말로 이 지원서를 삭제하시겠습니까?")) {
+                                                                    deleteBrandProposal(p.id).catch(() => alert("삭제에 실패했습니다."));
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             </CardHeader>
@@ -655,7 +802,15 @@ function BrandDashboardContent() {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="flex-1 h-8 text-xs gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                className="h-8 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                onClick={() => handleEditProduct(p)}
+                                            >
+                                                <Pencil className="h-3 w-3" /> 수정
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-2 text-xs gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
                                                 onClick={() => {
                                                     if (confirm("정말로 이 제품을 삭제하시겠습니까?")) {
                                                         deleteProduct(p.id).catch(() => alert("삭제에 실패했습니다."));
@@ -858,12 +1013,26 @@ function BrandDashboardContent() {
             </Dialog>
 
             {/* Product Upload Modal */}
-            <Dialog open={productModalOpen} onOpenChange={setProductModalOpen}>
+            <Dialog open={productModalOpen} onOpenChange={(open) => {
+                setProductModalOpen(open)
+                if (!open) {
+                    // Reset form when closing
+                    setEditingProductId(null)
+                    setNewProductName("")
+                    setNewProductPrice("")
+                    setNewProductCategory("")
+                    setNewProductDescription("")
+                    setNewProductImage("")
+                    setNewProductLink("")
+                    setNewProductPoints("")
+                    setNewProductShots("")
+                }
+            }}>
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>우리 브랜드 제품 등록</DialogTitle>
+                        <DialogTitle>{editingProductId ? "제품 수정" : "우리 브랜드 제품 등록"}</DialogTitle>
                         <DialogDescription>
-                            크리에이터가 확인하고 제안할 수 있도록 제품 상세 정보를 입력해 주세요.
+                            {editingProductId ? "제품 정보를 수정해주세요." : "크리에이터가 확인하고 제안할 수 있도록 제품 상세 정보를 입력해 주세요."}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
@@ -895,8 +1064,36 @@ function BrandDashboardContent() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="op-img">제품 이미지 URL</Label>
-                                <Input id="op-img" value={newProductImage} onChange={(e) => setNewProductImage(e.target.value)} placeholder="https://..." />
+                                <Label htmlFor="op-img">제품 이미지 (300MB 이하)</Label>
+                                <div className="flex gap-2 items-center">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={handleImageUpload}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isImageUploading}
+                                        className="w-full"
+                                    >
+                                        {isImageUploading ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Upload className="mr-2 h-4 w-4" />
+                                        )}
+                                        {isImageUploading ? "업로드 중..." : "이미지 업로드"}
+                                    </Button>
+                                    {newProductImage && newProductImage !== "📦" && (
+                                        <div className="h-10 w-10 relative bg-muted rounded overflow-hidden shrink-0 border">
+                                            <img src={newProductImage} alt="Preview" className="h-full w-full object-cover" />
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Hidden input to keep value synced if needed, represented by state newProductImage */}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="op-link">브랜드 몰 링크</Label>
@@ -921,7 +1118,7 @@ function BrandDashboardContent() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setProductModalOpen(false)}>취소</Button>
                         <Button onClick={handleUploadProduct} disabled={isUploading}>
-                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "제품 등록 완료"}
+                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : editingProductId ? "수정 완료" : "제품 등록 완료"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
