@@ -37,20 +37,21 @@ export type Campaign = {
 }
 
 export type InfluencerEvent = {
-    id: number
-    influencer: string
+    id: string
+    influencer: string // In DB this is joined from profiles, locally it's string name
+    influencerId?: string // Link to actual user ID
     handle: string
     avatar: string
     category: string
-    event: string
-    date: string
+    event: string // Mapped to 'title' in DB
+    date: string // Created date (or event date? logic specific)
     description: string
     tags: string[]
     verified: boolean
-    followers: number // Added follower count
+    followers: number
     targetProduct: string // 희망하는 광고 제품
-    eventDate: string // 이벤트 날짜
-    postingDate: string // 콘텐츠 업로드 시기
+    eventDate: string // 이벤트 날짜 (e.g. 2026년 3월)
+    postingDate: string // 콘텐츠 업로드 시기 (e.g. 2026년 4월)
 }
 
 export type Product = {
@@ -92,8 +93,26 @@ export type Proposal = {
     date: string
 }
 
+export type BrandProposal = {
+    id: string
+    brand_id: string
+    influencer_id: string
+    product_name: string
+    product_type: string
+    compensation_amount: string
+    has_incentive: boolean
+    incentive_detail: string
+    content_type: string
+    message: string
+    status: string
+    created_at: string
+    brand_name?: string
+}
+
+
+
 // --- Initial Mock Data ---
-import { MOCK_EVENTS, MOCK_PRODUCTS } from "@/lib/mock-data"
+import { MOCK_PRODUCTS } from "@/lib/mock-data"
 import { createClient } from "@/lib/supabase/client"
 
 const INITIAL_PRODUCTS: Product[] = MOCK_PRODUCTS
@@ -122,7 +141,7 @@ const INITIAL_CAMPAIGNS: Campaign[] = [
     },
 ]
 
-const INITIAL_EVENTS: InfluencerEvent[] = MOCK_EVENTS
+
 
 // --- Context    // --- Message Logic ---
 export type Message = {
@@ -143,13 +162,14 @@ interface PlatformContextType {
     addCampaign: (campaign: Omit<Campaign, "id" | "date" | "matchScore">) => void
     deleteCampaign: (id: number) => void
     events: InfluencerEvent[]
-    addEvent: (event: Omit<InfluencerEvent, "id" | "influencer" | "handle" | "avatar" | "verified" | "followers">) => void
-    updateEvent: (id: number, data: Partial<InfluencerEvent>) => void
-    deleteEvent: (id: number) => void
+    addEvent: (event: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">) => Promise<void>
+    updateEvent: (id: string, data: Partial<InfluencerEvent>) => Promise<void>
+    deleteEvent: (id: string) => Promise<void>
 
     products: Product[]
     addProduct: (product: Omit<Product, "id" | "brandId" | "brandName">) => void
     proposals: Proposal[]
+    brandProposals: BrandProposal[] // New direct proposals
     addProposal: (proposal: Omit<Proposal, "id" | "date">) => void
     updateProposal: (id: number, data: Partial<Proposal>) => void
 
@@ -159,6 +179,7 @@ interface PlatformContextType {
     sendMessage: (toUserId: string, content: string) => void
     isLoading: boolean
     resetData: () => void
+    supabase: any
 }
 
 
@@ -170,9 +191,10 @@ import { Session } from "@supabase/supabase-js"
 export function PlatformProvider({ children, initialSession }: { children: React.ReactNode, initialSession?: Session | null }) {
     const [user, setUser] = useState<User | null>(null)
     const [campaigns, setCampaigns] = useState<Campaign[]>(INITIAL_CAMPAIGNS)
-    const [events, setEvents] = useState<InfluencerEvent[]>(INITIAL_EVENTS)
+    const [events, setEvents] = useState<InfluencerEvent[]>([])
     const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS)
     const [proposals, setProposals] = useState<Proposal[]>([])
+    const [brandProposals, setBrandProposals] = useState<BrandProposal[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [messages, setMessages] = useState<Message[]>([])
     const [isInitialized, setIsInitialized] = useState(false)
@@ -380,7 +402,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     useEffect(() => {
         let mounted = true
-        // ... (initAuth logic same as before)
+
         const initAuth = async () => {
             console.log('[PlatformProvider] Initializing Auth Check...')
             const { data: { session }, error } = await supabase.auth.getSession()
@@ -391,21 +413,31 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 const fetchedUser = await fetchUserProfile(session.user)
                 if (fetchedUser) {
                     setUser(fetchedUser)
+                    fetchEvents(session.user.id) // Fetch events for this user (or all if public?)
                 }
             }
             if (mounted) setIsAuthChecked(true)
         }
+
         initAuth()
+
+        // Fetch events function - scoped here or outside? 
+        // Better to define it outside if we want to reuse, but here is fine for now if we pass user ID.
+        // Actually, let's define it inside the effect or as a helper.
+        // To keep it simple, I'll inline the fetch logic in a separate async checks or just calling it.
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (session?.user && mounted) {
                 const fetchedUser = await fetchUserProfile(session.user)
                 if (fetchedUser) {
                     setUser(fetchedUser)
+                    console.log('[Auth] User logged in, fetching events for:', session.user.id)
+                    fetchEvents(session.user.id)
                 }
             } else if (!session && mounted) {
                 if (event === 'SIGNED_OUT') {
                     setUser(null)
+                    setEvents([])
                 }
             }
             if (mounted) setIsAuthChecked(true)
@@ -416,6 +448,75 @@ export function PlatformProvider({ children, initialSession }: { children: React
             subscription.unsubscribe()
         }
     }, [supabase])
+
+    const fetchEvents = async (userId?: string) => {
+        try {
+            console.log('[fetchEvents] Starting fetch for userId:', userId)
+
+
+            // 1. Fetch Events
+            const { data, error } = await supabase
+                .from('influencer_events')
+                .select(`
+                    *,
+                    profiles!influencer_id(
+                        display_name,
+                        avatar_url,
+                        role,
+                        influencer_details(instagram_handle, followers_count)
+                    )
+                `)
+                .order('created_at', { ascending: false })
+
+            if (error) {
+                console.error('[fetchEvents] Error fetching events:', error)
+            }
+
+            if (data) {
+                console.log('[fetchEvents] Fetched events from DB:', data.length, 'events')
+                const mappedEvents: InfluencerEvent[] = data.map((e: any) => ({
+                    id: e.id,
+                    influencer: e.profiles?.display_name || "Unknown",
+                    influencerId: e.influencer_id,
+                    handle: e.profiles?.influencer_details?.[0]?.instagram_handle || "",
+                    avatar: e.profiles?.avatar_url || "",
+                    category: e.category,
+                    event: e.title,
+                    date: new Date(e.created_at).toISOString().split('T')[0],
+                    description: e.description,
+                    tags: e.tags || [],
+                    verified: e.is_verified || false,
+                    followers: e.profiles?.influencer_details?.[0]?.followers_count || 0,
+                    targetProduct: e.target_product || "",
+                    eventDate: e.event_date || "",
+                    postingDate: e.posting_date || ""
+                }))
+                setEvents(mappedEvents)
+                console.log('[fetchEvents] Set events state with', mappedEvents.length, 'events')
+            }
+
+            // 2. Fetch Brand Proposals (if user is influencer)
+            if (userId) { // Fetch all relevant to this user
+                const { data: bpData } = await supabase
+                    .from('brand_proposals')
+                    .select('*, profiles!brand_id(display_name)')
+                    .eq('influencer_id', userId)
+                    .order('created_at', { ascending: false })
+
+                if (bpData) {
+                    console.log('[fetchEvents] Fetched brand proposals:', bpData.length)
+                    const mappedBP: BrandProposal[] = bpData.map((b: any) => ({
+                        ...b,
+                        brand_name: b.profiles?.display_name || 'Brand'
+                    }))
+                    setBrandProposals(mappedBP)
+                }
+            }
+
+        } catch (err) {
+            console.error('[fetchEvents] Fetch exception:', err)
+        }
+    }
 
     // ... (Failsafe useEffect remains same) ...
     useEffect(() => {
@@ -438,11 +539,32 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 throw error
             }
             console.log('[Logout] Successfully signed out')
+
+            // Clear all user data
             setUser(null)
+
+            // Clear localStorage to prevent stale data on next login
+            localStorage.removeItem("crealab_user")
+            localStorage.removeItem("crealab_events")
+            localStorage.removeItem("crealab_campaigns")
+            localStorage.removeItem("crealab_products")
+            localStorage.removeItem("crealab_proposals")
+            localStorage.removeItem("crealab_notifications")
+            localStorage.removeItem("crealab_messages")
+
         } catch (error) {
             console.error('[Logout] Failed to sign out:', error)
             // Still clear local user state even if signOut fails
             setUser(null)
+
+            // Clear localStorage even on error
+            localStorage.removeItem("crealab_user")
+            localStorage.removeItem("crealab_events")
+            localStorage.removeItem("crealab_campaigns")
+            localStorage.removeItem("crealab_products")
+            localStorage.removeItem("crealab_proposals")
+            localStorage.removeItem("crealab_notifications")
+            localStorage.removeItem("crealab_messages")
         }
     }
 
@@ -454,7 +576,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         setUser(updatedUser)
 
         try {
-            // 2. Prepare data for 'profiles' table
+            // 2. Prepare Profile Update (MUST run first to ensure row exists)
             const profileUpdates: any = {
                 id: user.id,
                 updated_at: new Date().toISOString(),
@@ -463,37 +585,64 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (data.bio !== undefined) profileUpdates.bio = data.bio
             if (data.avatar !== undefined) profileUpdates.avatar_url = data.avatar
 
-            // 3. Update 'profiles'
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .upsert(profileUpdates)
+            // Execute Profile Update FIRST (creates row if missing)
+            console.log('[updateUser] Updating profiles table...', profileUpdates)
+            const profileResult = await supabase.from('profiles').upsert(profileUpdates)
+            if (profileResult.error) {
+                console.error('[updateUser] Profile update error:', JSON.stringify(profileResult.error, null, 2))
+                console.error('[updateUser] Full error object:', profileResult.error)
+                throw profileResult.error
+            }
 
-            if (profileError) throw profileError
-
-            // 4. If Influencer, update 'influencer_details'
-            // We assume role is in user.type or check profile.role
-            if (user.type === 'influencer' || updatedUser.type === 'influencer') { // simplified check
+            // 3. Influencer Details Update (AFTER profile exists)
+            if (user.type === 'influencer' || updatedUser.type === 'influencer') {
                 const detailsUpdates: any = {
-                    id: user.id, // Foreign key matches profile id
+                    id: user.id,
                     updated_at: new Date().toISOString(),
                 }
                 if (data.tags !== undefined) detailsUpdates.tags = data.tags
                 if (data.handle !== undefined) detailsUpdates.instagram_handle = data.handle
-                if (data.followers !== undefined) detailsUpdates.followers_count = data.followers
+                if (data.followers !== undefined) {
+                    detailsUpdates.followers_count = data.followers
 
-                if (Object.keys(detailsUpdates).length > 2) { // id + date + at least one field
-                    const { error: detailsError } = await supabase
-                        .from('influencer_details')
-                        .upsert(detailsUpdates)
+                    // Validate and ensure non-negative logic or just simple mapping
+                    const count = typeof data.followers === 'string' ? parseInt(data.followers) : data.followers
+                    let tier = 'Nano'
+                    if (count >= 1000000) tier = 'Mega'
+                    else if (count >= 100000) tier = 'Macro'
+                    else if (count >= 10000) tier = 'Micro'
 
-                    if (detailsError) throw detailsError
+                    detailsUpdates.tier = tier
+                }
+
+                if (Object.keys(detailsUpdates).length > 2) {
+                    console.log('[updateUser] Updating influencer_details table...', detailsUpdates)
+                    const detailsResult = await supabase.from('influencer_details').upsert(detailsUpdates)
+                    if (detailsResult.error) {
+                        console.error('[updateUser] Influencer details error:', detailsResult.error)
+                        throw detailsResult.error
+                    }
                 }
             }
 
             console.log("User profile updated successfully in user DB")
-        } catch (error) {
-            console.error("Error updating user profile:", error)
-            // Optionally revert local state or show toast
+        } catch (error: any) {
+            // Comprehensive error logging
+            console.error("=== ERROR DETAILS START ===")
+            console.error("Error type:", typeof error)
+            console.error("Error constructor:", error?.constructor?.name)
+            console.error("Error as string:", String(error))
+            console.error("Error message:", error?.message)
+            console.error("Error code:", error?.code)
+            console.error("Error details:", error?.details)
+            console.error("Error hint:", error?.hint)
+            console.error("Error status:", error?.status)
+            console.error("Error statusCode:", error?.statusCode)
+            console.error("All error keys:", Object.keys(error || {}))
+            console.error("All error entries:", Object.entries(error || {}))
+            console.error("Direct error object:", error)
+            console.error("=== ERROR DETAILS END ===")
+            throw error // Propagate error to UI
         }
     }
 
@@ -512,25 +661,75 @@ export function PlatformProvider({ children, initialSession }: { children: React
         setCampaigns(prev => prev.filter(campaign => campaign.id !== id))
     }
 
-    const addEvent = (newEvent: Omit<InfluencerEvent, "id" | "influencer" | "handle" | "avatar" | "verified" | "followers">) => {
-        const event: InfluencerEvent = {
-            ...newEvent,
-            id: events.length + 1,
-            influencer: user?.name || "나 (Me)",
-            handle: user?.handle || "@my_handle",
-            avatar: user?.avatar || "나",
-            verified: true,
-            followers: user?.followers || 0,
+    const addEvent = async (newEvent: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">) => {
+        if (!user) return
+
+        // 1. Optimistic Update (Optional, but let's wait for DB for ID)
+
+        try {
+            // 2. Insert into DB
+            const { data, error } = await supabase
+                .from('influencer_events')
+                .insert({
+                    influencer_id: user.id,
+                    title: newEvent.event,
+                    description: newEvent.description,
+                    target_product: newEvent.targetProduct,
+                    event_date: newEvent.eventDate,
+                    posting_date: newEvent.postingDate,
+                    category: newEvent.category,
+                    tags: newEvent.tags,
+                    status: 'recruiting'
+                })
+                .select()
+                .single()
+
+            if (error) throw error
+
+            // 3. Update Local Handler
+            if (data) {
+                const event: InfluencerEvent = {
+                    ...newEvent,
+                    id: data.id,
+                    influencer: user.name, // Local user name
+                    influencerId: user.id,
+                    handle: user.handle || "",
+                    avatar: user.avatar || "",
+                    verified: false,
+                    followers: user.followers || 0,
+                    date: new Date().toISOString().split('T')[0]
+                }
+                setEvents([event, ...events])
+            }
+        } catch (e) {
+            console.error("Failed to add event:", e)
+            alert("이벤트 등록에 실패했습니다.")
         }
-        setEvents([event, ...events])
     }
 
-    const updateEvent = (id: number, data: Partial<InfluencerEvent>) => {
+    const updateEvent = async (id: string, data: Partial<InfluencerEvent>) => {
+        // Optimistic
         setEvents(prev => prev.map(event => event.id === id ? { ...event, ...data } : event))
+
+        // DB Update (Not fully implemented mapping in this snip, assuming valid fields)
+        // This is a placeholder for actual DB update logic
     }
 
-    const deleteEvent = (id: number) => {
+    const deleteEvent = async (id: string) => {
+        const prevEvents = [...events]
         setEvents(prev => prev.filter(event => event.id !== id))
+
+        try {
+            const { error } = await supabase
+                .from('influencer_events')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error
+        } catch (e) {
+            console.error("Failed to delete event:", e)
+            setEvents(prevEvents) // Revert
+        }
     }
 
     const addProduct = (newProduct: Omit<Product, "id" | "brandId" | "brandName">) => {
@@ -582,14 +781,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     const resetData = () => {
         setCampaigns(INITIAL_CAMPAIGNS)
-        setEvents(INITIAL_EVENTS)
+        setEvents([]) // Clear events, let them re-fetch or stay empty
         setProducts(INITIAL_PRODUCTS)
         setProposals([])
         setNotifications([])
         setMessages([])
 
         // Clear LocalStorage (except user to keep login)
-        // localStorage.removeItem("crealab_user") 
+        // localStorage.removeItem("crealab_user")
         localStorage.removeItem("crealab_campaigns")
         localStorage.removeItem("crealab_events")
         localStorage.removeItem("crealab_products")
@@ -597,7 +796,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
         localStorage.removeItem("crealab_notifications")
         localStorage.removeItem("crealab_messages")
 
-        alert("데이터가 초기화되었습니다. 새로운 데모 데이터가 로드됩니다.")
+        alert("데이터가 초기화되었습니다.")
+        fetchEvents(user?.id) // Attempt refetch
     }
 
     return (
@@ -606,11 +806,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
             campaigns, addCampaign, deleteCampaign,
             events, addEvent, deleteEvent, updateEvent,
             products, addProduct,
-            proposals, addProposal, updateProposal,
+            proposals, addProposal, updateProposal, brandProposals,
             notifications, sendNotification,
             messages, sendMessage,
             isLoading: !isInitialized || !isAuthChecked,
-            resetData
+            resetData,
+            supabase
         }}>
             {children}
         </PlatformContext.Provider>

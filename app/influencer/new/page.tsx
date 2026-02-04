@@ -71,7 +71,7 @@ export default function NewEventPage() {
             postingDate: `2026년 ${postingMonth}`
         })
 
-        alert("이벤트가 성공적으로 등록되었습니다!")
+        alert("모먼트가 성공적으로 등록되었습니다!")
         router.push("/influencer")
     }
 
@@ -87,9 +87,9 @@ export default function NewEventPage() {
                             </Link>
                         </Button>
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight">새 이벤트 만들기</h1>
+                            <h1 className="text-2xl font-bold tracking-tight">새 모먼트 만들기</h1>
                             <p className="text-muted-foreground">
-                                브랜드에게 제안받을 당신의 다음 라이프 이벤트를 등록하세요.
+                                브랜드에게 제안받을 당신의 다음 라이프 모먼트를 등록하세요.
                             </p>
                         </div>
                     </div>
@@ -97,7 +97,7 @@ export default function NewEventPage() {
                     <div className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
 
                         <div className="space-y-2">
-                            <Label htmlFor="title">이벤트 제목</Label>
+                            <Label htmlFor="title">모먼트 제목</Label>
                             <Input
                                 id="title"
                                 placeholder="예: 한남동으로 이사, 여름 다이어트 시작"
@@ -127,7 +127,7 @@ export default function NewEventPage() {
                             <div className="space-y-4">
                                 <Label className="flex items-center gap-2">
                                     <Calendar className="h-4 w-4" />
-                                    이벤트 일정 (2026년)
+                                    모먼트 일정 (2026년)
                                 </Label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {MONTHS.map((m) => {
@@ -224,7 +224,7 @@ export default function NewEventPage() {
                                 <Link href="/influencer">취소</Link>
                             </Button>
                             <Button size="lg" className="w-full md:w-auto" onClick={handleSubmit}>
-                                <Plus className="mr-2 h-4 w-4" /> 이벤트 등록하기
+                                <Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기
                             </Button>
                         </div>
                     </div>

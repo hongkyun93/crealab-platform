@@ -18,6 +18,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { usePlatform } from "@/components/providers/platform-provider"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 import {
     Dialog,
@@ -49,6 +50,7 @@ const POPULAR_TAGS = [
 export default function BrandDashboard() {
     const { events, user, resetData, isLoading } = usePlatform()
     const router = useRouter()
+    const supabase = createClient()
     const [sortOrder, setSortOrder] = useState("latest")
 
     // Filter Query States
@@ -140,7 +142,7 @@ export default function BrandDashboard() {
 
         // If "latest" (default), reverse to show newest first
         if (sortOrder === "latest") {
-            result.sort((a, b) => b.id - a.id)
+            result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         }
 
         return result
@@ -159,17 +161,67 @@ export default function BrandDashboard() {
         setProposeModalOpen(true)
     }
 
-    const submitProposal = () => {
+    const submitProposal = async () => {
         if (!offerProduct || !compensation || !contentType) {
             alert("필수 항목을 모두 입력해주세요.")
             return
         }
 
-        // Mock API call simulation
-        setTimeout(() => {
+        try {
+            console.log('[submitProposal] Starting proposal submission...')
+            console.log('[submitProposal] Data:', {
+                brand_id: user?.id,
+                influencer_id: selectedInfluencer.influencerId,
+                product_name: offerProduct,
+                product_type: productType,
+                compensation_amount: compensation,
+                has_incentive: hasIncentive,
+                incentive_detail: incentiveDetail,
+                content_type: contentType,
+                message: message,
+                status: 'offered'
+            })
+
+            const { error } = await supabase
+                .from('brand_proposals')
+                .insert({
+                    brand_id: user?.id,
+                    influencer_id: selectedInfluencer.influencerId,
+                    product_name: offerProduct,
+                    product_type: productType,
+                    compensation_amount: compensation,
+                    has_incentive: hasIncentive,
+                    incentive_detail: incentiveDetail,
+                    content_type: contentType,
+                    message: message,
+                    status: 'offered'
+                })
+
+            if (error) {
+                console.error('[submitProposal] Supabase error:', JSON.stringify(error, null, 2))
+                console.error('[submitProposal] Error details:', {
+                    message: error.message,
+                    code: error.code,
+                    details: error.details,
+                    hint: error.hint
+                })
+                throw error
+            }
+
+            console.log('[submitProposal] Proposal submitted successfully!')
             alert(`${selectedInfluencer?.influencer}님에게 제안서가 성공적으로 발송되었습니다!\n\n크리에이터가 제안을 수락하면 채팅방이 개설되어 대화를 나누실 수 있습니다.`)
             setProposeModalOpen(false)
-        }, 500)
+        } catch (error: any) {
+            console.error("=== Proposal Error Details ===")
+            console.error("Error type:", typeof error)
+            console.error("Error message:", error?.message)
+            console.error("Error code:", error?.code)
+            console.error("Error details:", error?.details)
+            console.error("Error hint:", error?.hint)
+            console.error("Full error:", error)
+            console.error("==============================")
+            alert("제안서 발송에 실패했습니다. 다시 시도해주세요.")
+        }
     }
 
     const filteredEvents = getFilteredAndSortedEvents()
@@ -190,7 +242,7 @@ export default function BrandDashboard() {
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight">기회 발견하기</h1>
                             <p className="text-muted-foreground mt-1">
-                                브랜드와 딱 맞는 이벤트를 가진 크리에이터를 찾아보세요.
+                                브랜드와 딱 맞는 모먼트를 가진 크리에이터를 찾아보세요.
                             </p>
                         </div>
                         <div className="flex gap-2">
@@ -308,10 +360,9 @@ export default function BrandDashboard() {
                         </div>
                     </div>
 
-                    {/* Results Count */}
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <div className="flex items-center gap-4">
-                            <span>총 <span className="font-bold text-foreground">{filteredEvents.length}</span>개의 이벤트를 발견했습니다.</span>
+                            <span>총 <span className="font-bold text-foreground">{filteredEvents.length}</span>개의 모먼트를 발견했습니다.</span>
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -375,7 +426,7 @@ export default function BrandDashboard() {
                                             </div>
                                             <div className="flex items-center gap-2 text-xs">
                                                 <Calendar className="h-3.5 w-3.5 text-primary" />
-                                                <span className="text-muted-foreground shrink-0">이벤트일:</span>
+                                                <span className="text-muted-foreground shrink-0">모먼트일:</span>
                                                 <span className="font-medium">{item.eventDate}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-xs">
