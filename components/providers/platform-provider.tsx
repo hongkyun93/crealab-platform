@@ -178,10 +178,13 @@ interface PlatformContextType {
 
     products: Product[]
     addProduct: (product: Omit<Product, "id" | "brandId" | "brandName">) => void
+    deleteProduct: (id: string) => Promise<void>
     proposals: Proposal[]
+    deleteProposal: (id: string) => Promise<void>
     brandProposals: BrandProposal[] // New direct proposals
-    addProposal: (proposal: Omit<Proposal, "id" | "date">) => void
+    addProposal: (proposal: Omit<Proposal, "id" | "date">) => Promise<void>
     updateProposal: (id: number, data: Partial<Proposal>) => void
+    deleteBrandProposal: (id: string) => Promise<void>
 
     notifications: Notification[]
     sendNotification: (toUserId: string, message: string) => void
@@ -508,13 +511,20 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 setCampaigns(mappedCampaigns)
             }
 
-            // 2. Fetch Brand Proposals (Both sent and received)
+            // 2. Fetch Brand Proposals (Both sent and received, or all if admin)
             if (userId) {
-                const { data: bpData } = await supabase
+                let query = supabase
                     .from('brand_proposals')
                     .select('*, brand_profile:profiles!brand_id(display_name), influencer_profile:profiles!influencer_id(display_name)')
-                    .or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
-                    .order('created_at', { ascending: false })
+
+                // Fetch user role to check admin status
+                const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
+
+                if (profile?.role !== 'admin') {
+                    query = query.or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
+                }
+
+                const { data: bpData } = await query.order('created_at', { ascending: false })
 
                 if (bpData) {
                     console.log('[fetchEvents] Fetched proposals:', bpData.length)
@@ -745,14 +755,20 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const deleteCampaign = async (id: number | string) => {
+        const prevCampaigns = [...campaigns]
+        setCampaigns(prev => prev.filter(c => String(c.id) !== String(id)))
+
         try {
-            const { error } = await supabase.from('campaigns').delete().eq('id', id)
+            const { error } = await supabase
+                .from('campaigns')
+                .delete()
+                .eq('id', id)
+
             if (error) throw error
-            setCampaigns(prev => prev.filter(campaign => campaign.id !== id))
         } catch (e) {
             console.error("Failed to delete campaign:", e)
-            // Fallback for local-only campaigns if any
-            setCampaigns(prev => prev.filter(campaign => campaign.id !== id))
+            setCampaigns(prevCampaigns)
+            throw e
         }
     }
 
@@ -845,8 +861,52 @@ export function PlatformProvider({ children, initialSession }: { children: React
         } catch (e) {
             console.error("Failed to delete event:", e)
             setEvents(prevEvents) // Revert
+            throw e
         }
     }
+
+    const deleteProduct = async (id: string) => {
+        const prevProducts = [...products]
+        setProducts(prev => prev.filter(p => p.id !== id))
+
+        try {
+            const { error } = await supabase
+                .from('brand_products')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error
+        } catch (e) {
+            console.error("Failed to delete product:", e)
+            setProducts(prevProducts)
+            throw e
+        }
+    }
+
+    const deleteBrandProposal = async (id: string) => {
+        const prev = [...brandProposals]
+        setBrandProposals(prev => prev.filter(p => p.id !== id))
+        try {
+            const { error } = await supabase.from('brand_proposals').delete().eq('id', id)
+            if (error) throw error
+        } catch (e) {
+            console.error("Failed to delete brand proposal:", e)
+            setBrandProposals(prev)
+            throw e
+        }
+    }
+
+    const deleteProposal = async (id: string) => {
+        try {
+            const { error } = await supabase.from('proposals').delete().eq('id', id)
+            if (error) throw error
+        } catch (e) {
+            console.error("Failed to delete proposal:", e)
+            throw e
+        }
+    }
+
+
 
     const addProduct = async (newProduct: Omit<Product, "id" | "brandId" | "brandName">) => {
         if (!user) return
@@ -1045,8 +1105,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
             user, login, logout, updateUser,
             campaigns, addCampaign, deleteCampaign,
             events, addEvent, deleteEvent, updateEvent,
-            products, addProduct,
-            proposals, addProposal, updateProposal, brandProposals, updateBrandProposal,
+            products, addProduct, deleteProduct,
+            proposals, addProposal, updateProposal, deleteProposal,
+            brandProposals, updateBrandProposal, deleteBrandProposal,
             notifications, sendNotification,
             messages, sendMessage,
             isLoading: !isInitialized || !isAuthChecked,

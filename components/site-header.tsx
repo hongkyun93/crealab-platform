@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { usePlatform } from "@/components/providers/platform-provider"
-import { LogOut, Settings, User } from "lucide-react"
+import { LogOut, Settings, User, Shield } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -73,6 +73,14 @@ export function SiteHeader() {
                 <div className="ml-auto flex items-center space-x-4">
                     {user ? (
                         <div className="flex items-center gap-4">
+                            {user.type === 'admin' && (
+                                <Link
+                                    href="/admin"
+                                    className="text-xs font-bold bg-red-500 text-white px-3 py-1.5 rounded-full hover:bg-red-600 transition-colors"
+                                >
+                                    관리자 패널
+                                </Link>
+                            )}
                             <span className="text-sm text-muted-foreground hidden md:inline-block">
                                 환영합니다, <span className="font-semibold text-foreground">{user.name}</span>님
                             </span>
@@ -99,6 +107,12 @@ export function SiteHeader() {
                                         <Settings className="mr-2 h-4 w-4" />
                                         프로필 설정
                                     </DropdownMenuItem>
+                                    {user.type === 'admin' && (
+                                        <DropdownMenuItem onSelect={() => router.push('/admin')} className="cursor-pointer font-bold text-red-600">
+                                            <Shield className="mr-2 h-4 w-4" />
+                                            관리자 패널
+                                        </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem onSelect={handleLogout} className="cursor-pointer text-red-500 focus:text-red-500">
                                         <LogOut className="mr-2 h-4 w-4" />
                                         로그아웃

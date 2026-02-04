@@ -46,11 +46,11 @@ function InfluencerDashboardContent() {
     const [currentView, setCurrentView] = useState(initialView)
     const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
 
-    // Filter My Events
-    // Filter My Events
-    const myEvents = user ? events.filter((e: any) => e.influencerId === user.id) : []
-    const pastMoments = myEvents.filter((e: any) => e.status === 'completed')
-    const upcomingMoments = myEvents.filter((e: any) => e.status !== 'completed')
+    // Filter events (Admins see all, users see theirs)
+    const displayEvents = user?.type === 'admin' ? events : (user ? events.filter((e: any) => e.influencerId === user.id) : [])
+    const pastMoments = displayEvents.filter((e: any) => e.status === 'completed')
+    const upcomingMoments = displayEvents.filter((e: any) => e.status !== 'completed')
+    const myEvents = user ? events.filter((e: any) => e.influencerId === user.id) : [] // For personal stats
 
     const filteredProposalsByMoment = selectedMomentId
         ? (brandProposals?.filter((p: any) => p.event_id === selectedMomentId) || [])

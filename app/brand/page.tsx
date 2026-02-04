@@ -73,7 +73,7 @@ function BrandDashboardContent() {
     const {
         events, user, resetData, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, sendMessage, messages: allMessages,
-        updateUser, products, addProduct
+        updateUser, products, addProduct, deleteProduct, deleteEvent
     } = usePlatform()
 
     const router = useRouter()
@@ -292,9 +292,9 @@ function BrandDashboardContent() {
     }
 
     const filteredEvents = getFilteredAndSortedEvents()
-    const myCampaigns = campaigns.filter(c => c.brandId === user?.id)
-    const mySentProposals = brandProposals.filter(p => p.brand_id === user?.id)
-    const myProducts = products.filter(p => p.brandId === user?.id)
+    const myCampaigns = user?.type === 'admin' ? campaigns : campaigns.filter(c => c.brandId === user?.id)
+    const mySentProposals = user?.type === 'admin' ? brandProposals : brandProposals.filter(p => p.brand_id === user?.id)
+    const myProducts = user?.type === 'admin' ? products : products.filter(p => p.brandId === user?.id)
 
     const renderContent = () => {
         switch (currentView) {
@@ -303,8 +303,8 @@ function BrandDashboardContent() {
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                             <div>
-                                <h1 className="text-3xl font-bold tracking-tight">크리에이터 검색</h1>
-                                <p className="text-muted-foreground mt-1">브랜드와 딱 맞는 모먼트를 가진 크리에이터를 찾아보세요.</p>
+                                <h1 className="text-3xl font-bold tracking-tight">모먼트 검색</h1>
+                                <p className="text-muted-foreground mt-1">우리 브랜드와 딱 맞는 모먼트를 가진 크리에이터를 찾아보세요.</p>
                             </div>
                             <div className="flex gap-2">
                                 <DropdownMenu>
@@ -386,7 +386,24 @@ function BrandDashboardContent() {
                                             {item.avatar}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold truncate">{item.influencer}</h4>
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-bold truncate">{item.influencer}</h4>
+                                                {user?.type === 'admin' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6 text-muted-foreground hover:text-red-500 rounded-full"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
+                                                                deleteEvent(item.id).catch(() => alert("삭제에 실패했습니다."));
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                             <p className="text-xs text-muted-foreground truncate">{item.handle}</p>
                                             <span className="text-[10px] font-medium bg-secondary/50 px-2 py-0.5 rounded-full mt-1 inline-block">
                                                 {(item.followers || 0).toLocaleString()} 팔로워
@@ -616,7 +633,16 @@ function BrandDashboardContent() {
                                                     <ExternalLink className="h-3 w-3" /> 웹사이트
                                                 </a>
                                             </Button>
-                                            <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs gap-1 text-red-500 hover:text-red-600 hover:bg-red-50">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="flex-1 h-8 text-xs gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                onClick={() => {
+                                                    if (confirm("정말로 이 제품을 삭제하시겠습니까?")) {
+                                                        deleteProduct(p.id).catch(() => alert("삭제에 실패했습니다."));
+                                                    }
+                                                }}
+                                            >
                                                 <Trash2 className="h-3 w-3" /> 삭제
                                             </Button>
                                         </CardFooter>
@@ -693,7 +719,7 @@ function BrandDashboardContent() {
                                 className="w-full justify-start"
                                 onClick={() => setCurrentView("discover")}
                             >
-                                <Search className="mr-2 h-4 w-4" /> 크리에이터 검색
+                                <Search className="mr-2 h-4 w-4" /> 모먼트 검색
                             </Button>
                             <Button
                                 variant={currentView === "my-campaigns" ? "secondary" : "ghost"}

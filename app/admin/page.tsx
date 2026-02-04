@@ -2,191 +2,220 @@
 
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertCircle, CheckCircle2, Lock, Trash2 } from "lucide-react"
-import { useState } from "react"
 import { usePlatform } from "@/components/providers/platform-provider"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { Trash2, Shield, Users, ShoppingBag, Send, Briefcase, ExternalLink } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 export default function AdminPage() {
-    const { campaigns, deleteCampaign, events, deleteEvent } = usePlatform()
+    const {
+        user, events, products, campaigns, brandProposals,
+        deleteEvent, deleteProduct, deleteCampaign, deleteBrandProposal,
+        isLoading
+    } = usePlatform()
+    const router = useRouter()
+    const [activeTab, setActiveTab] = useState("events")
 
-    // Auth State
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
-    const [password, setPassword] = useState("")
-    const [error, setError] = useState("")
-
-    // Admin Password (Hardcoded for prototype)
-    const ADMIN_PASSWORD = "admin"
-
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault()
-        if (password === ADMIN_PASSWORD) {
-            setIsAuthenticated(true)
-            setError("")
-        } else {
-            setError("비밀번호가 올바르지 않습니다.")
+    useEffect(() => {
+        if (!isLoading && (!user || user.type !== 'admin')) {
+            router.push("/")
         }
-    }
+    }, [user, isLoading, router])
 
-    const handleDeleteCampaign = (id: number) => {
-        if (confirm("정말로 이 캠페인을 삭제하시겠습니까?")) {
-            deleteCampaign(id)
+    if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading Admin Panel...</div>
+    if (!user || user.type !== 'admin') return null
+
+    const handleDelete = async (type: string, id: string, name: string) => {
+        if (confirm(`정말로 "${name}"을(를) 삭제하시겠습니까?`)) {
+            try {
+                if (type === 'event') await deleteEvent(id)
+                else if (type === 'product') await deleteProduct(id)
+                else if (type === 'campaign') await deleteCampaign(id)
+                else if (type === 'proposal') await deleteBrandProposal(id)
+                alert("삭제되었습니다.")
+            } catch (e) {
+                alert("삭제 중 오류가 발생했습니다.")
+            }
         }
-    }
-
-    const handleDeleteEvent = (id: string | number) => {
-        if (confirm("정말로 이 이벤트를 삭제하시겠습니까?")) {
-            deleteEvent(id as string)
-        }
-    }
-
-    if (!isAuthenticated) {
-        return (
-            <div className="min-h-screen bg-muted/30">
-                <SiteHeader />
-                <main className="container flex items-center justify-center py-20 min-h-[80vh]">
-                    <Card className="w-full max-w-md">
-                        <CardHeader>
-                            <CardTitle className="text-2xl text-center">관리자 로그인</CardTitle>
-                            <CardDescription className="text-center">
-                                콘텐츠 관리를 위해 비밀번호를 입력하세요.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={handleLogin} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="password">비밀번호</Label>
-                                    <div className="relative">
-                                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            id="password"
-                                            type="password"
-                                            className="pl-9"
-                                            placeholder="관리자 비밀번호"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                                {error && (
-                                    <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 p-3 rounded-md">
-                                        <AlertCircle className="h-4 w-4" />
-                                        {error}
-                                    </div>
-                                )}
-                                <Button type="submit" className="w-full">
-                                    로그인
-                                </Button>
-                            </form>
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
-        )
     }
 
     return (
         <div className="min-h-screen bg-muted/30">
             <SiteHeader />
-            <main className="container py-8 max-w-[1920px] px-6 md:px-8">
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">관리자 대시보드</h1>
-                        <p className="text-muted-foreground">
-                            전체 캠페인 및 이벤트를 관리하고 삭제할 수 있습니다.
-                        </p>
+            <main className="container py-10 max-w-7xl mx-auto px-6">
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="h-12 w-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center">
+                        <Shield className="h-6 w-6" />
                     </div>
-                    <Button variant="outline" onClick={() => setIsAuthenticated(false)}>
-                        로그아웃
-                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">관리자 패널</h1>
+                        <p className="text-muted-foreground">플랫폼의 모든 콘텐츠를 관리하고 중재합니다.</p>
+                    </div>
                 </div>
 
-                <Tabs defaultValue="campaigns" className="space-y-6">
-                    <TabsList>
-                        <TabsTrigger value="campaigns">캠페인 관리 ({campaigns.length})</TabsTrigger>
-                        <TabsTrigger value="events">이벤트 관리 ({events.length})</TabsTrigger>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                    <TabsList className="bg-background border">
+                        <TabsTrigger value="events" className="gap-2"><Users className="h-4 w-4" /> 크리에이터 모먼트 ({events.length})</TabsTrigger>
+                        <TabsTrigger value="products" className="gap-2"><ShoppingBag className="h-4 w-4" /> 브랜드 제품 ({products.length})</TabsTrigger>
+                        <TabsTrigger value="campaigns" className="gap-2"><Send className="h-4 w-4" /> 브랜드 캠페인 ({campaigns.length})</TabsTrigger>
+                        <TabsTrigger value="proposals" className="gap-2"><Briefcase className="h-4 w-4" /> 협업 제안 ({brandProposals.length})</TabsTrigger>
                     </TabsList>
 
-                    {/* Campaigns Tab */}
-                    <TabsContent value="campaigns">
-                        <div className="grid gap-4">
-                            {campaigns.length === 0 ? (
-                                <div className="text-center py-12 text-muted-foreground">
-                                    등록된 캠페인이 없습니다.
-                                </div>
-                            ) : (
-                                campaigns.map((campaign) => (
-                                    <Card key={campaign.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 gap-4">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-bold text-lg">{campaign.product}</span>
-                                                <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">
-                                                    {campaign.brand}
-                                                </span>
+                    {/* Events Tab */}
+                    <TabsContent value="events" className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {events.map((event) => (
+                                <Card key={event.id} className="overflow-hidden group">
+                                    <div className="p-4 bg-muted/50 border-b flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                                                {event.influencer[0]}
                                             </div>
-                                            <div className="text-sm text-muted-foreground space-y-1">
-                                                <p>카테고리: {campaign.category}</p>
-                                                <p>예산: {campaign.budget}</p>
-                                                <p className="text-xs text-muted-foreground/60">{campaign.date} 등록됨</p>
-                                            </div>
+                                            <span className="text-sm font-medium">{event.influencer}</span>
                                         </div>
                                         <Button
-                                            variant="destructive"
-                                            size="sm"
-                                            onClick={() => handleDeleteCampaign(campaign.id)}
-                                            className="ml-auto md:ml-0 gap-2"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                                            onClick={() => handleDelete('event', event.id, event.event)}
                                         >
-                                            <Trash2 className="h-4 w-4" /> 삭제
+                                            <Trash2 className="h-4 w-4" />
                                         </Button>
-                                    </Card>
-                                ))
-                            )}
+                                    </div>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-lg">{event.event}</CardTitle>
+                                        <CardDescription className="line-clamp-1">{event.category} | {event.date}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="pb-4">
+                                        <p className="text-sm text-muted-foreground line-clamp-2 italic">"{event.description}"</p>
+                                    </CardContent>
+                                    <CardFooter className="bg-muted/10 border-t py-2 flex justify-between items-center">
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">ID: {event.id.slice(0, 8)}</span>
+                                        <Badge variant="outline" className="text-[10px]">{event.targetProduct}</Badge>
+                                    </CardFooter>
+                                </Card>
+                            ))}
                         </div>
                     </TabsContent>
 
-                    {/* Events Tab */}
-                    <TabsContent value="events">
-                        <div className="grid gap-4">
-                            {events.length === 0 ? (
-                                <div className="text-center py-12 text-muted-foreground">
-                                    등록된 이벤트가 없습니다.
-                                </div>
-                            ) : (
-                                events.map((event) => (
-                                    <Card key={event.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 gap-4">
+                    {/* Products Tab */}
+                    <TabsContent value="products" className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {products.map((product) => (
+                                <Card key={product.id} className="overflow-hidden">
+                                    <div className="p-4 bg-muted/50 border-b flex justify-between items-center">
+                                        <span className="text-xs font-bold text-primary">{product.brandName}</span>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                                            onClick={() => handleDelete('product', product.id, product.name)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    <div className="flex gap-4 p-4">
+                                        <div className="h-20 w-20 rounded-lg border bg-background flex items-center justify-center text-3xl shrink-0 overflow-hidden">
+                                            {product.image.startsWith('http') ? <img src={product.image} className="w-full h-full object-cover" /> : product.image}
+                                        </div>
                                         <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-bold text-lg">{event.event}</span>
-                                                {event.verified && (
-                                                    <CheckCircle2 className="h-4 w-4 text-blue-500" />
-                                                )}
-                                            </div>
-                                            <div className="text-sm text-muted-foreground space-y-1">
-                                                <p>작성자: {event.influencer} ({event.handle})</p>
-                                                <p>일정: {event.date} | 카테고리: {event.category}</p>
-                                                <div className="flex gap-1 mt-1">
-                                                    {event.tags.map(tag => (
-                                                        <span key={tag} className="text-xs bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">
-                                                            #{tag}
-                                                        </span>
-                                                    ))}
+                                            <h3 className="font-bold">{product.name}</h3>
+                                            <p className="text-sm text-muted-foreground">{product.category}</p>
+                                            <p className="text-sm font-bold text-emerald-600 mt-1">{product.price.toLocaleString()}원</p>
+                                        </div>
+                                    </div>
+                                    <CardFooter className="bg-muted/10 border-t py-2">
+                                        <span className="text-[10px] text-muted-foreground">URL: {product.link.slice(0, 30)}...</span>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </TabsContent>
+
+                    {/* Campaigns Tab */}
+                    <TabsContent value="campaigns" className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {campaigns.map((camp) => (
+                                <Card key={camp.id} className="overflow-hidden">
+                                    <div className="p-4 bg-muted/50 border-b flex justify-between items-center">
+                                        <span className="text-xs font-bold">{camp.brand}</span>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                                            onClick={() => handleDelete('campaign', String(camp.id), camp.product)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-lg">{camp.product}</CardTitle>
+                                        <CardDescription>{camp.category}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="pb-4">
+                                        <p className="text-sm text-muted-foreground line-clamp-2">{camp.description}</p>
+                                        <div className="mt-3 flex gap-2">
+                                            <Badge variant="secondary" className="text-[10px]">{camp.budget}</Badge>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="bg-muted/10 border-t py-2">
+                                        <span className="text-[10px] text-muted-foreground">ID: {String(camp.id).slice(0, 8)}</span>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </TabsContent>
+
+                    {/* Proposals Tab */}
+                    <TabsContent value="proposals" className="space-y-4">
+                        <div className="grid gap-4">
+                            {brandProposals.map((prop) => (
+                                <Card key={prop.id} className="flex flex-col md:flex-row overflow-hidden">
+                                    <div className="md:w-1/4 bg-muted/30 p-4 border-r flex flex-col justify-center gap-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] text-muted-foreground uppercase font-bold">Sender (Brand)</span>
+                                            <span className="font-bold text-sm">{prop.brand_name}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] text-muted-foreground uppercase font-bold">Receiver (Creator)</span>
+                                            <span className="font-bold text-sm">{prop.influencer_name}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 p-6 relative">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="text-xl font-bold">{prop.product_name}</h3>
+                                                <div className="flex gap-2 mt-1">
+                                                    <Badge>{prop.status}</Badge>
+                                                    <Badge variant="outline">{prop.product_type}</Badge>
                                                 </div>
                                             </div>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="text-muted-foreground hover:text-red-500 hover:bg-red-50 border-red-100"
+                                                onClick={() => handleDelete('proposal', prop.id, `${prop.brand_name} -> ${prop.influencer_name}`)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
-                                        <Button
-                                            variant="destructive"
-                                            size="sm"
-                                            onClick={() => handleDeleteEvent(event.id)}
-                                            className="ml-auto md:ml-0 gap-2"
-                                        >
-                                            <Trash2 className="h-4 w-4" /> 삭제
-                                        </Button>
-                                    </Card>
-                                ))
-                            )}
+                                        <p className="text-sm bg-muted/20 p-3 rounded italic">"{prop.message}"</p>
+                                        <div className="mt-4 text-xs grid grid-cols-2 gap-4">
+                                            <div>
+                                                <span className="text-muted-foreground">Compensation: </span>
+                                                <span className="font-bold">{prop.compensation_amount}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-muted-foreground">Created: </span>
+                                                <span>{new Date(prop.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
                         </div>
                     </TabsContent>
                 </Tabs>
