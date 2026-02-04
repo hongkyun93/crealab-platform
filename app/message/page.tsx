@@ -15,6 +15,7 @@ export default function MessagePage() {
     const { user, messages: allMessages, sendMessage } = usePlatform()
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
     const [messageInput, setMessageInput] = useState("")
+    const [isComposing, setIsComposing] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
 
     // Compute threads from messages
@@ -98,7 +99,8 @@ export default function MessagePage() {
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+        // Don't send if still composing Korean
+        if (e.key === "Enter" && !e.shiftKey && !isComposing) {
             e.preventDefault()
             handleSendMessage()
         }
@@ -289,6 +291,8 @@ export default function MessagePage() {
                                             <textarea
                                                 value={messageInput}
                                                 onChange={(e) => setMessageInput(e.target.value)}
+                                                onCompositionStart={() => setIsComposing(true)}
+                                                onCompositionEnd={() => setIsComposing(false)}
                                                 onKeyDown={handleKeyDown}
                                                 placeholder="메시지를 입력하세요... (Enter로 전송)"
                                                 className="w-full bg-transparent border-none focus:outline-none text-sm resize-none max-h-32 min-h-[24px] placeholder:text-muted-foreground/70"

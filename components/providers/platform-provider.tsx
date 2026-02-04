@@ -423,12 +423,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 const fetchedUser = await fetchUserProfile(session.user)
                 if (fetchedUser) {
                     setUser(fetchedUser)
-                    console.log('[Auth] User logged in, fetching events for:', session.user.id)
+                    console.log('[Auth] User logged in, fetching data for:', session.user.id)
                     fetchEvents(session.user.id)
+                    fetchMessages(session.user.id)
                 }
             } else if (!session && mounted) {
                 setUser(null)
                 setEvents([])
+                setMessages([])
             }
             if (mounted) setIsAuthChecked(true)
         })
@@ -619,6 +621,60 @@ export function PlatformProvider({ children, initialSession }: { children: React
             console.error('[fetchEvents] Fetch exception:', err)
         }
     }
+
+    const fetchMessages = async (userId: string) => {
+        try {
+            console.log('[fetchMessages] Fetching messages for user:', userId)
+
+            const { data, error } = await supabase
+                .from('messages')
+                .select(`
+                    *,
+                    sender:profiles!messages_sender_id_fkey(id, display_name, avatar_url, name),
+                    receiver:profiles!messages_receiver_id_fkey(id, display_name, avatar_url, name)
+                `)
+                .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+                .order('created_at', { ascending: true })
+
+            if (error) {
+                console.error('[fetchMessages] Error fetching messages:', error)
+                if (error.code === '42P01') {
+                    console.warn('Messages table does not exist. Skipping message fetch.')
+                }
+                return
+            }
+
+            if (data) {
+                const formattedMessages: Message[] = data.map((msg: any) => ({
+                    id: msg.id,
+                    senderId: msg.sender_id,
+                    receiverId: msg.receiver_id,
+                    content: msg.content,
+                    timestamp: msg.created_at,
+                    read: msg.read || false,
+                    senderName: msg.sender?.display_name || msg.sender?.name || 'User',
+                    senderAvatar: msg.sender?.avatar_url,
+                    receiverName: msg.receiver?.display_name || msg.receiver?.name || 'User',
+                    receiverAvatar: msg.receiver?.avatar_url
+                }))
+                setMessages(formattedMessages)
+                console.log('[fetchMessages] Loaded', formattedMessages.length, 'messages')
+            }
+        } catch (err) {
+            console.error('[fetchMessages] Fetch exception:', err)
+        }
+    }
+
+    // Polling for new messages every 5 seconds
+    useEffect(() => {
+        if (!user) return
+
+        const interval = setInterval(() => {
+            fetchMessages(user.id)
+        }, 5000)
+
+        return () => clearInterval(interval)
+    }, [user?.id])
 
     // ... (Failsafe useEffect remains same) ...
     useEffect(() => {
