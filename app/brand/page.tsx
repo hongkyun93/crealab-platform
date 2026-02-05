@@ -533,7 +533,7 @@ function BrandDashboardContent() {
                                             onClick={() => setStatusFilter("favorites")}
                                             className="gap-1.5"
                                         >
-                                            <Star className="h-3.5 w-3.5" fill={statusFilter === "favorites" ? "currentColor" : "none"} />
+                                            <Star className="h-3.5 w-3.5 text-yellow-500" fill={statusFilter === "favorites" ? "currentColor" : "none"} />
                                             즐겨찾기만 보기
                                         </Button>
                                     </div>
