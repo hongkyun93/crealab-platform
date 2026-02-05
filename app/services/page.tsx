@@ -101,7 +101,6 @@ export default function ServicesPage() {
                             <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
                                 <Megaphone className="h-8 w-8" />
                             </div>
-                            <h2 className="text-3xl font-bold">Insight (핵심 통찰)</h2>
                         </div>
 
                         <div className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950/50 dark:to-blue-950/20 p-8 md:p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-10 shadow-sm">
