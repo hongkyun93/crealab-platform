@@ -44,8 +44,8 @@ ${descriptionRaw}
         })
 
     if (error) {
-        console.error('Campaign Create Error:', error)
-        return { error: '캠페인 등록 중 오류가 발생했습니다: ' + error.message }
+        console.error('Campaign Create Error FULL OBJECT:', JSON.stringify(error, null, 2))
+        return { error: `등록 실패: ${error.message} (Code: ${error.code})` }
     }
 
     // 4. Return Success
