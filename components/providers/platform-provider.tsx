@@ -346,10 +346,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     // --- Supabase Auth Integration ---
 
-    const fetchUserProfile = async (sessionUser: any): Promise<User | null> => {
+    const fetchUserProfile = async (sessionUser: any): Promise<User> => {
         try {
             // Verify if we have a profile and fetch details
-            const { data: profile } = await supabase
+            const { data: profile, error } = await supabase
                 .from('profiles')
                 .select('*, influencer_details(*)')
                 .eq('id', sessionUser.id)
@@ -364,7 +364,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     details = profile.influencer_details;
                 }
 
-                console.log('[fetchUserProfile] Extracted details for tags check:', {
+                console.log('[fetchUserProfile] Extracted details:', {
                     hasDetails: !!details,
                     tags: details?.tags
                 });
@@ -380,19 +380,22 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     followers: details?.followers_count || 0,
                     tags: details?.tags || []
                 }
-            } else {
-                // If no profile, we use session data
-                return {
-                    id: sessionUser.id,
-                    name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || "User",
-                    type: (sessionUser.user_metadata?.role as "brand" | "influencer" | "admin") || "influencer",
-                    avatar: sessionUser.user_metadata?.avatar_url,
-                    tags: []
-                }
+            }
+
+            if (error) {
+                console.warn('[fetchUserProfile] Profile fetch issue (possibly RLS):', error.message)
             }
         } catch (e) {
-            console.error("Error fetching profile:", e)
-            return null
+            console.error("[fetchUserProfile] Exception:", e)
+        }
+
+        // Fallback: Use session data if profile/details fetch fails
+        return {
+            id: sessionUser.id,
+            name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || "User",
+            type: (sessionUser.user_metadata?.role as "brand" | "influencer" | "admin") || "influencer",
+            avatar: sessionUser.user_metadata?.avatar_url,
+            tags: []
         }
     }
 
@@ -432,12 +435,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
             console.log(`[Auth] onAuthStateChange event: ${event}`, session?.user?.id)
             if (session?.user && mounted) {
                 const fetchedUser = await fetchUserProfile(session.user)
-                if (fetchedUser) {
-                    setUser(fetchedUser)
-                    console.log('[Auth] User logged in, fetching data for:', session.user.id)
-                    fetchEvents(session.user.id)
-                    fetchMessages(session.user.id)
-                }
+                setUser(fetchedUser)
+                console.log('[Auth] User logged in, fetching data for:', session.user.id)
+                fetchEvents(session.user.id)
+                fetchMessages(session.user.id)
             } else if (!session && mounted) {
                 setUser(null)
                 setEvents([])
@@ -453,16 +454,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }, [supabase])
 
     const isFetchingEvents = React.useRef(false)
-    const fetchEvents = async (userId?: string) => {
-        if (!userId && !user?.id) return
+    const fetchEvents = React.useCallback(async (userId?: string) => {
         const targetId = userId || user?.id
         if (!targetId || isFetchingEvents.current) return
 
         isFetchingEvents.current = true
         try {
-            console.log('[PlatformProvider] Fetching data for user:', targetId)
-
-
+            console.log('[PlatformProvider] Fetching events & data for:', targetId)
             // 1. Fetch Events
             const { data: eventsData, error: eventsError } = await supabase
                 .from('influencer_events')
@@ -599,16 +597,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
         } finally {
             isFetchingEvents.current = false
         }
-    }
+    }, [user, supabase])
 
     const isFetchingMessages = React.useRef(false)
-    const fetchMessages = async (userId: string) => {
+    const fetchMessages = React.useCallback(async (userId: string) => {
         if (isFetchingMessages.current) return
         isFetchingMessages.current = true
 
         try {
             console.log('[fetchMessages] Fetching messages for user:', userId)
-
             const { data, error } = await supabase
                 .from('messages')
                 .select(`
@@ -665,7 +662,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         } finally {
             isFetchingMessages.current = false
         }
-    }
+    }, [supabase])
 
     // Polling for new messages every 5 seconds
     useEffect(() => {
