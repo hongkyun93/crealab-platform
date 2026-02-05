@@ -193,6 +193,7 @@ interface PlatformContextType {
     messages: Message[]
     updateBrandProposal: (id: string, status: string) => Promise<void>
     sendMessage: (toUserId: string, content: string, proposalId?: string) => Promise<void>
+    switchRole: (newRole: 'brand' | 'influencer') => Promise<void>
     isLoading: boolean
     resetData: () => void
     supabase: any
@@ -861,7 +862,22 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 throw new Error(`DB 업데이트 실패: ${profileError.message}`)
             }
 
-            // 2. Update Auth metadata - this is used by middleware/trigger
+            // 2. If switching to influencer, ensure influencer_details exists
+            if (newRole === 'influencer') {
+                console.log('[switchRole] Initializing/verifying influencer_details...')
+                const { error: detailsError } = await supabase
+                    .from('influencer_details')
+                    .upsert({
+                        id: user.id,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'id' })
+
+                if (detailsError) {
+                    console.warn('[switchRole] influencer_details upsert error (non-fatal):', detailsError)
+                }
+            }
+
+            // 3. Update Auth metadata - this is used by middleware/trigger
             const { error: authError } = await supabase.auth.updateUser({
                 data: { role: newRole }
             })
@@ -873,7 +889,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             console.log('[switchRole] Switching local state and reloading...')
 
-            // 3. Update local state
+            // 4. Update local state
             setUser(prev => prev ? { ...prev, type: newRole } : null)
 
             alert("계정 유형이 성공적으로 변경되었습니다. 새로운 대시보드로 이동합니다.")
