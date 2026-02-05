@@ -21,10 +21,10 @@ export default function Home() {
             <h1 className="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent break-keep">
               광고는 타이밍! <br />
               라이프 모먼트기반 <br />
-              브랜드-크리에이터 연결 플랫폼.Ver1.20
+              브랜드-크리에이터 연결 플랫폼
             </h1>
             <p className="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8 break-keep">
-              브랜드와 준비된 크리에이터의 만남!<br />
+              준비된 브랜드와 준비된 크리에이터의 만남!<br />
               &apos;완벽한 타이밍&apos;의 진정성 있는 파트너십으로 광고효과를 극대화하세요.
             </p>
             <div className="flex gap-4">
