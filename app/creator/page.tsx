@@ -1009,12 +1009,7 @@ function InfluencerDashboardContent() {
                                     className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
                                     onClick={async () => {
                                         if (confirm("정말로 브랜드 계정으로 전환하시겠습니까?")) {
-                                            try {
-                                                await switchRole('brand');
-                                                router.push('/brand');
-                                            } catch (e) {
-                                                alert("전환 중 오류가 발생했습니다.");
-                                            }
+                                            await switchRole('brand');
                                         }
                                     }}
                                 >

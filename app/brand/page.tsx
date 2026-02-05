@@ -878,12 +878,7 @@ function BrandDashboardContent() {
                                     className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
                                     onClick={async () => {
                                         if (confirm("정말로 크리에이터 계정으로 전환하시겠습니까?")) {
-                                            try {
-                                                await switchRole('influencer');
-                                                router.push('/creator');
-                                            } catch (e) {
-                                                alert("전환 중 오류가 발생했습니다.");
-                                            }
+                                            await switchRole('influencer');
                                         }
                                     }}
                                 >

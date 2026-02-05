@@ -839,32 +839,51 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }, [user, supabase])
 
     const switchRole = React.useCallback(async (newRole: 'brand' | 'influencer') => {
-        if (!user) return
+        if (!user) {
+            alert("로그인 세션이 확인되지 않습니다.")
+            return
+        }
 
         try {
-            console.log(`[switchRole] Switching user ${user.id} to ${newRole}`)
+            console.log(`[switchRole] Attempting switch to: ${newRole} for user: ${user.id}`)
 
-            // 1. Update profiles table
+            // 1. Update profiles table - this is the source of truth for UI
             const { error: profileError } = await supabase
                 .from('profiles')
-                .update({ role: newRole })
+                .update({
+                    role: newRole,
+                    updated_at: new Date().toISOString()
+                })
                 .eq('id', user.id)
 
-            if (profileError) throw profileError
+            if (profileError) {
+                console.error('[switchRole] Profile DB error:', profileError)
+                throw new Error(`DB 업데이트 실패: ${profileError.message}`)
+            }
 
-            // 2. Update Auth metadata
+            // 2. Update Auth metadata - this is used by middleware/trigger
             const { error: authError } = await supabase.auth.updateUser({
                 data: { role: newRole }
             })
 
-            if (authError) throw authError
+            if (authError) {
+                console.error('[switchRole] Auth metadata error:', authError)
+                // We continue even if this fails as DB is more important, but it's a warning
+            }
+
+            console.log('[switchRole] Switching local state and reloading...')
 
             // 3. Update local state
             setUser(prev => prev ? { ...prev, type: newRole } : null)
-            console.log('[switchRole] Role switch successful')
+
+            alert("계정 유형이 성공적으로 변경되었습니다. 새로운 대시보드로 이동합니다.")
+
+            // 4. Force hard reload to the new dashboard to ensure everything (middleware, context) is fresh
+            window.location.href = newRole === 'brand' ? '/brand' : '/creator'
 
         } catch (error: any) {
-            console.error('[switchRole] Error:', error)
+            console.error('[switchRole] Critical switch error:', error)
+            alert(`전환 실패: ${error.message || "알 수 없는 오류"}`)
             throw error
         }
     }, [user, supabase])
