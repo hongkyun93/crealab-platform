@@ -1070,8 +1070,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
 
     const addProduct = async (newProduct: Omit<Product, "id" | "brandId" | "brandName">) => {
-        if (!user) return
+        if (!user) {
+            console.error('[addProduct] No user session found')
+            return
+        }
 
+        console.log('[addProduct] Starting product insert for user:', user.id)
         try {
             const productData = {
                 brand_id: user.id,
@@ -1085,35 +1089,62 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 website_url: newProduct.link
             }
 
-            const { data, error } = await supabase
-                .from('brand_products')
-                .insert(productData)
-                .select()
-                .single()
+            console.log('[addProduct] Payload:', productData)
 
-            if (error) throw error
+            let data: any = null;
+            let error: any = null;
+            let retries = 0;
+            const maxRetries = 2;
+
+            while (retries <= maxRetries) {
+                const result = await supabase
+                    .from('brand_products')
+                    .insert(productData)
+                    .select()
+                    .single()
+
+                data = result.data;
+                error = result.error;
+
+                if (error) {
+                    const isAbortError = error.message?.includes('AbortError') || error.code === 'ABORTED' || error.message?.includes('fetch');
+                    if (isAbortError && retries < maxRetries) {
+                        retries++;
+                        console.warn(`[addProduct] Insert aborted/failed (retry ${retries}/${maxRetries})...`);
+                        await new Promise(resolve => setTimeout(resolve, 500 * retries));
+                        continue;
+                    }
+                }
+                break;
+            }
+
+            if (error) {
+                console.error('[addProduct] DB Error:', error)
+                throw error
+            }
 
             if (data) {
+                console.log('[addProduct] Insert successful, ID:', data.id)
                 const product: Product = {
                     id: data.id,
                     brandId: user.id,
                     brandName: user.name,
                     name: data.name,
                     price: data.price,
-                    image: data.image_url,
-                    link: data.website_url,
-                    points: data.selling_points,
-                    shots: data.required_shots,
+                    image: data.image_url || "📦",
                     category: data.category,
                     description: data.description,
+                    points: data.selling_points,
+                    shots: data.required_shots,
+                    link: data.website_url,
                     createdAt: data.created_at
                 }
                 setProducts(prev => [product, ...prev])
                 return product
             }
         } catch (e: any) {
-            console.error("Failed to add product:", e)
-            alert(`제품 등록에 실패했습니다: ${e.message}`)
+            console.error("[addProduct] Exception:", e)
+            alert(`제품 등록 실패: ${e.message || "알 수 없는 오류"}`)
             throw e
         }
     }

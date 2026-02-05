@@ -145,8 +145,8 @@ function BrandDashboardContent() {
 
             setNewProductImage(publicUrl)
         } catch (error: any) {
-            console.error('Error uploading image:', error)
-            alert('이미지 업로드에 실패했습니다.')
+            console.error('[handleImageUpload] Error uploading image:', error)
+            alert(`이미지 업로드에 실패했습니다: ${error.message || "알 수 없는 오류"}`)
         } finally {
             setIsImageUploading(false)
         }
@@ -330,13 +330,19 @@ function BrandDashboardContent() {
 
 
     const handleUploadProduct = async () => {
-        // Prevent duplicate submissions
+        // Prevent duplicate submissions or submitting while image is still uploading
         if (isUploading) return
+        if (isImageUploading) {
+            alert("이미지 업로드가 아직 완료되지 않았습니다. 잠시만 기다려주세요.")
+            return
+        }
 
         if (!newProductName || !newProductCategory) {
             alert("제품명과 카테고리는 필수입니다.")
             return
         }
+
+        console.log('[handleUploadProduct] Starting upload for:', newProductName)
         setIsUploading(true)
         try {
             const isEditing = !!editingProductId
@@ -383,6 +389,7 @@ function BrandDashboardContent() {
             setEditingProductId(null)
 
             setProductModalOpen(false)
+            console.log('[handleUploadProduct] Success!')
             alert(isEditing ? "제품이 성공적으로 수정되었습니다!" : "제품이 성공적으로 등록되었습니다!")
         } catch (e: any) {
             console.error("Product upload error:", e)
