@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Calendar, Plus, Package, Send } from "lucide-react"
+import { ArrowLeft, Calendar, Plus, Package, Send, Sparkles, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -39,6 +39,51 @@ export default function NewEventPage() {
     const [description, setDescription] = useState("")
     const [guide, setGuide] = useState("")
     const [customTags, setCustomTags] = useState("")
+
+    const [isGenerating, setIsGenerating] = useState(false)
+
+    const handleGenerateAI = async () => {
+        if (!title) {
+            alert("먼저 모먼트 제목을 입력해주세요!")
+            return
+        }
+        if (selectedTags.length === 0) {
+            alert("카테고리를 최소 1개 선택해주세요!")
+            return
+        }
+
+        setIsGenerating(true)
+        try {
+            const response = await fetch("/api/generate-description", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    prompt: title + (targetProduct ? ` (희망 협찬: ${targetProduct})` : ""),
+                    category: selectedTags[0]
+                }),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                if (data.message && data.message.includes("GEMINI_API_KEY")) {
+                    alert("구글 API 키가 설정되지 않았습니다. 개발자에게 문의하거나 .env.local 파일을 확인해주세요.")
+                } else {
+                    throw new Error(data.error || "Failed to generate")
+                }
+                return
+            }
+
+            setDescription(data.result)
+        } catch (error) {
+            console.error("AI Error:", error)
+            alert("AI 작문 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
+        } finally {
+            setIsGenerating(false)
+        }
+    }
 
     const toggleTag = (tag: string) => {
         setSelectedTags(prev =>
@@ -233,7 +278,24 @@ export default function NewEventPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="description">상세 설명</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="description">상세 설명</Label>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleGenerateAI}
+                                    disabled={isGenerating}
+                                    className="h-7 text-xs gap-1.5 border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
+                                >
+                                    {isGenerating ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="h-3 w-3 text-yellow-500" />
+                                    )}
+                                    AI 작문 도우미
+                                </Button>
+                            </div>
                             <Textarea
                                 id="description"
                                 placeholder="어떤 상황이고 어떤 제품이 필요한지 자세히 적어주세요.&#10;예: 25평 아파트로 이사하게 되었습니다. 거실 커튼과 조명을 바꾸고 싶은데..."
