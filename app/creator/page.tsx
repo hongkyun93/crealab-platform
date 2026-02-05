@@ -439,6 +439,9 @@ function InfluencerDashboardContent() {
                                                     <h4 className="font-bold truncate text-sm">{item.influencer}</h4>
                                                 </div>
                                                 <p className="text-xs text-muted-foreground truncate">{item.handle}</p>
+                                                <span className="text-[10px] font-medium bg-secondary/50 px-2 py-0.5 rounded-full mt-1 inline-block">
+                                                    {(item.followers || 0).toLocaleString()} 팔로워
+                                                </span>
                                             </div>
                                         </CardHeader>
                                         <CardContent className="space-y-3 flex-1">
