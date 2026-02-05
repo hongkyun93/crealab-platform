@@ -12,10 +12,10 @@ export async function POST(req: Request) {
                 { status: 500 }
             );
         }
-
+        // V1.4.3 - Version badge update (interpreted as a comment to maintain syntactical correctness)
         const genAI = new GoogleGenerativeAI(apiKey);
-        // 키 설정 완료됨. 다시 가벼운 플래시 모델 사용
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // 최신 버전 플래시 모델 시도 (alias 사용)
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         const systemPrompt = `
     당신은 인플루언서 마케팅 전문가이자 전문 카피라이터입니다.
