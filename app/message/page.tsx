@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { MoreVertical, Paperclip, Search, Send, Phone, Video, BadgeCheck } from "lucide-react"
 import { useState, useRef, useEffect, useMemo } from "react"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform, MOCK_INFLUENCER_USER } from "@/components/providers/platform-provider"
 
 export default function MessagePage() {
     const { user, messages: allMessages, sendMessage, brandProposals } = usePlatform()
@@ -18,6 +18,8 @@ export default function MessagePage() {
     const [isComposing, setIsComposing] = useState(false)
     const [isSending, setIsSending] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
+
+    const displayUser = user || MOCK_INFLUENCER_USER
 
     // Helper to render Proposal Card in Chat
     const renderProposalCard = (proposalId: string) => {
@@ -56,7 +58,7 @@ export default function MessagePage() {
 
     // Compute threads from messages
     const threads = useMemo(() => {
-        if (!user) return []
+        if (!displayUser) return []
         const groups: Record<string, {
             id: string,
             user: string,
@@ -70,7 +72,7 @@ export default function MessagePage() {
         }> = {}
 
         allMessages.forEach(msg => {
-            const isMe = msg.senderId === user.id
+            const isMe = msg.senderId === displayUser.id
             const otherId = isMe ? msg.receiverId : msg.senderId
             const otherName = isMe ? msg.receiverName : msg.senderName
             const otherAvatar = isMe ? msg.receiverAvatar : msg.senderAvatar
@@ -103,7 +105,7 @@ export default function MessagePage() {
         return Object.values(groups).sort((a, b) =>
             new Date(b.time).getTime() - new Date(a.time).getTime()
         )
-    }, [allMessages, user])
+    }, [allMessages, displayUser])
 
     // Set initial active thread if none selected
     useEffect(() => {
@@ -162,15 +164,6 @@ export default function MessagePage() {
             hour: '2-digit',
             minute: '2-digit'
         })
-    }
-
-    if (!user) {
-        return (
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-                <p className="text-muted-foreground mb-4">로그인이 필요합니다.</p>
-                <Button onClick={() => window.location.href = '/login'}>로그인하러 가기</Button>
-            </div>
-        )
     }
 
     return (
@@ -287,7 +280,7 @@ export default function MessagePage() {
                                 <ScrollArea className="flex-1 p-6 bg-muted/5">
                                     <div className="flex flex-col gap-6 max-w-3xl mx-auto">
                                         {activeThread.messages.map((msg, index) => {
-                                            const isMe = msg.senderId === user.id
+                                            const isMe = msg.senderId === displayUser.id
 
                                             return (
                                                 <div key={msg.id} className={`flex gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>

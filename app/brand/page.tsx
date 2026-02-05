@@ -40,7 +40,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
 import { useEffect, useState, Suspense, useRef } from "react"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform, MOCK_BRAND_USER } from "@/components/providers/platform-provider"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -77,6 +77,9 @@ function BrandDashboardContent() {
         updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
         switchRole
     } = usePlatform()
+
+    const displayUser = user || MOCK_BRAND_USER
+
 
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -180,18 +183,17 @@ function BrandDashboardContent() {
     const [isSaving, setIsSaving] = useState(false)
 
     useEffect(() => {
-        if (user) {
-            setEditName(user.name || "")
-            setEditWebsite(user.website || "")
-            setEditBio(user.bio || "")
+        if (displayUser) {
+            setEditName(displayUser.name || "")
+            setEditWebsite(displayUser.website || "")
+            setEditBio(displayUser.bio || "")
         }
-    }, [user])
+    }, [displayUser])
 
     useEffect(() => {
         if (!isLoading && !user) {
-            router.push('/login')
-        } else if (user && user.type === 'influencer') {
-            // Redirect influencers to their owner dashboard
+            // router.push('/login') // Guest browsing allowed
+        } else if (user && user.type === 'influencer' && user.id !== 'guest_influencer') {
             router.push('/creator')
         }
     }, [user, router, isLoading])

@@ -37,7 +37,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-6 flex items-center space-x-2">
                         <span className="font-bold text-xl tracking-tight">Creadypick.</span>
-                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full">V1.30</span>
+                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full">V1.3</span>
                     </Link>
                     <nav className="flex items-center space-x-6 text-sm font-medium">
                         <Link
@@ -47,36 +47,29 @@ export function SiteHeader() {
                             서비스 소개
                         </Link>
 
-                        {/* Admin sees everything */}
-                        {(!user || user.type === 'admin' || user.type === 'brand') && (
-                            <Link
-                                href="/brand"
-                                className={`transition-colors hover:text-foreground/80 ${isActive('/brand') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
-                            >
-                                {user?.type === 'brand' ? '모먼트 둘러보기' : '브랜드'}
-                            </Link>
-                        )}
+                        <Link
+                            href="/brand"
+                            className={`transition-colors hover:text-foreground/80 ${isActive('/brand') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                        >
+                            브랜드
+                        </Link>
 
-                        {(!user || user.type === 'admin' || user.type === 'influencer') && (
-                            <Link
-                                href="/creator"
-                                className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
-                            >
-                                크리에이터
-                            </Link>
-                        )}
+                        <Link
+                            href="/creator"
+                            className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                        >
+                            크리에이터
+                        </Link>
 
-                        {user && (
-                            <Link
-                                href="/message"
-                                className={`relative transition-colors hover:text-foreground/80 ${isActive('/message') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
-                            >
-                                메시지
-                                {messages.filter(m => m.receiverId === user.id && !m.read).length > 0 && (
-                                    <span className="absolute -top-1 -right-2 h-2 w-2 bg-red-500 rounded-full border border-background"></span>
-                                )}
-                            </Link>
-                        )}
+                        <Link
+                            href="/message"
+                            className={`relative transition-colors hover:text-foreground/80 ${isActive('/message') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                        >
+                            메시지
+                            {user && messages.filter(m => m.receiverId === user.id && !m.read).length > 0 && (
+                                <span className="absolute -top-1 -right-2 h-2 w-2 bg-red-500 rounded-full border border-background"></span>
+                            )}
+                        </Link>
                     </nav>
                 </div>
                 <div className="ml-auto flex items-center space-x-4">

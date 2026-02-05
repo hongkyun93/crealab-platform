@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift } from "lucide-react"
 import Link from "next/link"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform, MOCK_INFLUENCER_USER } from "@/components/providers/platform-provider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -52,6 +52,9 @@ function InfluencerDashboardContent() {
         brandProposals, updateBrandProposal, sendMessage, messages: allMessages, deleteEvent,
         products, switchRole, updateEvent
     } = usePlatform()
+
+    const displayUser = user || MOCK_INFLUENCER_USER
+
     const router = useRouter()
     const searchParams = useSearchParams()
     const initialView = searchParams.get('view') || "dashboard"
@@ -59,10 +62,10 @@ function InfluencerDashboardContent() {
     const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
 
     // Filter events (Admins see all, users see theirs)
-    const displayEvents = user?.type === 'admin' ? events : (user ? events.filter((e: any) => e.influencerId === user.id) : [])
+    const displayEvents = displayUser.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser.id || e.handle === displayUser.handle)
     const pastMoments = displayEvents.filter((e: any) => e.status === 'completed')
     const upcomingMoments = displayEvents.filter((e: any) => e.status !== 'completed')
-    const myEvents = user ? events.filter((e: any) => e.influencerId === user.id) : [] // For personal stats
+    const myEvents = events.filter((e: any) => e.influencerId === displayUser.id || e.handle === displayUser.handle) // For personal stats
 
     const filteredProposalsByMoment = selectedMomentId
         ? (brandProposals?.filter((p: any) => p.event_id === selectedMomentId) || [])
@@ -142,14 +145,14 @@ function InfluencerDashboardContent() {
 
     // Initialize state when user loads or view changes
     useEffect(() => {
-        if (user) {
-            setEditName(user.name || "")
-            setEditBio(user.bio || "")
-            setEditHandle(user.handle || "")
-            setEditFollowers(user.followers?.toString() || "")
-            setSelectedTags(user.tags || [])
+        if (displayUser) {
+            setEditName(displayUser.name || "")
+            setEditBio(displayUser.bio || "")
+            setEditHandle(displayUser.handle || "")
+            setEditFollowers(displayUser.followers?.toString() || "")
+            setSelectedTags(displayUser.tags || [])
         }
-    }, [user, currentView])
+    }, [displayUser, currentView])
 
     // Onboarding Check: Automatically show settings if crucial info is missing
     useEffect(() => {
@@ -173,14 +176,14 @@ function InfluencerDashboardContent() {
 
     useEffect(() => {
         if (!isLoading && !user) {
-            router.push("/login")
-        } else if (user && user.type === 'brand') {
+            // router.push("/login") // Guest browsing allowed
+        } else if (user && user.type === 'brand' && user.id !== 'guest_influencer') {
             router.push('/brand')
         }
     }, [isLoading, user, router])
 
     if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>
-    if (!user) return null
+    // if (!user) return null // Allow guest view
 
 
 
@@ -260,10 +263,11 @@ function InfluencerDashboardContent() {
     }
 
     const filteredProposals = (status: string) => {
-        if (status === 'new') return brandProposals?.filter(p => (!p.status || p.status === 'offered') && p.influencer_id === user.id)
-        if (status === 'applied') return brandProposals?.filter(p => p.status === 'applied' && p.influencer_id === user.id)
-        return brandProposals?.filter(p => p.status === status && p.influencer_id === user.id)
+        if (status === 'new') return brandProposals?.filter(p => (!p.status || p.status === 'offered') && p.influencer_id === displayUser.id)
+        if (status === 'applied') return brandProposals?.filter(p => p.status === 'applied' && p.influencer_id === displayUser.id)
+        return brandProposals?.filter(p => p.status === status && p.influencer_id === displayUser.id)
     }
+
 
 
     const handleFollowerPreset = (val: number) => {
@@ -292,24 +296,26 @@ function InfluencerDashboardContent() {
                             <div className="h-32 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
                             <CardContent className="relative pt-12 pb-8 px-6">
                                 <div className="absolute -top-12 left-6 h-24 w-24 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden flex items-center justify-center font-bold text-3xl text-primary">
-                                    {user.avatar ? (
-                                        <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                                    {displayUser?.avatar ? (
+                                        <img src={displayUser.avatar} alt={displayUser.name} className="h-full w-full object-cover" />
                                     ) : (
-                                        user.name[0]
+                                        displayUser?.name?.[0] || '?'
                                     )}
                                 </div>
 
+
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
-                                        <h2 className="text-2xl font-bold">{user.name}</h2>
-                                        {user.handle && <span className="text-primary font-medium">{user.handle}</span>}
+                                        <h2 className="text-2xl font-bold">{displayUser?.name}</h2>
+                                        {displayUser?.handle && <span className="text-primary font-medium">{displayUser.handle}</span>}
                                     </div>
-                                    <p className="text-muted-foreground">{user.bio || "아직 소개글이 없습니다."}</p>
+                                    <p className="text-muted-foreground">{displayUser?.bio || "아직 소개글이 없습니다."}</p>
                                 </div>
+
 
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
                                     <div className="p-4 bg-muted/50 rounded-xl text-center">
-                                        <div className="text-2xl font-bold text-primary">{user.followers?.toLocaleString() || 0}</div>
+                                        <div className="text-2xl font-bold text-primary">{displayUser?.followers?.toLocaleString() || 0}</div>
                                         <div className="text-xs text-muted-foreground">팔로워</div>
                                     </div>
                                     <div className="p-4 bg-muted/50 rounded-xl text-center">
@@ -321,18 +327,19 @@ function InfluencerDashboardContent() {
                                         <div className="text-xs text-muted-foreground">진행중 협업</div>
                                     </div>
                                     <div className="p-4 bg-muted/50 rounded-xl text-center">
-                                        <div className="text-2xl font-bold text-indigo-600">{user.tags?.length || 0}</div>
+                                        <div className="text-2xl font-bold text-indigo-600">{displayUser?.tags?.length || 0}</div>
                                         <div className="text-xs text-muted-foreground">보유 태그</div>
                                     </div>
                                 </div>
+
 
                                 <div className="mt-8 space-y-4">
                                     <h3 className="font-bold flex items-center gap-2">
                                         <Rocket className="h-4 w-4 text-primary" /> 활동 키워드
                                     </h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {user.tags && user.tags.length > 0 ? (
-                                            user.tags.map((tag: string) => (
+                                        {displayUser?.tags && displayUser.tags.length > 0 ? (
+                                            displayUser.tags.map((tag: string) => (
                                                 <div key={tag} className="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full font-medium">
                                                     {tag}
                                                 </div>
@@ -341,6 +348,7 @@ function InfluencerDashboardContent() {
                                             <span className="text-sm text-muted-foreground italic">아직 태그가 설정되지 않았습니다.</span>
                                         )}
                                     </div>
+
                                 </div>
                             </CardContent>
                         </Card>

@@ -14,6 +14,7 @@ export type User = {
     website?: string
     handle?: string
     followers?: number
+    isMock?: boolean
 }
 
 export type Notification = {
@@ -38,6 +39,7 @@ export type Campaign = {
     eventDate?: string
     postingDate?: string
     targetProduct?: string
+    isMock?: boolean
 }
 
 export type InfluencerEvent = {
@@ -58,6 +60,7 @@ export type InfluencerEvent = {
     postingDate?: string // 콘텐츠 업로드 시기 (e.g. 2026년 4월)
     guide?: string
     status?: string // 'active' | 'completed' - 모먼트 상태
+    isMock?: boolean
 }
 
 export type Product = {
@@ -73,6 +76,7 @@ export type Product = {
     category: string
     description?: string
     createdAt?: string
+    isMock?: boolean
 }
 
 export type Proposal = {
@@ -117,15 +121,41 @@ export type BrandProposal = {
     brand_name?: string
     influencer_name?: string
     event_id?: string
+    isMock?: boolean
 }
 
 
 
 // --- Initial Mock Data ---
-import { MOCK_PRODUCTS } from "@/lib/mock-data"
+import { MOCK_PRODUCTS, MOCK_EVENTS, MOCK_BRAND_PROPOSALS, MOCK_MESSAGES } from "@/lib/mock-data"
 import { createClient } from "@/lib/supabase/client"
 
+export const MOCK_INFLUENCER_USER: User = {
+    id: "guest_influencer",
+    name: "김수민",
+    type: "influencer",
+    handle: "@im_breath_ing",
+    followers: 5851,
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
+    bio: "안녕하세요! 일상을 기록하는 크리에이터 김수민입니다.",
+    tags: ["💄 뷰티", "✈️ 여행", "🥗 다이어트", "💍 웨딩/결혼"],
+    isMock: true
+}
+
+export const MOCK_BRAND_USER: User = {
+    id: "guest_brand",
+    name: "삼성전자",
+    type: "brand",
+    handle: "@samsung_korea",
+    avatar: "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=400&h=400&fit=crop",
+    bio: "기술로 세상을 더 나쁘게... 아니, 더 좋게 만듭니다.",
+    isMock: true
+}
+
 const INITIAL_PRODUCTS: Product[] = MOCK_PRODUCTS
+const INITIAL_EVENTS: InfluencerEvent[] = MOCK_EVENTS
+const INITIAL_PROPOSALS: BrandProposal[] = MOCK_BRAND_PROPOSALS
+const INITIAL_MESSAGES: Message[] = MOCK_MESSAGES
 const INITIAL_CAMPAIGNS: Campaign[] = [
     {
         id: 1,
@@ -137,6 +167,7 @@ const INITIAL_CAMPAIGNS: Campaign[] = [
         description: "새로운 수면 측정 기능을 강조해주세요.",
         matchScore: 98,
         date: "2024-03-01",
+        isMock: true
     },
     {
         id: 2,
@@ -148,6 +179,7 @@ const INITIAL_CAMPAIGNS: Campaign[] = [
         description: "편안한 착화감과 데일리 런닝에 적합함을 어필.",
         matchScore: 85,
         date: "2024-02-28",
+        isMock: true
     },
 ]
 
@@ -166,6 +198,7 @@ export type Message = {
     senderAvatar?: string
     receiverName?: string
     receiverAvatar?: string
+    isMock?: boolean
 }
 
 interface PlatformContextType {
@@ -214,10 +247,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
     const [supabase] = useState(() => createClient())
     const [user, setUser] = useState<User | null>(null)
     const [campaigns, setCampaigns] = useState<Campaign[]>(INITIAL_CAMPAIGNS)
-    const [events, setEvents] = useState<InfluencerEvent[]>([])
+    const [events, setEvents] = useState<InfluencerEvent[]>(INITIAL_EVENTS)
     const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS)
     const [proposals, setProposals] = useState<Proposal[]>([])
-    const [brandProposals, setBrandProposals] = useState<BrandProposal[]>([])
+    const [brandProposals, setBrandProposals] = useState<BrandProposal[]>(INITIAL_PROPOSALS)
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [messages, setMessages] = useState<Message[]>([])
     const [isInitialized, setIsInitialized] = useState(false)
@@ -446,9 +479,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 fetchEvents(session.user.id)
                 fetchMessages(session.user.id)
             } else if (!session && mounted) {
+                // Not logged in -> Show Mock Data for guest browsing
                 setUser(null)
-                setEvents([])
-                setMessages([])
+                setEvents(INITIAL_EVENTS)
+                setProducts(INITIAL_PRODUCTS)
+                setBrandProposals(INITIAL_PROPOSALS)
+                setMessages(INITIAL_MESSAGES)
             }
             if (mounted) setIsAuthChecked(true)
         })
@@ -933,7 +969,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     category: newEvent.category,
                     guide: newEvent.guide,
                     tags: newEvent.tags,
-                    status: 'recruiting'
+                    status: 'recruiting',
+                    is_mock: user.isMock || false
                 })
                 .select()
                 .single()
@@ -952,7 +989,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     verified: false,
                     followers: user.followers || 0,
                     guide: newEvent.guide,
-                    date: new Date().toISOString().split('T')[0]
+                    date: new Date().toISOString().split('T')[0],
+                    isMock: user.isMock || false
                 }
                 setEvents([event, ...events])
                 return true
@@ -1091,7 +1129,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 category: newProduct.category,
                 selling_points: newProduct.points,
                 required_shots: newProduct.shots,
-                website_url: newProduct.link
+                website_url: newProduct.link,
+                is_mock: user.isMock || false
             }
 
             console.log('[addProduct] Payload:', productData)
@@ -1122,7 +1161,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     points: data.selling_points,
                     shots: data.required_shots,
                     link: data.website_url,
-                    createdAt: data.created_at
+                    createdAt: data.created_at,
+                    isMock: user.isMock || false
                 }
                 setProducts(prev => [product, ...prev])
                 return product
@@ -1263,7 +1303,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .from('brand_proposals')
                 .insert({
                     ...proposalData,
-                    status: 'offered'
+                    status: 'offered',
+                    is_mock: user.isMock || false
                 })
                 .select()
                 .single()
@@ -1288,7 +1329,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     proposal_id: proposalId,
                     sender_id: user.id,
                     receiver_id: toUserId,
-                    content
+                    content,
+                    is_mock: user.isMock || false
                 })
                 .select()
                 .single()
@@ -1304,7 +1346,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 timestamp: data.created_at,
                 read: false,
                 senderName: user.name,
-                senderAvatar: user.avatar
+                senderAvatar: user.avatar,
+                isMock: user.isMock || false
             }
             setMessages(prev => [...prev, newMessage])
         } catch (e: any) {
