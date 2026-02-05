@@ -1201,32 +1201,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (updates.shots !== undefined) productData.required_shots = updates.shots
             if (updates.link !== undefined) productData.website_url = updates.link
 
-            let data: any = null;
-            let error: any = null;
-            let retries = 0;
-            const maxRetries = 2;
-
-            while (retries <= maxRetries) {
-                const result = await supabase
-                    .from('brand_products')
-                    .update(productData)
-                    .eq('id', id)
-                    .select()
-
-                data = result.data ? result.data[0] : null;
-                error = result.error;
-
-                if (error) {
-                    const isAbortError = error.message?.includes('AbortError') || error.code === 'ABORTED' || error.message?.includes('fetch');
-                    if (isAbortError && retries < maxRetries) {
-                        retries++;
-                        console.warn(`[updateProduct] Update aborted/failed (retry ${retries}/${maxRetries})...`);
-                        await new Promise(resolve => setTimeout(resolve, 500 * retries));
-                        continue;
-                    }
-                }
-                break;
-            }
+            // Simple update call without complex retry logic
+            const { data, error } = await supabase
+                .from('brand_products')
+                .update(productData)
+                .eq('id', id)
+                .select()
+                .single()
 
             if (error) {
                 console.error('[updateProduct] DB Error:', error)
