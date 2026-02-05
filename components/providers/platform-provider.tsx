@@ -215,10 +215,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [messages, setMessages] = useState<Message[]>([])
     const [isInitialized, setIsInitialized] = useState(false)
-    const [isAuthChecked, setIsAuthChecked] = useState(false) // Wait for Supabase check
+    const [isAuthChecked, setIsAuthChecked] = useState(false)
+
+    useEffect(() => {
+        console.log('[PlatformProvider] COMPONENT MOUNTED')
+        return () => {
+            console.log('[PlatformProvider] COMPONENT UNMOUNTED')
+        }
+    }, [])
 
     // Initialize state with Server Session if available
     useEffect(() => {
+        console.log('[PlatformProvider] initialSession prop:', initialSession?.user?.id || 'none')
         if (initialSession?.user) {
             // Need to fetch profile even if we have session, but we can optimistically set basic user
             const initUserFromSession = async () => {
@@ -721,7 +729,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const updateUser = async (data: Partial<User>) => {
+    const updateUser = React.useCallback(async (data: Partial<User>) => {
         console.log('[updateUser] Start update process matching user.id:', user?.id)
         console.log('[updateUser] Values to update:', data)
 
@@ -741,10 +749,29 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (data.website !== undefined) profileUpdates.website = data.website
 
             console.log('[updateUser] Sending profile update to Supabase...', profileUpdates)
-            const profileResult = await supabase
-                .from('profiles')
-                .update(profileUpdates)
-                .eq('id', user.id)
+
+            // Retry logic for potential AbortError
+            let profileResult: any = null;
+            let retries = 0;
+            const maxRetries = 2;
+
+            while (retries <= maxRetries) {
+                profileResult = await supabase
+                    .from('profiles')
+                    .update(profileUpdates)
+                    .eq('id', user.id)
+
+                if (profileResult.error) {
+                    const isAbortError = profileResult.error.message?.includes('AbortError') || profileResult.error.code === 'ABORTED';
+                    if (isAbortError && retries < maxRetries) {
+                        retries++;
+                        console.warn(`[updateUser] Profile update aborted (retry ${retries}/${maxRetries})...`);
+                        await new Promise(resolve => setTimeout(resolve, 500 * retries));
+                        continue;
+                    }
+                }
+                break;
+            }
 
             if (profileResult.error) {
                 console.error('[updateUser] Profile update DB error:', profileResult.error)
@@ -775,9 +802,25 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 }
 
                 console.log('[updateUser] Upserting influencer_details...', detailsUpdates)
-                const detailsResult = await supabase
-                    .from('influencer_details')
-                    .upsert(detailsUpdates, { onConflict: 'id' })
+
+                let detailsResult: any = null;
+                let detailsRetries = 0;
+                while (detailsRetries <= maxRetries) {
+                    detailsResult = await supabase
+                        .from('influencer_details')
+                        .upsert(detailsUpdates, { onConflict: 'id' })
+
+                    if (detailsResult.error) {
+                        const isAbortError = detailsResult.error.message?.includes('AbortError') || detailsResult.error.code === 'ABORTED';
+                        if (isAbortError && detailsRetries < maxRetries) {
+                            detailsRetries++;
+                            console.warn(`[updateUser] Details update aborted (retry ${detailsRetries}/${maxRetries})...`);
+                            await new Promise(resolve => setTimeout(resolve, 500 * detailsRetries));
+                            continue;
+                        }
+                    }
+                    break;
+                }
 
                 if (detailsResult.error) {
                     console.warn('[updateUser] Influencer details error (non-fatal):', detailsResult.error)
@@ -796,7 +839,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             console.error('[updateUser] Critical Error:', error)
             throw error
         }
-    }
+    }, [user, supabase])
 
     const addCampaign = (newCampaign: Omit<Campaign, "id" | "date" | "matchScore">) => {
         const campaign: Campaign = {
