@@ -34,7 +34,8 @@ import {
     ShoppingBag,
     Image as ImageIcon,
     ExternalLink,
-    Upload
+    Upload,
+    Gift
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
