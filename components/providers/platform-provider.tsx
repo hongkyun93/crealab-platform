@@ -1329,8 +1329,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     proposal_id: proposalId,
                     sender_id: user.id,
                     receiver_id: toUserId,
-                    content,
-                    is_mock: user.isMock || false
+                    content
                 })
                 .select()
                 .single()
@@ -1347,7 +1346,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 read: false,
                 senderName: user.name,
                 senderAvatar: user.avatar,
-                isMock: user.isMock || false
+                isMock: false
             }
             setMessages(prev => [...prev, newMessage])
         } catch (e: any) {
