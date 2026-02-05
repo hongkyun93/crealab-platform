@@ -111,7 +111,7 @@ export default function NewEventPage() {
                                 onChange={(e) => setTitle(e.target.value)}
                             />
                             <p className="text-xs text-muted-foreground">
-                                브랜드가 한눈에 알아볼 수 있는 직관적인 제목을 지어주세요.
+                                브랜드가 한눈에 알아볼 수 있는 직관적인 제목을 지어주세요. (예: 비행기에서 사용할 마스크팩 광고할 준비가 되었어요.)
                             </p>
                         </div>
 

@@ -35,6 +35,9 @@ export type Campaign = {
     description: string
     matchScore?: number // Mock score
     date: string // Created date
+    eventDate?: string
+    postingDate?: string
+    targetProduct?: string
 }
 
 export type InfluencerEvent = {

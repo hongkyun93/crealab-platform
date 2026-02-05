@@ -446,8 +446,21 @@ function InfluencerDashboardContent() {
                                         </CardHeader>
                                         <CardContent className="space-y-3 flex-1">
                                             <h3 className="font-bold text-sm line-clamp-2">{item.event}</h3>
-                                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                                <Calendar className="h-3 w-3" /> {item.eventDate}
+                                            <div className="space-y-1 py-1">
+                                                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                    <Calendar className="h-3 w-3 shrink-0" />
+                                                    <span className="font-medium text-foreground/80">일정:</span> {item.eventDate}
+                                                </div>
+                                                {item.postingDate && (
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                        <Send className="h-3 w-3 shrink-0" />
+                                                        <span className="font-medium text-foreground/80">업로드:</span> {item.postingDate}
+                                                    </div>
+                                                )}
+                                                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                    <Gift className="h-3 w-3 shrink-0" />
+                                                    <span className="font-medium text-foreground/80">희망:</span> {item.targetProduct}
+                                                </div>
                                             </div>
                                             <p className="text-xs text-foreground/70 line-clamp-2">{item.description}</p>
                                             <div className="flex flex-wrap gap-1">

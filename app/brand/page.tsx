@@ -659,15 +659,34 @@ function BrandDashboardContent() {
                                         </CardHeader>
                                         <CardContent>
                                             <p className="text-sm text-muted-foreground line-clamp-2">{c.description}</p>
+                                            <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                                                    <span className="font-medium">일정:</span> {c.eventDate || "미정"}
+                                                </div>
+                                                {c.postingDate && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Send className="h-3.5 w-3.5 text-primary/70" />
+                                                        <span className="font-medium">업로드:</span> {c.postingDate}
+                                                    </div>
+                                                )}
+                                                <div className="flex items-center gap-1.5">
+                                                    <Gift className="h-3.5 w-3.5 text-primary/70" />
+                                                    <span className="font-medium">희망제품:</span> {c.targetProduct || "미정"}
+                                                </div>
+                                            </div>
                                         </CardContent>
                                         <CardFooter className="border-t pt-4">
-                                            <span className="text-xs font-medium text-emerald-600">진행 중 (지원자 0명)</span>
+                                            <span className="text-xs font-medium text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                                                모집 중
+                                            </span>
                                         </CardFooter>
                                     </Card>
                                 ))}
                             </div>
-                        )}
-                    </div>
+                        )
+                        }
+                    </div >
                 )
             case "proposals":
                 const myReceivedProposals = brandProposals.filter(p => p.brand_id === user?.id && p.status === 'applied')
