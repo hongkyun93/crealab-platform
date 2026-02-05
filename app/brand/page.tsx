@@ -109,6 +109,7 @@ function BrandDashboardContent() {
     const [contentType, setContentType] = useState("")
     const [message, setMessage] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [selectedCampaignId, setSelectedCampaignId] = useState<string | number | null>(null)
 
     // Product Upload State
     const [productModalOpen, setProductModalOpen] = useState(false)
@@ -691,9 +692,12 @@ function BrandDashboardContent() {
                     </div>
                 )
             case "my-campaigns":
+                const selectedCampaign = myCampaigns.find(c => c.id === selectedCampaignId)
+                const campaignProposals = proposals.filter(p => p.campaignId === selectedCampaign?.id && p.type === 'creator_apply')
+
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex items-center justify-between">
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 h-[calc(100vh-140px)] flex flex-col">
+                        <div className="flex items-center justify-between shrink-0">
                             <div>
                                 <h1 className="text-3xl font-bold tracking-tight">내 캠페인 관리</h1>
                                 <p className="text-muted-foreground mt-1">등록하신 캠페인 공고를 통해 크리에이터를 모집하세요.</p>
@@ -712,50 +716,149 @@ function BrandDashboardContent() {
                                 <Button asChild><Link href="/brand/new">캠페인 등록하기</Link></Button>
                             </Card>
                         ) : (
-                            <div className="grid gap-4 md:grid-cols-2">
-                                {myCampaigns.map((c) => (
-                                    <Card key={c.id}>
-                                        <CardHeader>
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <CardTitle className="text-lg font-bold">{c.product}</CardTitle>
-                                                    <CardDescription>{c.category} • {c.date}</CardDescription>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <Button variant="ghost" size="icon" asChild><Link href={`/brand/edit/${c.id}`}><Pencil className="h-4 w-4" /></Link></Button>
-                                                    <Button variant="ghost" size="icon" className="text-red-500" onClick={() => deleteCampaign(c.id)}><Trash2 className="h-4 w-4" /></Button>
-                                                </div>
+                            <div className="grid gap-6 lg:grid-cols-[1fr_400px] h-full overflow-hidden">
+                                {/* Left: Campaign List */}
+                                <div className="flex flex-col gap-4 overflow-y-auto pr-2 pb-20">
+                                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                                        {myCampaigns.map((c) => {
+                                            const appCount = proposals.filter(p => p.campaignId === c.id && p.type === 'creator_apply').length
+                                            const isSelected = selectedCampaignId === c.id
+
+                                            return (
+                                                <Card
+                                                    key={c.id}
+                                                    className={`cursor-pointer transition-all hover:shadow-md ${isSelected ? 'border-primary shadow-sm bg-primary/5' : ''}`}
+                                                    onClick={() => setSelectedCampaignId(c.id)}
+                                                >
+                                                    <CardHeader className="pb-3">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <Badge className="mb-2 bg-primary/10 text-primary hover:bg-primary/20 border-0">{c.category}</Badge>
+                                                                <CardTitle className="text-lg font-bold line-clamp-1">{c.product}</CardTitle>
+                                                                <CardDescription>{new Date(c.date).toLocaleDateString()}</CardDescription>
+                                                            </div>
+                                                            <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                                                                    <Link href={`/brand/edit/${c.id}`}><Pencil className="h-4 w-4" /></Link>
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => deleteCampaign(c.id)}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </CardHeader>
+                                                    <CardContent className="pb-3">
+                                                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{c.description}</p>
+                                                        <div className="flex items-center justify-between">
+                                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.status === 'active' ? 'text-emerald-600 bg-emerald-100' : 'text-gray-500 bg-gray-100'}`}>
+                                                                {c.status === 'active' ? '모집중' : '마감됨'}
+                                                            </span>
+                                                            <span className="text-xs text-muted-foreground">지원자 <strong className="text-foreground">{appCount}</strong>명</span>
+                                                        </div>
+                                                    </CardContent>
+                                                    <CardFooter className={`py-3 border-t ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted/30'}`}>
+                                                        <div className="w-full flex items-center justify-center gap-2 text-sm font-medium">
+                                                            {isSelected ? (
+                                                                <>선택됨 <ArrowRight className="h-4 w-4" /></>
+                                                            ) : (
+                                                                "지원서 보기"
+                                                            )}
+                                                        </div>
+                                                    </CardFooter>
+                                                </Card>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Right: Proposals Panel */}
+                                <div className="hidden lg:flex flex-col h-full bg-background border rounded-xl overflow-hidden shadow-sm">
+                                    <div className="p-4 border-b bg-muted/30 shrink-0">
+                                        <h3 className="font-bold flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-primary" />
+                                            지원서 목록
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {selectedCampaign
+                                                ? `'${selectedCampaign.product}' 캠페인에 지원한 크리에이터입니다.`
+                                                : "좌측에서 캠페인을 선택하여 지원서를 확인하세요."
+                                            }
+                                        </p>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10">
+                                        {!selectedCampaign ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
+                                                <Package className="h-12 w-12 opacity-20" />
+                                                <p>캠페인을 선택해주세요</p>
                                             </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p className="text-sm text-muted-foreground line-clamp-2">{c.description}</p>
-                                            <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-2">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Calendar className="h-3.5 w-3.5 text-primary/70" />
-                                                    <span className="font-medium">일정:</span> {c.eventDate || "미정"}
+                                        ) : campaignProposals.length === 0 ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
+                                                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                                                    <Bell className="h-6 w-6 opacity-20" />
                                                 </div>
-                                                {c.postingDate && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Send className="h-3.5 w-3.5 text-primary/70" />
-                                                        <span className="font-medium">업로드:</span> {c.postingDate}
-                                                    </div>
-                                                )}
-                                                <div className="flex items-center gap-1.5">
-                                                    <Gift className="h-3.5 w-3.5 text-primary/70" />
-                                                    <span className="font-medium">희망제품:</span> {c.targetProduct || "미정"}
-                                                </div>
+                                                <p>아직 도착한 지원서가 없습니다.</p>
                                             </div>
-                                        </CardContent>
-                                        <CardFooter className="border-t pt-4">
-                                            <span className="text-xs font-medium text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-                                                모집 중
-                                            </span>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
+                                        ) : (
+                                            campaignProposals.map((p: any) => (
+                                                <Card key={p.id} className="overflow-hidden border-l-4 border-l-primary hover:shadow-md transition-all">
+                                                    <CardHeader className="p-4 pb-2">
+                                                        <div className="flex justify-between items-start gap-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                                                                    {p.influencerAvatar ? (
+                                                                        <img src={p.influencerAvatar} alt={p.influencerName} className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        <span className="font-bold text-xs">{p.influencerName?.[0]}</span>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-sm">{p.influencerName}</div>
+                                                                    <div className="text-xs text-muted-foreground">{new Date(p.date).toLocaleDateString()}</div>
+                                                                </div>
+                                                            </div>
+                                                            <Badge variant={p.status === 'accepted' ? 'default' : 'secondary'} className={p.status === 'accepted' ? 'bg-emerald-500' : ''}>
+                                                                {p.status === 'accepted' ? '수락됨' : p.status === 'rejected' ? '거절됨' : '대기중'}
+                                                            </Badge>
+                                                        </div>
+                                                    </CardHeader>
+                                                    <CardContent className="p-4 pt-2 space-y-3">
+                                                        <div className="p-3 bg-muted/30 rounded-lg text-xs italic text-foreground/80 leading-relaxed">
+                                                            "{p.message}"
+                                                        </div>
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span className="text-muted-foreground">희망 원고료</span>
+                                                            <span className="font-bold">{p.cost ? `${p.cost.toLocaleString()}원` : "협의 가능"}</span>
+                                                        </div>
+                                                    </CardContent>
+                                                    <CardFooter className="p-2 border-t bg-muted/5 grid grid-cols-2 gap-2">
+                                                        {p.status !== 'accepted' && (
+                                                            <Button
+                                                                size="sm"
+                                                                className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700"
+                                                                onClick={async () => {
+                                                                    if (confirm('이 지원서를 수락하시겠습니까?')) {
+                                                                        const { updateApplicationStatus } = await import('@/app/actions/proposal')
+                                                                        await updateApplicationStatus(p.id.toString(), 'accepted')
+                                                                        alert('수락되었습니다!')
+                                                                        window.location.reload()
+                                                                    }
+                                                                }}
+                                                            >
+                                                                수락
+                                                            </Button>
+                                                        )}
+                                                        <Button size="sm" variant="outline" className="w-full h-8 text-xs" asChild>
+                                                            <Link href="/message">채팅하기</Link>
+                                                        </Button>
+                                                    </CardFooter>
+                                                </Card>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                        )
-                        }
+                        )}
                     </div >
                 )
             case "proposals":
@@ -799,8 +902,8 @@ function BrandDashboardContent() {
                                 ) : (
                                     myReceivedProposals.map((p: any) => (
                                         <Card key={p.id} className={`border-l-4 hover:shadow-sm transition-shadow ${p.status === 'accepted' ? 'border-l-emerald-500' :
-                                                p.status === 'hold' ? 'border-l-amber-500' :
-                                                    p.status === 'rejected' ? 'border-l-red-500' : 'border-l-primary'
+                                            p.status === 'hold' ? 'border-l-amber-500' :
+                                                p.status === 'rejected' ? 'border-l-red-500' : 'border-l-primary'
                                             }`}>
                                             <CardHeader className="pb-3">
                                                 <div className="flex justify-between items-start">
