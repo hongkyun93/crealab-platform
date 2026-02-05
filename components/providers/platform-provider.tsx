@@ -500,6 +500,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     targetProduct: e.target_product || "",
                     eventDate: e.event_date || "",
                     postingDate: e.posting_date || "",
+                    guide: e.guide || "",
                     status: (e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'active'
                 }))
                 setEvents(mappedEvents)
@@ -951,6 +952,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     event_date: newEvent.eventDate,
                     posting_date: newEvent.postingDate,
                     category: newEvent.category,
+                    guide: newEvent.guide,
                     tags: newEvent.tags,
                     status: 'recruiting'
                 })
@@ -970,6 +972,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     avatar: user.avatar || "",
                     verified: false,
                     followers: user.followers || 0,
+                    guide: newEvent.guide,
                     date: new Date().toISOString().split('T')[0]
                 }
                 setEvents([event, ...events])
@@ -1000,6 +1003,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // although most fields have validation
             if (updatedData.event !== undefined) dbUpdates.title = updatedData.event
             if (updatedData.description !== undefined) dbUpdates.description = updatedData.description
+            if (updatedData.guide !== undefined) dbUpdates.guide = updatedData.guide
             if (updatedData.category !== undefined) dbUpdates.category = updatedData.category
             if (updatedData.tags !== undefined) dbUpdates.tags = updatedData.tags
             if (updatedData.targetProduct !== undefined) dbUpdates.target_product = updatedData.targetProduct
