@@ -875,44 +875,7 @@ function InfluencerDashboardContent() {
                         </div>
                     </div>
                 )
-            case "analysis":
-                return (
-                    <div className="space-y-6">
-                        <h1 className="text-3xl font-bold tracking-tight">성장 분석</h1>
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <Card className="p-6">
-                                <h3 className="font-semibold mb-4">팔로워 성장 추이</h3>
-                                <div className="h-[200px] flex items-end justify-between gap-2 px-4 pb-2 border-b">
-                                    {[40, 55, 45, 70, 85, 90, 100].map((h, i) => (
-                                        <div key={i} className="w-full bg-indigo-500/20 hover:bg-indigo-500/40 transition-colors rounded-t-sm" style={{ height: `${h}%` }}></div>
-                                    ))}
-                                </div>
-                                <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-                                </div>
-                            </Card>
-                            <Card className="p-6">
-                                <h3 className="font-semibold mb-4">참여율 분석</h3>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between text-sm">
-                                        <span>평균 좋아요</span>
-                                        <span className="font-bold">1,240</span>
-                                    </div>
-                                    <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
-                                        <div className="bg-pink-500 h-full w-[70%]"></div>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span>평균 댓글</span>
-                                        <span className="font-bold">85</span>
-                                    </div>
-                                    <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
-                                        <div className="bg-pink-500 h-full w-[45%]"></div>
-                                    </div>
-                                </div>
-                            </Card>
-                        </div>
-                    </div>
-                )
+
             case "notifications":
                 return (
                     <div className="space-y-6">
@@ -1210,13 +1173,7 @@ function InfluencerDashboardContent() {
                             >
                                 <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
                             </Button>
-                            <Button
-                                variant={currentView === "analysis" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("analysis")}
-                            >
-                                <Rocket className="mr-2 h-4 w-4" /> 성장 분석
-                            </Button>
+
                             <Button
                                 variant={currentView === "notifications" ? "secondary" : "ghost"}
                                 className="w-full justify-start"

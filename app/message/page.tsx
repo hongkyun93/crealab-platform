@@ -125,6 +125,12 @@ export default function MessagePage() {
     const handleSendMessage = async () => {
         if (!messageInput.trim() || !activeThreadId || isSending) return
 
+        // Guest users cannot send messages
+        if (!user) {
+            alert("메시지를 보내려면 먼저 로그인해 주세요.")
+            return
+        }
+
         setIsSending(true)
         const content = messageInput
         setMessageInput("") // Optimistic clear
@@ -316,37 +322,50 @@ export default function MessagePage() {
 
                                 {/* Input Area */}
                                 <div className="p-4 border-t bg-background">
-                                    <div className="flex items-end gap-2 max-w-3xl mx-auto bg-muted/30 p-2 rounded-xl border focus-within:ring-1 focus-within:ring-ring transition-all">
-                                        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground shrink-0 rounded-lg hover:bg-muted">
-                                            <Paperclip className="h-4 w-4" />
-                                        </Button>
-                                        <div className="flex-1 py-1.5">
-                                            <textarea
-                                                value={messageInput}
-                                                onChange={(e) => setMessageInput(e.target.value)}
-                                                onCompositionStart={() => setIsComposing(true)}
-                                                onCompositionEnd={() => setIsComposing(false)}
-                                                onKeyDown={handleKeyDown}
-                                                placeholder="메시지를 입력하세요... (Enter로 전송)"
-                                                className="w-full bg-transparent border-none focus:outline-none text-sm resize-none max-h-32 min-h-[24px] placeholder:text-muted-foreground/70"
-                                                rows={1}
-                                                style={{ height: 'auto', minHeight: '24px' }}
-                                                onInput={(e) => {
-                                                    const target = e.target as HTMLTextAreaElement
-                                                    target.style.height = 'auto'
-                                                    target.style.height = `${Math.min(target.scrollHeight, 128)}px`
-                                                }}
-                                            />
+                                    {!user ? (
+                                        <div className="max-w-3xl mx-auto">
+                                            <div className="bg-muted/50 border-2 border-dashed rounded-xl p-4 text-center">
+                                                <p className="text-sm text-muted-foreground mb-2">
+                                                    메시지를 보내려면 로그인이 필요합니다
+                                                </p>
+                                                <Button size="sm" asChild>
+                                                    <a href="/login">로그인하기</a>
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <Button
-                                            onClick={handleSendMessage}
-                                            disabled={!messageInput.trim() || isSending}
-                                            size="icon"
-                                            className="h-9 w-9 shrink-0 rounded-lg transition-all"
-                                        >
-                                            <Send className="h-4 w-4" />
-                                        </Button>
-                                    </div>
+                                    ) : (
+                                        <div className="flex items-end gap-2 max-w-3xl mx-auto bg-muted/30 p-2 rounded-xl border focus-within:ring-1 focus-within:ring-ring transition-all">
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground shrink-0 rounded-lg hover:bg-muted">
+                                                <Paperclip className="h-4 w-4" />
+                                            </Button>
+                                            <div className="flex-1 py-1.5">
+                                                <textarea
+                                                    value={messageInput}
+                                                    onChange={(e) => setMessageInput(e.target.value)}
+                                                    onCompositionStart={() => setIsComposing(true)}
+                                                    onCompositionEnd={() => setIsComposing(false)}
+                                                    onKeyDown={handleKeyDown}
+                                                    placeholder="메시지를 입력하세요... (Enter로 전송)"
+                                                    className="w-full bg-transparent border-none focus:outline-none text-sm resize-none max-h-32 min-h-[24px] placeholder:text-muted-foreground/70"
+                                                    rows={1}
+                                                    style={{ height: 'auto', minHeight: '24px' }}
+                                                    onInput={(e) => {
+                                                        const target = e.target as HTMLTextAreaElement
+                                                        target.style.height = 'auto'
+                                                        target.style.height = `${Math.min(target.scrollHeight, 128)}px`
+                                                    }}
+                                                />
+                                            </div>
+                                            <Button
+                                                onClick={handleSendMessage}
+                                                disabled={!messageInput.trim() || isSending}
+                                                size="icon"
+                                                className="h-9 w-9 shrink-0 rounded-lg transition-all"
+                                            >
+                                                <Send className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </>
                         ) : (
