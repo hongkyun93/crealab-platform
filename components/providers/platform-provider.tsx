@@ -761,28 +761,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             console.log('[updateUser] Sending profile update to Supabase...', profileUpdates)
 
-            // Retry logic for potential AbortError
-            let profileResult: any = null;
-            let retries = 0;
-            const maxRetries = 2;
-
-            while (retries <= maxRetries) {
-                profileResult = await supabase
-                    .from('profiles')
-                    .update(profileUpdates)
-                    .eq('id', user.id)
-
-                if (profileResult.error) {
-                    const isAbortError = profileResult.error.message?.includes('AbortError') || profileResult.error.code === 'ABORTED';
-                    if (isAbortError && retries < maxRetries) {
-                        retries++;
-                        console.warn(`[updateUser] Profile update aborted (retry ${retries}/${maxRetries})...`);
-                        await new Promise(resolve => setTimeout(resolve, 500 * retries));
-                        continue;
-                    }
-                }
-                break;
-            }
+            // Direct update call without retry logic
+            const profileResult = await supabase
+                .from('profiles')
+                .update(profileUpdates)
+                .eq('id', user.id)
 
             if (profileResult.error) {
                 console.error('[updateUser] Profile update DB error:', profileResult.error)
