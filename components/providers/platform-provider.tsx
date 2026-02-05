@@ -1201,13 +1201,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (updates.shots !== undefined) productData.required_shots = updates.shots
             if (updates.link !== undefined) productData.website_url = updates.link
 
-            // Simple update call without complex retry logic
-            const { data, error } = await supabase
+            // Simple update call without waiting for return data (avoids RLS/Single issues)
+            const { error } = await supabase
                 .from('brand_products')
                 .update(productData)
                 .eq('id', id)
-                .select()
-                .single()
 
             if (error) {
                 console.error('[updateProduct] DB Error:', error)
@@ -1215,8 +1213,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
             }
 
             console.log('[updateProduct] Update successful for ID:', id)
+            // Manually update local state since we're not fetching the updated row
             setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
-            return data
+            return { ...updates, id } as Product // Return constructed object
         } catch (e: any) {
             console.error("[updateProduct] Exception:", e)
             alert(`제품 수정 실패: ${e.message || "알 수 없는 오류"}`)
