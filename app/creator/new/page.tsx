@@ -69,17 +69,18 @@ export default function NewEventPage() {
 
             if (!response.ok) {
                 if (data.message && data.message.includes("GEMINI_API_KEY")) {
-                    alert("구글 API 키가 설정되지 않았습니다. 개발자에게 문의하거나 .env.local 파일을 확인해주세요.")
+                    alert("구글 API 키가 설정되지 않았습니다. Vercel 환경변수를 확인해주세요.")
                 } else {
-                    throw new Error(data.error || "Failed to generate")
+                    const errorMsg = data.details || data.error || "서버 통신 오류";
+                    throw new Error(errorMsg)
                 }
                 return
             }
 
             setDescription(data.result)
-        } catch (error) {
+        } catch (error: any) {
             console.error("AI Error:", error)
-            alert("AI 작문 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
+            alert(`AI 작문 실패: ${error.message || "일시적인 오류가 발생했습니다."}`)
         } finally {
             setIsGenerating(false)
         }
