@@ -267,6 +267,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
     const [isInitialized, setIsInitialized] = useState(false)
     const [isAuthChecked, setIsAuthChecked] = useState(false)
 
+    // Refs must be at the top level
+    const isFetchingEvents = React.useRef(false)
+    const isFetchingMessages = React.useRef(false)
+    const lastUserId = React.useRef<string | null>(null)
+
     useEffect(() => {
         console.log('[PlatformProvider] COMPONENT MOUNTED')
         return () => {
@@ -481,7 +486,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
         // Actually, let's define it inside the effect or as a helper.
         // To keep it simple, I'll inline the fetch logic in a separate async checks or just calling it.
 
-        const lastUserId = React.useRef<string | null>(null)
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log(`[Auth] onAuthStateChange event: ${event}`, session?.user?.id)
@@ -522,7 +526,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }, [supabase])
 
-    const isFetchingEvents = React.useRef(false)
     const fetchEvents = React.useCallback(async (userId?: string) => {
         const targetId = userId || user?.id
         if (!targetId || isFetchingEvents.current) return
@@ -721,7 +724,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }, [user, supabase])
 
-    const isFetchingMessages = React.useRef(false)
     const fetchMessages = React.useCallback(async (userId: string) => {
         if (isFetchingMessages.current) return
         isFetchingMessages.current = true
