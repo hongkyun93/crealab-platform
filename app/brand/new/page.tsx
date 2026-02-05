@@ -17,6 +17,14 @@ import { createCampaign } from "@/app/actions/campaign"
 export default function NewCampaignPage() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [selectedCategory, setSelectedCategory] = useState<string[]>([])
+
+    const POPULAR_TAGS = [
+        "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
+        "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
+        "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
+        "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
+    ]
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
@@ -65,13 +73,41 @@ export default function NewCampaignPage() {
                         </div>
 
                         <div className="grid gap-6 md:grid-cols-2">
+                            <div className="space-y-3">
+                                <Label>카테고리 (복수 선택 가능)</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    {POPULAR_TAGS.map((tag) => (
+                                        <button
+                                            key={tag}
+                                            type="button"
+                                            onClick={() => {
+                                                if (selectedCategory.includes(tag)) {
+                                                    setSelectedCategory(selectedCategory.filter(t => t !== tag))
+                                                } else {
+                                                    setSelectedCategory([...selectedCategory, tag])
+                                                }
+                                            }}
+                                            className={`
+                                text-sm px-3 py-2.5 rounded-md border transition-all duration-200 text-left md:text-center
+                                ${selectedCategory.includes(tag)
+                                                    ? "bg-primary text-primary-foreground border-primary font-medium ring-2 ring-offset-2 ring-primary/20"
+                                                    : "bg-background hover:bg-muted/50 hover:border-primary/50 text-muted-foreground"
+                                                }
+                            `}
+                                        >
+                                            {tag}
+                                        </button>
+                                    ))}
+                                </div>
+                                <input type="hidden" name="category" value={selectedCategory.join(",")} />
+                            </div>
+
                             <div className="space-y-2">
-                                <Label htmlFor="category">카테고리</Label>
+                                <Label htmlFor="tags">직접 입력 태그</Label>
                                 <Input
-                                    id="category"
-                                    name="category"
-                                    placeholder="예: 테크, 리빙, 뷰티"
-                                    required
+                                    id="tags"
+                                    name="tags" // This will be handled in handleSubmit manually or by server action if updated
+                                    placeholder="추가하고 싶은 태그가 있다면 입력해주세요 (예: #신제품 #런칭)"
                                 />
                             </div>
                             <div className="space-y-2">
