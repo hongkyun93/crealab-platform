@@ -838,6 +838,37 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }, [user, supabase])
 
+    const switchRole = React.useCallback(async (newRole: 'brand' | 'influencer') => {
+        if (!user) return
+
+        try {
+            console.log(`[switchRole] Switching user ${user.id} to ${newRole}`)
+
+            // 1. Update profiles table
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .update({ role: newRole })
+                .eq('id', user.id)
+
+            if (profileError) throw profileError
+
+            // 2. Update Auth metadata
+            const { error: authError } = await supabase.auth.updateUser({
+                data: { role: newRole }
+            })
+
+            if (authError) throw authError
+
+            // 3. Update local state
+            setUser(prev => prev ? { ...prev, type: newRole } : null)
+            console.log('[switchRole] Role switch successful')
+
+        } catch (error: any) {
+            console.error('[switchRole] Error:', error)
+            throw error
+        }
+    }, [user, supabase])
+
     const addCampaign = (newCampaign: Omit<Campaign, "id" | "date" | "matchScore">) => {
         const campaign: Campaign = {
             ...newCampaign,
@@ -1261,6 +1292,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             brandProposals, updateBrandProposal, deleteBrandProposal,
             notifications, sendNotification,
             messages, sendMessage,
+            switchRole,
             isLoading: !isInitialized || !isAuthChecked,
             resetData,
             supabase

@@ -73,7 +73,8 @@ function BrandDashboardContent() {
     const {
         events, user, resetData, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages: allMessages,
-        updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal
+        updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
+        switchRole
     } = usePlatform()
 
     const router = useRouter()
@@ -857,6 +858,38 @@ function BrandDashboardContent() {
                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "저장하기"}
                                 </Button>
                             </CardFooter>
+                        </Card>
+
+                        <Card className="max-w-2xl border-red-100 bg-red-50/10 mt-6">
+                            <CardHeader>
+                                <CardTitle className="text-red-600 flex items-center gap-2">
+                                    계정 유형 전환
+                                </CardTitle>
+                                <CardDescription>
+                                    크리에이터 계정으로 전환하시겠습니까? 계정 유형을 변경하면 크리에이터 전용 대시보드를 사용하게 됩니다.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-xs text-muted-foreground mb-4">
+                                    * 전환 후에도 브랜드 정보는 유지되지만, 대시보드 인터페이스가 크리에이터용으로 변경됩니다.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                                    onClick={async () => {
+                                        if (confirm("정말로 크리에이터 계정으로 전환하시겠습니까?")) {
+                                            try {
+                                                await switchRole('influencer');
+                                                router.push('/creator');
+                                            } catch (e) {
+                                                alert("전환 중 오류가 발생했습니다.");
+                                            }
+                                        }
+                                    }}
+                                >
+                                    크리에이터 계정으로 전환하기
+                                </Button>
+                            </CardContent>
                         </Card>
                     </div>
                 )

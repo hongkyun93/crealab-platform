@@ -50,7 +50,7 @@ function InfluencerDashboardContent() {
     const {
         user, updateUser, campaigns, events, isLoading, notifications, resetData,
         brandProposals, updateBrandProposal, sendMessage, messages: allMessages, deleteEvent,
-        products
+        products, switchRole
     } = usePlatform()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -989,6 +989,38 @@ function InfluencerDashboardContent() {
                                     저장하기
                                 </Button>
                             </CardFooter>
+                        </Card>
+
+                        <Card className="max-w-2xl border-red-100 bg-red-50/10">
+                            <CardHeader>
+                                <CardTitle className="text-red-600 flex items-center gap-2">
+                                    계정 유형 전환
+                                </CardTitle>
+                                <CardDescription>
+                                    브랜드 계정으로 전환하시겠습니까? 계정 유형을 변경하면 브랜드 전용 대시보드를 사용하게 됩니다.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-xs text-muted-foreground mb-4">
+                                    * 전환 후에도 기존 크리에이터 정보는 유지되지만, 대시보드 인터페이스가 브랜드용으로 변경됩니다.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                                    onClick={async () => {
+                                        if (confirm("정말로 브랜드 계정으로 전환하시겠습니까?")) {
+                                            try {
+                                                await switchRole('brand');
+                                                router.push('/brand');
+                                            } catch (e) {
+                                                alert("전환 중 오류가 발생했습니다.");
+                                            }
+                                        }
+                                    }}
+                                >
+                                    브랜드 계정으로 전환하기
+                                </Button>
+                            </CardContent>
                         </Card>
 
                         <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
