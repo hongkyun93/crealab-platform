@@ -442,8 +442,46 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
         description: "상견례부터 본식까지 리얼한 결혼 준비 과정을 담습니다.\n• 희망 협찬: 가전, 가구, 청첩장, 답례품\n• 이벤트 시기: 9월부터 매주\n• 업로드 예정: 매주 일요일",
         tags: ["결혼준비", "예비신부", "웨딩"], followers: 24000,
         targetProduct: "가전, 가구, 청첩장", eventDate: "2026년 9월", postingDate: "2026년 10월", isMock: true
+    },
+
+    // --- Guest Influencer (Su-min) Private Data ---
+    {
+        id: "ev_guest_1", influencer: "김수민", handle: "@im_breath_ing", influencerId: "guest_influencer", verified: true, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
+        category: "✈️ 여행", event: "7월 제주도 여름 휴가 브이로그", date: "2026년 7월",
+        description: "제주도에서의 일주일간의 여름 휴가 브이로그입니다.\n• 희망 협찬: 항공권, 호텔 숙박권, 여름 원피스, 렌터카\n• 업로드 예정: 7월 15일 고정 커뮤니티 & 유튜브 영상",
+        tags: ["제주도", "여름휴가", "브이로그"], followers: 5851,
+        targetProduct: "항공, 숙박, 의류", eventDate: "2026년 7월", postingDate: "2026년 7월", isMock: true
+    },
+    {
+        id: "ev_guest_2", influencer: "김수민", handle: "@im_breath_ing", influencerId: "guest_influencer", verified: true, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
+        category: "💄 뷰티", event: "데일리 썸머 메이크업 튜토리얼", date: "2026년 6월",
+        description: "지속력 좋은 여름 무드 메이크업을 소개합니다.\n• 희망 협찬: 선크림, 쿠션 파운데이션, 워터프루프 아이라이너\n• 업로드 예정: 6월 초 릴스 & 숏츠",
+        tags: ["메이크업", "여름뷰티", "지속력좋은"], followers: 5851,
+        targetProduct: "화장품", eventDate: "2026년 6월", postingDate: "2026년 6월", isMock: true
+    },
+    {
+        id: "ev_guest_3", influencer: "김수민", handle: "@im_breath_ing", influencerId: "guest_influencer", verified: true, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
+        category: "🥗 다이어트", event: "운동 시작! 필라테스 10회 챌린지", date: "2026년 5월",
+        description: "운동 초보의 필라테스 적응기 및 식단 기록.\n• 희망 협찬: 요가복, 단백질 쉐이크, 스마트 워치\n• 업로드 예정: 주 2회 인스타그램 스토리 & 게시물",
+        tags: ["오운완", "필라테스", "다이어트식단"], followers: 5851,
+        targetProduct: "요가복, 건강식품", eventDate: "2026년 5월", postingDate: "2026년 5월", isMock: true
+    },
+    {
+        id: "ev_guest_4", influencer: "김수민", handle: "@im_breath_ing", influencerId: "guest_influencer", verified: true, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
+        category: "👗 패션", event: "봄맞이 옷장 정리 & 룩북", date: "2026년 4월", status: "completed",
+        description: "올해의 봄 패션 아이템 소개 및 룩북 영상.\n• 협찬 완료: 멜린 가디건, ABC 마트 스니커즈\n• 성과: 조회수 1.2만회, 댓글 80개",
+        tags: ["봄코디", "룩북", "OOTD"], followers: 5851,
+        targetProduct: "봄 의류", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
+    },
+    {
+        id: "ev_guest_5", influencer: "김수민", handle: "@im_breath_ing", influencerId: "guest_influencer", verified: true, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
+        category: "✈️ 여행", event: "그랜드 하얏트 제주 호캉스 브이로그", date: "2026년 3월", status: "completed",
+        description: "제주도 최고급 호텔에서의 힐링 브이로그.\n• 협찬 완료: 그랜드 하얏트 숙박권, 조식권\n• 성과: 유튜브 조회수 5천회 돌파",
+        tags: ["호캉스", "제주여행", "그랜드하얏트"], followers: 5851,
+        targetProduct: "호텔 숙박권", eventDate: "2026년 3월", postingDate: "2026년 3월", isMock: true
     }
 ];
+
 export const MOCK_BRAND_PROPOSALS: any[] = [
     {
         id: "p1",
@@ -458,7 +496,8 @@ export const MOCK_BRAND_PROPOSALS: any[] = [
         message: "라이프스타일이 저희 브랜드 지향점과 너무 잘 맞으셔서 제안드립니다!",
         status: "accepted",
         created_at: new Date().toISOString(),
-        brand_name: "SAMSUNG", isMock: true},
+        brand_name: "SAMSUNG", isMock: true
+    },
     {
         id: "p2",
         brand_id: "brand_apple",
@@ -472,7 +511,8 @@ export const MOCK_BRAND_PROPOSALS: any[] = [
         message: "크리에이터님의 작업 방식이 아이패드의 생산성과 잘 어울립니다.",
         status: "pending",
         created_at: new Date().toISOString(),
-        brand_name: "Apple", isMock: true},
+        brand_name: "Apple", isMock: true
+    },
     {
         id: "p3",
         brand_id: "brand_nike",
@@ -486,7 +526,8 @@ export const MOCK_BRAND_PROPOSALS: any[] = [
         message: "매일 러닝하시는 모습이 인상깊어서 제안드려요!",
         status: "accepted",
         created_at: new Date().toISOString(),
-        brand_name: "Nike", isMock: true},
+        brand_name: "Nike", isMock: true
+    },
     {
         id: "p4",
         brand_id: "brand_dyson",
@@ -500,8 +541,56 @@ export const MOCK_BRAND_PROPOSALS: any[] = [
         message: "고급스러운 이미지의 헤어 케어 리뷰를 부탁드리고 싶습니다.",
         status: "offered",
         created_at: new Date().toISOString(),
-        brand_name: "Dyson", isMock: true}
+        brand_name: "Dyson", isMock: true
+    },
+    {
+        id: "p5",
+        brand_id: "brand_jeju",
+        influencer_id: "guest_influencer",
+        event_id: "ev_guest_1",
+        product_name: "제주도 왕복 항공권",
+        product_type: "gift",
+        compensation_amount: "비용 전액 지원",
+        has_incentive: false,
+        content_type: "유튜브 브이로그 & 릴스 1회",
+        message: "제주 여행 브이로그 일정이 있으시다고 해서 항공권을 협찬해드리고 싶습니다!",
+        status: "accepted",
+        created_at: new Date(Date.now() - 172800000).toISOString(),
+        brand_name: "제주항공", isMock: true
+    },
+    {
+        id: "p6",
+        brand_id: "brand_laneige",
+        influencer_id: "guest_influencer",
+        event_id: "ev_guest_2",
+        product_name: "네오 쿠션 메이크업 세트",
+        product_type: "gift",
+        compensation_amount: "300,000원",
+        has_incentive: true,
+        incentive_detail: "구매 연결 시 추가 보상",
+        content_type: "릴스 메이크업 튜토리얼",
+        message: "여름용 매트 쿠션 광고주를 찾고 계셔서 제안드립니다.",
+        status: "offered",
+        created_at: new Date(Date.now() - 86400000).toISOString(),
+        brand_name: "라네즈", isMock: true
+    },
+    {
+        id: "p7",
+        brand_id: "brand_lululemon",
+        influencer_id: "guest_influencer",
+        event_id: "ev_guest_3",
+        product_name: "Align 요가복 상하의 세트",
+        product_type: "gift",
+        compensation_amount: "200,000원",
+        has_incentive: false,
+        content_type: "인스타그램 피드 착용샷",
+        message: "운동 챌린지 시작하시는 기념으로 요가복을 보내드리고 싶습니다.",
+        status: "accepted",
+        created_at: new Date(Date.now() - 259200000).toISOString(),
+        brand_name: "룰루레몬", isMock: true
+    }
 ];
+
 
 export const MOCK_MESSAGES: any[] = [
     {
@@ -547,5 +636,72 @@ export const MOCK_MESSAGES: any[] = [
         read: true,
         senderName: "Nike",
         isMock: true
+    },
+    {
+        id: "m5",
+        senderId: "guest_influencer",
+        receiverId: "brand_nike",
+        proposalId: "p3",
+        content: "안녕하세요! 보통 240 신는데, 나이키는 245가 편하더라구요. 245로 부탁드립니다.",
+        timestamp: new Date(Date.now() - 36000000).toISOString(),
+        read: true,
+        senderName: "김수민",
+        isMock: true
+    },
+    {
+        id: "m6",
+        senderId: "brand_jeju",
+        receiverId: "guest_influencer",
+        proposalId: "p5",
+        content: "안녕하세요 수민님! 제주항공입니다. 제안드린 항공권 협찬 안내받으셨을까요?",
+        timestamp: new Date(Date.now() - 172800000).toISOString(),
+        read: true,
+        senderName: "제주항공",
+        isMock: true
+    },
+    {
+        id: "m7",
+        senderId: "guest_influencer",
+        receiverId: "brand_jeju",
+        proposalId: "p5",
+        content: "네! 제주행 일정이 있어서 마침 딱 필요했는데 너무 감사합니다. 일정 조율은 어떻게 하면 될까요?",
+        timestamp: new Date(Date.now() - 169200000).toISOString(),
+        read: true,
+        senderName: "김수민",
+        isMock: true
+    },
+    {
+        id: "m8",
+        senderId: "brand_jeju",
+        receiverId: "guest_influencer",
+        proposalId: "p5",
+        content: "원하시는 날짜와 편명 알려주시면 저희가 바로 발권해드리고 메일로 바우처 보내드리겠습니다.",
+        timestamp: new Date(Date.now() - 165600000).toISOString(),
+        read: true,
+        senderName: "제주항공",
+        isMock: true
+    },
+    {
+        id: "m9",
+        senderId: "guest_influencer",
+        receiverId: "brand_jeju",
+        proposalId: "p5",
+        content: "감사합니다! 7월 10일 김포-제주 오전 10시편, 7월 17일 제주-김포 오후 4시편으로 부탁드려도 될까요?",
+        timestamp: new Date(Date.now() - 162000000).toISOString(),
+        read: true,
+        senderName: "김수민",
+        isMock: true
+    },
+    {
+        id: "m10",
+        senderId: "brand_jeju",
+        receiverId: "guest_influencer",
+        proposalId: "p5",
+        content: "네, 해당 편명으로 확인했습니다. 지금 바로 발권 진행하고 확정 메일 보내드릴게요!",
+        timestamp: new Date(Date.now() - 158400000).toISOString(),
+        read: true,
+        senderName: "제주항공",
+        isMock: true
     }
 ];
+
