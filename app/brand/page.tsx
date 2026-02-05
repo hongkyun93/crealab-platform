@@ -732,38 +732,47 @@ function BrandDashboardContent() {
                                                 >
                                                     <CardHeader className="pb-3">
                                                         <div className="flex justify-between items-start">
-                                                            <div>
-                                                                <Badge className="mb-2 bg-primary/10 text-primary hover:bg-primary/20 border-0">{c.category}</Badge>
+                                                            <div className="space-y-1">
+                                                                <Badge variant="secondary" className="mb-1">{c.category}</Badge>
                                                                 <CardTitle className="text-lg font-bold line-clamp-1">{c.product}</CardTitle>
-                                                                <CardDescription>{new Date(c.date).toLocaleDateString()}</CardDescription>
+                                                                <CardDescription className="text-xs">{new Date(c.date).toLocaleDateString()}</CardDescription>
                                                             </div>
                                                             <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                                                                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                                                                    <Link href={`/brand/edit/${c.id}`}><Pencil className="h-4 w-4" /></Link>
+                                                                    <Link href={`/brand/edit/${c.id}`}><Pencil className="h-3.5 w-3.5" /></Link>
                                                                 </Button>
                                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => deleteCampaign(c.id)}>
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
+                                                                    <Trash2 className="h-3.5 w-3.5" /></Button>
                                                             </div>
                                                         </div>
                                                     </CardHeader>
-                                                    <CardContent className="pb-3">
-                                                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{c.description}</p>
-                                                        <div className="flex items-center justify-between">
-                                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.status === 'active' ? 'text-emerald-600 bg-emerald-100' : 'text-gray-500 bg-gray-100'}`}>
-                                                                {c.status === 'active' ? '모집중' : '마감됨'}
+                                                    <CardContent className="pb-3 space-y-3">
+                                                        <div className="grid gap-2 text-sm">
+                                                            <div className="flex items-start gap-3">
+                                                                <span className="text-xs font-bold text-muted-foreground w-12 shrink-0 pt-0.5">제공혜택</span>
+                                                                <span className="text-sm font-bold text-emerald-600">{c.budget || "협의"}</span>
+                                                            </div>
+                                                            <div className="flex items-start gap-3">
+                                                                <span className="text-xs font-bold text-muted-foreground w-12 shrink-0 pt-0.5">모집대상</span>
+                                                                <span className="text-xs">{c.target || "전체"}</span>
+                                                            </div>
+                                                            <div className="flex items-start gap-3">
+                                                                <span className="text-xs font-bold text-muted-foreground w-12 shrink-0 pt-0.5">상세내용</span>
+                                                                <p className="text-xs text-secondary-foreground/80 line-clamp-2 leading-relaxed">
+                                                                    {c.description}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-between pt-2 border-t mt-2">
+                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status === 'active' ? 'text-emerald-600 bg-emerald-100' : 'text-gray-500 bg-gray-100'}`}>
+                                                                {c.status === 'active' ? '● 모집중' : '● 마감됨'}
                                                             </span>
                                                             <span className="text-xs text-muted-foreground">지원자 <strong className="text-foreground">{appCount}</strong>명</span>
                                                         </div>
                                                     </CardContent>
-                                                    <CardFooter className={`py-3 border-t ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted/30'}`}>
-                                                        <div className="w-full flex items-center justify-center gap-2 text-sm font-medium">
-                                                            {isSelected ? (
-                                                                <>선택됨 <ArrowRight className="h-4 w-4" /></>
-                                                            ) : (
-                                                                "지원서 보기"
-                                                            )}
-                                                        </div>
+                                                    <CardFooter className={`py-2 ${isSelected ? 'bg-primary/10 text-primary' : 'bg-muted/30 text-muted-foreground'} flex justify-center`}>
+                                                        {isSelected ? <ArrowRight className="h-4 w-4" /> : <span className="text-xs">상세보기</span>}
                                                     </CardFooter>
                                                 </Card>
                                             )
