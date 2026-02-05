@@ -1164,7 +1164,7 @@ function InfluencerDashboardContent() {
                                 className="w-full justify-start"
                                 onClick={() => setCurrentView("proposals")}
                             >
-                                <Briefcase className="mr-2 h-4 w-4" /> 브랜드 제안
+                                <Briefcase className="mr-2 h-4 w-4" /> 협업 제안 관리
                             </Button>
                             <Button
                                 variant={currentView === "discover-products" ? "secondary" : "ghost"}

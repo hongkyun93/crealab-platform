@@ -35,7 +35,8 @@ import {
     Image as ImageIcon,
     ExternalLink,
     Upload,
-    Gift
+    Gift,
+    Star
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
@@ -91,9 +92,10 @@ function BrandDashboardContent() {
     // Filter Query States
     const [selectedTag, setSelectedTag] = useState<string | null>(null)
     const [followerFilter, setFollowerFilter] = useState<string>("all")
-    const [statusFilter, setStatusFilter] = useState<string>("all") // all, upcoming, past
+    const [statusFilter, setStatusFilter] = useState<string>("all") // all, upcoming, past, favorites
     const [minFollowers, setMinFollowers] = useState<string>("")
     const [maxFollowers, setMaxFollowers] = useState<string>("")
+    const [favoriteEvents, setFavoriteEvents] = useState<Set<string>>(new Set())
 
     // Propose Modal State
     const [proposeModalOpen, setProposeModalOpen] = useState(false)
@@ -244,6 +246,8 @@ function BrandDashboardContent() {
             result = result.filter(e => e.status !== 'completed')
         } else if (statusFilter === "past") {
             result = result.filter(e => e.status === 'completed')
+        } else if (statusFilter === "favorites") {
+            result = result.filter(e => favoriteEvents.has(e.id))
         }
         if (minFollowers !== "" || maxFollowers !== "") {
             const min = minFollowers === "" ? 0 : parseInt(minFollowers)
@@ -523,6 +527,15 @@ function BrandDashboardContent() {
                                         >
                                             지나간 모먼트
                                         </Button>
+                                        <Button
+                                            variant={statusFilter === "favorites" ? "secondary" : "ghost"}
+                                            size="sm"
+                                            onClick={() => setStatusFilter("favorites")}
+                                            className="gap-1.5"
+                                        >
+                                            <Star className="h-3.5 w-3.5" fill={statusFilter === "favorites" ? "currentColor" : "none"} />
+                                            즐겨찾기만 보기
+                                        </Button>
                                     </div>
                                 </div>
                                 <div className="flex flex-col md:flex-row gap-4 md:items-start pt-2 border-t border-border/40">
@@ -552,74 +565,98 @@ function BrandDashboardContent() {
                         </Card>
 
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {filteredEvents.map((item) => (
-                                <Link key={item.id} href={`/event/${item.id}`} className="block group">
-                                    <Card className="overflow-hidden transition-all hover:shadow-lg border-border/60 bg-background flex flex-col h-full cursor-pointer">
-                                        <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
-                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
-                                                {item.avatar}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between">
-                                                    <h4 className="font-bold truncate">{item.influencer}</h4>
-                                                    {user?.type === 'admin' && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 text-muted-foreground hover:text-red-500 rounded-full"
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
-                                                                    deleteEvent(item.id).catch(() => alert("삭제에 실패했습니다."));
-                                                                }
-                                                            }}
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                                <p className="text-xs text-muted-foreground truncate">{item.handle}</p>
-                                                <span className="text-[10px] font-medium bg-secondary/50 px-2 py-0.5 rounded-full mt-1 inline-block">
-                                                    {(item.followers || 0).toLocaleString()} 팔로워
-                                                </span>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="space-y-3 flex-1 relative">
-                                            {item.status === 'completed' && (
-                                                <div className="absolute top-0 right-4 transform -translate-y-1/2">
-                                                    <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
-                                                        지나간 모먼트
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <h3 className="font-bold text-base line-clamp-2">{item.event}</h3>
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <Calendar className="h-3 w-3" /> {item.eventDate}
-                                            </div>
-                                            <p className="text-sm text-foreground/70 line-clamp-3">{item.description}</p>
-                                            <div className="flex flex-wrap gap-1">
-                                                {item.tags.slice(0, 3).map(t => (
-                                                    <span key={t} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">#{t}</span>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                        <CardFooter className="p-4 border-t">
+                            {filteredEvents.map((item) => {
+                                const isFavorite = favoriteEvents.has(item.id)
+                                return (
+                                    <Link key={item.id} href={`/event/${item.id}`} className="block group">
+                                        <Card className="overflow-hidden transition-all hover:shadow-lg border-border/60 bg-background flex flex-col h-full cursor-pointer relative">
                                             <Button
-                                                className="w-full"
-                                                variant="secondary"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    handlePropose(item);
+                                                    const newFavorites = new Set(favoriteEvents);
+                                                    if (isFavorite) {
+                                                        newFavorites.delete(item.id);
+                                                    } else {
+                                                        newFavorites.add(item.id);
+                                                    }
+                                                    setFavoriteEvents(newFavorites);
                                                 }}
                                             >
-                                                협업 제안
+                                                <Star
+                                                    className={`h-4 w-4 transition-colors ${isFavorite ? 'text-yellow-500' : 'text-muted-foreground'}`}
+                                                    fill={isFavorite ? 'currentColor' : 'none'}
+                                                />
                                             </Button>
-                                        </CardFooter>
-                                    </Card>
-                                </Link>
-                            ))}
+                                            <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
+                                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
+                                                    {item.avatar}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className="font-bold truncate">{item.influencer}</h4>
+                                                        {user?.type === 'admin' && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-muted-foreground hover:text-red-500 rounded-full"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
+                                                                        deleteEvent(item.id).catch(() => alert("삭제에 실패했습니다."));
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground truncate">{item.handle}</p>
+                                                    <span className="text-[10px] font-medium bg-secondary/50 px-2 py-0.5 rounded-full mt-1 inline-block">
+                                                        {(item.followers || 0).toLocaleString()} 팔로워
+                                                    </span>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-3 flex-1 relative">
+                                                {item.status === 'completed' && (
+                                                    <div className="absolute top-0 right-4 transform -translate-y-1/2">
+                                                        <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
+                                                            지나간 모먼트
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <h3 className="font-bold text-base line-clamp-2">{item.event}</h3>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <Calendar className="h-3 w-3" /> {item.eventDate}
+                                                </div>
+                                                <p className="text-sm text-foreground/70 line-clamp-3">{item.description}</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {item.tags.slice(0, 3).map(t => (
+                                                        <span key={t} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">#{t}</span>
+                                                    ))}
+                                                </div>
+                                            </CardContent>
+                                            <CardFooter className="p-4 border-t">
+                                                <Button
+                                                    className="w-full"
+                                                    variant="secondary"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        handlePropose(item);
+                                                    }}
+                                                >
+                                                    협업 제안
+                                                </Button>
+                                            </CardFooter>
+                                        </Card>
+                                    </Link>
+                                )
+                            })}
                         </div>
                     </div>
                 )
