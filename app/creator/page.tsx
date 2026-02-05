@@ -174,6 +174,8 @@ function InfluencerDashboardContent() {
     useEffect(() => {
         if (!isLoading && !user) {
             router.push("/login")
+        } else if (user && user.type === 'brand') {
+            router.push('/brand')
         }
     }, [isLoading, user, router])
 

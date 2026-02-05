@@ -1149,10 +1149,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const updateProduct = async (id: string, updates: Partial<Product>) => {
-        if (!user) return
+        if (!user) {
+            console.error('[updateProduct] No user session')
+            return
+        }
 
         try {
-            console.log('[updateProduct] Updating:', id, updates)
+            console.log('[updateProduct] Starting update for:', id, updates)
             const productData: any = {}
             if (updates.name !== undefined) productData.name = updates.name
             if (updates.description !== undefined) productData.description = updates.description
@@ -1163,19 +1166,44 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (updates.shots !== undefined) productData.required_shots = updates.shots
             if (updates.link !== undefined) productData.website_url = updates.link
 
-            const { data, error } = await supabase
-                .from('brand_products')
-                .update(productData)
-                .eq('id', id)
-                .select()
-                .single()
+            let data: any = null;
+            let error: any = null;
+            let retries = 0;
+            const maxRetries = 2;
 
-            if (error) throw error
+            while (retries <= maxRetries) {
+                const result = await supabase
+                    .from('brand_products')
+                    .update(productData)
+                    .eq('id', id)
+                    .select()
 
+                data = result.data ? result.data[0] : null;
+                error = result.error;
+
+                if (error) {
+                    const isAbortError = error.message?.includes('AbortError') || error.code === 'ABORTED' || error.message?.includes('fetch');
+                    if (isAbortError && retries < maxRetries) {
+                        retries++;
+                        console.warn(`[updateProduct] Update aborted/failed (retry ${retries}/${maxRetries})...`);
+                        await new Promise(resolve => setTimeout(resolve, 500 * retries));
+                        continue;
+                    }
+                }
+                break;
+            }
+
+            if (error) {
+                console.error('[updateProduct] DB Error:', error)
+                throw error
+            }
+
+            console.log('[updateProduct] Update successful for ID:', id)
             setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
             return data
         } catch (e: any) {
-            console.error("Failed to update product:", e)
+            console.error("[updateProduct] Exception:", e)
+            alert(`제품 수정 실패: ${e.message || "알 수 없는 오류"}`)
             throw e
         }
     }

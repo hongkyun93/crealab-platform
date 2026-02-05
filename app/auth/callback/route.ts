@@ -25,30 +25,22 @@ export async function GET(request: Request) {
                     .eq('id', data.user.id)
                     .single()
 
-                // Detect if it's a new user (signup)
-                // If created_at is very close to last_sign_in_at, it's likely a new user.
-                // However, last_sign_in_at is updated on login.
-                // A safer bet for "first time" is often checking if profile is fully set up, but relying on timestamps is a common heuristic.
-                // Let's assume if created_at and last_sign_in_at are within a few seconds, it's a signup.
-                const createdAt = new Date(data.user.created_at)
-                // last_sign_in_at might not be updated yet in the session object returned by exchangeCodeForSession?
-                // Actually, let's treat it as: if we can't find specific profile info, it's new.
-                // But the user asked for "If signup -> settings".
-
-                // Let's check if the user is "new" by checking if the creation time is very recent (e.g. within 1 minute of now)
-                // This is a robust enough check for the immediate callback after signup.
-                const isNewUser = (new Date().getTime() - createdAt.getTime()) < 60 * 1000 // 1 minute
+                // Detect if it's a new user (signup) - 1 minute threshold
+                const isNewUser = (new Date().getTime() - new Date(data.user.created_at).getTime()) < 60 * 1000
                 let userRole = profile?.role
 
-                // If it's a new user and we have a preferred role from the URL, force update it
-                // This handles cases where the DB trigger might have defaulted to 'influencer' (e.g. Social Login)
-                if (isNewUser && roleType && roleType !== userRole) {
-                    console.log(`[Auth Callback] New user detected, forcing role to: ${roleType}`)
-                    await supabase
-                        .from('profiles')
-                        .update({ role: roleType })
-                        .eq('id', data.user.id)
-                    userRole = roleType as any
+                console.log(`[Auth Callback] DB role: ${userRole}, Pref role: ${roleType}, isNew: ${isNewUser}`)
+
+                // Priority: Use DB role if exists, otherwise use roleType hint or default to influencer
+                if (!userRole) {
+                    userRole = (roleType as any) || 'influencer'
+                    console.log(`[Auth Callback] Assigning role: ${userRole}`)
+                    await supabase.from('profiles').update({ role: userRole }).eq('id', data.user.id)
+                }
+
+                // Sync auth metadata to DB role
+                if (data.user.user_metadata?.role !== userRole) {
+                    await supabase.auth.updateUser({ data: { role: userRole } })
                 }
 
                 if (userRole === 'brand') {
@@ -57,10 +49,6 @@ export async function GET(request: Request) {
                     next = isNewUser ? '/creator?view=settings' : '/creator'
                 } else if (userRole === 'admin') {
                     next = '/admin'
-                } else if (roleType === 'brand') {
-                    next = isNewUser ? '/brand/settings' : '/brand'
-                } else if (roleType === 'influencer') {
-                    next = isNewUser ? '/creator?view=settings' : '/creator'
                 }
             } catch (e) {
                 console.error('Profile fetch error', e)

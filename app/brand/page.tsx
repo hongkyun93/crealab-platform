@@ -189,6 +189,9 @@ function BrandDashboardContent() {
     useEffect(() => {
         if (!isLoading && !user) {
             router.push('/login')
+        } else if (user && user.type === 'influencer') {
+            // Redirect influencers to their owner dashboard
+            router.push('/creator')
         }
     }, [user, router, isLoading])
 
