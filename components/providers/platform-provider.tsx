@@ -144,11 +144,12 @@ export const MOCK_INFLUENCER_USER: User = {
 
 export const MOCK_BRAND_USER: User = {
     id: "guest_brand",
-    name: "삼성전자",
+    name: "CreadyPick",
     type: "brand",
-    handle: "@samsung_korea",
+    handle: "@creadypick",
+    website: "https://www.creadypick.co.kr",
     avatar: "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=400&h=400&fit=crop",
-    bio: "기술로 세상을 더 나쁘게... 아니, 더 좋게 만듭니다.",
+    bio: "완벽한 광고를 위해 준비된 크리에이터를 완벽한 광고를 원하는 브랜드와 연결시켜 줍니다.\n데이터 기반의 매칭으로 최적의 파트너를 찾아드려요.\n누구나 쉽고 빠르게 시작하는 인플루언서 마케팅 플랫폼.",
     isMock: true
 }
 
