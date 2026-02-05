@@ -138,11 +138,6 @@ function BrandDashboardContent() {
         setIsImageUploading(true)
         console.log('[handleImageUpload] Starting upload for file:', file.name, 'size:', file.size)
 
-        // Create a timeout promise
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('업로드 시간이 초과되었습니다. (30초)')), 30000)
-        )
-
         try {
             const fileExt = file.name.split('.').pop()
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
@@ -150,19 +145,16 @@ function BrandDashboardContent() {
 
             console.log('[handleImageUpload] Target path:', filePath)
 
-            // Race the upload against the timeout
-            const uploadPromise = supabase.storage
+            const { data, error } = await supabase.storage
                 .from('product-images')
                 .upload(filePath, file, {
                     cacheControl: '3600',
                     upsert: false
                 })
 
-            const result: any = await Promise.race([uploadPromise, timeoutPromise])
-
-            if (result.error) {
-                console.error('[handleImageUpload] Supabase Storage Error:', result.error)
-                throw result.error
+            if (error) {
+                console.error('[handleImageUpload] Supabase Storage Error:', error)
+                throw error
             }
 
             console.log('[handleImageUpload] Upload successful, getting public URL...')
@@ -381,11 +373,6 @@ function BrandDashboardContent() {
         console.log('[handleUploadProduct] Starting upload for:', newProductName)
         setIsUploading(true)
 
-        // Timeout for registration
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('등록 시간이 초과되었습니다. (60초)')), 60000)
-        )
-
         try {
             const isEditing = !!editingProductId
             const cleanImage = newProductImage.replace('📦', '').trim()
@@ -403,11 +390,11 @@ function BrandDashboardContent() {
 
             console.log('[handleUploadProduct] Product data prepared:', productData)
 
-            const actionPromise = editingProductId
-                ? updateProduct(editingProductId, productData)
-                : addProduct(productData)
-
-            await Promise.race([actionPromise, timeoutPromise])
+            if (editingProductId) {
+                await updateProduct(editingProductId, productData)
+            } else {
+                await addProduct(productData)
+            }
 
             // Clear inputs
             setNewProductName("")
