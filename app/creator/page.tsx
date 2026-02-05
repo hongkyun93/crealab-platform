@@ -50,7 +50,7 @@ function InfluencerDashboardContent() {
     const {
         user, updateUser, campaigns, events, isLoading, notifications, resetData,
         brandProposals, updateBrandProposal, sendMessage, messages: allMessages, deleteEvent,
-        products, switchRole
+        products, switchRole, updateEvent
     } = usePlatform()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -623,8 +623,8 @@ function InfluencerDashboardContent() {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-4 w-full md:w-auto">
-                                                        <div className="text-right hidden md:block">
+                                                    <div className="flex items-center gap-1 md:gap-2 w-full md:w-auto justify-end mt-4 md:mt-0">
+                                                        <div className="text-right hidden md:block mr-2">
                                                             <div className="font-medium text-emerald-600">
                                                                 {brandProposals?.filter((p: any) => p.event_id === event.id).length || 0}개의 제안
                                                             </div>
@@ -633,10 +633,27 @@ function InfluencerDashboardContent() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                                                            className="text-muted-foreground hover:text-green-600 hover:bg-green-50"
+                                                            title="완료된 모먼트로 이동"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                deleteEvent(event.id);
+                                                                if (confirm("이 모먼트를 완료 처리하시겠습니까? 완료된 모먼트는 '지나간 모먼트' 탭으로 이동합니다.")) {
+                                                                    updateEvent(event.id, { status: "completed" });
+                                                                }
+                                                            }}
+                                                        >
+                                                            <BadgeCheck className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                                                            title="모먼트 삭제"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
+                                                                    deleteEvent(event.id);
+                                                                }
                                                             }}
                                                         >
                                                             <Trash2 className="h-4 w-4" />

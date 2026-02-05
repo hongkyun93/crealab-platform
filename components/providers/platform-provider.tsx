@@ -53,6 +53,7 @@ export type InfluencerEvent = {
     targetProduct: string // 희망하는 광고 제품
     eventDate: string // 이벤트 날짜 (e.g. 2026년 3월)
     postingDate: string // 콘텐츠 업로드 시기 (e.g. 2026년 4월)
+    status?: string // 'active' | 'completed' - 모먼트 상태
 }
 
 export type Product = {
@@ -994,6 +995,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (updatedData.targetProduct) dbUpdates.target_product = updatedData.targetProduct
             if (updatedData.eventDate) dbUpdates.event_date = updatedData.eventDate
             if (updatedData.postingDate) dbUpdates.posting_date = updatedData.postingDate
+            if (updatedData.status) dbUpdates.status = updatedData.status
 
             const { error } = await supabase
                 .from('influencer_events')
