@@ -481,21 +481,37 @@ export function PlatformProvider({ children, initialSession }: { children: React
         // Actually, let's define it inside the effect or as a helper.
         // To keep it simple, I'll inline the fetch logic in a separate async checks or just calling it.
 
+        const lastUserId = React.useRef<string | null>(null)
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log(`[Auth] onAuthStateChange event: ${event}`, session?.user?.id)
-            if (session?.user && mounted) {
-                const fetchedUser = await fetchUserProfile(session.user)
-                setUser(fetchedUser)
-                console.log('[Auth] User logged in, fetching data for:', session.user.id)
-                fetchEvents(session.user.id)
-                fetchMessages(session.user.id)
-            } else if (!session && mounted) {
-                // Not logged in -> Show Mock Data for guest browsing
+
+            if (session?.user) {
+                if (lastUserId.current === session.user.id && event !== 'SIGNED_IN') {
+                    console.log('[Auth] Skip redundant fetch for same user')
+                    return
+                }
+
+                lastUserId.current = session.user.id
+                if (mounted) {
+                    const fetchedUser = await fetchUserProfile(session.user)
+                    // Deep merge or check if name/type changed? 
+                    // Just setting it for now, but the ID check above prevents loops.
+                    setUser(fetchedUser)
+                    console.log('[Auth] User session valid, fetching data...')
+                    fetchEvents(session.user.id)
+                    fetchMessages(session.user.id)
+                }
+            } else if (mounted) {
+                lastUserId.current = null
                 setUser(null)
-                setEvents(INITIAL_EVENTS)
-                setProducts(INITIAL_PRODUCTS)
-                setBrandProposals(INITIAL_PROPOSALS)
-                setMessages(INITIAL_MESSAGES)
+                // Only reset states if we were previously logged in
+                if (events.length > 0 && !events[0].isMock) {
+                    setEvents(INITIAL_EVENTS)
+                    setProducts(INITIAL_PRODUCTS)
+                    setBrandProposals(INITIAL_PROPOSALS)
+                    setMessages(INITIAL_MESSAGES)
+                }
             }
             if (mounted) setIsAuthChecked(true)
         })
