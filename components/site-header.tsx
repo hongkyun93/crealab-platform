@@ -47,19 +47,23 @@ export function SiteHeader() {
                             서비스 소개
                         </Link>
 
-                        <Link
-                            href="/brand"
-                            className={`transition-colors hover:text-foreground/80 ${isActive('/brand') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
-                        >
-                            브랜드
-                        </Link>
+                        {(!user || user.type === 'brand' || user.type === 'admin') && (
+                            <Link
+                                href="/brand"
+                                className={`transition-colors hover:text-foreground/80 ${isActive('/brand') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                            >
+                                브랜드
+                            </Link>
+                        )}
 
-                        <Link
-                            href="/creator"
-                            className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
-                        >
-                            크리에이터
-                        </Link>
+                        {(!user || user.type === 'influencer' || user.type === 'admin') && (
+                            <Link
+                                href="/creator"
+                                className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                            >
+                                크리에이터
+                            </Link>
+                        )}
 
                         <Link
                             href="/message"
@@ -70,6 +74,7 @@ export function SiteHeader() {
                                 <span className="absolute -top-1 -right-2 h-2 w-2 bg-red-500 rounded-full border border-background"></span>
                             )}
                         </Link>
+
                     </nav>
                 </div>
                 <div className="ml-auto flex items-center space-x-4">
