@@ -1,5 +1,6 @@
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
+/** Version 1.1 - Added Moment Details & Fixed Image Load Loop */
 import { ArrowRight, Sparkles, Target, Zap } from "lucide-react"
 import Link from "next/link"
 
