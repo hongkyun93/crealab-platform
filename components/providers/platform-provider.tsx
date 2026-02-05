@@ -487,25 +487,31 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             if (eventsData) {
                 console.log('[fetchEvents] Fetched events from DB:', eventsData.length, 'events')
-                const mappedEvents: InfluencerEvent[] = eventsData.map((e: any) => ({
-                    id: e.id,
-                    influencer: e.profiles?.display_name || "Unknown",
-                    influencerId: e.influencer_id,
-                    handle: e.profiles?.influencer_details?.[0]?.instagram_handle || "",
-                    avatar: e.profiles?.avatar_url || "",
-                    category: e.category,
-                    event: e.title,
-                    date: new Date(e.created_at).toISOString().split('T')[0],
-                    description: e.description,
-                    tags: e.tags || [],
-                    verified: e.is_verified || false,
-                    followers: e.profiles?.influencer_details?.[0]?.followers_count || 0,
-                    targetProduct: e.target_product || "",
-                    eventDate: e.event_date || "",
-                    postingDate: e.posting_date || "",
-                    guide: e.guide || "",
-                    status: (e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'active'
-                }))
+                const mappedEvents: InfluencerEvent[] = eventsData.map((e: any) => {
+                    const details = Array.isArray(e.profiles?.influencer_details)
+                        ? e.profiles?.influencer_details[0]
+                        : e.profiles?.influencer_details;
+
+                    return {
+                        id: e.id,
+                        influencer: e.profiles?.display_name || "Unknown",
+                        influencerId: e.influencer_id,
+                        handle: details?.instagram_handle || "",
+                        avatar: e.profiles?.avatar_url || "",
+                        category: e.category,
+                        event: e.title,
+                        date: new Date(e.created_at).toISOString().split('T')[0],
+                        description: e.description,
+                        tags: e.tags || [],
+                        verified: e.is_verified || false,
+                        followers: details?.followers_count || 0,
+                        targetProduct: e.target_product || "",
+                        eventDate: e.event_date || "",
+                        postingDate: e.posting_date || "",
+                        guide: e.guide || "",
+                        status: (e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'active'
+                    }
+                })
                 setEvents(mappedEvents)
                 console.log('[fetchEvents] Set events state with', mappedEvents.length, 'events')
             }

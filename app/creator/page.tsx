@@ -627,15 +627,27 @@ function InfluencerDashboardContent() {
                                                     onClick={() => setSelectedMomentId(event.id as any)}
                                                 >
                                                     <div className="flex items-center gap-4">
-                                                        <div className={`flex h-12 w-12 items-center justify-center rounded-lg font-bold bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors`}>
-                                                            {event.date.includes("월") ? event.date.split(" ")[0] : "D-Day"}
+                                                        <div className={`flex h-12 w-12 items-center justify-center rounded-lg font-bold bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0`}>
+                                                            {event.date && event.date.includes("월") ? event.date.split(" ")[0] : "D-Day"}
                                                         </div>
                                                         <div>
                                                             <h3 className="font-bold text-lg group-hover:text-primary transition-colors">{event.event}</h3>
-                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                                <span>모집중</span>
-                                                                <span>•</span>
-                                                                <span>{event.date}</span>
+
+                                                            <div className="flex flex-col gap-1 mt-2">
+                                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                    <Calendar className="h-3.5 w-3.5 text-primary" />
+                                                                    <span className="font-medium">일정:</span> {event.eventDate || "미정"}
+                                                                </div>
+                                                                {event.postingDate && (
+                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                        <Send className="h-3.5 w-3.5 text-primary" />
+                                                                        <span className="font-medium">업로드:</span> {event.postingDate}
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                    <Gift className="h-3.5 w-3.5 text-primary" />
+                                                                    <span className="font-medium">희망:</span> {event.targetProduct || "미정"}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
