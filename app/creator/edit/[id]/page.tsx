@@ -32,7 +32,9 @@ export default function EditEventPage() {
 
     // Form States
     const [title, setTitle] = useState("")
+    const [eventYear, setEventYear] = useState("2026")
     const [eventMonth, setEventMonth] = useState("")
+    const [postingYear, setPostingYear] = useState("2026")
     const [postingMonth, setPostingMonth] = useState("")
     const [targetProduct, setTargetProduct] = useState("")
     const [description, setDescription] = useState("")
@@ -57,16 +59,20 @@ export default function EditEventPage() {
                 setDescription(event.description)
                 setTargetProduct(event.targetProduct || "")
 
-                // Parse Event Month (e.g., "2026년 3월" -> "3월")
+                // Parse Event Date
                 if (event.eventDate) {
-                    const match = event.eventDate.match(/(\d+월)/)
-                    if (match) setEventMonth(match[1])
+                    const yearMatch = event.eventDate.match(/(\d{4})년/)
+                    const monthMatch = event.eventDate.match(/(\d+월)/)
+                    if (yearMatch) setEventYear(yearMatch[1])
+                    if (monthMatch) setEventMonth(monthMatch[1])
                 }
 
-                // Parse Posting Month
+                // Parse Posting Date
                 if (event.postingDate) {
-                    const match = event.postingDate.match(/(\d+월)/)
-                    if (match) setPostingMonth(match[1])
+                    const yearMatch = event.postingDate.match(/(\d{4})년/)
+                    const monthMatch = event.postingDate.match(/(\d+월)/)
+                    if (yearMatch) setPostingYear(yearMatch[1])
+                    if (monthMatch) setPostingMonth(monthMatch[1])
                 }
 
                 setSelectedTags(event.tags || [])
@@ -118,8 +124,8 @@ export default function EditEventPage() {
             description: description,
             tags: tags,
             targetProduct: targetProduct || "미정",
-            eventDate: `2026년 ${eventMonth}`,
-            postingDate: `2026년 ${postingMonth}`
+            eventDate: `${eventYear}년 ${eventMonth}`,
+            postingDate: `${postingYear}년 ${postingMonth}`
         })
 
         alert("모먼트가 성공적으로 수정되었습니다!")
@@ -183,7 +189,16 @@ export default function EditEventPage() {
                             <div className="space-y-4">
                                 <Label className="flex items-center gap-2">
                                     <Calendar className="h-4 w-4" />
-                                    모먼트 일정 (2026년)
+                                    모먼트 일정
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setEventYear(prev => prev === "2026" ? "2027" : "2026")}
+                                        className="h-6 px-2 text-xs ml-1 bg-background"
+                                    >
+                                        {eventYear}년 🔄
+                                    </Button>
                                 </Label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {MONTHS.map((m) => {
@@ -208,6 +223,15 @@ export default function EditEventPage() {
                                 <Label className="flex items-center gap-2">
                                     <Send className="h-4 w-4" />
                                     콘텐츠 업로드 시기
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
+                                        className="h-6 px-2 text-xs ml-1 bg-background"
+                                    >
+                                        {postingYear}년 🔄
+                                    </Button>
                                 </Label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {MONTHS.map((m) => {

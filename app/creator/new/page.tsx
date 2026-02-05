@@ -31,7 +31,9 @@ export default function NewEventPage() {
 
     // Form States
     const [title, setTitle] = useState("")
+    const [eventYear, setEventYear] = useState("2026")
     const [eventMonth, setEventMonth] = useState("")
+    const [postingYear, setPostingYear] = useState("2026")
     const [postingMonth, setPostingMonth] = useState("")
     const [targetProduct, setTargetProduct] = useState("")
     const [description, setDescription] = useState("")
@@ -67,8 +69,8 @@ export default function NewEventPage() {
             description: description,
             tags: tags,
             targetProduct: targetProduct || "미정",
-            eventDate: `2026년 ${eventMonth}`,
-            postingDate: `2026년 ${postingMonth}`
+            eventDate: `${eventYear}년 ${eventMonth}`,
+            postingDate: `${postingYear}년 ${postingMonth}`
         })
 
         if (success) {
@@ -129,7 +131,16 @@ export default function NewEventPage() {
                             <div className="space-y-4">
                                 <Label className="flex items-center gap-2">
                                     <Calendar className="h-4 w-4" />
-                                    모먼트 일정 (2026년)
+                                    모먼트 일정
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setEventYear(prev => prev === "2026" ? "2027" : "2026")}
+                                        className="h-6 px-2 text-xs ml-1 bg-background"
+                                    >
+                                        {eventYear}년 🔄
+                                    </Button>
                                 </Label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {MONTHS.map((m) => {
@@ -154,6 +165,15 @@ export default function NewEventPage() {
                                 <Label className="flex items-center gap-2">
                                     <Send className="h-4 w-4" />
                                     콘텐츠 업로드 시기
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
+                                        className="h-6 px-2 text-xs ml-1 bg-background"
+                                    >
+                                        {postingYear}년 🔄
+                                    </Button>
                                 </Label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {MONTHS.map((m) => {
