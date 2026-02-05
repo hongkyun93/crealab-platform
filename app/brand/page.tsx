@@ -116,6 +116,13 @@ function BrandDashboardContent() {
     const [isUploading, setIsUploading] = useState(false)
     const [isImageUploading, setIsImageUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const [productSearchQuery, setProductSearchQuery] = useState("")
+
+    const filteredProducts = products?.filter(p =>
+        p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+        p.brandName?.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(productSearchQuery.toLowerCase())
+    ) || []
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -853,6 +860,78 @@ function BrandDashboardContent() {
                         )}
                     </div>
                 )
+            case "discover-products":
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h1 className="text-3xl font-bold tracking-tight">브랜드 제품 둘러보기</h1>
+                                <p className="text-muted-foreground mt-1 text-sm">
+                                    다른 브랜드의 제품을 둘러보고 협업 아이디어를 얻어보세요.
+                                </p>
+                            </div>
+                            <div className="flex w-full max-w-sm items-center space-x-2">
+                                <div className="relative w-full">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="브랜드, 제품명 검색"
+                                        className="pl-9"
+                                        value={productSearchQuery}
+                                        onChange={(e) => setProductSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {filteredProducts.length === 0 ? (
+                            <Card className="p-20 text-center border-dashed bg-muted/20">
+                                <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
+                                <h3 className="text-lg font-medium text-muted-foreground">검색 결과가 없습니다.</h3>
+                            </Card>
+                        ) : (
+                            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                                {filteredProducts.map((product) => (
+                                    <Card key={product.id} className="h-full overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 bg-background border-border/60 group">
+                                        <div className="aspect-square bg-muted flex items-center justify-center text-6xl overflow-hidden relative">
+                                            {product.image?.startsWith('http') ? (
+                                                <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            ) : (
+                                                <span className="transition-transform group-hover:scale-125">{product.image || "📦"}</span>
+                                            )}
+                                        </div>
+                                        <CardHeader className="p-4 pb-2">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-xs font-bold text-primary uppercase tracking-tight truncate max-w-[120px]">{product.brandName || "브랜드"}</span>
+                                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium">{product.category}</Badge>
+                                            </div>
+                                            <CardTitle className="text-sm font-bold line-clamp-2 leading-tight h-10">
+                                                {product.name}
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-4 pt-1">
+                                            <p className="font-extrabold text-lg text-foreground">
+                                                {product.price > 0 ? `${product.price.toLocaleString()}원` : "가격 미정"}
+                                            </p>
+                                        </CardContent>
+                                        <CardFooter className="p-4 pt-0 text-[10px] font-bold text-muted-foreground uppercase flex items-center border-t mt-2 pt-3">
+                                            {product.link && (
+                                                <a
+                                                    href={product.link}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline flex items-center gap-1"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    제품 보기 <ExternalLink className="h-3 w-3" />
+                                                </a>
+                                            )}
+                                        </CardFooter>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )
             case "settings":
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -962,6 +1041,13 @@ function BrandDashboardContent() {
                                 onClick={() => setCurrentView("my-products")}
                             >
                                 <ShoppingBag className="mr-2 h-4 w-4" /> 내 브랜드 제품
+                            </Button>
+                            <Button
+                                variant={currentView === "discover-products" ? "secondary" : "ghost"}
+                                className="w-full justify-start text-primary font-medium"
+                                onClick={() => setCurrentView("discover-products")}
+                            >
+                                <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
                             </Button>
                             <Button
                                 variant={currentView === "proposals" ? "secondary" : "ghost"}
