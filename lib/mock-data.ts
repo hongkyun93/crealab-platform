@@ -303,21 +303,21 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
         targetProduct: "수영복, 액션캠", eventDate: "2026년 7월", postingDate: "2026년 8월", isMock: true
     },
     {
-        id: "418", influencer: "차박 캠퍼", handle: "@car_camping", verified: false, avatar: "차", category: "✈️ 여행",
+        id: "418", influencer: "차박 캠퍼", handle: "@car_camping", verified: false, avatar: "https://images.unsplash.com/photo-1534180477871-5d6cc81f3920?w=400&h=400&fit=crop", category: "✈️ 여행",
         event: "경차로 떠나는 스텔스 차박", date: "2026년 5월",
         description: "퇴근 후 바로 떠나는 미니멀 차박 노하우.\n• 희망 협찬: 차박 텐트, 차량용 매트, 보조배터리\n• 이벤트 시기: 5월 주말\n• 업로드 예정: 5월 20일",
         tags: ["차박", "미니멀캠핑", "여행"], followers: 27000,
         targetProduct: "차박 용품", eventDate: "2026년 5월", postingDate: "2026년 5월", isMock: true
     },
     {
-        id: "419", influencer: "호캉스 리뷰어", handle: "@hotel_checkin", verified: true, avatar: "H", category: "✈️ 여행",
+        id: "419", influencer: "호캉스 리뷰어", handle: "@hotel_checkin", verified: true, avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop", category: "✈️ 여행",
         event: "5성급 호텔 라운지 & 수영장 100% 즐기기", date: "2026년 8월",
         description: "서울 호캉스 추천 및 부대시설 이용 꿀팁.\n• 희망 협찬: 수영복, 호캉스룩, 캐리어\n• 이벤트 시기: 8월 휴가철\n• 업로드 예정: 8월 10일",
         tags: ["호캉스", "호텔리뷰", "휴가"], followers: 130000,
         targetProduct: "수영복, 여행 가방", eventDate: "2026년 8월", postingDate: "2026년 8월", isMock: true
     },
     {
-        id: "420", influencer: "등산하는 직장인", handle: "@mt_hiker", verified: false, avatar: "산", category: "✈️ 여행",
+        id: "420", influencer: "등산하는 직장인", handle: "@mt_hiker", verified: false, avatar: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=400&fit=crop", category: "✈️ 여행",
         event: "한라산 백록담 등반 도전", date: "2026년 10월",
         description: "가을 단풍 시즌 한라산 등반 과정과 준비물 소개.\n• 희망 협찬: 등산화, 등산 스틱, 등산 가방, 행동식\n• 이벤트 시기: 10월 말\n• 업로드 예정: 11월 초 완등 인증",
         tags: ["등산", "한라산", "운동"], followers: 40000,
@@ -326,35 +326,35 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
 
     // --- Parenting & Kids (Expanding) ---
     {
-        id: "421", influencer: "쌍둥이 맘", handle: "@twins_mom", verified: true, avatar: "쌍", category: "👶 육아",
+        id: "421", influencer: "쌍둥이 맘", handle: "@twins_mom", verified: true, avatar: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&h=400&fit=crop", category: "👶 육아",
         event: "쌍둥이 돌잔치 준비 A to Z", date: "2026년 4월",
         description: "답례품 선정부터 성장 동영상 제작까지 모조리 공유해요.\n• 희망 협찬: 아기 정장, 답례품, 돌상 대여\n• 이벤트 시기: 4월 15일\n• 업로드 예정: 4월 30일 후기 영상",
         tags: ["육아", "돌잔치", "쌍둥이"], followers: 62000,
         targetProduct: "육아용품, 행사용품", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "422", influencer: "육아대디 준빠", handle: "@jun_pa", verified: false, avatar: "준", category: "👶 육아",
+        id: "422", influencer: "육아대디 준빠", handle: "@jun_pa", verified: false, avatar: "https://images.unsplash.com/photo-1534030347209-7147fd9e7912?w=400&h=400&fit=crop", category: "👶 육아",
         event: "아빠랑 문화센터 가는 날", date: "2026년 3월",
         description: "육아 휴직 중인 아빠의 문화센터 적응기.\n• 희망 협찬: 아기띠, 기저귀 가방, 유아 간식\n• 이벤트 시기: 3월 봄학기 개강\n• 업로드 예정: 매주 수요일",
         tags: ["육아빠", "문화센터", "육아브이로그"], followers: 15000,
         targetProduct: "유아 외출용품", eventDate: "2026년 3월", postingDate: "2026년 3월", isMock: true
     },
     {
-        id: "423", influencer: "초등맘 다이어리", handle: "@elementary_mom", verified: true, avatar: "초", category: "👶 육아",
+        id: "423", influencer: "초등맘 다이어리", handle: "@elementary_mom", verified: true, avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=400&h=400&fit=crop", category: "👶 육아",
         event: "신학기 아이방 인테리어해주기", date: "2026년 2월",
         description: "초등학교 입학하는 아이를 위해 책상과 침대를 바꿉니다.\n• 희망 협찬: 초등학생 책상, 의자, 스탠드, 침구\n• 이벤트 시기: 2월 입학 전\n• 업로드 예정: 2월 25일 룸투어",
         tags: ["아이방꾸미기", "초등맘", "입학준비"], followers: 89000,
         targetProduct: "키즈 가구, 학용품", eventDate: "2026년 2월", postingDate: "2026년 2월", isMock: true
     },
     {
-        id: "424", influencer: "장난감 리뷰왕", handle: "@toy_king", verified: true, avatar: "K", category: "👶 육아",
+        id: "424", influencer: "장난감 리뷰왕", handle: "@toy_king", verified: true, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop", category: "👶 육아",
         event: "어린이날 선물 BEST 5 추천", date: "2026년 5월",
         description: "아이들이 실제로 좋아하는 장난감 솔직 리뷰.\n• 희망 협찬: 인기 장난감, 보드게임\n• 이벤트 시기: 4월 말 촬영\n• 업로드 예정: 5월 1일 특집 영상",
         tags: ["장난감", "육아템", "선물추천"], followers: 250000,
         targetProduct: "완구", eventDate: "2026년 4월", postingDate: "2026년 5월", isMock: true
     },
     {
-        id: "425", influencer: "이유식 연구소", handle: "@baby_food_lab", verified: false, avatar: "이", category: "👶 육아",
+        id: "425", influencer: "이유식 연구소", handle: "@baby_food_lab", verified: false, avatar: "https://images.unsplash.com/photo-1556910103-1c02745a30bf?w=400&h=400&fit=crop", category: "👶 육아",
         event: "후기 이유식 큐브 대량생산", date: "2026년 6월",
         description: "한 번 만들어서 2주 편하게 먹는 토핑 이유식 노하우.\n• 희망 협찬: 이유식 마스터기, 큐브 틀, 이유식 용기\n• 이벤트 시기: 6월 초\n• 업로드 예정: 6월 10일",
         tags: ["이유식", "육아꿀팁", "레시피"], followers: 38000,
@@ -363,21 +363,21 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
 
     // --- Pet (Expanding) ---
     {
-        id: "426", influencer: "고양이 콩이", handle: "@kong_cat", verified: true, avatar: "콩", category: "🐶 반려동물",
+        id: "426", influencer: "고양이 콩이", handle: "@kong_cat", verified: true, avatar: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=400&fit=crop", category: "🐶 반려동물",
         event: "고양이 다이어트 프로젝트", date: "2026년 4월",
         description: "뚱냥이 탈출을 위한 장난감 사냥 놀이와 식단 관리.\n• 희망 협찬: 다이어트 사료, 자동 장난감, 캣휠\n• 이벤트 시기: 3개월 장기 프로젝트\n• 업로드 예정: 4월부터 격주 연재",
         tags: ["고양이", "반려묘", "다이어트"], followers: 120000,
         targetProduct: "반려동물 사료/용품", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "427", influencer: "강형욱 제자", handle: "@dog_trainer_wannabe", verified: false, avatar: "강", category: "🐶 반려동물",
+        id: "427", influencer: "강형욱 제자", handle: "@dog_trainer_wannabe", verified: false, avatar: "https://images.unsplash.com/photo-1530281700549-e82e7bf110d6?w=400&h=400&fit=crop", category: "🐶 반려동물",
         event: "우리 강아지 분리불안 훈련", date: "2026년 3월",
         description: "혼자 있는 강아지를 위한 펫CCTV 설치와 훈련 과정.\n• 희망 협찬: 펫카메라, 노즈워크 장난감, 진정 간식\n• 이벤트 시기: 3월\n• 업로드 예정: 3월 20일",
         tags: ["강아지훈련", "반려견", "펫테크"], followers: 18000,
         targetProduct: "펫 가전", eventDate: "2026년 3월", postingDate: "2026년 3월", isMock: true
     },
     {
-        id: "428", influencer: "햄스터 마을", handle: "@hamster_village", verified: true, avatar: "H", category: "🐶 반려동물",
+        id: "428", influencer: "햄스터 마을", handle: "@hamster_village", verified: true, avatar: "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=400&h=400&fit=crop", category: "🐶 반려동물",
         event: "자연주의 햄스터 케이지 꾸미기", date: "2026년 7월",
         description: "햄스터가 행복한 대형 아크릴 케이지 셋팅.\n• 희망 협찬: 베딩, 은신처, 쳇바퀴\n• 이벤트 시기: 7월 초\n• 업로드 예정: 7월 12일",
         tags: ["햄스터", "소동물", "케이지꾸미기"], followers: 45000,
@@ -386,49 +386,49 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
 
     // --- Self Improvement & Hobbies (Expanding) ---
     {
-        id: "429", influencer: "공부하는 직장인", handle: "@study_worker", verified: true, avatar: "공", category: "📚 도서/자기계발",
+        id: "429", influencer: "공부하는 직장인", handle: "@study_worker", verified: true, avatar: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=400&fit=crop", category: "📚 도서/자기계발",
         event: "퇴근 후 영어회화 마스터하기", date: "2026년 9월",
         description: "하루 30분 전화영어로 비즈니스 회화 정복 도전.\n• 희망 협찬: 영어 학습 앱, 태블릿 PC, 필기구\n• 이벤트 시기: 9월부터 100일 챌린지\n• 업로드 예정: 매일 숏폼 인증",
         tags: ["공부", "자기계발", "영어"], followers: 67000,
         targetProduct: "교육 서비스", eventDate: "2026년 9월", postingDate: "2026년 9월", isMock: true
     },
     {
-        id: "430", influencer: "굿노트 장인", handle: "@ipad_diary", verified: true, avatar: "다", category: "🎨 취미/DIY",
+        id: "430", influencer: "굿노트 장인", handle: "@ipad_diary", verified: true, avatar: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop", category: "🎨 취미/DIY",
         event: "2027년 다이어리 속지 무료 나눔", date: "2026년 12월",
         description: "직접 제작한 아이패드 다이어리 속지를 구독자에게 배포합니다.\n• 희망 협찬: 아이패드 악세서리, 전자책 플랫폼\n• 이벤트 시기: 12월 말\n• 업로드 예정: 12월 25일 크리스마스 선물",
         tags: ["다이어리", "아이패드", "굿노트"], followers: 140000,
         targetProduct: "디지털 문구", eventDate: "2026년 12월", postingDate: "2026년 12월", isMock: true
     },
     {
-        id: "431", influencer: "뜨개질 요정", handle: "@knitting_fairy", verified: true, avatar: "실", category: "🎨 취미/DIY",
+        id: "431", influencer: "뜨개질 요정", handle: "@knitting_fairy", verified: true, avatar: "https://images.unsplash.com/photo-1542060748-10c28b62716f?w=400&h=400&fit=crop", category: "🎨 취미/DIY",
         event: "자이언트 얀 가방 만들기 라이브", date: "2026년 11월",
         description: "겨울 맞이 포근한 가방 만들기 원데이 클래스 라이브.\n• 희망 협찬: 뜨개실, 라벨, 포장용품\n• 이벤트 시기: 11월 11일 빼빼로데이\n• 업로드 예정: 라이브 방송",
         tags: ["뜨개질", "취미", "DIY"], followers: 58000,
         targetProduct: "DIY 키트", eventDate: "2026년 11월", postingDate: "2026년 11월", isMock: true
     },
     {
-        id: "432", influencer: "홈카페 바리스타", handle: "@home_cafe_master", verified: true, avatar: "커", category: "🍽️ 맛집",
+        id: "432", influencer: "홈카페 바리스타", handle: "@home_cafe_master", verified: true, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop", category: "🍽️ 맛집",
         event: "나만의 시그니처 라떼 만들기", date: "2026년 8월",
         description: "여름 덛위를 날려버릴 아이스 라떼 레시피 3종.\n• 희망 협찬: 원두, 시럽, 유리컵, 제빙기\n• 이벤트 시기: 8월 초\n• 업로드 예정: 8월 5일 홈카페 영상",
         tags: ["홈카페", "커피", "레시피"], followers: 210000,
         targetProduct: "커피 용품", eventDate: "2026년 8월", postingDate: "2026년 8월", isMock: true
     },
     {
-        id: "433", influencer: "책 읽어주는 남자", handle: "@book_reader", verified: false, avatar: "책", category: "📚 도서/자기계발",
+        id: "433", influencer: "책 읽어주는 남자", handle: "@book_reader", verified: false, avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop", category: "📚 도서/자기계발",
         event: "한 달에 10권 읽기 챌린지", date: "2026년 10월",
         description: "독서의 계절 가을, 함께 책 읽을 구독자 모집.\n• 희망 협찬: 도서, 독서대, 북카페 이용권\n• 이벤트 시기: 10월 한 달\n• 업로드 예정: 매주 책 추천 영상",
         tags: ["독서", "책추천", "자기계발"], followers: 35000,
         targetProduct: "도서", eventDate: "2026년 10월", postingDate: "2026년 10월", isMock: true
     },
     {
-        id: "434", influencer: "주식 초보", handle: "@stock_baby", verified: false, avatar: "주", category: "💰 재테크",
+        id: "434", influencer: "주식 초보", handle: "@stock_baby", verified: false, avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop", category: "💰 재테크",
         event: "시드머니 1억 모으기 과정 공개", date: "2026년 4월",
         description: "사회초년생의 월급 70% 저축과 주식 투자 기록.\n• 희망 협찬: 투자 관련 도서, 경제 신문 구독권\n• 이벤트 시기: 상시\n• 업로드 예정: 매월 월말 결산",
         tags: ["주식", "재테크", "저축"], followers: 12000,
         targetProduct: "금융 서비스", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "435", influencer: "미술관 가는 길", handle: "@art_gallery", verified: true, avatar: "A", category: "🎬 영화/문화",
+        id: "435", influencer: "미술관 가는 길", handle: "@art_gallery", verified: true, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop", category: "🎬 영화/문화",
         event: "프리즈 서울 아트페어 브이로그", date: "2026년 9월",
         description: "세계적인 아트페어 프리즈 서울 현장을 담습니다.\n• 희망 협찬: 전시 티켓, 편안한 신발\n• 이벤트 시기: 9월 아트위크\n• 업로드 예정: 9월 10일",
         tags: ["전시", "미술", "문화생활"], followers: 49000,
@@ -437,7 +437,7 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
 
     // --- Wedding (New) ---
     {
-        id: "436", influencer: "예신 다이어리", handle: "@wedding_diaries", verified: true, avatar: "👰‍♀️", category: "💍 웨딩/결혼",
+        id: "436", influencer: "예신 다이어리", handle: "@wedding_diaries", verified: true, avatar: "https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=400&h=400&fit=crop", category: "💍 웨딩/결혼",
         event: "D-100 결혼 준비 브이로그", date: "2026년 9월",
         description: "상견례부터 본식까지 리얼한 결혼 준비 과정을 담습니다.\n• 희망 협찬: 가전, 가구, 청첩장, 답례품\n• 이벤트 시기: 9월부터 매주\n• 업로드 예정: 매주 일요일",
         tags: ["결혼준비", "예비신부", "웨딩"], followers: 24000,
