@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Megaphone, Plus } from "lucide-react"
+import { ArrowLeft, Megaphone, Plus, Send } from "lucide-react"
 import Link from "next/link"
 
 import { useRouter } from "next/navigation"
@@ -18,6 +18,8 @@ export default function NewCampaignPage() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string[]>([])
+    const [postingYear, setPostingYear] = useState("2026")
+    const [postingMonth, setPostingMonth] = useState("3")
 
     const POPULAR_TAGS = [
         "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
@@ -126,6 +128,55 @@ export default function NewCampaignPage() {
                                 id="target"
                                 name="target"
                                 placeholder="예: 감성적인 사진을 잘 찍으시는 분, 영상 편집 퀄리티가 높으신 분"
+                            />
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className="flex items-center gap-2">
+                                <Send className="h-4 w-4" />
+                                콘텐츠 업로드 시기 (예정)
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
+                                    className="h-6 px-2 text-xs ml-1 bg-background"
+                                >
+                                    {postingYear}년 🔄
+                                </Button>
+                            </Label>
+                            <div className="grid grid-cols-6 gap-2">
+                                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].map((m) => {
+                                    const isSelected = postingMonth === m
+                                    return (
+                                        <Button
+                                            key={`posting-${m}`}
+                                            type="button"
+                                            variant={isSelected ? "default" : "outline"}
+                                            className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
+                                            onClick={() => setPostingMonth(m)}
+                                        >
+                                            {m}월
+                                        </Button>
+                                    )
+                                })}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="number"
+                                    placeholder="일 (선택사항)"
+                                    className="w-24"
+                                    min={1}
+                                    max={31}
+                                    name="postingDay"
+                                />
+                                <span className="text-sm text-muted-foreground">일에 업로드 희망 (미입력시 '협의'로 표시됩니다)</span>
+                            </div>
+                            {/* Hidden input to combine year-month for form submission */}
+                            <input
+                                type="hidden"
+                                name="postingDate"
+                                value={`${postingYear}-${postingMonth.padStart(2, '0')}`}
                             />
                         </div>
 

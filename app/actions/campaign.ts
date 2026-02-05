@@ -19,28 +19,23 @@ export async function createCampaign(formData: FormData) {
     const budget = formData.get('budget') as string
     const target = formData.get('target') as string
     const descriptionRaw = formData.get('description') as string
-
-    // Combine details into description field since DB schema is strict
-    const fullDescription = `
-[카테고리] ${category}
-[제공 혜택] ${budget}
-[원하는 크리에이터] ${target}
-[상세 내용]
-${descriptionRaw}
-  `.trim()
-
-    const title = `[${category}] ${product} 캠페인`
+    const eventDate = formData.get('eventDate') as string
+    const postingDate = formData.get('postingDate') as string
 
     // 3. Insert into DB
     const { error } = await supabase
         .from('campaigns')
         .insert({
             brand_id: user.id,
-            title: title,
+            title: `[${category}] ${product} 캠페인`,
             product_name: product,
-            description: fullDescription,
-            status: 'active'
-            // budget_min/max, image_url, etc. are optional/omitted for now
+            category: category,
+            budget: budget,
+            target: target,
+            description: descriptionRaw,
+            status: 'active',
+            event_date: eventDate,
+            posting_date: postingDate
         })
 
     if (error) {
@@ -68,26 +63,21 @@ export async function updateCampaign(id: string, formData: FormData) {
     const budget = formData.get('budget') as string
     const target = formData.get('target') as string
     const descriptionRaw = formData.get('description') as string
-
-    // Combine details into description field since DB schema is strict
-    const fullDescription = `
-[카테고리] ${category}
-[제공 혜택] ${budget}
-[원하는 크리에이터] ${target}
-[상세 내용]
-${descriptionRaw}
-  `.trim()
-
-    const title = `[${category}] ${product} 캠페인`
+    const eventDate = formData.get('eventDate') as string
+    const postingDate = formData.get('postingDate') as string
 
     // 3. Update DB
     const { error } = await supabase
         .from('campaigns')
         .update({
-            title: title,
+            title: `[${category}] ${product} 캠페인`,
             product_name: product,
-            description: fullDescription,
-            // status remains unchanged or passed if needed
+            category: category,
+            budget: budget,
+            target: target,
+            description: descriptionRaw,
+            event_date: eventDate,
+            posting_date: postingDate
         })
         .eq('id', id)
         .eq('brand_id', user.id) // Ensure ownership

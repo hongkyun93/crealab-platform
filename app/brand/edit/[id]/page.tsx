@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Edit2, Plus } from "lucide-react"
+import { ArrowLeft, Edit2, Plus, Send } from "lucide-react"
 import Link from "next/link"
 
 import { useParams, useRouter } from "next/navigation"
@@ -29,6 +29,11 @@ export default function EditCampaignPage() {
     const [description, setDescription] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string[]>([])
     const [customTags, setCustomTags] = useState("")
+
+    // Date Picker State
+    const [postingYear, setPostingYear] = useState("2026")
+    const [postingMonth, setPostingMonth] = useState("3")
+    const [postingDay, setPostingDay] = useState("")
 
     const POPULAR_TAGS = [
         "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
@@ -59,7 +64,6 @@ export default function EditCampaignPage() {
                 // If description contains our formatted markers
                 if (campaign.description.includes('[카테고리]')) {
                     // Extract parts
-                    // This is a bit rough, but effective for the specific format we created
                     const catPart = campaign.description.match(/\[카테고리\] (.*?)(?=\n|$)/)?.[1]
                     const budPart = campaign.description.match(/\[제공 혜택\] (.*?)(?=\n|$)/)?.[1]
                     const tarPart = campaign.description.match(/\[원하는 크리에이터\] (.*?)(?=\n|$)/)?.[1]
@@ -70,11 +74,18 @@ export default function EditCampaignPage() {
                     if (tarPart) setTarget(tarPart)
                     setDescription(detailPart.trim())
                 } else {
-                    // Fallback for raw data or other formats
+                    // Fallback or Structured Data (New way)
                     setDescription(campaign.description)
-                    setBudget(campaign.budget) // Use the one from card view if available
-                    setTarget(campaign.target)
-                    setSelectedCategory(campaign.category ? campaign.category.split(',') : [])
+                    setBudget(campaign.budget || extractValue(campaign.description, '제공 혜택') || campaign.budget)
+                    setTarget(campaign.target || extractValue(campaign.description, '원하는 크리에이터') || campaign.target)
+                    setSelectedCategory(campaign.category ? campaign.category.split(',') : (extractValue(campaign.description, '카테고리')?.split(',') || []))
+                }
+
+                if (campaign.postingDate) {
+                    const [y, m, d] = campaign.postingDate.split('-')
+                    if (y) setPostingYear(y)
+                    if (m) setPostingMonth(parseInt(m).toString()) // remove leading zero
+                    if (d) setPostingDay(d)
                 }
             } else {
                 // Not found locally? might need to reload or it doesn't exist
@@ -198,6 +209,57 @@ export default function EditCampaignPage() {
                                 value={target}
                                 onChange={e => setTarget(e.target.value)}
                                 placeholder="예: 감성적인 사진을 잘 찍으시는 분, 영상 편집 퀄리티가 높으신 분"
+                            />
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className="flex items-center gap-2">
+                                <Send className="h-4 w-4" />
+                                콘텐츠 업로드 시기 (예정)
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
+                                    className="h-6 px-2 text-xs ml-1 bg-background"
+                                >
+                                    {postingYear}년 🔄
+                                </Button>
+                            </Label>
+                            <div className="grid grid-cols-6 gap-2">
+                                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].map((m) => {
+                                    const isSelected = postingMonth === m
+                                    return (
+                                        <Button
+                                            key={`posting-${m}`}
+                                            type="button"
+                                            variant={isSelected ? "default" : "outline"}
+                                            className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
+                                            onClick={() => setPostingMonth(m)}
+                                        >
+                                            {m}월
+                                        </Button>
+                                    )
+                                })}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="number"
+                                    placeholder="일 (선택사항)"
+                                    className="w-24"
+                                    min={1}
+                                    max={31}
+                                    name="postingDay"
+                                    value={postingDay}
+                                    onChange={e => setPostingDay(e.target.value)}
+                                />
+                                <span className="text-sm text-muted-foreground">일에 업로드 희망 (미입력시 '협의'로 표시됩니다)</span>
+                            </div>
+                            {/* Hidden input to combine year-month for form submission */}
+                            <input
+                                type="hidden"
+                                name="postingDate"
+                                value={`${postingYear}-${postingMonth.padStart(2, '0')}-${postingDay || ''}`}
                             />
                         </div>
 

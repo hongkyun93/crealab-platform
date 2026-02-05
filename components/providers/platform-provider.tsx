@@ -599,18 +599,36 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .order('created_at', { ascending: false })
 
             if (campaignData) {
-                const mappedCampaigns: Campaign[] = campaignData.map((c: any) => ({
-                    id: c.id,
-                    brandId: c.brand_id,
-                    brand: c.profiles?.display_name || "Unknown Brand",
-                    product: c.product_name || "",
-                    category: c.title.match(/\[(.*?)\]/)?.[1] || "기타",
-                    budget: "제공 내역 상세 참고",
-                    target: "스타일에 맞는 크리에이터",
-                    description: c.description || "",
-                    matchScore: Math.floor(Math.random() * 20) + 80,
-                    date: new Date(c.created_at).toISOString().split('T')[0]
-                }))
+                const mappedCampaigns: Campaign[] = campaignData.map((c: any) => {
+                    // Helper to parse legacy blob data
+                    const extractField = (text: string, tag: string) => {
+                        const match = text?.match(new RegExp(`\\[${tag}\\]\\s*(.*?)(?:\\[|$)`, 's'))
+                        return match ? match[1].trim() : null
+                    }
+
+                    const legacyCategory = extractField(c.description, '카테고리')
+                    const legacyBudget = extractField(c.description, '제공 혜택')
+                    const legacyTarget = extractField(c.description, '원하는 크리에이터')
+                    const legacyDescription = c.description?.split('[상세 내용]')?.[1]?.trim() || c.description
+
+                    // Use new columns if available (assuming 'category' presence indicates new format), otherwise fallback
+                    const isNewFormat = !!c.category
+
+                    return {
+                        id: c.id,
+                        brandId: c.brand_id,
+                        brand: c.profiles?.display_name || "Unknown Brand",
+                        product: c.product_name || "",
+                        category: c.category || legacyCategory || c.title.match(/\[(.*?)\]/)?.[1] || "기타",
+                        budget: c.budget || legacyBudget || "협의",
+                        target: c.target || legacyTarget || "전체",
+                        description: isNewFormat ? c.description : legacyDescription,
+                        matchScore: Math.floor(Math.random() * 20) + 80,
+                        date: new Date(c.created_at).toISOString().split('T')[0],
+                        postingDate: c.posting_date,
+                        eventDate: c.event_date
+                    }
+                })
                 setCampaigns(mappedCampaigns)
             }
 
