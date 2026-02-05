@@ -16,7 +16,7 @@ import {
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift } from "lucide-react"
+import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone } from "lucide-react"
 import Link from "next/link"
 import { usePlatform, MOCK_INFLUENCER_USER } from "@/components/providers/platform-provider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -1138,6 +1138,77 @@ function InfluencerDashboardContent() {
                         )}
                     </div>
                 )
+
+            case "discover-campaigns":
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex flex-col gap-4">
+                            <div>
+                                <h1 className="text-3xl font-bold tracking-tight">브랜드 캠페인 둘러보기</h1>
+                                <p className="text-muted-foreground mt-1 text-sm">
+                                    브랜드가 등록한 캠페인을 확인하고 지원해보세요.
+                                </p>
+                            </div>
+                        </div>
+
+                        {campaigns.length === 0 ? (
+                            <Card className="p-20 text-center border-dashed bg-muted/20">
+                                <Megaphone className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
+                                <h3 className="text-lg font-medium text-muted-foreground">등록된 캠페인이 없습니다.</h3>
+                            </Card>
+                        ) : (
+                            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                                {campaigns.map((camp) => (
+                                    <Card key={camp.id} className="flex flex-col h-full hover:shadow-lg transition-all border-border/60 hover:border-primary/50 group cursor-pointer" onClick={() => {
+                                        // Simple alert for now as full application flow isn't defined yet
+                                        alert("준비 중인 기능입니다! 곧 지원 기능이 오픈됩니다.")
+                                    }}>
+                                        <CardHeader>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-0">
+                                                    {/* Split by comma if multiple categories */}
+                                                    {camp.category ? camp.category.split(',')[0] : '카테고리 없음'}
+                                                </Badge>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {camp.date ? new Date(camp.date).toLocaleDateString() : new Date().toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <CardTitle className="text-lg font-bold line-clamp-1">{camp.product}</CardTitle>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                                                    {camp.brand?.[0] || 'B'}
+                                                </div>
+                                                <span className="text-sm text-muted-foreground font-medium">{camp.brand}</span>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="flex-1 space-y-4">
+                                            <div className="bg-muted/30 p-3 rounded-lg text-sm space-y-2">
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">제공 혜택</span>
+                                                    <span className="font-bold text-emerald-600">{camp.budget}</span>
+                                                </div>
+                                                {camp.target && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">모집 대상</span>
+                                                        <span className="font-medium truncate max-w-[150px]">{camp.target}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+                                                {camp.description}
+                                            </p>
+                                        </CardContent>
+                                        <CardFooter className="pt-0 mt-auto">
+                                            <Button className="w-full gap-2 group-hover:bg-primary group-hover:text-white transition-colors">
+                                                <Send className="h-4 w-4" /> 지원하기
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )
             default:
                 return null
         }
@@ -1172,6 +1243,13 @@ function InfluencerDashboardContent() {
                                 onClick={() => setCurrentView("discover-moments")}
                             >
                                 <Search className="mr-2 h-4 w-4" /> 모먼트 둘러보기
+                            </Button>
+                            <Button
+                                variant={currentView === "discover-campaigns" ? "secondary" : "ghost"}
+                                className="w-full justify-start text-primary font-medium"
+                                onClick={() => setCurrentView("discover-campaigns")}
+                            >
+                                <Megaphone className="mr-2 h-4 w-4" /> 캠페인 둘러보기
                             </Button>
                             <Button
                                 variant={currentView === "proposals" ? "secondary" : "ghost"}
