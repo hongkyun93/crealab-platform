@@ -69,35 +69,35 @@ export const MOCK_PRODUCTS: Product[] = [
 export const MOCK_EVENTS: InfluencerEvent[] = [
     // Lifestyle & Living
     {
-        id: "101", influencer: "김세라", handle: "@sarah_k", verified: true, avatar: "김", category: "🏡 리빙/인테리어",
+        id: "101", influencer: "김세라", handle: "@sarah_k", verified: true, avatar: "https://images.unsplash.com/photo-1581044777550-4cfa60707c03?w=400&h=400&fit=crop", category: "🏡 리빙/인테리어",
         event: "30평대 아파트 리모델링", date: "2026년 3월",
         description: "구축 아파트 올수리 리모델링 과정을 담습니다.",
         tags: ["인테리어", "리모델링", "랜선집들이"], followers: 45000,
         targetProduct: "바닥재, 조명, 욕실 자재", eventDate: "2026년 3월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "102", influencer: "살림왕", handle: "@home_king", verified: false, avatar: "살", category: "🏡 리빙/인테리어",
+        id: "102", influencer: "살림왕", handle: "@home_king", verified: false, avatar: "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=400&h=400&fit=crop", category: "🏡 리빙/인테리어",
         event: "봄맞이 대청소 & 수납 정리", date: "2026년 4월",
         description: "겨울 묵은 짐을 정리하고 수납공간을 재배치합니다.",
         tags: ["청소", "정리정돈", "수납"], followers: 12000,
         targetProduct: "수납함, 정리 용품, 로봇청소기", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "103", influencer: "식물집사", handle: "@plant_lover", verified: true, avatar: "식", category: "🎨 취미/DIY",
+        id: "103", influencer: "식물집사", handle: "@plant_lover", verified: true, avatar: "https://images.unsplash.com/photo-1594824476961-b7aa59735079?w=400&h=400&fit=crop", category: "🎨 취미/DIY",
         event: "거실 베란다 정원 꾸미기", date: "2026년 3월",
         description: "삭막한 베란다를 플랜테리어 공간으로 바꿉니다.",
         tags: ["식물", "플랜테리어", "홈가드닝"], followers: 28000,
         targetProduct: "대형 화분, 식물 생장등", eventDate: "2026년 3월", postingDate: "2026년 3월", isMock: true
     },
     {
-        id: "104", influencer: "자취생 K", handle: "@single_life", verified: false, avatar: "K", category: "🏡 리빙/인테리어",
+        id: "104", influencer: "자취생 K", handle: "@single_life", verified: false, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop", category: "🏡 리빙/인테리어",
         event: "첫 자취 시작 & 이사", date: "2026년 2월",
         description: "대학생의 첫 자취방 꾸미기 브이로그입니다.",
         tags: ["자취", "이사", "원룸"], followers: 5000,
         targetProduct: "매트리스, 1인용 소파, 미니 밥솥", eventDate: "2026년 2월", postingDate: "2026년 2월", isMock: true
     },
     {
-        id: "105", influencer: "미니멀리스트", handle: "@empty_space", verified: true, avatar: "미", category: "🏡 리빙/인테리어",
+        id: "105", influencer: "미니멀리스트", handle: "@empty_space", verified: true, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop", category: "🏡 리빙/인테리어",
         event: "주방 식기 전면 교체", date: "2026년 5월",
         description: "오래된 플라스틱 용기를 버리고 유리/스테인리스로 교체합니다.",
         tags: ["주방", "제로웨이스트", "살림"], followers: 33000,
@@ -105,35 +105,35 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
     },
     // Health & Fitness
     {
-        id: "201", influencer: "박민준", handle: "@minjun_fit", verified: true, avatar: "박", category: "🏋️ 헬스/운동",
+        id: "201", influencer: "박민준", handle: "@minjun_fit", verified: true, avatar: "https://images.unsplash.com/photo-1583195764036-6dc248ac07d9?w=400&h=400&fit=crop", category: "🏋️ 헬스/운동",
         event: "여름 대비 바디프로필", date: "2026년 6월",
         description: "6월 촬영을 목표로 체지방 5%에 도전합니다.",
         tags: ["헬스", "바디프로필", "식단"], followers: 120000,
         targetProduct: "단백질 보충제, 닭가슴살 도시락", eventDate: "2026년 6월", postingDate: "2026년 6월", isMock: true
     },
     {
-        id: "202", influencer: "다이어터 찐", handle: "@diet_jjin", verified: false, avatar: "찐", category: "🥗 다이어트",
+        id: "202", influencer: "다이어터 찐", handle: "@diet_jjin", verified: false, avatar: "https://images.unsplash.com/photo-1544168190-79c11c1404c0?w=400&h=400&fit=crop", category: "🥗 다이어트",
         event: "결혼식 전 -5kg 감량", date: "2026년 4월",
         description: "친구 결혼식 축가를 위해 급찐급빠 다이어트 돌입!",
         tags: ["다이어트", "급찐급빠", "홈트"], followers: 8000,
         targetProduct: "다이어트 보조제, 샐러드", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "203", influencer: "요가 파이어", handle: "@yoga_fire", verified: true, avatar: "요", category: "🏋️ 헬스/운동",
+        id: "203", influencer: "요가 파이어", handle: "@yoga_fire", verified: true, avatar: "https://images.unsplash.com/photo-1552693673-1bf958298935?w=400&h=400&fit=crop", category: "🏋️ 헬스/운동",
         event: "야외 요가 원데이 클래스", date: "2026년 5월",
         description: "구독자들과 한강에서 야외 요가를 진행합니다.",
         tags: ["요가", "야외운동", "이벤트"], followers: 42000,
         targetProduct: "요가 매트, 요가복, 이온 음료", eventDate: "2026년 5월", postingDate: "2026년 5월", isMock: true
     },
     {
-        id: "204", influencer: "러닝 크루", handle: "@run_run", verified: true, avatar: "러", category: "🏋️ 헬스/운동",
+        id: "204", influencer: "러닝 크루", handle: "@run_run", verified: true, avatar: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=400&h=400&fit=crop", category: "🏋️ 헬스/운동",
         event: "서울 하프 마라톤 출전", date: "2026년 4월",
         description: "크루원 20명과 함께 하프 마라톤 완주에 도전합니다.",
         tags: ["러닝", "마라톤", "크루"], followers: 65000,
         targetProduct: "러닝화, 스포츠 테이핑", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "205", influencer: "클라이밍", handle: "@wall_climb", verified: true, avatar: "클", category: "🏋️ 헬스/운동",
+        id: "205", influencer: "클라이밍", handle: "@wall_climb", verified: true, avatar: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&h=400&fit=crop", category: "🏋️ 헬스/운동",
         event: "자연 암벽 등반 여행", date: "2026년 5월",
         description: "실내를 벗어나 국내 암벽 명소로 2박 3일 떠납니다.",
         tags: ["클라이밍", "암벽등반", "아웃도어"], followers: 23000,
@@ -141,35 +141,35 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
     },
     // Beauty & Fashion
     {
-        id: "301", influencer: "민지 뷰티", handle: "@minji_beauty", verified: true, avatar: "민", category: "💄 뷰티",
+        id: "301", influencer: "민지 뷰티", handle: "@minji_beauty", verified: true, avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop", category: "💄 뷰티",
         event: "환절기 스킨케어 루틴", date: "2026년 3월",
         description: "미세먼지와 건조함 잡는 나만의 루틴을 공개합니다.",
         tags: ["스킨케어", "환절기", "피부관리"], followers: 350000,
         targetProduct: "진정 앰플, 마스크팩", eventDate: "2026년 3월", postingDate: "2026년 3월", isMock: true
     },
     {
-        id: "302", influencer: "데일리룩", handle: "@daily_look", verified: true, avatar: "D", category: "👗 패션",
+        id: "302", influencer: "데일리룩", handle: "@daily_look", verified: true, avatar: "https://images.unsplash.com/photo-1509967419530-32433456c1b7?w=400&h=400&fit=crop", category: "👗 패션",
         event: "벚꽃 놀이 데이트룩 코디", date: "2026년 4월",
         description: "벚꽃 축제 인생샷 건지는 색감 깡패 코디 모음.",
         tags: ["OOTD", "봄코디", "데이트룩"], followers: 120000,
         targetProduct: "원피스, 가디건, 미니백", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "303", influencer: "코덕 리스트", handle: "@cosmetic_duck", verified: false, avatar: "코", category: "💄 뷰티",
+        id: "303", influencer: "코덕 리스트", handle: "@cosmetic_duck", verified: false, avatar: "https://images.unsplash.com/photo-1596462502278-27bfdd403348?w=400&h=400&fit=crop", category: "💄 뷰티",
         event: "명품 vs 저렴이 반반 메이크업", date: "2026년 3월",
         description: "백화점 파운데이션과 로드샵 제품을 반반 비교합니다.",
         tags: ["메이크업", "비교리뷰", "저렴이"], followers: 18000,
         targetProduct: "파운데이션, 쿠션", eventDate: "2026년 3월", postingDate: "2026년 3월", isMock: true
     },
     {
-        id: "304", influencer: "하객룩", handle: "@wedding_guest", verified: false, avatar: "하", category: "👗 패션",
+        id: "304", influencer: "하객룩", handle: "@wedding_guest", verified: false, avatar: "https://images.unsplash.com/photo-1491349174775-aaafddd81942?w=400&h=400&fit=crop", category: "👗 패션",
         event: "5월의 신부, 친구 결혼식", date: "2026년 5월",
         description: "가장 친한 친구 결혼식 사회를 보게 되었습니다.",
         tags: ["하객룩", "결혼식", "정장"], followers: 9000,
         targetProduct: "정장 셋업, 구두, 쥬얼리", eventDate: "2026년 5월", postingDate: "2026년 5월", isMock: true
     },
     {
-        id: "305", influencer: "명품 하울", handle: "@luxury_haul", verified: true, avatar: "명", category: "👗 패션",
+        id: "305", influencer: "명품 하울", handle: "@luxury_haul", verified: true, avatar: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&h=400&fit=crop", category: "👗 패션",
         event: "도쿄 빈티지 쇼핑 투어", date: "2026년 6월",
         description: "도쿄 오모테산도 명품 빈티지 샵을 털어봅니다.",
         tags: ["일본여행", "쇼핑", "하울"], followers: 210000,
@@ -178,35 +178,35 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
     // Adding 35 more items to reach 50
     // --- Tech & Gadgets (Expanding) ---
     {
-        id: "401", influencer: "얼리어답터 준", handle: "@early_jun", verified: true, avatar: "준", category: "💻 테크/IT",
+        id: "401", influencer: "얼리어답터 준", handle: "@early_jun", verified: true, avatar: "https://images.unsplash.com/photo-1533422902779-aff35862e462?w=400&h=400&fit=crop", category: "💻 테크/IT",
         event: "갤럭시 Z 플립6 2주 사용기", date: "2026년 8월",
         description: "실사용자 입장에서 장단점을 솔직하게 분석합니다.\n• 희망 협찬: 케이스, 보호필름, 충전기, 보조배터리\n• 이벤트 시기: 8월 둘째 주\n• 업로드 예정: 8월 20일 리뷰 영상 게시",
         tags: ["스마트폰", "IT리뷰", "갤럭시"], followers: 156000,
         targetProduct: "스마트폰 악세서리", eventDate: "2026년 8월", postingDate: "2026년 8월", isMock: true
     },
     {
-        id: "402", influencer: "데스크셋업", handle: "@my_desk_setup", verified: false, avatar: "데", category: "💻 테크/IT",
+        id: "402", influencer: "데스크셋업", handle: "@my_desk_setup", verified: false, avatar: "https://images.unsplash.com/photo-1593640408182-ed70076a0840?w=400&h=400&fit=crop", category: "💻 테크/IT",
         event: "화이트 감성 데스크 셋업 완성", date: "2026년 5월",
         description: "모든 기기를 화이트 톤으로 맞춘 데스크테리어를 소개합니다.\n• 희망 협찬: 화이트 키보드, 마우스, 모니터 암, 데스크 매트\n• 이벤트 시기: 5월 초\n• 업로드 예정: 5월 15일 룸투어 업로드",
         tags: ["데스크테리어", "방꾸미기", "IT"], followers: 42000,
         targetProduct: "키보드, 마우스, 모니터암", eventDate: "2026년 5월", postingDate: "2026년 5월", isMock: true
     },
     {
-        id: "403", influencer: "카메라 깎는 노인", handle: "@cam_master", verified: true, avatar: "C", category: "💻 테크/IT",
+        id: "403", influencer: "카메라 깎는 노인", handle: "@cam_master", verified: true, avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop", category: "💻 테크/IT",
         event: "입문용 미러리스 카메라 추천 가이드", date: "2026년 4월",
         description: "유튜브 시작하는 분들을 위한 가성비 카메라 및 렌즈 추천.\n• 희망 협찬: 입문용 카메라, 삼각대, 조명, 마이크\n• 이벤트 시기: 4월 중순\n• 업로드 예정: 4월 25일 총정리 영상",
         tags: ["카메라", "영상촬영", "유튜브장비"], followers: 89000,
         targetProduct: "카메라 바디, 렌즈", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "404", influencer: "음향덕후", handle: "@sound_good", verified: false, avatar: "음", category: "💻 테크/IT",
+        id: "404", influencer: "음향덕후", handle: "@sound_good", verified: false, avatar: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop", category: "💻 테크/IT",
         event: "노이즈 캔슬링 헤드폰 3종 비교", date: "2026년 6월",
         description: "소니, 보스, 애플 헤드폰을 비행기 소음 환경에서 비교합니다.\n• 희망 협찬: 헤드폰 대여 또는 협찬\n• 이벤트 시기: 6월 초 해외 출장 시 테스트\n• 업로드 예정: 6월 15일",
         tags: ["음향기기", "헤드폰", "비교리뷰"], followers: 23000,
         targetProduct: "헤드폰", eventDate: "2026년 6월", postingDate: "2026년 6월", isMock: true
     },
     {
-        id: "405", influencer: "개발자 라이프", handle: "@code_life", verified: true, avatar: "Dev", category: "💻 테크/IT",
+        id: "405", influencer: "개발자 라이프", handle: "@code_life", verified: true, avatar: "https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?w=400&h=400&fit=crop", category: "💻 테크/IT",
         event: "판교 개발자의 재택근무 브이로그", date: "2026년 3월",
         description: "효율적인 업무를 위한 장비와 소프트웨어를 소개합니다.\n• 희망 협찬: 인체공학 의자, 버티컬 마우스, 생산성 앱 구독권\n• 이벤트 시기: 3월 한 달간\n• 업로드 예정: 매주 금요일 퇴근 후",
         tags: ["개발자", "재택근무", "생산성"], followers: 55000,
@@ -215,35 +215,35 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
 
     // --- Beauty & Fashion (Expanding) ---
     {
-        id: "406", influencer: "퍼스널컬러 진단", handle: "@color_match", verified: true, avatar: "P", category: "💄 뷰티",
+        id: "406", influencer: "퍼스널컬러 진단", handle: "@color_match", verified: true, avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=400&fit=crop", category: "💄 뷰티",
         event: "여름 쿨톤 인생 립스틱 찾기", date: "2026년 5월",
         description: "여쿨라에게 형광등 켜주는 핑크 립 10종 발색 비교.\n• 희망 협찬: 쿨톤 립 신상, 블러셔\n• 이벤트 시기: 5월 초\n• 업로드 예정: 5월 10일",
         tags: ["퍼스널컬러", "여름쿨톤", "립추천"], followers: 105000,
         targetProduct: "틴트, 립스틱", eventDate: "2026년 5월", postingDate: "2026년 5월", isMock: true
     },
     {
-        id: "407", influencer: "맨즈 그루밍", handle: "@man_beauty", verified: false, avatar: "M", category: "💄 뷰티",
+        id: "407", influencer: "맨즈 그루밍", handle: "@man_beauty", verified: false, avatar: "https://images.unsplash.com/photo-1618077360395-f3068be8e001?w=400&h=400&fit=crop", category: "💄 뷰티",
         event: "남자 면접 프리패스 헤어 & 메이크업", date: "2026년 9월",
         description: "하반기 공채 시즌 대비 깔끔한 인상 만들기 튜토리얼.\n• 희망 협찬: 남성용 비비크림, 헤어 왁스, 눈썹 칼\n• 이벤트 시기: 9월 공채 시즌\n• 업로드 예정: 9월 1일",
         tags: ["남자메이크업", "면접", "그루밍"], followers: 32000,
         targetProduct: "남성 화장품, 헤어제품", eventDate: "2026년 8월", postingDate: "2026년 9월", isMock: true
     },
     {
-        id: "408", influencer: "키작녀 코디", handle: "@155_cm", verified: true, avatar: "키", category: "👗 패션",
+        id: "408", influencer: "키작녀 코디", handle: "@155_cm", verified: true, avatar: "https://images.unsplash.com/photo-1581044777550-4cfa60707c03?w=400&h=400&fit=crop", category: "👗 패션",
         event: "키 155cm의 비율 좋아보이는 가을 코디", date: "2026년 9월",
         description: "수선 없이 입는 슬랙스와 부츠컷 데님 추천.\n• 희망 협찬: 키작녀 전용 쇼핑몰 의류, 굽 있는 운동화\n• 이벤트 시기: 9월 중순\n• 업로드 예정: 9월 20일 룩북",
         tags: ["키작녀", "가을코디", "데일리룩"], followers: 180000,
         targetProduct: "바지, 운동화", eventDate: "2026년 9월", postingDate: "2026년 9월", isMock: true
     },
     {
-        id: "409", influencer: "스트릿 패션왕", handle: "@street_mood", verified: true, avatar: "S", category: "👗 패션",
+        id: "409", influencer: "스트릿 패션왕", handle: "@street_mood", verified: true, avatar: "https://images.unsplash.com/photo-1549419396-e264b5e28a9b?w=400&h=400&fit=crop", category: "👗 패션",
         event: "성수동 팝업스토어 투어 룩", date: "2026년 4월",
         description: "요즘 핫한 성수동 팝업들을 돌며 입기 좋은 힙한 코디.\n• 희망 협찬: 오버핏 후드, 카고 팬츠, 메신저백\n• 이벤트 시기: 4월 주말\n• 업로드 예정: 4월 15일",
         tags: ["스트릿", "성수동", "OOTD"], followers: 210000,
         targetProduct: "스트릿 의류, 가방", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "410", influencer: "네일 아티스트", handle: "@nail_art_j", verified: false, avatar: "N", category: "💄 뷰티",
+        id: "410", influencer: "네일 아티스트", handle: "@nail_art_j", verified: false, avatar: "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&h=400&fit=crop", category: "💄 뷰티",
         event: "집에서 하는 셀프 젤네일 꿀팁", date: "2026년 3월",
         description: "샵 가지 않고도 퀄리티 있게! 지속력 높이는 방법 공개.\n• 희망 협찬: 젤네일 키트, 램프, 파츠\n• 이벤트 시기: 3월 초\n• 업로드 예정: 3월 5일",
         tags: ["셀프네일", "젤네일", "취미"], followers: 28000,
@@ -252,35 +252,35 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
 
     // --- Food & Cooking (Expanding) ---
     {
-        id: "411", influencer: "디저트 헌터", handle: "@sweet_tooth", verified: true, avatar: "디", category: "🍽️ 맛집",
+        id: "411", influencer: "디저트 헌터", handle: "@sweet_tooth", verified: true, avatar: "https://images.unsplash.com/photo-1512485800893-b08ec1ea59b1?w=400&h=400&fit=crop", category: "🍽️ 맛집",
         event: "전국 빵지순례 1탄: 대전 성심당", date: "2026년 4월",
         description: "튀김소보로 외에 숨겨진 존맛 빵들을 털어옵니다.\n• 희망 협찬: KTX, 대전 숙소, 빵 보관 용기\n• 이벤트 시기: 4월 초\n• 업로드 예정: 4월 8일 먹방",
         tags: ["빵지순례", "디저트", "먹방"], followers: 75000,
         targetProduct: "밀폐용기, 여행상품", eventDate: "2026년 4월", postingDate: "2026년 4월", isMock: true
     },
     {
-        id: "412", influencer: "자취요리 뚝딱", handle: "@one_pan_cook", verified: true, avatar: "뚝", category: "🍽️ 맛집",
+        id: "412", influencer: "자취요리 뚝딱", handle: "@one_pan_cook", verified: true, avatar: "https://images.unsplash.com/photo-1544725121-be3bf52e2dc8?w=400&h=400&fit=crop", category: "🍽️ 맛집",
         event: "배달비 아끼는 만원 일주일 식단", date: "2026년 5월",
         description: "고물가 시대, 식비 방어를 위한 초가성비 레시피.\n• 희망 협찬: 대용량 식자재, 소스류, 밀키트\n• 이벤트 시기: 5월 한 주간 도전\n• 업로드 예정: 5월 말 결산 영상",
         tags: ["절약", "집밥", "식비방어"], followers: 330000,
         targetProduct: "식료품, 주방용품", eventDate: "2026년 5월", postingDate: "2026년 5월", isMock: true
     },
     {
-        id: "413", influencer: "비건 라이프", handle: "@vegan_table", verified: false, avatar: "V", category: "🍽️ 맛집",
+        id: "413", influencer: "비건 라이프", handle: "@vegan_table", verified: false, avatar: "https://images.unsplash.com/photo-1621451515915-d912df6422cc?w=400&h=400&fit=crop", category: "🍽️ 맛집",
         event: "맛있어서 놀라는 비건 데이트 맛집", date: "2026년 6월",
         description: "비건이 아닌 친구도 만족하는 서울 비건 레스토랑 탐방.\n• 희망 협찬: 비건 화장품, 텀블러, 친환경 제품\n• 이벤트 시기: 6월 주말\n• 업로드 예정: 6월 10일",
         tags: ["비건", "채식", "친환경"], followers: 15000,
         targetProduct: "비건 식품, 친환경 제품", eventDate: "2026년 6월", postingDate: "2026년 6월", isMock: true
     },
     {
-        id: "414", influencer: "술꾼 도시 여자", handle: "@city_drink", verified: true, avatar: "술", category: "🍽️ 맛집",
+        id: "414", influencer: "술꾼 도시 여자", handle: "@city_drink", verified: true, avatar: "https://images.unsplash.com/photo-1510626176961-4b57d4fbad03?w=400&h=400&fit=crop", category: "🍽️ 맛집",
         event: "전통주 칵테일 홈파티", date: "2026년 12월",
         description: "연말 파티에 어울리는 전통주 하이볼 레시피 소개.\n• 희망 협찬: 전통주, 예쁜 잔, 파티 용품\n• 이벤트 시기: 12월 24일\n• 업로드 예정: 12월 20일 미리보기",
         tags: ["홈파티", "전통주", "칵테일"], followers: 92000,
         targetProduct: "주류, 글라스", eventDate: "2026년 12월", postingDate: "2026년 12월", isMock: true
     },
     {
-        id: "415", influencer: "프로 캠핑러", handle: "@camp_master", verified: true, avatar: "캠", category: "✈️ 여행",
+        id: "415", influencer: "프로 캠핑러", handle: "@camp_master", verified: true, avatar: "https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=400&h=400&fit=crop", category: "✈️ 여행",
         event: "그리들로 만드는 캠핑 요리 5선", date: "2026년 10월",
         description: "삼겹살부터 볶음밥까지 그리들 하나로 끝내는 코스.\n• 희망 협찬: 그리들, 버너, 밀키트, 캠핑 체어\n• 이벤트 시기: 10월 가을 캠핑\n• 업로드 예정: 10월 15일",
         tags: ["캠핑요리", "먹방", "가을캠핑"], followers: 160000,
@@ -289,14 +289,14 @@ export const MOCK_EVENTS: InfluencerEvent[] = [
 
     // --- Travel & Activity (Expanding) ---
     {
-        id: "416", influencer: "여행 작가 김", handle: "@travel_writer", verified: true, avatar: "작", category: "✈️ 여행",
+        id: "416", influencer: "여행 작가 김", handle: "@travel_writer", verified: true, avatar: "https://images.unsplash.com/photo-1542596768-5d1d21f1cfb6?w=400&h=400&fit=crop", category: "✈️ 여행",
         event: "나홀로 떠나는 교토 감성 여행", date: "2026년 11월",
         description: "가을 단풍이 아름다운 교토의 숨은 명소와 카페 기록.\n• 희망 협찬: 필름 카메라, 데이터 유심, 여행자 보험\n• 이벤트 시기: 11월 중순\n• 업로드 예정: 11월 말 여행 에세이 영상",
         tags: ["일본여행", "교토", "감성여행"], followers: 85000,
         targetProduct: "여행 필수품, 카메라", eventDate: "2026년 11월", postingDate: "2026년 11월", isMock: true
     },
     {
-        id: "417", influencer: "고프로 장인", handle: "@action_cam", verified: true, avatar: "G", category: "✈️ 여행",
+        id: "417", influencer: "고프로 장인", handle: "@action_cam", verified: true, avatar: "https://images.unsplash.com/photo-1473631527028-4167df3c4f74?w=400&h=400&fit=crop", category: "✈️ 여행",
         event: "양양 서핑 강습 브이로그", date: "2026년 7월",
         description: "서핑 초보의 좌충우돌 강습기와 양양 핫플 소개.\n• 희망 협찬: 래쉬가드, 선스틱, 액션캠 악세서리\n• 이벤트 시기: 7월 서핑 시즌\n• 업로드 예정: 8월 초",
         tags: ["서핑", "양양", "액티비티"], followers: 45000,
