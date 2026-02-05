@@ -51,3 +51,70 @@ ${descriptionRaw}
     // 4. Return Success
     return { success: true }
 }
+
+export async function updateCampaign(id: string, formData: FormData) {
+    const supabase = await createClient()
+
+    // 1. Check Auth (Must be logged in)
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { error: '로그인이 필요합니다.' }
+    }
+
+    // 2. Get Data from Form
+    const product = formData.get('product') as string
+    const category = formData.get('category') as string
+    const budget = formData.get('budget') as string
+    const target = formData.get('target') as string
+    const descriptionRaw = formData.get('description') as string
+
+    // Combine details into description field since DB schema is strict
+    const fullDescription = `
+[카테고리] ${category}
+[제공 혜택] ${budget}
+[원하는 크리에이터] ${target}
+[상세 내용]
+${descriptionRaw}
+  `.trim()
+
+    const title = `[${category}] ${product} 캠페인`
+
+    // 3. Update DB
+    const { error } = await supabase
+        .from('campaigns')
+        .update({
+            title: title,
+            product_name: product,
+            description: fullDescription,
+            // status remains unchanged or passed if needed
+        })
+        .eq('id', id)
+        .eq('brand_id', user.id) // Ensure ownership
+
+    if (error) {
+        console.error('Campaign Update Error FULL OBJECT:', JSON.stringify(error, null, 2))
+        return { error: `수정 실패: ${error.message} (Code: ${error.code})` }
+    }
+
+    return { success: true }
+}
+
+export async function deleteCampaign(id: string) {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '로그인이 필요합니다.' }
+
+    const { error } = await supabase
+        .from('campaigns')
+        .delete()
+        .eq('id', id)
+        .eq('brand_id', user.id)
+
+    if (error) {
+        return { error: `삭제 실패: ${error.message}` }
+    }
+
+    return { success: true }
+}
