@@ -761,15 +761,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             console.log('[updateUser] Sending profile update to Supabase...', profileUpdates)
 
-            // Direct update call without retry logic
-            const profileResult = await supabase
+            // Use upsert to handle cases where the profile row might be missing (e.g. after a DB reset)
+            const { error: profileError } = await supabase
                 .from('profiles')
-                .update(profileUpdates)
-                .eq('id', user.id)
+                .upsert({
+                    id: user.id,
+                    role: user.type, // Ensure role is preserved/set
+                    ...profileUpdates
+                }, { onConflict: 'id' })
 
-            if (profileResult.error) {
-                console.error('[updateUser] Profile update DB error:', profileResult.error)
-                throw profileResult.error
+            if (profileError) {
+                console.error('[updateUser] Profile update DB error:', profileError)
+                throw profileError
             }
             console.log('[updateUser] Profile table update success')
 
@@ -831,11 +834,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // 1. Update profiles table - this is the source of truth for UI
             const { error: profileError } = await supabase
                 .from('profiles')
-                .update({
+                .upsert({
+                    id: user.id,
                     role: newRole,
                     updated_at: new Date().toISOString()
-                })
-                .eq('id', user.id)
+                }, { onConflict: 'id' })
 
             if (profileError) {
                 console.error('[switchRole] Profile DB error:', profileError)
