@@ -87,6 +87,7 @@ function BrandDashboardContent() {
     // Filter Query States
     const [selectedTag, setSelectedTag] = useState<string | null>(null)
     const [followerFilter, setFollowerFilter] = useState<string>("all")
+    const [statusFilter, setStatusFilter] = useState<string>("all") // all, upcoming, past
     const [minFollowers, setMinFollowers] = useState<string>("")
     const [maxFollowers, setMaxFollowers] = useState<string>("")
 
@@ -243,6 +244,11 @@ function BrandDashboardContent() {
                 e.category === selectedTag ||
                 e.tags.some(t => t.includes(selectedTag) || selectedTag.includes(t))
             )
+        }
+        if (statusFilter === "upcoming") {
+            result = result.filter(e => e.status !== 'completed')
+        } else if (statusFilter === "past") {
+            result = result.filter(e => e.status === 'completed')
         }
         if (minFollowers !== "" || maxFollowers !== "") {
             const min = minFollowers === "" ? 0 : parseInt(minFollowers)
@@ -504,6 +510,32 @@ function BrandDashboardContent() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col md:flex-row gap-4 md:items-start">
+                                    <span className="text-sm font-semibold w-24 pt-2">모먼트 상태</span>
+                                    <div className="flex flex-wrap gap-2 flex-1">
+                                        <Button
+                                            variant={statusFilter === "all" ? "secondary" : "ghost"}
+                                            size="sm"
+                                            onClick={() => setStatusFilter("all")}
+                                        >
+                                            전체보기
+                                        </Button>
+                                        <Button
+                                            variant={statusFilter === "upcoming" ? "secondary" : "ghost"}
+                                            size="sm"
+                                            onClick={() => setStatusFilter("upcoming")}
+                                        >
+                                            다가오는 모먼트
+                                        </Button>
+                                        <Button
+                                            variant={statusFilter === "past" ? "secondary" : "ghost"}
+                                            size="sm"
+                                            onClick={() => setStatusFilter("past")}
+                                        >
+                                            지나간 모먼트
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col md:flex-row gap-4 md:items-start pt-2 border-t border-border/40">
                                     <span className="text-sm font-semibold w-24 pt-2">전문 분야</span>
                                     <div className="flex flex-wrap gap-2 flex-1">
                                         <Button
@@ -563,7 +595,14 @@ function BrandDashboardContent() {
                                                 </span>
                                             </div>
                                         </CardHeader>
-                                        <CardContent className="space-y-3 flex-1">
+                                        <CardContent className="space-y-3 flex-1 relative">
+                                            {item.status === 'completed' && (
+                                                <div className="absolute top-0 right-4 transform -translate-y-1/2">
+                                                    <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
+                                                        이미 완료된 모먼트
+                                                    </span>
+                                                </div>
+                                            )}
                                             <h3 className="font-bold text-base line-clamp-2">{item.event}</h3>
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                 <Calendar className="h-3 w-3" /> {item.eventDate}
