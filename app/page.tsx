@@ -24,7 +24,7 @@ export default function Home() {
               브랜드-크리에이터 연결 플랫폼.Ver1.20
             </h1>
             <p className="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8 break-keep">
-              완벽한 타이밍에 이루어지는 브랜드와 크리에이터의 만남!<br />
+              브랜드와 준비된 크리에이터의 만남!<br />
               &apos;완벽한 타이밍&apos;의 진정성 있는 파트너십으로 광고효과를 극대화하세요.
             </p>
             <div className="flex gap-4">
@@ -49,7 +49,9 @@ export default function Home() {
               왜 Creadypick 인가요?
             </h2>
             <p className="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7 break-keep">
-              우리는 연결의 방식을 바꿨습니다. 일방적인 제안 대신, 크리에이터의 특별한 라이프 모먼트에 브랜드가 자연스럽게 녹아드는 만남을 추구합니다.
+              우리는 크리에이터와 브랜드의 연결의 방식을 바꿨습니다. <br />
+              준비된 크리에이터를, Pick! <br />
+              브랜드의 광고를 할 준비가된 크리에이터를 찾아, 브랜드의 광고효과를 극대화하세요.
             </p>
           </div>
           <div className="mx-auto grid justify-center gap-4 sm:grid-cols-2 md:max-w-[64rem] md:grid-cols-3">
