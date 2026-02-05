@@ -52,7 +52,8 @@ export type InfluencerEvent = {
     followers: number
     targetProduct: string // 희망하는 광고 제품
     eventDate: string // 이벤트 날짜 (e.g. 2026년 3월)
-    postingDate: string // 콘텐츠 업로드 시기 (e.g. 2026년 4월)
+    postingDate?: string // 콘텐츠 업로드 시기 (e.g. 2026년 4월)
+    guide?: string
     status?: string // 'active' | 'completed' - 모먼트 상태
 }
 

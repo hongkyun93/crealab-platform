@@ -38,6 +38,7 @@ export default function EditEventPage() {
     const [postingMonth, setPostingMonth] = useState("")
     const [targetProduct, setTargetProduct] = useState("")
     const [description, setDescription] = useState("")
+    const [guide, setGuide] = useState("")
     const [customTags, setCustomTags] = useState("")
 
     // Load Event Data
@@ -57,6 +58,7 @@ export default function EditEventPage() {
 
                 setTitle(event.event)
                 setDescription(event.description)
+                setGuide(event.guide || "")
                 setTargetProduct(event.targetProduct || "")
 
                 // Parse Event Date
@@ -122,6 +124,7 @@ export default function EditEventPage() {
             event: title,
             date: eventMonth, // Legacy support
             description: description,
+            guide: guide,
             tags: tags,
             targetProduct: targetProduct || "미정",
             eventDate: `${eventYear}년 ${eventMonth}`,
@@ -292,11 +295,28 @@ export default function EditEventPage() {
                             <Label htmlFor="description">상세 설명</Label>
                             <Textarea
                                 id="description"
-                                placeholder="어떤 상황이고 어떤 제품이 필요한지 자세히 적어주세요.\n예: 25평 아파트로 이사하게 되었습니다. 거실 커튼과 조명을 바꾸고 싶은데..."
-                                className="min-h-[200px] resize-y"
+                                placeholder="어떤 상황이고 어떤 제품이 필요한지 자세히 적어주세요.&#10;예: 25평 아파트로 이사하게 되었습니다. 거실 커튼과 조명을 바꾸고 싶은데..."
+                                className="min-h-[150px] resize-y"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="guide">제작 가이드</Label>
+                                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Optional</span>
+                            </div>
+                            <Textarea
+                                id="guide"
+                                placeholder="브랜드에게 제안할 콘텐츠의 방향성이나 촬영 구도를 미리 적어주세요.&#10;예:&#10;1. 비포/애프터 컷 필수 포함&#10;2. 자연광에서 제품 텍스처 강조&#10;3. 실사용 1주일 후기 위주"
+                                className="min-h-[120px] resize-y bg-muted/20"
+                                value={guide}
+                                onChange={(e) => setGuide(e.target.value)}
+                            />
+                            <p className="text-xs text-primary/80 font-medium">
+                                ✨ 꿀팁: 가이드를 작성하면 브랜드로부터 광고 제안을 받을 확률이 높아져요!
+                            </p>
                         </div>
 
                         <div className="flex justify-end gap-4 pt-4">
