@@ -138,12 +138,12 @@ export default function ProductDetailPage() {
                                             <div className="grid grid-cols-4 items-center gap-4">
                                                 <Label htmlFor="cost" className="text-right text-xs font-bold">광고비</Label>
                                                 <div className="col-span-3 relative">
-                                                    <DollarSign className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                                    <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-bold">₩</span>
                                                     <Input id="cost" type="number" placeholder="0" className="pl-9 h-9 text-sm" value={cost} onChange={(e) => setCost(e.target.value)} />
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-4 items-center gap-4">
-                                                <Label htmlFor="commission" className="text-right text-xs font-bold">수수료</Label>
+                                                <Label htmlFor="commission" className="text-right text-xs font-bold">판매 인센티브 (%) <span className="text-[10px] text-muted-foreground font-normal">(선택)</span></Label>
                                                 <div className="col-span-3 relative">
                                                     <Percent className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                                                     <Input id="commission" type="number" placeholder="0" className="pl-9 h-9 text-sm" value={commission} onChange={(e) => setCommission(e.target.value)} />

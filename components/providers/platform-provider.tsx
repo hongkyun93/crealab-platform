@@ -988,23 +988,40 @@ export function PlatformProvider({ children, initialSession }: { children: React
         setEvents(prev => prev.map(event => event.id === id ? { ...event, ...updatedData } : event))
 
         try {
-            // Map common fields to DB columns
-            const dbUpdates: any = {}
-            if (updatedData.event) dbUpdates.title = updatedData.event
-            if (updatedData.description !== undefined) dbUpdates.description = updatedData.description
-            if (updatedData.category) dbUpdates.category = updatedData.category
-            if (updatedData.tags) dbUpdates.tags = updatedData.tags
-            if (updatedData.targetProduct) dbUpdates.target_product = updatedData.targetProduct
-            if (updatedData.eventDate) dbUpdates.event_date = updatedData.eventDate
-            if (updatedData.postingDate) dbUpdates.posting_date = updatedData.postingDate
-            if (updatedData.status) dbUpdates.status = updatedData.status
+            console.log('[updateEvent] Updating event:', id, updatedData)
 
-            const { error } = await supabase
+            // Map common fields to DB columns
+            const dbUpdates: any = {
+                updated_at: new Date().toISOString()
+            }
+
+            // check for undefined specifically to allow clearing fields (e.g. empty string) if needed
+            // although most fields have validation
+            if (updatedData.event !== undefined) dbUpdates.title = updatedData.event
+            if (updatedData.description !== undefined) dbUpdates.description = updatedData.description
+            if (updatedData.category !== undefined) dbUpdates.category = updatedData.category
+            if (updatedData.tags !== undefined) dbUpdates.tags = updatedData.tags
+            if (updatedData.targetProduct !== undefined) dbUpdates.target_product = updatedData.targetProduct
+            if (updatedData.eventDate !== undefined) dbUpdates.event_date = updatedData.eventDate
+            if (updatedData.postingDate !== undefined) dbUpdates.posting_date = updatedData.postingDate
+            if (updatedData.status !== undefined) dbUpdates.status = updatedData.status
+
+            const { data, error } = await supabase
                 .from('influencer_events')
                 .update(dbUpdates)
                 .eq('id', id)
+                .select()
 
-            if (error) throw error
+            if (error) {
+                console.error('[updateEvent] DB Error:', error)
+                throw error
+            }
+
+            console.log('[updateEvent] Update success:', data)
+
+            // Force refresh to ensure sync, especially for derived fields
+            if (user?.id) fetchEvents(user.id)
+
         } catch (e) {
             console.error("Failed to update event:", e)
             setEvents(prevEvents) // Revert

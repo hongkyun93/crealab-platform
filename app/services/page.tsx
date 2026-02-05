@@ -16,7 +16,7 @@ export default function ServicesPage() {
                 {/* Hero Section */}
                 <div className="text-center mb-16 space-y-4">
                     <h1 className="text-4xl font-bold tracking-tight lg:text-5xl">
-                        Crealab 서비스 소개
+                        Creadypick 서비스 소개
                     </h1>
                     <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                         브랜드와 크리에이터를 완벽한 타이밍에 매칭시켜주는 새로운 방식
@@ -61,11 +61,11 @@ export default function ServicesPage() {
                                 </ul>
                             </div>
 
-                            {/* Crealab Way */}
+                            {/* Creadypick Way */}
                             <div className="p-8 md:p-12 space-y-8 bg-white dark:bg-slate-950">
                                 <div className="space-y-4">
                                     <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                                        Crealab 방식
+                                        Creadypick 방식
                                     </div>
                                     <h3 className="text-2xl font-bold text-primary">"언제(When) 맡길까?"</h3>
                                     <p className="text-lg text-foreground">크리에이터의 <strong>라이프 모먼트</strong>에 집중합니다.</p>
@@ -160,7 +160,7 @@ export default function ServicesPage() {
                                 </CardHeader>
                                 <CardContent className="p-8 pt-2">
                                     <CardDescription className="text-lg leading-relaxed text-foreground/80">
-                                        복잡한 마케팅 실무는 Crealab 시스템에 맡기세요.<br />
+                                        복잡한 마케팅 실무는 Creadypick 시스템에 맡기세요.<br />
                                         대표님과 담당자님은 브랜드의 철학을 다듬고 더 좋은 제품을 만드는 <strong>'본업'</strong>에만 몰입하실 수 있도록 돕겠습니다.
                                     </CardDescription>
                                 </CardContent>
@@ -221,7 +221,7 @@ export default function ServicesPage() {
                                 </CardHeader>
                                 <CardContent className="p-8 pt-2">
                                     <CardDescription className="text-lg leading-relaxed text-foreground/80">
-                                        까다로운 브랜드 컨택, 영업, 계약 관리는 Crealab이 덜어드립니다.<br />
+                                        까다로운 브랜드 컨택, 영업, 계약 관리는 Creadypick이 덜어드립니다.<br />
                                         당신은 오직 당신만의 독창적인 스토리와 콘텐츠를 만드는 <strong>'창작'</strong>에만 몰입하세요.
                                     </CardDescription>
                                 </CardContent>
@@ -243,7 +243,7 @@ export default function ServicesPage() {
                                         <CardTitle className="text-xl">검증된 브랜드</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <p className="text-muted-foreground leading-relaxed">Crealab이 엄선한 신뢰할 수 있는 브랜드와 협업하세요. 불공정 거래 방지 시스템으로 <strong>크리에이터를 보호</strong>합니다.</p>
+                                        <p className="text-muted-foreground leading-relaxed">Creadypick이 엄선한 신뢰할 수 있는 브랜드와 협업하세요. 불공정 거래 방지 시스템으로 <strong>크리에이터를 보호</strong>합니다.</p>
                                     </CardContent>
                                 </Card>
                                 <Card className="hover:border-primary/50 transition-colors">

@@ -16,7 +16,7 @@ export default function Home() {
               className="rounded-2xl bg-muted px-4 py-1.5 text-sm font-medium"
               target="_blank"
             >
-              Crealab의 새로운 소식 받기
+              Creadypick의 새로운 소식 받기
             </Link>
             <h1 className="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent break-keep">
               광고는 타이밍! <br />
@@ -46,7 +46,7 @@ export default function Home() {
         <section id="features" className="container mx-auto space-y-6 bg-slate-50 py-8 dark:bg-transparent md:py-12 lg:py-24">
           <div className="mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center">
             <h2 className="font-heading text-3xl leading-[1.1] sm:text-3xl md:text-6xl">
-              왜 Crealab 인가요?
+              왜 Creadypick 인가요?
             </h2>
             <p className="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7 break-keep">
               우리는 연결의 방식을 바꿨습니다. 일방적인 제안 대신, 크리에이터의 특별한 라이프 모먼트에 브랜드가 자연스럽게 녹아드는 만남을 추구합니다.

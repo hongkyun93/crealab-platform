@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Crealab Platform",
+  title: "Creadypick Platform",
   description: "Influencer-Brand Connection Platform",
 };
 

@@ -5,11 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Calendar, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, Calendar, Save, Trash2, Package, Send } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { usePlatform } from "@/components/providers/platform-provider"
+
+const MONTHS = [
+    "1월", "2월", "3월", "4월",
+    "5월", "6월", "7월", "8월",
+    "9월", "10월", "11월", "12월"
+]
 
 const POPULAR_TAGS = [
     "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
@@ -26,7 +32,9 @@ export default function EditEventPage() {
 
     // Form States
     const [title, setTitle] = useState("")
-    const [date, setDate] = useState("")
+    const [eventMonth, setEventMonth] = useState("")
+    const [postingMonth, setPostingMonth] = useState("")
+    const [targetProduct, setTargetProduct] = useState("")
     const [description, setDescription] = useState("")
     const [customTags, setCustomTags] = useState("")
 
@@ -38,35 +46,40 @@ export default function EditEventPage() {
 
             if (event) {
                 // Check ownership (simple name check for prototype)
-                if (user && event.influencer !== user.name) {
+                // Note: user.name comparison might be flaky if names change, but sticking to prototype logic
+                if (user && event.influencer !== user.name && event.influencerId !== user.id) {
                     alert("수정 권한이 없습니다.")
                     router.push("/creator")
                     return
                 }
 
                 setTitle(event.event)
-                setDate(event.date)
                 setDescription(event.description)
+                setTargetProduct(event.targetProduct || "")
 
-                // Separate request tags from custom tags
-                const popular = event.tags.filter(t => POPULAR_TAGS.some(pt => pt.includes(t)) || POPULAR_TAGS.includes(t))
-                // For simplicity in prototype, we'll just set selection based on matches
-                // and put everything else in custom? Or just load all into selectedTags for now.
-                // Let's just load them.
-                setSelectedTags(event.tags)
+                // Parse Event Month (e.g., "2026년 3월" -> "3월")
+                if (event.eventDate) {
+                    const match = event.eventDate.match(/(\d+월)/)
+                    if (match) setEventMonth(match[1])
+                }
+
+                // Parse Posting Month
+                if (event.postingDate) {
+                    const match = event.postingDate.match(/(\d+월)/)
+                    if (match) setPostingMonth(match[1])
+                }
+
+                setSelectedTags(event.tags || [])
             } else {
-                alert("이벤트를 찾을 수 없습니다.")
-                router.push("/creator")
+                // If fetching events is still happening, this might trigger prematurely?
+                // But events dependency handles updates. 
+                // We'll let the user see a blank form or redirect if completely missing after load.
+                // Ideally show loading state, but for now:
             }
         }
     }, [params.id, events, user, router])
 
     const toggleTag = (tag: string) => {
-        // Simple string match might be tricky with emojis, but let's try direct comparison
-        // The tag passed here is from POPULAR_TAGS (e.g. "✈️ 여행")
-        // The event tags might be just "여행" or "✈️ 여행" depending on how they were saved.
-        // Let's standardise on saving the full tag string from POPULAR_TAGS.
-
         setSelectedTags(prev =>
             prev.includes(tag)
                 ? prev.filter(t => t !== tag)
@@ -74,17 +87,17 @@ export default function EditEventPage() {
         )
     }
 
-    const handleDelete = () => {
-        if (confirm("정말로 이 이벤트를 삭제하시겠습니까?")) {
+    const handleDelete = async () => {
+        if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
             const eventId = String(params.id)
-            deleteEvent(eventId)
+            await deleteEvent(eventId)
             router.push("/creator")
         }
     }
 
-    const handleSubmit = () => {
-        if (!title || !date || !description) {
-            alert("제목,시기,상세 설명을 모두 입력해주세요.")
+    const handleSubmit = async () => {
+        if (!title || !eventMonth || !postingMonth || !description) {
+            alert("모든 필수 항목을 입력해주세요.")
             return
         }
 
@@ -98,15 +111,18 @@ export default function EditEventPage() {
 
         const eventId = String(params.id)
 
-        updateEvent(eventId, {
+        await updateEvent(eventId, {
             category: selectedTags[0] || "기타",
             event: title,
-            date: date,
+            date: eventMonth, // Legacy support
             description: description,
-            tags: tags
+            tags: tags,
+            targetProduct: targetProduct || "미정",
+            eventDate: `2026년 ${eventMonth}`,
+            postingDate: `2026년 ${postingMonth}`
         })
 
-        alert("이벤트가 수정되었습니다!")
+        alert("모먼트가 성공적으로 수정되었습니다!")
         router.push("/creator")
     }
 
@@ -123,9 +139,9 @@ export default function EditEventPage() {
                                 </Link>
                             </Button>
                             <div>
-                                <h1 className="text-2xl font-bold tracking-tight">이벤트 수정하기</h1>
+                                <h1 className="text-2xl font-bold tracking-tight">모먼트 수정하기</h1>
                                 <p className="text-muted-foreground">
-                                    등록된 이벤트 내용을 변경합니다.
+                                    등록된 모먼트 내용을 변경합니다.
                                 </p>
                             </div>
                         </div>
@@ -135,28 +151,80 @@ export default function EditEventPage() {
                     </div>
 
                     <div className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
-                        {/* Same Form Fields as New Page */}
+
                         <div className="space-y-2">
-                            <Label htmlFor="title">이벤트 제목</Label>
+                            <Label htmlFor="title">모먼트 제목</Label>
                             <Input
                                 id="title"
                                 placeholder="예: 한남동으로 이사, 여름 다이어트 시작"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                             />
+                            <p className="text-xs text-muted-foreground">
+                                브랜드가 한눈에 알아볼 수 있는 직관적인 제목을 지어주세요.
+                            </p>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="date">예상 시기</Label>
+                        <div className="space-y-4">
+                            <Label>희망 협찬 제품</Label>
                             <div className="relative">
+                                <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    id="date"
-                                    placeholder="예: 2024년 9월, 빠를수록 좋음"
+                                    placeholder="협찬받고 싶은 제품을 입력하세요 (예: 로봇청소기, 립스틱)"
                                     className="pl-9"
-                                    value={date}
-                                    onChange={(e) => setDate(e.target.value)}
+                                    value={targetProduct}
+                                    onChange={(e) => setTargetProduct(e.target.value)}
                                 />
-                                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Event Date Picker */}
+                            <div className="space-y-4">
+                                <Label className="flex items-center gap-2">
+                                    <Calendar className="h-4 w-4" />
+                                    모먼트 일정 (2026년)
+                                </Label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {MONTHS.map((m) => {
+                                        const isSelected = eventMonth === m
+                                        return (
+                                            <Button
+                                                key={`event-${m}`}
+                                                type="button"
+                                                variant={isSelected ? "default" : "outline"}
+                                                className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
+                                                onClick={() => setEventMonth(m)}
+                                            >
+                                                {m}
+                                            </Button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Posting Date Picker */}
+                            <div className="space-y-4">
+                                <Label className="flex items-center gap-2">
+                                    <Send className="h-4 w-4" />
+                                    콘텐츠 업로드 시기
+                                </Label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {MONTHS.map((m) => {
+                                        const isSelected = postingMonth === m
+                                        return (
+                                            <Button
+                                                key={`posting-${m}`}
+                                                type="button"
+                                                variant={isSelected ? "default" : "outline"}
+                                                className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
+                                                onClick={() => setPostingMonth(m)}
+                                            >
+                                                {m}
+                                            </Button>
+                                        )
+                                    })}
+                                </div>
                             </div>
                         </div>
 
@@ -179,13 +247,18 @@ export default function EditEventPage() {
                                     </button>
                                 ))}
                             </div>
+                            {selectedTags.length > 0 && (
+                                <p className="text-xs text-primary font-medium">
+                                    {selectedTags.length}개 선택됨: {selectedTags.join(", ")}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="tags">추가 태그 (직접 입력)</Label>
+                            <Label htmlFor="tags">직접 입력 태그</Label>
                             <Input
                                 id="tags"
-                                placeholder="추가하고 싶은 태그가 있다면 입력해주세요"
+                                placeholder="추가하고 싶은 태그가 있다면 입력해주세요 (예: #자취 #이사)"
                                 value={customTags}
                                 onChange={(e) => setCustomTags(e.target.value)}
                             />
@@ -195,7 +268,7 @@ export default function EditEventPage() {
                             <Label htmlFor="description">상세 설명</Label>
                             <Textarea
                                 id="description"
-                                placeholder="어떤 상황이고 어떤 제품이 필요한지 자세히 적어주세요."
+                                placeholder="어떤 상황이고 어떤 제품이 필요한지 자세히 적어주세요.\n예: 25평 아파트로 이사하게 되었습니다. 거실 커튼과 조명을 바꾸고 싶은데..."
                                 className="min-h-[200px] resize-y"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
