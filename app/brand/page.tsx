@@ -367,7 +367,7 @@ function BrandDashboardContent() {
 
         // Timeout for registration
         const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('등록 시간이 초과되었습니다. (20초)')), 20000)
+            setTimeout(() => reject(new Error('등록 시간이 초과되었습니다. (60초)')), 60000)
         )
 
         try {

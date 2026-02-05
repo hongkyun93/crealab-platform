@@ -1099,11 +1099,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
             while (retries <= maxRetries) {
                 const result = await supabase
                     .from('brand_products')
-                    .insert(productData)
+                    .insert([productData])
                     .select()
-                    .single()
 
-                data = result.data;
+                data = result.data ? result.data[0] : null;
                 error = result.error;
 
                 if (error) {
