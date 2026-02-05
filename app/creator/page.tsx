@@ -111,8 +111,14 @@ function InfluencerDashboardContent() {
         } else if (key === "micro") {
             setMinFollowers("10000")
             setMaxFollowers("100000")
-        } else if (key === "macro") {
+        } else if (key === "growing") {
             setMinFollowers("100000")
+            setMaxFollowers("300000")
+        } else if (key === "mid") {
+            setMinFollowers("300000")
+            setMaxFollowers("500000")
+        } else if (key === "macro") {
+            setMinFollowers("500000")
             setMaxFollowers("1000000")
         } else if (key === "mega") {
             setMinFollowers("1000000")
@@ -392,7 +398,9 @@ function InfluencerDashboardContent() {
                                             { k: "all", l: "전체" },
                                             { k: "nano", l: "나노 (<1만)" },
                                             { k: "micro", l: "마이크로 (1~10만)" },
-                                            { k: "macro", l: "매크로 (10~100만)" },
+                                            { k: "growing", l: "그로잉 (10~30만)" },
+                                            { k: "mid", l: "미드 (30~50만)" },
+                                            { k: "macro", l: "매크로 (50~100만)" },
                                             { k: "mega", l: "메가 (>100만)" }
                                         ].map(opt => (
                                             <Button
@@ -952,7 +960,9 @@ function InfluencerDashboardContent() {
                                         {[
                                             { label: "나노 (<1만)", val: 1000 },
                                             { label: "마이크로 (1~10만)", val: 10000 },
-                                            { label: "매크로 (10~100만)", val: 100000 },
+                                            { label: "그로잉 (10~30만)", val: 100000 },
+                                            { label: "미드 (30~50만)", val: 300000 },
+                                            { label: "매크로 (50~100만)", val: 500000 },
                                             { label: "메가 (>100만)", val: 1000000 }
                                         ].map((preset) => (
                                             <Button
