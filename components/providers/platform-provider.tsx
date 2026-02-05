@@ -797,28 +797,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
                 console.log('[updateUser] Upserting influencer_details...', detailsUpdates)
 
-                let detailsResult: any = null;
-                let detailsRetries = 0;
-                while (detailsRetries <= maxRetries) {
-                    detailsResult = await supabase
-                        .from('influencer_details')
-                        .upsert(detailsUpdates, { onConflict: 'id' })
+                const { data: _, error: detailsError } = await supabase
+                    .from('influencer_details')
+                    .upsert(detailsUpdates, { onConflict: 'id' })
 
-                    if (detailsResult.error) {
-                        const isAbortError = detailsResult.error.message?.includes('AbortError') || detailsResult.error.code === 'ABORTED';
-                        if (isAbortError && detailsRetries < maxRetries) {
-                            detailsRetries++;
-                            console.warn(`[updateUser] Details update aborted (retry ${detailsRetries}/${maxRetries})...`);
-                            await new Promise(resolve => setTimeout(resolve, 500 * detailsRetries));
-                            continue;
-                        }
-                    }
-                    break;
-                }
-
-                if (detailsResult.error) {
-                    console.warn('[updateUser] Influencer details error (non-fatal):', detailsResult.error)
-                    // If it's just a schema mismatch (missing updated_at etc), we log but don't fail profile update
+                if (detailsError) {
+                    console.warn('[updateUser] Influencer details error (non-fatal):', detailsError)
                 } else {
                     console.log('[updateUser] Influencer details update success')
                 }
@@ -1109,31 +1093,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             console.log('[addProduct] Payload:', productData)
 
-            let data: any = null;
-            let error: any = null;
-            let retries = 0;
-            const maxRetries = 2;
-
-            while (retries <= maxRetries) {
-                const result = await supabase
-                    .from('brand_products')
-                    .insert([productData])
-                    .select()
-
-                data = result.data ? result.data[0] : null;
-                error = result.error;
-
-                if (error) {
-                    const isAbortError = error.message?.includes('AbortError') || error.code === 'ABORTED' || error.message?.includes('fetch');
-                    if (isAbortError && retries < maxRetries) {
-                        retries++;
-                        console.warn(`[addProduct] Insert aborted/failed (retry ${retries}/${maxRetries})...`);
-                        await new Promise(resolve => setTimeout(resolve, 500 * retries));
-                        continue;
-                    }
-                }
-                break;
-            }
+            // Simple insert call without complex retry logic
+            const { data, error } = await supabase
+                .from('brand_products')
+                .insert([productData])
+                .select()
+                .single()
 
             if (error) {
                 console.error('[addProduct] DB Error:', error)
