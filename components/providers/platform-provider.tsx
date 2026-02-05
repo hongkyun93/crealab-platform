@@ -173,7 +173,7 @@ interface PlatformContextType {
     addCampaign: (campaign: Omit<Campaign, "id" | "date" | "matchScore">) => void
     deleteCampaign: (id: string | number) => void
     events: InfluencerEvent[]
-    addEvent: (event: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">) => Promise<void>
+    addEvent: (event: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">) => Promise<boolean>
     updateEvent: (id: string, data: Partial<InfluencerEvent>) => Promise<void>
     deleteEvent: (id: string) => Promise<void>
 
@@ -498,7 +498,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     followers: e.profiles?.influencer_details?.[0]?.followers_count || 0,
                     targetProduct: e.target_product || "",
                     eventDate: e.event_date || "",
-                    postingDate: e.posting_date || ""
+                    postingDate: e.posting_date || "",
+                    status: (e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'active'
                 }))
                 setEvents(mappedEvents)
                 console.log('[fetchEvents] Set events state with', mappedEvents.length, 'events')
@@ -934,10 +935,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const addEvent = async (newEvent: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">) => {
-        if (!user) return
-
-        // 1. Optimistic Update (Optional, but let's wait for DB for ID)
+    const addEvent = async (newEvent: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">): Promise<boolean> => {
+        if (!user) return false
 
         try {
             // 2. Insert into DB
@@ -973,11 +972,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     date: new Date().toISOString().split('T')[0]
                 }
                 setEvents([event, ...events])
+                return true
             }
         } catch (e) {
             console.error("Failed to add event:", e)
             alert("이벤트 등록에 실패했습니다.")
+            return false
         }
+        return false
     }
 
     const updateEvent = async (id: string, updatedData: Partial<InfluencerEvent>) => {

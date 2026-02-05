@@ -45,7 +45,7 @@ export default function NewEventPage() {
         )
     }
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!title || !eventMonth || !postingMonth || !description) {
             alert("모든 필수 항목을 입력해주세요.")
             return
@@ -60,7 +60,7 @@ export default function NewEventPage() {
             })
         }
 
-        addEvent({
+        const success = await addEvent({
             category: selectedTags[0] || "기타",
             event: title,
             date: eventMonth, // Legacy support (display purpose)
@@ -71,8 +71,10 @@ export default function NewEventPage() {
             postingDate: `2026년 ${postingMonth}`
         })
 
-        alert("모먼트가 성공적으로 등록되었습니다!")
-        router.push("/creator")
+        if (success) {
+            alert("모먼트가 성공적으로 등록되었습니다!")
+            router.push("/creator")
+        }
     }
 
     return (

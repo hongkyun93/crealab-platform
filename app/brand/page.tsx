@@ -599,7 +599,7 @@ function BrandDashboardContent() {
                                             {item.status === 'completed' && (
                                                 <div className="absolute top-0 right-4 transform -translate-y-1/2">
                                                     <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
-                                                        이미 완료된 모먼트
+                                                        지나간 모먼트
                                                     </span>
                                                 </div>
                                             )}
