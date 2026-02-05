@@ -72,53 +72,52 @@ export default function NewCampaignPage() {
                             />
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div className="space-y-3">
-                                <Label>카테고리 (복수 선택 가능)</Label>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                    {POPULAR_TAGS.map((tag) => (
-                                        <button
-                                            key={tag}
-                                            type="button"
-                                            onClick={() => {
-                                                if (selectedCategory.includes(tag)) {
-                                                    setSelectedCategory(selectedCategory.filter(t => t !== tag))
-                                                } else {
-                                                    setSelectedCategory([...selectedCategory, tag])
-                                                }
-                                            }}
-                                            className={`
+                        <div className="space-y-2">
+                            <Label htmlFor="budget">제공 혜택</Label>
+                            <Input
+                                id="budget"
+                                name="budget"
+                                placeholder="예: 제품 제공 + 원고료 30만원"
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-3">
+                            <Label>카테고리 (복수 선택 가능)</Label>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {POPULAR_TAGS.map((tag) => (
+                                    <button
+                                        key={tag}
+                                        type="button"
+                                        onClick={() => {
+                                            if (selectedCategory.includes(tag)) {
+                                                setSelectedCategory(selectedCategory.filter(t => t !== tag))
+                                            } else {
+                                                setSelectedCategory([...selectedCategory, tag])
+                                            }
+                                        }}
+                                        className={`
                                 text-sm px-3 py-2.5 rounded-md border transition-all duration-200 text-left md:text-center
                                 ${selectedCategory.includes(tag)
-                                                    ? "bg-primary text-primary-foreground border-primary font-medium ring-2 ring-offset-2 ring-primary/20"
-                                                    : "bg-background hover:bg-muted/50 hover:border-primary/50 text-muted-foreground"
-                                                }
+                                                ? "bg-primary text-primary-foreground border-primary font-medium ring-2 ring-offset-2 ring-primary/20"
+                                                : "bg-background hover:bg-muted/50 hover:border-primary/50 text-muted-foreground"
+                                            }
                             `}
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))}
-                                </div>
-                                <input type="hidden" name="category" value={selectedCategory.join(",")} />
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
                             </div>
+                            <input type="hidden" name="category" value={selectedCategory.join(",")} />
+                        </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="tags">직접 입력 태그</Label>
-                                <Input
-                                    id="tags"
-                                    name="tags" // This will be handled in handleSubmit manually or by server action if updated
-                                    placeholder="추가하고 싶은 태그가 있다면 입력해주세요 (예: #신제품 #런칭)"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="budget">제공 혜택</Label>
-                                <Input
-                                    id="budget"
-                                    name="budget"
-                                    placeholder="예: 제품 제공 + 원고료 30만원"
-                                    required
-                                />
-                            </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="tags">직접 입력 태그</Label>
+                            <Input
+                                id="tags"
+                                name="tags"
+                                placeholder="추가하고 싶은 태그가 있다면 입력해주세요 (예: #신제품 #런칭)"
+                            />
                         </div>
 
                         <div className="space-y-2">
