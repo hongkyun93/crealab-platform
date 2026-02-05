@@ -16,6 +16,7 @@ import {
 import {
     BadgeCheck,
     Calendar,
+    FileText,
     Filter,
     MapPin,
     Settings,
@@ -753,8 +754,8 @@ function BrandDashboardContent() {
 
                         <Tabs defaultValue="sent" className="w-full">
                             <TabsList className="grid w-full grid-cols-2 lg:max-w-md">
-                                <TabsTrigger value="sent">보낸 제안 ({sentProposals.length})</TabsTrigger>
-                                <TabsTrigger value="received">받은 지원 ({myReceivedProposals.length})</TabsTrigger>
+                                <TabsTrigger value="sent">협업 제안 관리 ({sentProposals.length})</TabsTrigger>
+                                <TabsTrigger value="received">받은 제안 ({myReceivedProposals.length})</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="sent" className="space-y-4 mt-6">
@@ -1146,15 +1147,15 @@ function BrandDashboardContent() {
                             >
                                 <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
                             </Button>
+                            <Button variant="ghost" className="w-full justify-start" asChild>
+                                <Link href="/message"><Bell className="mr-2 h-4 w-4" /> 메시지 센터</Link>
+                            </Button>
                             <Button
                                 variant={currentView === "proposals" ? "secondary" : "ghost"}
                                 className="w-full justify-start"
                                 onClick={() => setCurrentView("proposals")}
                             >
-                                <Send className="mr-2 h-4 w-4" /> 보낸 제안서
-                            </Button>
-                            <Button variant="ghost" className="w-full justify-start" asChild>
-                                <Link href="/message"><Bell className="mr-2 h-4 w-4" /> 메시지 센터</Link>
+                                <FileText className="mr-2 h-4 w-4" /> 협업 제안 관리
                             </Button>
                             <div className="my-2 border-t" />
                             <Button
