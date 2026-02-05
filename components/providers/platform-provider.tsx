@@ -548,9 +548,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         status: (e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'active'
                     }
                 })
-                // Mock 데이터와 병합 (실제 서비스에서는 제거하거나 구분 필요)
-                // 중복 방지를 위해 DB에 있는 ID는 제외할 수도 있지만, 현재는 데모 목적이므로 병합
-                setEvents([...mappedEvents, ...MOCK_EVENTS])
+                // 로그인 한 유저(targetId 존재)는 실제 DB 데이터만 표시
+                if (targetId) {
+                    setEvents(mappedEvents)
+                } else {
+                    // 게스트는 Mock 데이터와 병합해서 보여줌 (또는 취향에 따라 제거 가능)
+                    setEvents([...mappedEvents, ...MOCK_EVENTS])
+                }
                 console.log('[fetchEvents] Set events state with', mappedEvents.length, 'events')
             }
 
