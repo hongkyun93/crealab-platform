@@ -91,7 +91,7 @@ export function SiteHeader() {
                                 </Link>
                             )}
                             <span className="text-sm text-muted-foreground hidden md:inline-block">
-                                환영합니다, <span className="font-semibold text-foreground">{user.name}</span>님
+                                환영합니다, <span className="text-primary font-bold mr-1">{user.type === 'brand' ? '브랜드' : user.type === 'influencer' ? '크리에이터' : '관리자'}</span> <span className="font-semibold text-foreground">{user.name}</span>님
                             </span>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
