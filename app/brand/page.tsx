@@ -642,9 +642,26 @@ function BrandDashboardContent() {
                                                         </span>
                                                     </div>
                                                 )}
-                                                <h3 className="font-bold text-base line-clamp-2">{item.event}</h3>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <Calendar className="h-3 w-3" /> {item.eventDate}
+                                                <h3 className="font-bold text-base line-clamp-2 mb-2">{item.event}</h3>
+
+                                                <div className="flex flex-col gap-1.5 text-xs text-muted-foreground mb-3 bg-muted/30 p-2 rounded-lg">
+                                                    {item.targetProduct && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Gift className="h-3.5 w-3.5 text-primary/70 shrink-0" />
+                                                            <span className="font-medium">희망제품:</span>
+                                                            <span className="truncate flex-1">{item.targetProduct}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-3.5 w-3.5 text-primary/70 shrink-0" />
+                                                        <span className="font-medium">모먼트일:</span> {item.eventDate || "미정"}
+                                                    </div>
+                                                    {item.postingDate && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Send className="h-3.5 w-3.5 text-primary/70 shrink-0" />
+                                                            <span className="font-medium">예상업로드:</span> {item.postingDate}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <p className="text-sm text-foreground/70 line-clamp-3">{item.description}</p>
                                                 <div className="flex flex-wrap gap-1">
