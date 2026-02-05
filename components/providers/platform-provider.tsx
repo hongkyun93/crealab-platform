@@ -80,30 +80,40 @@ export type Product = {
 }
 
 export type Proposal = {
-    id: number
+    id: number | string
     type: 'brand_invite' | 'creator_apply' // 누가 먼저 제안했는지
     dealType: 'ad' | 'gonggu' // 광고 vs 공구
 
     // Brand Invite Specific
-    eventId?: number
+    eventId?: number | string
     productId?: string
     requestDetails?: string
 
     // Creator Apply Specific
+    campaignId?: string
+    campaignName?: string
+    productName?: string
+    influencerId?: string
+    influencerName?: string
+    influencerAvatar?: string
+
     cost?: number // 희망 광고비
     commission?: number // 희망 수수료 (%)
+    message?: string
 
     // Status Flow
-    status: 'applied' | 'accepted' | 'rejected' | 'negotiating'
+    status: 'applied' | 'accepted' | 'rejected' | 'negotiating' | 'pending' | 'hold'
 
     // Negotiation
     negotiationBase?: number
     negotiationIncentive?: string
 
-    fromId: string
-    toId: string
+    fromId?: string
+    toId?: string
     date: string
 }
+
+
 
 export type BrandProposal = {
     id: string
@@ -608,6 +618,45 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         influencer_name: b.influencer_profile?.display_name || 'Creator'
                     }))
                     setBrandProposals(mappedBP)
+                }
+
+                // B. Campaign Applications (proposals table)
+                const { data: appData, error: appError } = await supabase
+                    .from('proposals')
+                    .select(`
+                        *,
+                        campaign:campaigns(id, title, product_name, brand_id),
+                        influencer:profiles!influencer_id(display_name, avatar_url)
+                    `)
+                    .order('created_at', { ascending: false })
+
+                if (appData) {
+                    const role = profile?.role || 'influencer'
+                    const filteredApps = appData.filter((a: any) => {
+                        if (!a.campaign) return false
+                        if (role === 'admin') return true
+                        if (role === 'brand') return a.campaign.brand_id === userId
+                        return a.influencer_id === userId
+                    })
+
+                    const mappedApps: Proposal[] = filteredApps.map((a: any) => ({
+                        id: a.id,
+                        type: 'creator_apply',
+                        dealType: 'ad',
+                        campaignId: a.campaign?.id,
+                        campaignName: a.campaign?.title,
+                        productName: a.campaign?.product_name,
+                        influencerId: a.influencer_id,
+                        influencerName: a.influencer?.display_name || 'Unknown',
+                        influencerAvatar: a.influencer?.avatar_url,
+                        message: a.message,
+                        cost: a.price_offer,
+                        status: a.status as any,
+                        date: a.created_at
+                    }))
+
+                    console.log('[fetchEvents] Fetched applications:', mappedApps.length)
+                    setProposals(mappedApps)
                 }
             }
 

@@ -77,7 +77,7 @@ function BrandDashboardContent() {
         events, user, resetData, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages: allMessages,
         updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
-        switchRole
+        switchRole, proposals
     } = usePlatform()
 
     const displayUser = user || MOCK_BRAND_USER
@@ -759,21 +759,109 @@ function BrandDashboardContent() {
                     </div >
                 )
             case "proposals":
-                const myReceivedProposals = brandProposals.filter(p => p.brand_id === user?.id && p.status === 'applied')
-                const sentProposals = brandProposals.filter(p => p.brand_id === user?.id && p.status !== 'applied')
+                // 브랜드가 보낸 제안 (인플루언서 초대)
+                const sentProposals = brandProposals.filter(p => p.brand_id === user?.id)
+                // 크리에이터가 지원한 캠페인 지원서
+                const myReceivedProposals = proposals.filter(p => p.type === 'creator_apply')
+
+                const handleAppStatusUpdate = async (id: string | number, status: 'accepted' | 'rejected' | 'hold') => {
+                    if (confirm(`이 지원서를 ${status === 'accepted' ? '수락' : status === 'hold' ? '보류' : '거절'}하시겠습니까?`)) {
+                        try {
+                            const { updateApplicationStatus } = await import('@/app/actions/proposal')
+                            const result = await updateApplicationStatus(id.toString(), status)
+                            if (result.error) alert(result.error)
+                            else {
+                                alert("상태가 변경되었습니다.")
+                                window.location.reload()
+                            }
+                        } catch (err) {
+                            alert("상태 변경 중 오류가 발생했습니다.")
+                        }
+                    }
+                }
 
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex flex-col gap-4">
-                            <h1 className="text-3xl font-bold tracking-tight">협업 제안 관리</h1>
-                            <p className="text-muted-foreground">크리에이터와 진행 중인 모든 제안을 한눈에 관리하세요.</p>
+                            <h1 className="text-3xl font-bold tracking-tight">협업 및 지원 관리</h1>
+                            <p className="text-muted-foreground">크리에이터와 진행 중인 모든 제안과 지원서를 한눈에 관리하세요.</p>
                         </div>
 
-                        <Tabs defaultValue="sent" className="w-full">
+                        <Tabs defaultValue="received" className="w-full">
                             <TabsList className="grid w-full grid-cols-2 lg:max-w-md">
-                                <TabsTrigger value="sent">협업 제안 관리 ({sentProposals.length})</TabsTrigger>
-                                <TabsTrigger value="received">받은 제안 ({myReceivedProposals.length})</TabsTrigger>
+                                <TabsTrigger value="received">받은 지원서 ({myReceivedProposals.length})</TabsTrigger>
+                                <TabsTrigger value="sent">보낸 협업 제안 ({sentProposals.length})</TabsTrigger>
                             </TabsList>
+
+                            <TabsContent value="received" className="space-y-4 mt-6">
+                                {myReceivedProposals.length === 0 ? (
+                                    <Card className="p-12 text-center text-muted-foreground border-dashed bg-muted/20">받은 지원서가 없습니다.</Card>
+                                ) : (
+                                    myReceivedProposals.map((p: any) => (
+                                        <Card key={p.id} className={`border-l-4 hover:shadow-sm transition-shadow ${p.status === 'accepted' ? 'border-l-emerald-500' :
+                                                p.status === 'hold' ? 'border-l-amber-500' :
+                                                    p.status === 'rejected' ? 'border-l-red-500' : 'border-l-primary'
+                                            }`}>
+                                            <CardHeader className="pb-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex gap-3">
+                                                        <div className="h-12 w-12 rounded-full overflow-hidden bg-muted">
+                                                            {p.influencerAvatar ? (
+                                                                <img src={p.influencerAvatar} alt={p.influencerName} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center font-bold text-lg">
+                                                                    {p.influencerName?.[0]}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <CardTitle className="text-lg font-bold">
+                                                                {p.productName || p.campaignName}
+                                                                {p.status === 'applied' && <Badge className="ml-2 bg-primary/10 text-primary border-none text-[10px]">NEW 지원</Badge>}
+                                                                {p.status === 'hold' && <Badge className="ml-2 bg-amber-100 text-amber-700 border-none text-[10px]">보류 중</Badge>}
+                                                            </CardTitle>
+                                                            <CardDescription>
+                                                                <span className="font-bold text-foreground">{p.influencerName}</span> 크리에이터 | {new Date(p.date).toLocaleDateString()}
+                                                            </CardDescription>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        {p.status !== 'accepted' && (
+                                                            <Button size="sm" onClick={() => handleAppStatusUpdate(p.id, 'accepted')} className="bg-emerald-600 hover:bg-emerald-700">수락</Button>
+                                                        )}
+                                                        {p.status !== 'hold' && (
+                                                            <Button size="sm" variant="outline" onClick={() => handleAppStatusUpdate(p.id, 'hold')} className="text-amber-600 border-amber-200 hover:bg-amber-50">보류</Button>
+                                                        )}
+                                                        {p.status !== 'rejected' && (
+                                                            <Button size="sm" variant="outline" onClick={() => handleAppStatusUpdate(p.id, 'rejected')} className="text-red-500 border-red-200 hover:bg-red-50">거절</Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="pb-3 px-6">
+                                                <div className="bg-muted/30 p-4 rounded-lg border border-border/40">
+                                                    <p className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">지원 메시지</p>
+                                                    <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed italic">
+                                                        "{p.message}"
+                                                    </p>
+                                                </div>
+                                            </CardContent>
+                                            <CardFooter className="border-t py-3 bg-muted/5">
+                                                <div className="flex justify-between w-full items-center">
+                                                    <div className="text-xs text-muted-foreground">
+                                                        희망 원고료: <span className="font-bold text-foreground">{p.cost ? `${p.cost.toLocaleString()}원` : "제시 예산 따름"}</span>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs" asChild>
+                                                            <Link href="/message"><Bell className="h-3.5 w-3.5" /> 채팅 문의</Link>
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </CardFooter>
+                                        </Card>
+                                    ))
+                                )}
+                            </TabsContent>
 
                             <TabsContent value="sent" className="space-y-4 mt-6">
                                 {sentProposals.length === 0 ? (
@@ -822,56 +910,6 @@ function BrandDashboardContent() {
                                                 <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs" asChild>
                                                     <Link href="/message"><Bell className="h-3.5 w-3.5" /> 채팅방으로 이동</Link>
                                                 </Button>
-                                            </CardFooter>
-                                        </Card>
-                                    ))
-                                )}
-                            </TabsContent>
-
-                            <TabsContent value="received" className="space-y-4 mt-6">
-                                {myReceivedProposals.length === 0 ? (
-                                    <Card className="p-12 text-center text-muted-foreground border-dashed bg-muted/20">받은 지원서가 없습니다.</Card>
-                                ) : (
-                                    myReceivedProposals.map((p: any) => (
-                                        <Card key={p.id} className="border-l-4 border-l-primary hover:shadow-sm transition-shadow">
-                                            <CardHeader className="pb-3">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <CardTitle className="text-lg font-bold">{p.product_name} <Badge className="ml-2 bg-primary/10 text-primary border-none text-[10px]">NEW 지원</Badge></CardTitle>
-                                                        <CardDescription>
-                                                            {p.influencer_name || "크리에이터"} | {new Date(p.created_at).toLocaleDateString()}
-                                                        </CardDescription>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <Button size="sm" onClick={() => updateBrandProposal(p.id, 'accepted')} className="bg-emerald-600 hover:bg-emerald-700">수락</Button>
-                                                        <Button size="sm" variant="outline" onClick={() => updateBrandProposal(p.id, 'rejected')} className="text-red-500 border-red-200 hover:bg-red-50">거절</Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-red-500 rounded-full"
-                                                            onClick={() => {
-                                                                if (confirm("정말로 이 지원서를 삭제하시겠습니까?")) {
-                                                                    deleteBrandProposal(p.id).catch(() => alert("삭제에 실패했습니다."));
-                                                                }
-                                                            }}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="pb-3 italic text-sm text-foreground/80 bg-primary/5 p-4 rounded-md mx-6 mb-4">
-                                                "{p.message}"
-                                            </CardContent>
-                                            <CardFooter className="border-t py-3 bg-muted/5">
-                                                <div className="flex justify-between w-full items-center">
-                                                    <div className="text-xs text-muted-foreground">
-                                                        희망 광고비: <span className="font-bold text-foreground">{p.compensation_amount}</span>
-                                                    </div>
-                                                    <Button variant="ghost" size="sm" className="gap-2" asChild>
-                                                        <Link href="/message"><Bell className="h-4 w-4" /> 채팅방으로 이동</Link>
-                                                    </Button>
-                                                </div>
                                             </CardFooter>
                                         </Card>
                                     ))

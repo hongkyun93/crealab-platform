@@ -1199,7 +1199,13 @@ function InfluencerDashboardContent() {
                                             </p>
                                         </CardContent>
                                         <CardFooter className="pt-0 mt-auto">
-                                            <Button className="w-full gap-2 group-hover:bg-primary group-hover:text-white transition-colors">
+                                            <Button
+                                                className="w-full gap-2 group-hover:bg-primary group-hover:text-white transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleApplyClick(camp);
+                                                }}
+                                            >
                                                 <Send className="h-4 w-4" /> 지원하기
                                             </Button>
                                         </CardFooter>
@@ -1214,13 +1220,100 @@ function InfluencerDashboardContent() {
         }
     }
 
+    const [applyModalOpen, setApplyModalOpen] = useState(false)
+    const [selectedCampaign, setSelectedCampaign] = useState<any>(null)
+    const [appealMessage, setAppealMessage] = useState("")
+    const [desiredCost, setDesiredCost] = useState("")
+    const [isApplying, setIsApplying] = useState(false)
+
+    const handleApplyClick = (campaign: any) => {
+        setSelectedCampaign(campaign)
+        setAppealMessage(`안녕하세요! ${campaign.brand}의 ${campaign.product} 캠페인에 제안하고 싶습니다.\n\n[제안 내용]\n`)
+        setDesiredCost("")
+        setApplyModalOpen(true)
+    }
+
+    const handleSubmitApplication = async () => {
+        if (!appealMessage) {
+            alert("어피 메시지를 입력해주세요.")
+            return
+        }
+
+        setIsApplying(true)
+        try {
+            const { submitCampaignApplication } = await import('@/app/actions/proposal')
+
+            const cost = desiredCost ? parseInt(desiredCost.replace(/[^0-9]/g, '')) : undefined
+
+            const result = await submitCampaignApplication(selectedCampaign.id, appealMessage, cost)
+
+            if (result.error) {
+                alert(result.error)
+            } else {
+                alert("지원서가 성공적으로 발송되었습니다!")
+                setApplyModalOpen(false)
+            }
+        } catch (error) {
+            console.error("Application error:", error)
+            alert("지원 중 오류가 발생했습니다.")
+        } finally {
+            setIsApplying(false)
+        }
+    }
+
+    // --- Inserted Dialog Component ---
+    const ApplyDialog = () => (
+        <Dialog open={applyModalOpen} onOpenChange={setApplyModalOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle>캠페인 지원하기</DialogTitle>
+                    <DialogDescription>
+                        {selectedCampaign?.brand} - {selectedCampaign?.product}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="message">어필 메시지</Label>
+                        <Textarea
+                            id="message"
+                            value={appealMessage}
+                            onChange={(e) => setAppealMessage(e.target.value)}
+                            className="min-h-[150px]"
+                            placeholder="브랜드에게 전달할 메시지와 본인의 강점을 어필해보세요."
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="cost">희망 원고료 (선택)</Label>
+                        <Input
+                            id="cost"
+                            value={desiredCost}
+                            onChange={(e) => setDesiredCost(e.target.value)}
+                            placeholder="예: 100000 (숫자만 입력)"
+                            type="number"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            브랜드가 제시한 예산: {selectedCampaign?.budget}
+                        </p>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setApplyModalOpen(false)}>취소</Button>
+                    <Button onClick={handleSubmitApplication} disabled={isApplying}>
+                        {isApplying ? "전송 중..." : "지원서 보내기"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+
     return (
         <div className="min-h-screen bg-muted/30">
             <SiteHeader />
             <main className="container py-8 max-w-[1920px] px-6 md:px-8">
                 <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
+                    {/* Sidebar ... */}
 
-                    {/* Sidebar (Desktop) */}
+                    {/* ... skipping sidebar code ... */}
                     <aside className="hidden lg:flex flex-col gap-4">
                         <div className="flex items-center gap-3 px-2 py-4">
                             <div className="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500" />
@@ -1287,7 +1380,10 @@ function InfluencerDashboardContent() {
                     {/* Main Content */}
                     {renderContent()}
 
-                    {/* Chat Dialog - Moved outside to work in all views */}
+                    {/* Render the Dialog */}
+                    <ApplyDialog />
+
+                    {/* Chat Dialog ... existing code ... */}
                     <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
                         <DialogContent className="sm:max-w-[500px] h-[650px] flex flex-col p-0 overflow-hidden">
                             <DialogHeader className="p-6 border-b">
