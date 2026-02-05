@@ -128,25 +128,45 @@ function BrandDashboardContent() {
         }
 
         setIsImageUploading(true)
+        console.log('[handleImageUpload] Starting upload for file:', file.name, 'size:', file.size)
+
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('업로드 시간이 초과되었습니다. (30초)')), 30000)
+        )
+
         try {
             const fileExt = file.name.split('.').pop()
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
             const filePath = `products/${fileName}`
 
-            const { error: uploadError } = await supabase.storage
+            console.log('[handleImageUpload] Target path:', filePath)
+
+            // Race the upload against the timeout
+            const uploadPromise = supabase.storage
                 .from('product-images')
-                .upload(filePath, file)
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                })
 
-            if (uploadError) throw uploadError
+            const result: any = await Promise.race([uploadPromise, timeoutPromise])
 
+            if (result.error) {
+                console.error('[handleImageUpload] Supabase Storage Error:', result.error)
+                throw result.error
+            }
+
+            console.log('[handleImageUpload] Upload successful, getting public URL...')
             const { data: { publicUrl } } = supabase.storage
                 .from('product-images')
                 .getPublicUrl(filePath)
 
+            console.log('[handleImageUpload] Public URL:', publicUrl)
             setNewProductImage(publicUrl)
         } catch (error: any) {
-            console.error('[handleImageUpload] Error uploading image:', error)
-            alert(`이미지 업로드에 실패했습니다: ${error.message || "알 수 없는 오류"}`)
+            console.error('[handleImageUpload] Exception:', error)
+            alert(`이미지 업로드 실패: ${error.message || "알 수 없는 오류"}`)
         } finally {
             setIsImageUploading(false)
         }
@@ -344,9 +364,14 @@ function BrandDashboardContent() {
 
         console.log('[handleUploadProduct] Starting upload for:', newProductName)
         setIsUploading(true)
+
+        // Timeout for registration
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('등록 시간이 초과되었습니다. (20초)')), 20000)
+        )
+
         try {
             const isEditing = !!editingProductId
-            // Clean up image string (remove emoji if user pasted URL after it)
             const cleanImage = newProductImage.replace('📦', '').trim()
 
             const productData = {
@@ -360,22 +385,13 @@ function BrandDashboardContent() {
                 shots: newProductShots
             }
 
-            if (editingProductId) {
-                // Update existing product
-                await updateProduct(editingProductId, {
-                    name: productData.name,
-                    price: productData.price,
-                    category: productData.category,
-                    description: productData.description,
-                    image: productData.image,
-                    link: productData.link,
-                    points: productData.points,
-                    shots: productData.shots
-                })
-            } else {
-                // Create new product
-                await addProduct(productData)
-            }
+            console.log('[handleUploadProduct] Product data prepared:', productData)
+
+            const actionPromise = editingProductId
+                ? updateProduct(editingProductId, productData)
+                : addProduct(productData)
+
+            await Promise.race([actionPromise, timeoutPromise])
 
             // Clear inputs
             setNewProductName("")
@@ -392,8 +408,8 @@ function BrandDashboardContent() {
             console.log('[handleUploadProduct] Success!')
             alert(isEditing ? "제품이 성공적으로 수정되었습니다!" : "제품이 성공적으로 등록되었습니다!")
         } catch (e: any) {
-            console.error("Product upload error:", e)
-            alert(`제품 ${editingProductId ? '수정' : '등록'} 실패: ${e?.message || "알 수 없는 오류가 발생했습니다."}`)
+            console.error("[handleUploadProduct] Exception:", e)
+            alert(`제품 ${editingProductId ? '수정' : '등록'} 실패: ${e?.message || "알 수 없는 오류"}`)
         } finally {
             setIsUploading(false)
         }
