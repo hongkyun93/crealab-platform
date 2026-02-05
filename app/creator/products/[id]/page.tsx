@@ -120,12 +120,11 @@ export default function ProductDetailPage() {
                             </p>
 
                             <div className="flex flex-col sm:flex-row gap-3">
+                                <Button size="lg" className="flex-1 text-lg h-14 shadow-lg shadow-primary/20 font-bold" onClick={() => setIsOpen(true)}>
+                                    <Send className="mr-2 h-5 w-5" /> 협업 제안하기
+                                </Button>
+
                                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button size="lg" className="flex-1 text-lg h-14 shadow-lg shadow-primary/20 font-bold">
-                                            <Send className="mr-2 h-5 w-5" /> 협업 제안하기
-                                        </Button>
-                                    </DialogTrigger>
                                     <DialogContent className="sm:max-w-md">
                                         <DialogHeader>
                                             <DialogTitle className="text-xl font-bold">협업 제안하기</DialogTitle>

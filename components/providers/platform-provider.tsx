@@ -1237,6 +1237,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .insert({
                     brand_id: newProposal.toId,
                     influencer_id: newProposal.fromId,
+                    product_id: newProposal.productId, // Added product_id linkage
                     product_name: productName,
                     product_type: newProposal.dealType === 'ad' ? 'gift' : 'loan', // Simple mapping
                     compensation_amount: newProposal.cost ? `${newProposal.cost.toLocaleString()}원` : "협의",
@@ -1261,7 +1262,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
             }
         } catch (e: any) {
             console.error("Failed to add proposal:", e)
-            alert(`제안 전송에 실패했습니다: ${e.message}`)
+            if (e.code === '42501') {
+                alert("권한 오류: 제안서를 보낼 권한이 없습니다.\n관리자에게 'fix_proposal_permissions.sql' 실행을 요청하세요.")
+            } else {
+                alert(`제안 전송에 실패했습니다: ${e.message}`)
+            }
         }
     }
 
