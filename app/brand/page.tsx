@@ -695,181 +695,233 @@ function BrandDashboardContent() {
                 const selectedCampaign = myCampaigns.find(c => c.id === selectedCampaignId)
                 const campaignProposals = proposals.filter(p => p.campaignId === selectedCampaign?.id && p.type === 'creator_apply')
 
+                // Detail View
+                if (selectedCampaignId && selectedCampaign) {
+                    return (
+                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                            <div className="flex items-center gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => setSelectedCampaignId(null)} className="gap-1 pl-0 hover:bg-transparent hover:text-primary">
+                                    <ArrowRight className="h-4 w-4 rotate-180" /> 목록으로 돌아가기
+                                </Button>
+                            </div>
+
+                            <div className="grid gap-6 lg:grid-cols-[1fr_350px] xl:grid-cols-[1fr_400px]">
+                                {/* Left: Campaign Detail Card */}
+                                <Card className="h-fit">
+                                    <CardHeader className="pb-4">
+                                        <div className="flex justify-between items-start">
+                                            <div className="space-y-2">
+                                                <Badge variant="outline" className="w-fit">{selectedCampaign.category}</Badge>
+                                                <CardTitle className="text-2xl font-bold">{selectedCampaign.product}</CardTitle>
+                                            </div>
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link href={`/brand/edit/${selectedCampaign.id}`}>수정하기</Link>
+                                            </Button>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        {/* Description Box */}
+                                        <div className="bg-muted/30 p-6 rounded-xl border border-border/50">
+                                            <h4 className="text-sm font-bold text-muted-foreground mb-3">상세 내용</h4>
+                                            <p className="whitespace-pre-wrap leading-relaxed text-sm">
+                                                {selectedCampaign.description}
+                                            </p>
+                                        </div>
+
+                                        {/* Info Grid */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl">
+                                            <div className="space-y-1">
+                                                <span className="text-xs font-bold text-muted-foreground">일정</span>
+                                                <p className="font-medium text-sm">{selectedCampaign.eventDate || "미정"}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <span className="text-xs font-bold text-muted-foreground">희망 제품</span>
+                                                <p className="font-medium text-sm">{selectedCampaign.targetProduct || "-"}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <span className="text-xs font-bold text-muted-foreground">모집 대상</span>
+                                                <p className="font-medium text-sm">{selectedCampaign.target || "전체"}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <span className="text-xs font-bold text-muted-foreground">제공 혜택</span>
+                                                <p className="font-bold text-emerald-600 text-sm">{selectedCampaign.budget || "협의"}</p>
+                                            </div>
+                                            {selectedCampaign.postingDate && (
+                                                <div className="space-y-1 md:col-span-2">
+                                                    <span className="text-xs font-bold text-muted-foreground">업로드 일정</span>
+                                                    <p className="font-medium text-sm">{selectedCampaign.postingDate}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Right: Proposals */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 font-bold text-lg">
+                                        <Package className="h-5 w-5" /> 도착한 제안
+                                    </div>
+
+                                    <div className="bg-muted/10 rounded-xl border min-h-[400px] p-4">
+                                        {campaignProposals.length === 0 ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3 py-10">
+                                                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                                                    <Bell className="h-5 w-5 opacity-30" />
+                                                </div>
+                                                <p className="text-sm">이 캠페인에 도착한 제안이 아직 없습니다.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {campaignProposals.map((p: any) => (
+                                                    <Card key={p.id} className="overflow-hidden hover:shadow-md transition-all border-l-4 border-l-primary">
+                                                        <CardHeader className="p-4 pb-2">
+                                                            <div className="flex justify-between items-start">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold overflow-hidden">
+                                                                        {p.influencerAvatar ? <img src={p.influencerAvatar} alt="" className="w-full h-full object-cover" /> : p.influencerName?.[0]}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="font-bold text-sm">{p.influencerName}</div>
+                                                                        <div className="text-[10px] text-muted-foreground">{new Date(p.date).toLocaleDateString()}</div>
+                                                                    </div>
+                                                                </div>
+                                                                <Badge variant={p.status === 'accepted' ? 'default' : 'secondary'} className="text-[10px] h-5">
+                                                                    {p.status === 'accepted' ? '수락됨' : '대기중'}
+                                                                </Badge>
+                                                            </div>
+                                                        </CardHeader>
+                                                        <CardContent className="p-4 pt-2 space-y-2">
+                                                            <div className="bg-muted/30 p-2.5 rounded text-xs text-foreground/80 italic leading-relaxed">
+                                                                "{p.message}"
+                                                            </div>
+                                                            <div className="flex justify-between items-center text-xs pt-1">
+                                                                <span className="text-muted-foreground">희망 비용</span>
+                                                                <span className="font-bold text-emerald-600">{p.cost ? `${p.cost.toLocaleString()}원` : "협의"}</span>
+                                                            </div>
+                                                        </CardContent>
+                                                        <CardFooter className="p-2 bg-muted/5 grid grid-cols-2 gap-2">
+                                                            {p.status !== 'accepted' && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
+                                                                    onClick={async () => {
+                                                                        if (confirm('수락하시겠습니까?')) {
+                                                                            const { updateApplicationStatus } = await import('@/app/actions/proposal')
+                                                                            await updateApplicationStatus(p.id.toString(), 'accepted')
+                                                                            alert('수락되었습니다')
+                                                                            window.location.reload()
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    수락
+                                                                </Button>
+                                                            )}
+                                                            <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+                                                                <Link href="/message">채팅</Link>
+                                                            </Button>
+                                                        </CardFooter>
+                                                    </Card>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+
+                // List View
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 h-[calc(100vh-140px)] flex flex-col">
-                        <div className="flex items-center justify-between shrink-0">
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex items-center justify-between">
                             <div>
                                 <h1 className="text-3xl font-bold tracking-tight">내 캠페인 관리</h1>
-                                <p className="text-muted-foreground mt-1">등록하신 캠페인 공고를 통해 크리에이터를 모집하세요.</p>
+                                <p className="text-muted-foreground mt-1">등록하신 캠페인 공고를 관리하고 지원자를 확인하세요.</p>
                             </div>
                             <Button asChild className="gap-2">
                                 <Link href="/brand/new"><Plus className="h-4 w-4" /> 새 캠페인 등록</Link>
                             </Button>
                         </div>
+
                         {myCampaigns.length === 0 ? (
                             <Card className="p-12 text-center border-dashed">
                                 <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
                                     <Package className="h-6 w-6 text-muted-foreground" />
                                 </div>
                                 <h3 className="text-lg font-bold">등록된 캠페인이 없습니다.</h3>
-                                <p className="text-muted-foreground mb-6">첫 캠페인을 등록하고 모집을 시작해보세요!</p>
-                                <Button asChild><Link href="/brand/new">캠페인 등록하기</Link></Button>
+                                <Button asChild className="mt-4"><Link href="/brand/new">캠페인 등록하기</Link></Button>
                             </Card>
                         ) : (
-                            <div className="grid gap-6 lg:grid-cols-[1fr_400px] h-full overflow-hidden">
-                                {/* Left: Campaign List */}
-                                <div className="flex flex-col gap-4 overflow-y-auto pr-2 pb-20">
-                                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                                        {myCampaigns.map((c) => {
-                                            const appCount = proposals.filter(p => p.campaignId === c.id && p.type === 'creator_apply').length
-                                            const isSelected = selectedCampaignId === c.id
+                            <div className="space-y-4">
+                                {myCampaigns.map((c) => {
+                                    const appCount = proposals.filter(p => p.campaignId === c.id && p.type === 'creator_apply').length
+                                    return (
+                                        <Card
+                                            key={c.id}
+                                            className="group hover:shadow-md transition-all cursor-pointer border-border/60"
+                                            onClick={() => setSelectedCampaignId(c.id)}
+                                        >
+                                            <div className="flex flex-col md:flex-row">
+                                                {/* Main Content */}
+                                                <div className="flex-1 p-6">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <Badge variant="outline" className="text-xs font-normal">{c.category}</Badge>
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status === 'active' ? 'text-emerald-600 bg-emerald-100' : 'text-gray-500 bg-gray-100'}`}>
+                                                            {c.status === 'active' ? '● 모집중' : '● 마감됨'}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground ml-auto md:hidden">{new Date(c.date).toLocaleDateString()}</span>
+                                                    </div>
 
-                                            return (
-                                                <Card
-                                                    key={c.id}
-                                                    className={`cursor-pointer transition-all hover:shadow-md ${isSelected ? 'border-primary shadow-sm bg-primary/5' : ''}`}
-                                                    onClick={() => setSelectedCampaignId(c.id)}
-                                                >
-                                                    <CardHeader className="pb-3">
-                                                        <div className="flex justify-between items-start">
-                                                            <div className="space-y-1">
-                                                                <Badge variant="secondary" className="mb-1">{c.category}</Badge>
-                                                                <CardTitle className="text-lg font-bold line-clamp-1">{c.product}</CardTitle>
-                                                                <CardDescription className="text-xs">{new Date(c.date).toLocaleDateString()}</CardDescription>
-                                                            </div>
-                                                            <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                                                                    <Link href={`/brand/edit/${c.id}`}><Pencil className="h-3.5 w-3.5" /></Link>
-                                                                </Button>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => deleteCampaign(c.id)}>
-                                                                    <Trash2 className="h-3.5 w-3.5" /></Button>
-                                                            </div>
+                                                    <h3 className="text-xl font-bold mb-4 group-hover:text-primary transition-colors">{c.product}</h3>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground bg-muted/20 p-4 rounded-lg">
+                                                        <div className="space-y-1">
+                                                            <div className="text-xs font-bold text-foreground">제공 혜택</div>
+                                                            <div className="text-emerald-600 font-bold">{c.budget || "협의"}</div>
                                                         </div>
-                                                    </CardHeader>
-                                                    <CardContent className="pb-3 space-y-3">
-                                                        <div className="grid gap-2 text-sm">
-                                                            <div className="flex items-start gap-3">
-                                                                <span className="text-xs font-bold text-muted-foreground w-12 shrink-0 pt-0.5">제공혜택</span>
-                                                                <span className="text-sm font-bold text-emerald-600">{c.budget || "협의"}</span>
-                                                            </div>
-                                                            <div className="flex items-start gap-3">
-                                                                <span className="text-xs font-bold text-muted-foreground w-12 shrink-0 pt-0.5">모집대상</span>
-                                                                <span className="text-xs">{c.target || "전체"}</span>
-                                                            </div>
-                                                            <div className="flex items-start gap-3">
-                                                                <span className="text-xs font-bold text-muted-foreground w-12 shrink-0 pt-0.5">상세내용</span>
-                                                                <p className="text-xs text-secondary-foreground/80 line-clamp-2 leading-relaxed">
-                                                                    {c.description}
-                                                                </p>
-                                                            </div>
+                                                        <div className="space-y-1">
+                                                            <div className="text-xs font-bold text-foreground">모집 대상</div>
+                                                            <div>{c.target || "전체"}</div>
                                                         </div>
-
-                                                        <div className="flex items-center justify-between pt-2 border-t mt-2">
-                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status === 'active' ? 'text-emerald-600 bg-emerald-100' : 'text-gray-500 bg-gray-100'}`}>
-                                                                {c.status === 'active' ? '● 모집중' : '● 마감됨'}
-                                                            </span>
-                                                            <span className="text-xs text-muted-foreground">지원자 <strong className="text-foreground">{appCount}</strong>명</span>
+                                                        <div className="space-y-1">
+                                                            <div className="text-xs font-bold text-foreground">상세 내용</div>
+                                                            <div className="line-clamp-1 text-xs">{c.description}</div>
                                                         </div>
-                                                    </CardContent>
-                                                    <CardFooter className={`py-2 ${isSelected ? 'bg-primary/10 text-primary' : 'bg-muted/30 text-muted-foreground'} flex justify-center`}>
-                                                        {isSelected ? <ArrowRight className="h-4 w-4" /> : <span className="text-xs">상세보기</span>}
-                                                    </CardFooter>
-                                                </Card>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Right: Proposals Panel */}
-                                <div className="hidden lg:flex flex-col h-full bg-background border rounded-xl overflow-hidden shadow-sm">
-                                    <div className="p-4 border-b bg-muted/30 shrink-0">
-                                        <h3 className="font-bold flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-primary" />
-                                            지원서 목록
-                                        </h3>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            {selectedCampaign
-                                                ? `'${selectedCampaign.product}' 캠페인에 지원한 크리에이터입니다.`
-                                                : "좌측에서 캠페인을 선택하여 지원서를 확인하세요."
-                                            }
-                                        </p>
-                                    </div>
-
-                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10">
-                                        {!selectedCampaign ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
-                                                <Package className="h-12 w-12 opacity-20" />
-                                                <p>캠페인을 선택해주세요</p>
-                                            </div>
-                                        ) : campaignProposals.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
-                                                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                                                    <Bell className="h-6 w-6 opacity-20" />
+                                                    </div>
                                                 </div>
-                                                <p>아직 도착한 지원서가 없습니다.</p>
-                                            </div>
-                                        ) : (
-                                            campaignProposals.map((p: any) => (
-                                                <Card key={p.id} className="overflow-hidden border-l-4 border-l-primary hover:shadow-md transition-all">
-                                                    <CardHeader className="p-4 pb-2">
-                                                        <div className="flex justify-between items-start gap-3">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                                                                    {p.influencerAvatar ? (
-                                                                        <img src={p.influencerAvatar} alt={p.influencerName} className="w-full h-full object-cover" />
-                                                                    ) : (
-                                                                        <span className="font-bold text-xs">{p.influencerName?.[0]}</span>
-                                                                    )}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="font-bold text-sm">{p.influencerName}</div>
-                                                                    <div className="text-xs text-muted-foreground">{new Date(p.date).toLocaleDateString()}</div>
-                                                                </div>
-                                                            </div>
-                                                            <Badge variant={p.status === 'accepted' ? 'default' : 'secondary'} className={p.status === 'accepted' ? 'bg-emerald-500' : ''}>
-                                                                {p.status === 'accepted' ? '수락됨' : p.status === 'rejected' ? '거절됨' : '대기중'}
-                                                            </Badge>
+
+                                                {/* Right Action Area */}
+                                                <div className="border-t md:border-t-0 md:border-l p-4 md:w-48 bg-muted/5 flex flex-row md:flex-col items-center justify-between md:justify-center gap-2">
+                                                    <div className="text-center">
+                                                        <div className="text-xs text-muted-foreground mb-1">도착한 제안</div>
+                                                        <div className={`text-xl font-bold ${appCount > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                                                            {appCount}개
                                                         </div>
-                                                    </CardHeader>
-                                                    <CardContent className="p-4 pt-2 space-y-3">
-                                                        <div className="p-3 bg-muted/30 rounded-lg text-xs italic text-foreground/80 leading-relaxed">
-                                                            "{p.message}"
-                                                        </div>
-                                                        <div className="flex items-center justify-between text-xs">
-                                                            <span className="text-muted-foreground">희망 원고료</span>
-                                                            <span className="font-bold">{p.cost ? `${p.cost.toLocaleString()}원` : "협의 가능"}</span>
-                                                        </div>
-                                                    </CardContent>
-                                                    <CardFooter className="p-2 border-t bg-muted/5 grid grid-cols-2 gap-2">
-                                                        {p.status !== 'accepted' && (
-                                                            <Button
-                                                                size="sm"
-                                                                className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700"
-                                                                onClick={async () => {
-                                                                    if (confirm('이 지원서를 수락하시겠습니까?')) {
-                                                                        const { updateApplicationStatus } = await import('@/app/actions/proposal')
-                                                                        await updateApplicationStatus(p.id.toString(), 'accepted')
-                                                                        alert('수락되었습니다!')
-                                                                        window.location.reload()
-                                                                    }
-                                                                }}
-                                                            >
-                                                                수락
-                                                            </Button>
-                                                        )}
-                                                        <Button size="sm" variant="outline" className="w-full h-8 text-xs" asChild>
-                                                            <Link href="/message">채팅하기</Link>
+                                                    </div>
+
+                                                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground hover:text-primary">
+                                                        확인하기 <ArrowRight className="h-3 w-3" />
+                                                    </Button>
+
+                                                    <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" asChild>
+                                                            <Link href={`/brand/edit/${c.id}`}><Pencil className="h-3.5 w-3.5" /></Link>
                                                         </Button>
-                                                    </CardFooter>
-                                                </Card>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-500" onClick={() => deleteCampaign(c.id)}>
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    )
+                                })}
                             </div>
                         )}
-                    </div >
+                    </div>
                 )
+
             case "proposals":
                 // 브랜드가 보낸 제안 (인플루언서 초대)
                 const sentProposals = brandProposals.filter(p => p.brand_id === user?.id)
