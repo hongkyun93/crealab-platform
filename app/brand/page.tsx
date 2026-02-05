@@ -600,8 +600,12 @@ function BrandDashboardContent() {
                                                 />
                                             </Button>
                                             <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
-                                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
-                                                    {item.avatar}
+                                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg overflow-hidden">
+                                                    {item.avatar && item.avatar.startsWith('http') ? (
+                                                        <img src={item.avatar} alt={item.influencer} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        item.avatar
+                                                    )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between">

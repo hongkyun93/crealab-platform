@@ -447,8 +447,12 @@ function InfluencerDashboardContent() {
                                 <Link key={item.id} href={`/event/${item.id}`} className="block group">
                                     <Card className="overflow-hidden transition-all hover:shadow-lg border-border/60 bg-background flex flex-col h-full cursor-pointer">
                                         <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
-                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
-                                                {item.avatar || item.influencer?.[0]}
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold overflow-hidden">
+                                                {item.avatar && item.avatar.startsWith('http') ? (
+                                                    <img src={item.avatar} alt={item.influencer} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    item.avatar || item.influencer?.[0]
+                                                )}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between">
