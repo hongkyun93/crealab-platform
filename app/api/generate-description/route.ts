@@ -14,8 +14,8 @@ export async function POST(req: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        // 안정적인 모델 사용
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // 키 설정 완료됨. 다시 가벼운 플래시 모델 사용
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const systemPrompt = `
     당신은 인플루언서 마케팅 전문가이자 전문 카피라이터입니다.
