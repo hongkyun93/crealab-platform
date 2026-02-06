@@ -328,6 +328,7 @@ function InfluencerDashboardContent() {
     const [submissionUrl, setSubmissionUrl] = useState("")
     const [submissionFile, setSubmissionFile] = useState<File | null>(null)
     const [isSubmittingContent, setIsSubmittingContent] = useState(false)
+    const [isReuploading, setIsReuploading] = useState(false)
 
     const handleContentSubmission = async () => {
         if (!chatProposal) return
@@ -379,11 +380,15 @@ function InfluencerDashboardContent() {
                 console.log('File uploaded successfully. URL:', fileUrl)
             }
 
+            const currentVersion = chatProposal.content_submission_version || 0.9
+            const nextVersion = parseFloat((currentVersion + 0.1).toFixed(1))
+
             const updateData = {
                 content_submission_url: submissionUrl,
                 content_submission_file_url: fileUrl || undefined,
                 content_submission_status: 'submitted',
-                content_submission_date: new Date().toISOString()
+                content_submission_date: new Date().toISOString(),
+                content_submission_version: nextVersion
             }
 
             if (isCampaignProposal) {
@@ -394,11 +399,12 @@ function InfluencerDashboardContent() {
 
             setChatProposal(prev => ({ ...prev, ...updateData }))
 
-            await sendMessage(brandId, "✅ 작업물 제출을 완료했습니다! 확인 부탁드립니다.", isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
+            await sendMessage(brandId, `✅ 작업물(v${nextVersion}) 제출을 완료했습니다! 확인 부탁드립니다.`, isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
 
-            alert("작업물이 제출되었습니다.")
+            alert(`작업물(v${nextVersion})이 제출되었습니다.`)
             setSubmissionUrl("")
             setSubmissionFile(null)
+            setIsReuploading(false)
         } catch (e) {
             console.error("Submission failed:", e)
             alert("제출 중 오류가 발생했습니다.")
@@ -2244,11 +2250,26 @@ function InfluencerDashboardContent() {
                                                                 <p className="text-sm text-slate-500 font-bold">제품 수령 완료 버튼을 누른 후 제출할 수 있습니다.</p>
                                                                 <p className="text-xs text-slate-400 mt-1">상단의 '제품 수령 완료' 버튼을 눌러주세요.</p>
                                                             </div>
-                                                        ) : chatProposal.content_submission_status === 'submitted' || chatProposal.content_submission_status === 'approved' ? (
+                                                        ) : (chatProposal.content_submission_status === 'submitted' || chatProposal.content_submission_status === 'approved') && !isReuploading ? (
                                                             <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg">
-                                                                <div className="flex items-center gap-2 text-indigo-700 font-bold mb-2">
-                                                                    <BadgeCheck className="h-5 w-5" />
-                                                                    제출 완료
+                                                                <div className="flex justify-between items-start mb-2">
+                                                                    <div className="flex items-center gap-2 text-indigo-700 font-bold">
+                                                                        <BadgeCheck className="h-5 w-5" />
+                                                                        제출 완료
+                                                                        <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full ml-1">
+                                                                            v{chatProposal.content_submission_version?.toFixed(1) || "1.0"}
+                                                                        </span>
+                                                                    </div>
+                                                                    {chatProposal.status !== 'completed' && (
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            onClick={() => setIsReuploading(true)}
+                                                                            className="text-xs h-7 px-2 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100"
+                                                                        >
+                                                                            수정 / 재제출
+                                                                        </Button>
+                                                                    )}
                                                                 </div>
                                                                 <p className="text-sm text-indigo-600 mb-4">
                                                                     브랜드의 검토를 기다리고 있습니다.
@@ -2266,6 +2287,21 @@ function InfluencerDashboardContent() {
                                                             </div>
                                                         ) : (
                                                             <div className="space-y-4">
+                                                                {isReuploading && (
+                                                                    <div className="flex justify-between items-center px-1 mb-2">
+                                                                        <span className="text-xs font-bold text-indigo-600">
+                                                                            ✨ v{(parseFloat(((chatProposal.content_submission_version || 0.9) + 0.1).toFixed(1)))} 버전으로 업데이트
+                                                                        </span>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            onClick={() => setIsReuploading(false)}
+                                                                            className="text-xs h-6 text-slate-400 hover:text-red-500"
+                                                                        >
+                                                                            취소
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
                                                                 <Tabs defaultValue="link" className="w-full">
                                                                     <TabsList className="grid w-full grid-cols-2">
                                                                         <TabsTrigger value="link">링크 제출</TabsTrigger>
@@ -2315,7 +2351,7 @@ function InfluencerDashboardContent() {
 
                                                                 <Button onClick={handleContentSubmission} disabled={isSubmittingContent} className="w-full">
                                                                     {isSubmittingContent && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                                    작업물 제출하기
+                                                                    {isReuploading ? "수정된 작업물 제출하기" : "작업물 제출하기"}
                                                                 </Button>
                                                             </div>
                                                         )}

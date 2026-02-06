@@ -390,12 +390,14 @@ ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_u
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_file_url text; -- Direct File Upload
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_status text DEFAULT 'pending'; -- pending, submitted, approved, rejected
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_version NUMERIC(3,1) DEFAULT 1.0;
 
 -- For Campaign Applications (Proposals)
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_url text;
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_file_url text;
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_status text DEFAULT 'pending';
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_version NUMERIC(3,1) DEFAULT 1.0;
 
 -- Notify PostgREST to reload the schema cache
 NOTIFY pgrst, 'reload schema';

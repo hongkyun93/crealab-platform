@@ -122,6 +122,7 @@ export type Proposal = {
     content_submission_file_url?: string
     content_submission_status?: 'pending' | 'submitted' | 'approved' | 'rejected'
     content_submission_date?: string
+    content_submission_version?: number
 }
 
 
@@ -150,6 +151,7 @@ export type BrandProposal = {
     content_submission_file_url?: string
     content_submission_status?: 'pending' | 'submitted' | 'approved' | 'rejected'
     content_submission_date?: string
+    content_submission_version?: number
 }
 
 
