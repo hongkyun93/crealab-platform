@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
         const genAI = new GoogleGenerativeAI(apiKey);
         // Try the most standard model name
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const systemPrompt = `
     당신은 인플루언서 마케팅 전문가이자 전문 카피라이터입니다.
