@@ -1182,7 +1182,7 @@ function InfluencerDashboardContent() {
                 )
             case "proposals":
                 // 1. Inbound (Received from Brands) - Waiting
-                const inboundProposals = brandProposals?.filter((p: any) => !p.status || p.status === 'offered' || p.status === 'negotiating') || []
+                const inboundProposals = brandProposals?.filter((p: any) => !p.status || p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending') || []
 
                 // 2. Outbound (Applied to Campaigns) - Waiting
                 const outboundApplications = proposals?.filter((p: any) => p.type === 'creator_apply' && (p.status === 'pending' || p.status === 'viewed')) || []
@@ -2084,7 +2084,7 @@ function InfluencerDashboardContent() {
                                                         </div>
 
                                                         {/* Action Buttons inside Chat (Available in all views now) */}
-                                                        {(chatProposal.status === 'offered' || !chatProposal.status) && (
+                                                        {(chatProposal.status === 'offered' || chatProposal.status === 'pending' || chatProposal.status === 'negotiating' || !chatProposal.status) && (
                                                             <div className="flex gap-2 pt-2">
                                                                 <Button
                                                                     size="sm"
