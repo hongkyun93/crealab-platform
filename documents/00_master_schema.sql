@@ -338,6 +338,11 @@ CREATE POLICY "Authenticated users can upload images" ON storage.objects FOR INS
 CREATE POLICY "Authenticated users can update images" ON storage.objects FOR UPDATE USING (bucket_id = 'product-images' AND auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can delete images" ON storage.objects FOR DELETE USING (bucket_id = 'product-images' AND auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Public Access Submissions" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload submissions" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update submissions" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete submissions" ON storage.objects;
+
 CREATE POLICY "Public Access Submissions" ON storage.objects FOR SELECT USING (bucket_id = 'submissions');
 CREATE POLICY "Authenticated users can upload submissions" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'submissions' AND auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can update submissions" ON storage.objects FOR UPDATE USING (bucket_id = 'submissions' AND auth.role() = 'authenticated');
