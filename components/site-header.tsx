@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { usePlatform } from "@/components/providers/platform-provider"
-import { LogOut, Settings, User, Shield } from "lucide-react"
+import { LogOut, Settings, User, Shield, Menu } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -39,7 +39,7 @@ export function SiteHeader() {
                         <span className="font-bold text-xl tracking-tight">Creadypick.</span>
                         <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full">V1.5.2</span>
                     </Link>
-                    <nav className="flex items-center space-x-6 text-sm font-medium">
+                    <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link
                             href="/services"
                             className={`transition-colors hover:text-foreground/80 ${isActive('/services') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
@@ -76,6 +76,41 @@ export function SiteHeader() {
                         </Link>
 
                     </nav>
+
+                    {/* Mobile Menu */}
+                    <div className="md:hidden flex items-center">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="-ml-2">
+                                    <Menu className="h-5 w-5" />
+                                    <span className="sr-only">메뉴 열기</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-[200px]">
+                                <DropdownMenuItem asChild>
+                                    <Link href="/services" className="w-full">서비스 소개</Link>
+                                </DropdownMenuItem>
+                                {(!user || user.type === 'brand' || user.type === 'admin') && (
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/brand" className="w-full">브랜드</Link>
+                                    </DropdownMenuItem>
+                                )}
+                                {(!user || user.type === 'influencer' || user.type === 'admin') && (
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/creator" className="w-full">크리에이터</Link>
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem asChild>
+                                    <Link href="/message" className="w-full flex justify-between">
+                                        메시지
+                                        {user && messages.filter(m => m.receiverId === user.id && !m.read).length > 0 && (
+                                            <span className="h-2 w-2 bg-red-500 rounded-full"></span>
+                                        )}
+                                    </Link>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
                 <div className="ml-auto flex items-center space-x-4">
                     {user ? (
