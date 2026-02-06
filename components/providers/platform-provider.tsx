@@ -235,7 +235,7 @@ interface PlatformContextType {
     brandProposals: BrandProposal[] // New direct proposals
     addProposal: (proposal: Omit<Proposal, "id" | "date">) => Promise<void>
     createBrandProposal: (proposal: any) => Promise<any>
-    updateProposal: (id: number, data: Partial<Proposal>) => void
+    updateProposal: (id: string | number, data: Partial<Proposal> | object) => Promise<boolean>
     deleteBrandProposal: (id: string) => Promise<void>
 
     notifications: Notification[]
@@ -1363,8 +1363,29 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const updateProposal = (id: number, data: Partial<Proposal>) => {
-        setProposals(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    const updateProposal = async (id: string | number, data: Partial<Proposal> | object): Promise<boolean> => {
+        try {
+            // Determine payload
+            const payload = data
+
+            const { error } = await supabase
+                .from('proposals')
+                .update(payload)
+                .eq('id', id)
+
+            if (error) throw error
+
+            setProposals(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+            return true
+        } catch (e: any) {
+            console.error("Failed to update proposal:", e)
+            if (e.code === '42703') { // undefined_column
+                alert("DB 업데이트가 필요합니다. 관리자에게 'add_contract_fields.sql' 실행을 요청해주세요.")
+            } else {
+                alert("제안서 수정에 실패했습니다: " + (e.message || "알 수 없는 오류"))
+            }
+            return false
+        }
     }
 
     const updateBrandProposal = async (id: string, updates: string | object): Promise<boolean> => {

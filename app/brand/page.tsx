@@ -196,17 +196,28 @@ function BrandDashboardContent() {
 
         setIsSendingContract(true)
         try {
-            // Update proposal with contract data
-            // Must wait for update to succeed before sending message
-            // updateBrandProposal now returns boolean logic indicating success
-            const success = await updateBrandProposal(chatProposal.id, {
-                contract_content: generatedContract,
-                contract_status: 'sent'
-            })
+            // Determine if this is a 'Brand Proposal' (Direct Offer) or 'Proposal' (Campaign Apply)
+            // Brand Proposals don't have campaignId, regular Proposals do.
+            const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply';
+            const proposalId = chatProposal.id?.toString();
+
+            let success = false;
+
+            if (isCampaignProposal) {
+                // It's a Campaign Application -> Use proposals table
+                success = await updateProposal(proposalId, {
+                    contract_content: generatedContract,
+                    contract_status: 'sent'
+                })
+            } else {
+                // It's a Brand Direct Offer -> Use brand_proposals table
+                success = await updateBrandProposal(proposalId, {
+                    contract_content: generatedContract,
+                    contract_status: 'sent'
+                })
+            }
 
             if (!success) {
-                // If update failed (e.g. DB error), stop here. 
-                // Alert is already handled in updateBrandProposal
                 return
             }
 
@@ -216,7 +227,15 @@ function BrandDashboardContent() {
             // Send system message
             const receiverId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id
             if (receiverId) {
-                await sendMessage(receiverId, "📄 [시스템] 표준 계약서가 발송되었습니다. [계약 관리] 탭에서 확인 후 서명해주세요.", undefined, chatProposal.id?.toString())
+                const msgContent = "📄 [시스템] 표준 계약서가 발송되었습니다. [계약 관리] 탭에서 확인 후 서명해주세요."
+
+                // Pass ID to correct argument to avoid FK error
+                if (isCampaignProposal) {
+                    // (to, content, proposalId, brandProposalId)
+                    await sendMessage(receiverId, msgContent, proposalId, undefined)
+                } else {
+                    await sendMessage(receiverId, msgContent, undefined, proposalId)
+                }
             }
 
             alert("계약서가 성공적으로 발송되었습니다.")
