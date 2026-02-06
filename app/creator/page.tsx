@@ -1723,6 +1723,51 @@ function InfluencerDashboardContent() {
         setApplyModalOpen(true)
     }
 
+    const handleDownloadContract = () => {
+        if (!chatProposal?.contract_content) {
+            alert("계약서 내용이 없습니다.")
+            return
+        }
+
+        const contractText = chatProposal.contract_content
+        const win = window.open('', '', 'width=800,height=600')
+        win?.document.write(`
+            <html>
+                <head>
+                    <title>표준 광고 협업 계약서</title>
+                    <style>
+                        body { font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; }
+                        h1 { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+                        pre { white-space: pre-wrap; font-family: inherit; }
+                        .signature-section { margin-top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+                        .sign-box { width: 45%; border-top: 1px solid #333; padding-top: 10px; }
+                        .sign-img { max-height: 50px; margin-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>표준 광고 협업 계약서</h1>
+                    <pre>${contractText}</pre>
+                    
+                    <div class="signature-section">
+                        <div class="sign-box">
+                            <p><strong>갑 (브랜드):</strong> ${chatProposal?.brand_name || 'CreadyPick'}</p>
+                            ${chatProposal?.brand_signature ? `<img src="${chatProposal.brand_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                            <p><small>${chatProposal?.brand_signed_at ? new Date(chatProposal.brand_signed_at).toLocaleDateString() : ''}</small></p>
+                        </div>
+                        <div class="sign-box">
+                            <p><strong>을 (크리에이터):</strong> ${chatProposal?.influencer_name || user?.name || 'Creator'}</p>
+                            ${chatProposal?.influencer_signature ? `<img src="${chatProposal.influencer_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                            <p><small>${chatProposal?.influencer_signed_at ? new Date(chatProposal.influencer_signed_at).toLocaleDateString() : ''}</small></p>
+                        </div>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); window.close(); }
+                    </script>
+                </body>
+            </html>
+        `)
+        win?.document.close()
+    }
     const handleSubmitApplication = async () => {
         if (!appealMessage) {
             alert("어피 메시지를 입력해주세요.")
@@ -2078,6 +2123,14 @@ function InfluencerDashboardContent() {
                                                             계약서 내용
                                                             {chatProposal.contract_status === 'signed' && <span className="ml-2 text-emerald-600">(서명 완료됨)</span>}
                                                         </h4>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="text-xs h-7 gap-1"
+                                                            onClick={handleDownloadContract}
+                                                        >
+                                                            <FileText className="h-3 w-3" /> PDF 다운로드
+                                                        </Button>
                                                     </div>
                                                     <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed font-mono min-h-[200px] overflow-y-auto max-h-[400px] whitespace-pre-wrap">
                                                         {chatProposal.contract_content || "계약서 내용을 불러오는 중..."}

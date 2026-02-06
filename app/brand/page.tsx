@@ -293,6 +293,51 @@ function BrandDashboardContent() {
     const [trackingInput, setTrackingInput] = useState("")
     const [isUpdatingShipping, setIsUpdatingShipping] = useState(false)
 
+    const handleDownloadContract = () => {
+        if (!generatedContract && !chatProposal?.contract_content) {
+            alert("계약서 내용이 없습니다.")
+            return
+        }
+
+        const contractText = chatProposal?.contract_content || generatedContract
+        const win = window.open('', '', 'width=800,height=600')
+        win?.document.write(`
+            <html>
+                <head>
+                    <title>표준 광고 협업 계약서</title>
+                    <style>
+                        body { font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; }
+                        h1 { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+                        pre { white-space: pre-wrap; font-family: inherit; }
+                        .signature-section { margin-top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+                        .sign-box { width: 45%; border-top: 1px solid #333; padding-top: 10px; }
+                        .sign-img { max-height: 50px; margin-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>표준 광고 협업 계약서</h1>
+                    <pre>${contractText}</pre>
+                    
+                    <div class="signature-section">
+                        <div class="sign-box">
+                            <p><strong>갑 (브랜드):</strong> ${chatProposal?.brand_name || 'CreadyPick'}</p>
+                            ${chatProposal?.brand_signature ? `<img src="${chatProposal.brand_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                            <p><small>${chatProposal?.brand_signed_at ? new Date(chatProposal.brand_signed_at).toLocaleDateString() : ''}</small></p>
+                        </div>
+                        <div class="sign-box">
+                            <p><strong>을 (크리에이터):</strong> ${chatProposal?.influencer_name || chatProposal?.influencer?.name || user?.name}</p>
+                            ${chatProposal?.influencer_signature ? `<img src="${chatProposal.influencer_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                            <p><small>${chatProposal?.influencer_signed_at ? new Date(chatProposal.influencer_signed_at).toLocaleDateString() : ''}</small></p>
+                        </div>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); window.close(); }
+                    </script>
+                </body>
+            </html>
+        `)
+        win?.document.close()
+    }
     const handleUpdateShipping = async () => {
         if (!trackingInput.trim()) {
             alert("운송장 번호를 입력해주세요.")
@@ -2218,7 +2263,7 @@ function BrandDashboardContent() {
                                                 )}
                                             </div>
 
-                                            <div className="text-center">
+                                            <div className="text-center flex gap-3 justify-center">
                                                 <Button
                                                     variant="link"
                                                     size="sm"
@@ -2227,6 +2272,16 @@ function BrandDashboardContent() {
                                                 >
                                                     계약서 전체 내용 본문 보기
                                                 </Button>
+                                                {chatProposal?.contract_content && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-xs h-7 gap-1"
+                                                        onClick={handleDownloadContract}
+                                                    >
+                                                        <FileText className="h-3 w-3" /> PDF 다운로드
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
 
