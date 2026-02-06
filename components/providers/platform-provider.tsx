@@ -241,7 +241,7 @@ interface PlatformContextType {
     notifications: Notification[]
     sendNotification: (toUserId: string, message: string) => void
     messages: Message[]
-    updateBrandProposal: (id: string, updates: string | object) => Promise<void>
+    updateBrandProposal: (id: string, updates: string | object) => Promise<boolean>
     sendMessage: (toUserId: string, content: string, proposalId?: string, brandProposalId?: string) => Promise<void>
     switchRole: (newRole: 'brand' | 'influencer') => Promise<void>
     isLoading: boolean
@@ -1367,7 +1367,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         setProposals(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     }
 
-    const updateBrandProposal = async (id: string, updates: string | object) => {
+    const updateBrandProposal = async (id: string, updates: string | object): Promise<boolean> => {
         try {
             const payload = typeof updates === 'string' ? { status: updates } : updates
 
@@ -1380,9 +1380,16 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             // Update local state
             setBrandProposals(prev => prev.map(p => p.id === id ? { ...p, ...payload } : p))
-        } catch (e) {
+            return true
+        } catch (e: any) {
             console.error("Failed to update proposal:", e)
-            alert("수정에 실패했습니다.")
+            // Handle specifically column not found error (if SQL wasn't run)
+            if (e.code === '42703') { // undefined_column
+                alert("DB 업데이트가 필요합니다. 관리자에게 'add_contract_fields.sql' 실행을 요청해주세요.")
+            } else {
+                alert("수정에 실패했습니다: " + (e.message || "알 수 없는 오류"))
+            }
+            return false
         }
     }
 

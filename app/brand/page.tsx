@@ -189,17 +189,26 @@ function BrandDashboardContent() {
 
 
     const handleSendContract = async () => {
-        if (!chatProposal || !generatedContract || isSendingContract) return
+        if (!chatProposal || !generatedContract) return
+        if (isSendingContract) return
 
         if (!confirm("계약서를 발송하시겠습니까? 발송 후에는 수정이 불가능합니다.")) return
 
         setIsSendingContract(true)
         try {
             // Update proposal with contract data
-            await updateBrandProposal(chatProposal.id, {
+            // Must wait for update to succeed before sending message
+            // updateBrandProposal now returns boolean logic indicating success
+            const success = await updateBrandProposal(chatProposal.id, {
                 contract_content: generatedContract,
                 contract_status: 'sent'
             })
+
+            if (!success) {
+                // If update failed (e.g. DB error), stop here. 
+                // Alert is already handled in updateBrandProposal
+                return
+            }
 
             // Update local state for immediate feedback
             setChatProposal(prev => ({ ...prev, contract_status: 'sent', contract_content: generatedContract }))
