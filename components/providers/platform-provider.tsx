@@ -185,36 +185,11 @@ export const MOCK_BRAND_USER: User = {
     isMock: true
 }
 
-const INITIAL_PRODUCTS: Product[] = MOCK_PRODUCTS
-const INITIAL_EVENTS: InfluencerEvent[] = MOCK_EVENTS
-const INITIAL_PROPOSALS: BrandProposal[] = MOCK_BRAND_PROPOSALS
-const INITIAL_MESSAGES: Message[] = MOCK_MESSAGES
-const INITIAL_CAMPAIGNS: Campaign[] = [
-    {
-        id: 1,
-        brand: "SAMSUNG",
-        product: "Galaxy Watch 6",
-        category: "테크 / 건강",
-        budget: "100만원 + 제품 제공",
-        target: "운동을 즐기는 2030 직장인",
-        description: "새로운 수면 측정 기능을 강조해주세요.",
-        matchScore: 98,
-        date: "2024-03-01",
-        isMock: true
-    },
-    {
-        id: 2,
-        brand: "Nike",
-        product: "러닝화 Pegasus 40",
-        category: "스포츠",
-        budget: "50만원 + 제품 제공",
-        target: "러닝 크루 활동을 하는 분",
-        description: "편안한 착화감과 데일리 런닝에 적합함을 어필.",
-        matchScore: 85,
-        date: "2024-02-28",
-        isMock: true
-    },
-]
+const INITIAL_PRODUCTS: Product[] = []
+const INITIAL_EVENTS: InfluencerEvent[] = []
+const INITIAL_PROPOSALS: BrandProposal[] = []
+const INITIAL_MESSAGES: Message[] = []
+const INITIAL_CAMPAIGNS: Campaign[] = []
 
 
 
