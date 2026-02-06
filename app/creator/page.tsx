@@ -119,7 +119,7 @@ function ApplyDialog({
 function InfluencerDashboardContent() {
     const {
         user, updateUser, campaigns, events, isLoading, notifications, resetData,
-        brandProposals, updateBrandProposal, sendMessage, messages: allMessages, deleteEvent, proposals,
+        brandProposals, updateBrandProposal, sendMessage, messages: allMessages, deleteEvent, proposals, updateProposal,
         products, switchRole, updateEvent
     } = usePlatform()
 
@@ -147,9 +147,25 @@ function InfluencerDashboardContent() {
         if (!confirm(status === 'signed' ? "계약서에 서명하시겠습니까?" : status === 'negotiating' ? "수정 요청을 보내시겠습니까?" : "거절하시겠습니까?")) return
 
         try {
-            await updateBrandProposal(chatProposal.id, {
-                contract_status: status
-            })
+            const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply';
+            const proposalId = chatProposal.id?.toString();
+            const brandId = isCampaignProposal ? chatProposal.campaign?.brand_id : chatProposal.brand_id;
+
+            // Use getUpdateFunction helper concept or direct check
+            if (isCampaignProposal) {
+                // For Creator Apply -> proposals table
+                // Use the updateProposal function from usePlatform context which is now Promise<boolean> and writes to DB
+                await updateProposal(proposalId, { contract_status: status })
+            } else {
+                // For Brand Offer -> brand_proposals table
+                await updateBrandProposal(proposalId, { contract_status: status })
+            }
+
+            // NOTE: The above logic inside 'if' is tricky because I need access to 'updateProposal' from context if I want to use it.
+            // I see 'updateBrandProposal' is destructured. I need to make sure 'updateProposal' is also destructured.
+
+            // Looking at line 122: const { ..., updateBrandProposal, ..., proposals } = usePlatform()
+            // I need to add updateProposal to destructuring in the component.
 
             // Local update
             setChatProposal(prev => ({ ...prev, contract_status: status }))
@@ -159,7 +175,14 @@ function InfluencerDashboardContent() {
                 status === 'negotiating' ? "📝 계약서 내용 수정을 요청했습니다. 확인 부탁드립니다." :
                     "❌ 계약 제안을 거절했습니다."
 
-            await sendMessage(chatProposal.brand_id, msg, undefined, chatProposal.id)
+            // Send message with correct IDs
+            if (isCampaignProposal) {
+                // (to, content, proposalId, brandProposalId)
+                await sendMessage(brandId, msg, proposalId, undefined)
+            } else {
+                await sendMessage(brandId, msg, undefined, proposalId)
+            }
+
             alert("상태가 업데이트되었습니다.")
         } catch (e) {
             console.error("Contract update failed:", e)
