@@ -245,6 +245,8 @@ interface PlatformContextType {
     switchRole: (newRole: 'brand' | 'influencer') => Promise<void>
     isLoading: boolean
     resetData: () => void
+    refreshData: () => Promise<void>
+    updateCampaignStatus: (id: string, status: 'active' | 'closed') => Promise<void>
     supabase: any
 }
 
@@ -575,7 +577,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         eventDate: e.event_date || "",
                         postingDate: e.posting_date || "",
                         guide: e.guide || "",
-                        status: (e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'active'
+                        status: e.status || ((e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'recruiting')
                     }
                 })
                 // 로그인 한 유저(targetId 존재)는 실제 DB 데이터만 표시
@@ -595,7 +597,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     *,
                     profiles!brand_id(display_name)
                 `)
-                .eq('status', 'active')
                 .order('created_at', { ascending: false })
 
             if (campaignData) {
@@ -1480,6 +1481,32 @@ export function PlatformProvider({ children, initialSession }: { children: React
         fetchEvents(user?.id) // Attempt refetch
     }
 
+    const refreshData = async () => {
+        if (user?.id) {
+            console.log("Refreshing data...")
+            isFetchingEvents.current = false
+            await Promise.all([
+                fetchEvents(user.id),
+                fetchMessages(user.id)
+            ])
+        }
+    }
+
+    const updateCampaignStatus = async (id: string, status: 'active' | 'closed') => {
+        try {
+            const { updateCampaignStatus: serverUpdate } = await import('@/app/actions/campaign')
+            const result = await serverUpdate(id, status)
+            if (result.error) throw new Error(result.error)
+
+            // Optimistic Update
+            setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status: status } : c))
+            alert(`캠페인이 ${status === 'active' ? '진행' : '마감'} 상태로 변경되었습니다.`)
+        } catch (e: any) {
+            console.error("Failed to update campaign status:", e)
+            alert(e.message)
+        }
+    }
+
     return (
         <PlatformContext.Provider value={{
             user, login, logout, updateUser,
@@ -1493,6 +1520,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
             switchRole,
             isLoading: !isInitialized || !isAuthChecked,
             resetData,
+            refreshData,
+            updateCampaignStatus,
             supabase
         }}>
             {children}

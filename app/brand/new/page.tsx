@@ -11,18 +11,18 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { usePlatform } from "@/components/providers/platform-provider"
-
 import { createCampaign } from "@/app/actions/campaign"
 
 export default function NewCampaignPage() {
     const router = useRouter()
+    const { refreshData } = usePlatform()
     const [loading, setLoading] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string[]>([])
     const [postingYear, setPostingYear] = useState("2026")
     const [postingMonth, setPostingMonth] = useState("3")
 
     const POPULAR_TAGS = [
-        "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
+        "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
         "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
         "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
         "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
@@ -40,7 +40,8 @@ export default function NewCampaignPage() {
             setLoading(false)
         } else {
             alert("캠페인이 성공적으로 등록되었습니다!")
-            router.push("/brand")
+            await refreshData()
+            router.push("/brand?view=dashboard")
         }
     }
 
@@ -51,7 +52,7 @@ export default function NewCampaignPage() {
                 <div className="mx-auto max-w-2xl">
                     <div className="mb-8 flex items-center gap-4">
                         <Button variant="ghost" size="icon" asChild>
-                            <Link href="/brand">
+                            <Link href="/brand?view=dashboard">
                                 <ArrowLeft className="h-4 w-4" />
                             </Link>
                         </Button>
@@ -193,7 +194,7 @@ export default function NewCampaignPage() {
 
                         <div className="flex justify-end gap-4 pt-4">
                             <Button type="button" variant="outline" asChild>
-                                <Link href="/brand">취소</Link>
+                                <Link href="/brand?view=dashboard">취소</Link>
                             </Button>
                             <Button type="submit" size="lg" className="w-full md:w-auto" disabled={loading}>
                                 {loading ? "등록 중..." : <><Plus className="mr-2 h-4 w-4" /> 캠페인 등록하기</>}

@@ -36,7 +36,7 @@ export default function EditCampaignPage() {
     const [postingDay, setPostingDay] = useState("")
 
     const POPULAR_TAGS = [
-        "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
+        "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
         "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
         "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
         "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"

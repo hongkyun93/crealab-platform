@@ -35,7 +35,8 @@ export async function createCampaign(formData: FormData) {
             description: descriptionRaw,
             status: 'active',
             event_date: eventDate,
-            posting_date: postingDate
+            posting_date: postingDate,
+            tags: tags
         })
 
     if (error) {
@@ -77,7 +78,8 @@ export async function updateCampaign(id: string, formData: FormData) {
             target: target,
             description: descriptionRaw,
             event_date: eventDate,
-            posting_date: postingDate
+            posting_date: postingDate,
+            tags: tags
         })
         .eq('id', id)
         .eq('brand_id', user.id) // Ensure ownership
@@ -104,6 +106,25 @@ export async function deleteCampaign(id: string) {
 
     if (error) {
         return { error: `삭제 실패: ${error.message}` }
+    }
+
+    return { success: true }
+}
+
+export async function updateCampaignStatus(id: string, status: 'active' | 'closed') {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '로그인이 필요합니다.' }
+
+    const { error } = await supabase
+        .from('campaigns')
+        .update({ status: status })
+        .eq('id', id)
+        .eq('brand_id', user.id)
+
+    if (error) {
+        return { error: `상태 변경 실패: ${error.message}` }
     }
 
     return { success: true }

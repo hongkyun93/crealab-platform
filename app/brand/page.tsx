@@ -37,7 +37,8 @@ import {
     ExternalLink,
     Upload,
     Gift,
-    Star
+    Star,
+    Briefcase
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
@@ -77,7 +78,7 @@ function BrandDashboardContent() {
         events, user, resetData, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages: allMessages,
         updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
-        switchRole, proposals
+        switchRole, proposals, updateCampaignStatus
     } = usePlatform()
 
     const displayUser = user || MOCK_BRAND_USER
@@ -97,6 +98,25 @@ function BrandDashboardContent() {
     const [minFollowers, setMinFollowers] = useState<string>("")
     const [maxFollowers, setMaxFollowers] = useState<string>("")
     const [favoriteEvents, setFavoriteEvents] = useState<Set<string>>(new Set())
+
+    // Collaboration Workspace State
+    const [isChatOpen, setIsChatOpen] = useState(false)
+    const [chatProposal, setChatProposal] = useState<any>(null)
+    const [chatMessage, setChatMessage] = useState("")
+
+    const handleSendMessage = async () => {
+        if (!chatMessage.trim() || !chatProposal || !user) return
+
+        const receiverId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id
+
+        if (!receiverId) {
+            alert("수신자를 찾을 수 없습니다.")
+            return
+        }
+
+        await sendMessage(receiverId, chatMessage, chatProposal.id?.toString())
+        setChatMessage("")
+    }
 
     // Propose Modal State
     const [proposeModalOpen, setProposeModalOpen] = useState(false)
@@ -734,10 +754,7 @@ function BrandDashboardContent() {
                                                 <span className="text-xs font-bold text-muted-foreground">일정</span>
                                                 <p className="font-medium text-sm">{selectedCampaign.eventDate || "미정"}</p>
                                             </div>
-                                            <div className="space-y-1">
-                                                <span className="text-xs font-bold text-muted-foreground">희망 제품</span>
-                                                <p className="font-medium text-sm">{selectedCampaign.targetProduct || "-"}</p>
-                                            </div>
+
                                             <div className="space-y-1">
                                                 <span className="text-xs font-bold text-muted-foreground">모집 대상</span>
                                                 <p className="font-medium text-sm">{selectedCampaign.target || "전체"}</p>
@@ -911,6 +928,19 @@ function BrandDashboardContent() {
                                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-500" onClick={() => deleteCampaign(c.id)}>
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className={`h-7 px-2 text-xs ${c.status === 'active' ? 'text-red-500 hover:text-red-700' : 'text-emerald-600 hover:text-emerald-700'}`}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                if (confirm(c.status === 'active' ? "캠페인을 마감하시겠습니까? 더 이상 지원을 받을 수 없습니다." : "캠페인을 다시 진행하시겠습니까?")) {
+                                                                    updateCampaignStatus(c.id, c.status === 'active' ? 'closed' : 'active')
+                                                                }
+                                                            }}
+                                                        >
+                                                            {c.status === 'active' ? '마감하기' : '진행하기'}
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -947,7 +977,7 @@ function BrandDashboardContent() {
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex flex-col gap-4">
-                            <h1 className="text-3xl font-bold tracking-tight">협업 및 지원 관리</h1>
+                            <h1 className="text-3xl font-bold tracking-tight">협업 워크스페이스</h1>
                             <p className="text-muted-foreground">크리에이터와 진행 중인 모든 제안과 지원서를 한눈에 관리하세요.</p>
                         </div>
 
@@ -1016,8 +1046,11 @@ function BrandDashboardContent() {
                                                         희망 원고료: <span className="font-bold text-foreground">{p.cost ? `${p.cost.toLocaleString()}원` : "제시 예산 따름"}</span>
                                                     </div>
                                                     <div className="flex gap-2">
-                                                        <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs" asChild>
-                                                            <Link href="/message"><Bell className="h-3.5 w-3.5" /> 채팅 문의</Link>
+                                                        <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs" onClick={() => {
+                                                            setChatProposal(p)
+                                                            setIsChatOpen(true)
+                                                        }}>
+                                                            <Briefcase className="h-3.5 w-3.5" /> 협업 워크스페이스
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -1071,8 +1104,11 @@ function BrandDashboardContent() {
                                                 <div className="text-xs text-muted-foreground italic truncate max-w-[60%]">
                                                     "{p.message}"
                                                 </div>
-                                                <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs" asChild>
-                                                    <Link href="/message"><Bell className="h-3.5 w-3.5" /> 채팅방으로 이동</Link>
+                                                <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs" onClick={() => {
+                                                    setChatProposal(p)
+                                                    setIsChatOpen(true)
+                                                }}>
+                                                    <Briefcase className="h-3.5 w-3.5" /> 협업 워크스페이스
                                                 </Button>
                                             </CardFooter>
                                         </Card>
@@ -1374,7 +1410,7 @@ function BrandDashboardContent() {
                                 className="w-full justify-start"
                                 onClick={() => setCurrentView("proposals")}
                             >
-                                <FileText className="mr-2 h-4 w-4" /> 협업 제안 관리
+                                <Briefcase className="mr-2 h-4 w-4" /> 협업 워크스페이스
                             </Button>
                             <div className="my-2 border-t" />
                             <Button
@@ -1578,6 +1614,197 @@ function BrandDashboardContent() {
                             {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : editingProductId ? "수정 완료" : "제품 등록 완료"}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Deal Room Dialog (Copied & Adapted from Creator) */}
+            <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+                <DialogContent className="sm:max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl">
+                    <div className="flex h-full">
+                        {/* Left Sidebar: Deal Status & Workflow */}
+                        <div className="w-80 bg-slate-50 border-r border-slate-200 flex flex-col shrink-0">
+                            <div className="p-6 border-b border-slate-200 bg-white">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="h-10 w-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-lg">
+                                        {chatProposal?.influencer_name?.[0] || chatProposal?.influencerName?.[0] || "C"}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-lg leading-tight">{chatProposal?.influencer_name || chatProposal?.influencerName}</h3>
+                                        <p className="text-xs text-muted-foreground">{chatProposal?.product_name || chatProposal?.campaignName}</p>
+                                    </div>
+                                </div>
+                                <span className="text-muted-foreground">상태</span>
+                                <Badge variant="outline" className={`
+                                        ${chatProposal?.status === 'accepted' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                                        chatProposal?.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-200' :
+                                            'bg-indigo-50 text-indigo-600 border-indigo-200'}
+                                    `}>
+                                    {chatProposal?.status === 'accepted' ? '진행 중' :
+                                        chatProposal?.status === 'rejected' ? '거절됨' :
+                                            chatProposal?.status === 'pending' ? '보류 중' : '검토 중'}
+                                </Badge>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">진행 단계</div>
+                            {[
+                                { step: 1, label: "조건 조율 및 확정", status: chatProposal?.status === 'accepted' ? 'done' : 'current', date: "2024.02.04" },
+                                { step: 2, label: "계약서 발송 및 서명", status: chatProposal?.status === 'accepted' ? 'current' : 'locked', date: chatProposal?.status === 'accepted' ? "진행 중" : "" },
+                                { step: 3, label: "제품 발송/제공", status: "locked" },
+                                { step: 4, label: "콘텐츠 초안 검토", status: "locked" },
+                                { step: 5, label: "최종 콘텐츠 업로드", status: "locked" },
+                                { step: 6, label: "성과 분석 및 정산", status: "locked" }
+                            ].map((step) => (
+                                <div key={step.step} className={`
+                                        group flex items-center gap-3 p-3 rounded-lg text-sm font-medium transition-all
+                                        ${step.status === 'done' ? 'text-slate-700 bg-white shadow-sm border border-slate-100' :
+                                        step.status === 'current' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm ring-1 ring-indigo-200' :
+                                            'text-slate-400 hover:bg-slate-100/50'}
+                                    `}>
+                                    <div className={`
+                                            h-6 w-6 rounded-full flex items-center justify-center text-[10px] shrink-0 font-bold transition-colors
+                                            ${step.status === 'done' ? 'bg-emerald-500 text-white' :
+                                            step.status === 'current' ? 'bg-indigo-600 text-white' :
+                                                'bg-slate-200 text-slate-500'}
+                                        `}>
+                                        {step.status === 'done' ? <BadgeCheck className="h-3.5 w-3.5" /> : step.step}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="truncate">{step.label}</div>
+                                        {step.date && <div className="text-[10px] font-normal opacity-70 mt-0.5">{step.date}</div>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-4 bg-slate-50 border-t border-slate-200">
+                            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                <div className="flex items-center gap-2 mb-2 text-xs font-bold text-indigo-600">
+                                    <Info className="h-3.5 w-3.5" /> MD's Tip
+                                </div>
+                                <p className="text-[11px] text-slate-600 leading-relaxed">
+                                    크리에이터에게 <strong>계약서</strong>를 먼저 발송해주세요. 서명이 완료되면 제품 발송 단계로 넘어갑니다.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Content: Tabs */}
+                    <Tabs defaultValue="chat" className="flex-1 flex flex-col min-w-0 bg-white">
+                        <div className="px-6 py-4 border-b border-gray-100 shrink-0 flex flex-row items-center justify-between">
+                            <div>
+                                <DialogTitle className="text-lg">협업 워크스페이스</DialogTitle>
+                                <DialogDescription>{chatProposal?.influencer_name || chatProposal?.influencerName}님과의 협업 공간</DialogDescription>
+                            </div>
+                            <TabsList className="grid w-[300px] grid-cols-3">
+                                <TabsTrigger value="chat">소통</TabsTrigger>
+                                <TabsTrigger value="contract">계약 관리</TabsTrigger>
+                                <TabsTrigger value="work">결과물 관리</TabsTrigger>
+                            </TabsList>
+                        </div>
+
+                        <TabsContent value="chat" className="flex-1 flex flex-col min-h-0 m-0 data-[state=active]:flex">
+                            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/10">
+                                {/* Proposal Detail Box */}
+                                {chatProposal && (
+                                    <div className="mb-6 p-5 bg-white border border-primary/20 rounded-2xl shadow-sm">
+                                        <div className="flex items-center justify-between mb-4 border-b border-primary/10 pb-2">
+                                            <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                                                <BadgeCheck className="h-5 w-5" /> 진행 단계
+                                            </h4>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm bg-indigo-100 text-indigo-700`}>
+                                                {chatProposal.status || '진행 중'}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <p className="text-xs italic leading-relaxed whitespace-pre-wrap text-foreground/80 bg-muted/20 p-3 rounded">
+                                                "{chatProposal.message}"
+                                            </p>
+                                            <div className="text-xs text-muted-foreground text-right border-t pt-2">
+                                                희망 원고료: <span className="font-bold text-black">{chatProposal.cost ? `${parseInt(chatProposal.cost).toLocaleString()}원` : chatProposal.compensation_amount || '협의'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Messages */}
+                                {allMessages
+                                    .filter(m => m.proposalId === chatProposal?.id ||
+                                        (m.senderId === user?.id && m.receiverId === (chatProposal?.influencer_id || chatProposal?.influencerId)) ||
+                                        (m.senderId === (chatProposal?.influencer_id || chatProposal?.influencerId) && m.receiverId === user?.id))
+                                    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                                    .map((msg) => (
+                                        <div key={msg.id} className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`p-3 rounded-2xl max-w-[80%] text-sm shadow-sm ${msg.senderId === user?.id
+                                                ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                                : 'bg-white border text-foreground rounded-tl-none'
+                                                }`}>
+                                                {msg.content}
+                                                <span className="block text-[10px] opacity-70 mt-1">
+                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                            </div>
+
+                            <div className="p-4 border-t bg-white">
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="메시지를 입력하세요..."
+                                        value={chatMessage}
+                                        onChange={(e) => setChatMessage(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                    />
+                                    <Button onClick={handleSendMessage}>전송</Button>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        {/* Contract Tab */}
+                        <TabsContent value="contract" className="flex-1 overflow-y-auto p-6 bg-slate-50 data-[state=active]:flex flex-col items-center justify-center">
+                            <div className="w-full max-w-2xl bg-white p-10 rounded-xl shadow-sm border border-slate-200">
+                                <div className="text-center mb-8">
+                                    <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                                        <FileText className="h-8 w-8 text-slate-400" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900">표준 계약서 발송</h3>
+                                    <p className="text-slate-500 mt-2">협의된 내용을 바탕으로 계약서를 생성하고 발송합니다.<br />크리에이터가 서명하면 계약이 체결됩니다.</p>
+                                </div>
+
+                                <div className="space-y-4 mb-8">
+                                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed font-mono">
+                                        제 1조 [목적]<br />
+                                        본 계약은 '갑'(브랜드)과 '을'(크리에이터)간의...<br />
+                                        <br />
+                                        제 2조 [원고료]<br />
+                                        금 <strong>{chatProposal?.cost ? parseInt(chatProposal.cost).toLocaleString() : chatProposal?.compensation_amount || '0'}원</strong>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    className="w-full h-12 text-lg font-bold bg-black hover:bg-slate-800"
+                                    onClick={() => alert("표준 계약서가 크리에이터에게 발송되었습니다.")}
+                                >
+                                    <Send className="mr-2 h-5 w-5" /> 계약서 생성 및 발송하기
+                                </Button>
+                            </div>
+                        </TabsContent>
+
+                        {/* Work Tab */}
+                        <TabsContent value="work" className="flex-1 overflow-y-auto p-6 bg-slate-50 data-[state=active]:flex flex-col items-center justify-center">
+                            <div className="w-full max-w-2xl text-center">
+                                <div className="border border-slate-200 rounded-2xl p-12 bg-white">
+                                    <div className="mx-auto w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                                        <Package className="h-10 w-10 text-slate-400" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900">제출된 결과물 없음</h3>
+                                    <p className="text-slate-500 mt-2 mb-6">아직 크리에이터가 결과물을 업로드하지 않았습니다.<br />결과물이 제출되면 알림을 보내드립니다.</p>
+                                    <Button variant="outline" onClick={() => alert("크리에이터에게 결과물 제출을 요청했습니다.")}>제출 요청하기</Button>
+                                </div>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+
                 </DialogContent>
             </Dialog>
         </div>
