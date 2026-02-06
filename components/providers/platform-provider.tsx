@@ -202,6 +202,7 @@ export type Message = {
     senderId: string
     receiverId: string
     proposalId?: string // Optional link to a specific proposal
+    brandProposalId?: string // Optional link to a specific brand proposal
     content: string
     timestamp: string
     read: boolean
@@ -241,7 +242,7 @@ interface PlatformContextType {
     sendNotification: (toUserId: string, message: string) => void
     messages: Message[]
     updateBrandProposal: (id: string, status: string) => Promise<void>
-    sendMessage: (toUserId: string, content: string, proposalId?: string) => Promise<void>
+    sendMessage: (toUserId: string, content: string, proposalId?: string, brandProposalId?: string) => Promise<void>
     switchRole: (newRole: 'brand' | 'influencer') => Promise<void>
     isLoading: boolean
     resetData: () => void
@@ -782,6 +783,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     senderId: msg.sender_id,
                     receiverId: msg.receiver_id,
                     proposalId: msg.proposal_id,
+                    brandProposalId: msg.brand_proposal_id,
                     content: msg.content,
                     timestamp: msg.created_at,
                     read: msg.is_read || false, // Corrected mapping from is_read
@@ -1349,7 +1351,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 alert("협업 제안이 성공적으로 전달되었습니다!")
 
                 // Also send a message if needed
-                await sendMessage(newProposal.toId, `[협업 제안] ${productName} 제품에 대한 제안이 도착했습니다.`, data.id)
+                await sendMessage(newProposal.toId, `[협업 제안] ${productName} 제품에 대한 제안이 도착했습니다.`, undefined, data.id)
             }
         } catch (e: any) {
             console.error("Failed to add proposal:", e)
@@ -1417,14 +1419,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const sendMessage = async (toUserId: string, content: string, proposalId?: string) => {
+    const sendMessage = async (toUserId: string, content: string, proposalId?: string, brandProposalId?: string) => {
         if (!user) return
 
         try {
             const { data, error } = await supabase
                 .from('messages')
                 .insert({
-                    proposal_id: proposalId,
+                    proposal_id: proposalId || null, // Ensure explicit null if undefined
+                    brand_proposal_id: brandProposalId || null,
                     sender_id: user.id,
                     receiver_id: toUserId,
                     content
@@ -1439,6 +1442,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 senderId: user.id,
                 receiverId: toUserId,
                 proposalId: proposalId,
+                brandProposalId: brandProposalId,
                 content,
                 timestamp: data.created_at,
                 read: false,

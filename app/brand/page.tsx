@@ -154,7 +154,8 @@ function BrandDashboardContent() {
         setIsSendingMessage(true)
 
         try {
-            await sendMessage(receiverId, msgContent, chatProposal.id?.toString())
+            // Pass undefined for regular proposalId, and chatProposal.id for brandProposalId
+            await sendMessage(receiverId, msgContent, undefined, chatProposal.id?.toString())
         } catch (e) {
             console.error("Message send failed:", e)
             setChatMessage(msgContent)
@@ -401,7 +402,7 @@ function BrandDashboardContent() {
             }
 
             if (insertedProposal) {
-                await sendMessage(selectedInfluencer?.influencerId, `협업 제안서가 전송되었습니다.\n[${offerProduct}]`, insertedProposal.id)
+                await sendMessage(selectedInfluencer?.influencerId, `협업 제안서가 전송되었습니다.\n[${offerProduct}]`, undefined, insertedProposal.id)
             }
             alert(`${selectedInfluencer?.influencer}님에게 제안서가 성공적으로 발송되었습니다!`)
             setProposeModalOpen(false)
@@ -1800,7 +1801,11 @@ function BrandDashboardContent() {
 
                                     {/* Real Messages */}
                                     {allMessages
-                                        .filter(m => m.proposalId?.toString() === chatProposal?.id?.toString())
+                                        .filter(m => {
+                                            if (!chatProposal) return false
+                                            const pId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id
+                                            return (m.senderId === user?.id && m.receiverId === pId) || (m.senderId === pId && m.receiverId === user?.id)
+                                        })
                                         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
                                         .map((msg, idx) => (
                                             <div key={msg.id} className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2`}>
