@@ -485,12 +485,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
         initAuth()
 
-        // Fetch events function - scoped here or outside? 
-        // Better to define it outside if we want to reuse, but here is fine for now if we pass user ID.
-        // Actually, let's define it inside the effect or as a helper.
-        // To keep it simple, I'll inline the fetch logic in a separate async checks or just calling it.
-
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log(`[Auth] onAuthStateChange event: ${event}`, session?.user?.id)
 
@@ -503,8 +497,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 lastUserId.current = session.user.id
                 if (mounted) {
                     const fetchedUser = await fetchUserProfile(session.user)
-                    // Deep merge or check if name/type changed? 
-                    // Just setting it for now, but the ID check above prevents loops.
                     setUser(fetchedUser)
                     console.log('[Auth] User session valid, fetching data...')
                     fetchEvents(session.user.id)
@@ -513,7 +505,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
             } else if (mounted) {
                 lastUserId.current = null
                 setUser(null)
-                // Only reset states if we were previously logged in
                 if (events.length > 0 && !events[0].isMock) {
                     setEvents(INITIAL_EVENTS)
                     setProducts(INITIAL_PRODUCTS)
@@ -1526,6 +1517,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         if (user?.id) {
             console.log("Refreshing data...")
             isFetchingEvents.current = false
+            isFetchingMessages.current = false
             await Promise.all([
                 fetchEvents(user.id),
                 fetchMessages(user.id)
@@ -1547,6 +1539,51 @@ export function PlatformProvider({ children, initialSession }: { children: React
             alert(e.message)
         }
     }
+
+    // --- Real-time Subscriptions at the bottom to ensure hoisting ---
+    useEffect(() => {
+        if (!user) return
+
+        console.log('[Realtime] Setting up subscriptions for user:', user.id)
+        const channel = supabase
+            .channel(`realtime-data-${user.id}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'influencer_events' },
+                () => { console.log('[Realtime] Event change detected'); refreshData(); }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'campaigns' },
+                () => { console.log('[Realtime] Campaign change detected'); refreshData(); }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'proposals' },
+                () => { console.log('[Realtime] Proposal change detected'); refreshData(); }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'brand_proposals' },
+                () => { console.log('[Realtime] Brand Proposal change detected'); refreshData(); }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'brand_products' },
+                () => { console.log('[Realtime] Product change detected'); refreshData(); }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'messages' },
+                () => { console.log('[Realtime] Message change detected'); refreshData(); }
+            )
+            .subscribe()
+
+        return () => {
+            console.log('[Realtime] Cleanup subscriptions')
+            supabase.removeChannel(channel)
+        }
+    }, [user, supabase]) // Depends on user to re-subscribe if user changes
 
     return (
         <PlatformContext.Provider value={{
