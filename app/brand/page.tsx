@@ -107,6 +107,15 @@ function BrandDashboardContent() {
     const [isGeneratingContract, setIsGeneratingContract] = useState(false)
     const [isSendingContract, setIsSendingContract] = useState(false)
 
+    // Sync contract content from proposal when loaded or switched
+    useEffect(() => {
+        if (chatProposal?.contract_content) {
+            setGeneratedContract(chatProposal.contract_content)
+        } else {
+            setGeneratedContract("")
+        }
+    }, [chatProposal])
+
     const handleGenerateContract = async () => {
         if (!chatProposal || !user) return
 
