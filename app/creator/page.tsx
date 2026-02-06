@@ -924,132 +924,167 @@ function InfluencerDashboardContent() {
                     </div>
                 )
             case "proposals":
+                // 1. Inbound (Received from Brands) - Waiting
+                const inboundProposals = brandProposals?.filter((p: any) => !p.status || p.status === 'offered' || p.status === 'negotiating') || []
+
+                // 2. Outbound (Applied to Campaigns) - Waiting
+                const outboundApplications = proposals?.filter((p: any) => p.type === 'creator_apply' && (p.status === 'pending' || p.status === 'viewed')) || []
+
+                // 3. Active (In Progress) - Both sources
+                const activeInbound = brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed') || []
+                const activeOutbound = proposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed') || []
+                const allActive = [...activeInbound, ...activeOutbound].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+                // 4. Completed - Both sources
+                const completedInbound = brandProposals?.filter((p: any) => p.status === 'completed') || []
+                const completedOutbound = proposals?.filter((p: any) => p.status === 'completed') || []
+                const allCompleted = [...completedInbound, ...completedOutbound].sort((a, b) => new Date(b.completed_at || b.created_at).getTime() - new Date(a.completed_at || a.created_at).getTime())
+
                 return (
-                    <div className="space-y-6">
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex flex-col gap-4">
                             <h1 className="text-3xl font-bold tracking-tight">협업 워크스페이스</h1>
                             <p className="text-muted-foreground">브랜드와 진행 중인 모든 협업을 한곳에서 관리하세요.</p>
                         </div>
 
                         <Tabs defaultValue="inbound" className="w-full">
-                            <TabsList className="grid w-full grid-cols-2 lg:max-w-[400px]">
-                                <TabsTrigger value="inbound">받은 제안 (Inbound)</TabsTrigger>
-                                <TabsTrigger value="outbound">보낸 지원 (Outbound)</TabsTrigger>
+                            <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
+                                <TabsTrigger value="inbound" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full">
+                                    받은 제안 <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded text-xs">{inboundProposals.length}</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="outbound" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full">
+                                    보낸 지원 <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded text-xs">{outboundApplications.length}</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="active" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-emerald-700 font-medium">
+                                    진행중 <span className="ml-2 bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="completed" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-slate-600 font-medium">
+                                    완료됨 <span className="ml-2 bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
+                                </TabsTrigger>
                             </TabsList>
 
-                            {/* Tab 1: Received Proposals (Brand -> Creator) */}
+                            {/* Tab 1: Inbound (Received) */}
                             <TabsContent value="inbound" className="space-y-4 mt-6">
-                                {brandProposals && brandProposals.length > 0 ? (
-                                    brandProposals.map((proposal: any) => (
-                                        <Card
-                                            key={proposal.id}
-                                            className="p-6 overflow-hidden relative border-l-4 border-l-emerald-500 cursor-pointer hover:shadow-lg transition-all"
-                                            onClick={() => {
-                                                setChatProposal(proposal)
-                                                setIsChatOpen(true)
-                                            }}
-                                        >
+                                {inboundProposals.length > 0 ? (
+                                    inboundProposals.map((proposal: any) => (
+                                        <Card key={proposal.id} className="p-6 border-l-4 border-l-emerald-500 cursor-pointer hover:shadow-lg transition-all" onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
                                             <div className="flex flex-col md:flex-row gap-6">
-                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-xl">
-                                                    {proposal.brand_name?.[0] || "B"}
-                                                </div>
+                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-xl">{proposal.brand_name?.[0] || "B"}</div>
                                                 <div className="flex-1 space-y-4">
                                                     <div className="flex justify-between items-start">
                                                         <div>
                                                             <div className="flex items-center gap-2">
                                                                 <h3 className="font-bold text-xl">{proposal.brand_name}</h3>
-                                                                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">New Offer</span>
+                                                                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200">New Offer</Badge>
                                                             </div>
-                                                            <p className="text-sm text-muted-foreground mt-1">
-                                                                {proposal.product_name} • {proposal.product_type === 'gift' ? '제품 협찬' : '대여'}
-                                                            </p>
+                                                            <p className="text-sm text-muted-foreground mt-1">{proposal.product_name} • {proposal.product_type === 'gift' ? '제품 협찬' : '대여'}</p>
                                                         </div>
                                                         <span className="text-xs text-muted-foreground">{new Date(proposal.created_at).toLocaleDateString()}</span>
                                                     </div>
-
                                                     <div className="bg-muted/30 p-4 rounded-lg text-sm">
                                                         <span className="font-bold text-emerald-600 mr-2">{proposal.compensation_amount}</span>
                                                         <span className="text-muted-foreground">{proposal.message}</span>
                                                     </div>
-
-                                                    <div className="flex gap-2">
-                                                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            handleStatusUpdate(proposal.id, 'accepted')
-                                                        }}>
-                                                            수락하기
-                                                        </Button>
-                                                        <Button size="sm" variant="outline" onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            setChatProposal(proposal)
-                                                            setIsChatOpen(true)
-                                                        }}>
-                                                            상세 보기
-                                                        </Button>
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(proposal.id, 'accepted'); }}>수락하기</Button>
+                                                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setChatProposal(proposal); setIsChatOpen(true); }}>상세 보기</Button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </Card>
                                     ))
                                 ) : (
-                                    <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                        아직 도착한 제안이 없습니다.
-                                    </div>
+                                    <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground">아직 도착한 제안이 없습니다.</div>
                                 )}
                             </TabsContent>
 
-                            {/* Tab 2: Sent Applications (Creator -> Campaign) */}
+                            {/* Tab 2: Outbound (Sent) */}
                             <TabsContent value="outbound" className="space-y-4 mt-6">
-                                {proposals && proposals.filter((p: any) => p.type === 'creator_apply').length > 0 ? (
-                                    proposals.filter((p: any) => p.type === 'creator_apply').map((proposal: any) => (
-                                        <Card
-                                            key={proposal.id}
-                                            className="p-6 overflow-hidden relative border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all"
-                                            onClick={() => {
-                                                setChatProposal(proposal)
-                                                setIsChatOpen(true)
-                                            }}
-                                        >
+                                {outboundApplications.length > 0 ? (
+                                    outboundApplications.map((proposal: any) => (
+                                        <Card key={proposal.id} className="p-6 border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all" onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
                                             <div className="flex flex-col md:flex-row gap-6">
-                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-xl">
-                                                    {proposal.brand_name?.[0] || "C"}
-                                                </div>
+                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-xl">{proposal.brand_name?.[0] || "C"}</div>
                                                 <div className="flex-1 space-y-4">
-                                                    <div className="flex justify-between items-start">
+                                                    <div className="div flex justify-between items-start">
                                                         <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <h3 className="font-bold text-xl">{proposal.brand_name} 캠페인</h3>
-                                                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${proposal.status === 'accepted' ? 'bg-blue-100 text-blue-700' :
-                                                                    proposal.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                                                                    }`}>
-                                                                    {proposal.status === 'accepted' ? '수락됨' : proposal.status === 'rejected' ? '거절됨' : '지원 완료'}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-sm text-muted-foreground mt-1">
-                                                                지원 메시지: "{proposal.message}"
-                                                            </p>
+                                                            <h3 className="font-bold text-xl">{proposal.brand_name} 캠페인</h3>
+                                                            <p className="text-sm text-muted-foreground mt-1">지원 메시지: "{proposal.message}"</p>
                                                         </div>
-                                                        <span className="text-xs text-muted-foreground">{new Date(proposal.created_at).toLocaleDateString()}</span>
+                                                        <Badge variant="outline">지원 완료</Badge>
                                                     </div>
-
-                                                    {proposal.status === 'accepted' && (
-                                                        <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
-                                                            <div className="text-sm text-blue-800">
-                                                                🎉 <strong>축하합니다!</strong> 브랜드가 제안을 수락했습니다.
-                                                            </div>
-                                                            <Button size="sm" variant="default" className="bg-blue-600 hover:bg-blue-700">
-                                                                협업 시작하기
-                                                            </Button>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
                                         </Card>
                                     ))
                                 ) : (
-                                    <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                        아직 지원한 캠페인이 없습니다.
-                                    </div>
+                                    <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground">아직 지원한 캠페인이 없습니다.</div>
+                                )}
+                            </TabsContent>
+
+                            {/* Tab 3: Active (In Progress) */}
+                            <TabsContent value="active" className="space-y-4 mt-6">
+                                {allActive.length > 0 ? (
+                                    allActive.map((proposal: any) => (
+                                        <Card key={proposal.id} className="p-6 border-l-4 border-l-emerald-600 bg-emerald-50/10 cursor-pointer hover:shadow-lg hover:border-emerald-600 transition-all" onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
+                                            <div className="flex flex-col md:flex-row gap-6">
+                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-100 border-2 border-emerald-200 overflow-hidden">
+                                                    {/* Unified Avatar Logic needed, simpler fallback for now */}
+                                                    <span className="font-bold text-lg text-emerald-700">{proposal.brand_name?.[0] || "W"}</span>
+                                                </div>
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <h3 className="font-bold text-xl flex items-center gap-2">
+                                                                {proposal.product_name || proposal.brand_name + " 프로젝트"}
+                                                                <Badge className="bg-emerald-600 hover:bg-emerald-700">진행중</Badge>
+                                                            </h3>
+                                                            <p className="text-sm text-emerald-800 font-medium mt-1">{proposal.brand_name}</p>
+                                                        </div>
+                                                        <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700">워크스페이스 입장</Button>
+                                                    </div>
+                                                    <div className="mt-4 flex gap-4 text-xs text-muted-foreground bg-white/50 p-3 rounded-lg border border-emerald-100">
+                                                        <div>
+                                                            <span className="block font-bold text-slate-700">계약 상태</span>
+                                                            <span className={proposal.contract_status === 'signed' ? "text-emerald-600" : "text-amber-600"}>
+                                                                {proposal.contract_status === 'signed' ? '체결 완료' : '서명 대기중'}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="block font-bold text-slate-700">시작일</span>
+                                                            {new Date(proposal.created_at).toLocaleDateString()}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground bg-muted/20">현재 진행중인 프로젝트가 없습니다.</div>
+                                )}
+                            </TabsContent>
+
+                            {/* Tab 4: Completed */}
+                            <TabsContent value="completed" className="space-y-4 mt-6">
+                                {allCompleted.length > 0 ? (
+                                    allCompleted.map((proposal: any) => (
+                                        <Card key={proposal.id} className="p-6 opacity-80 hover:opacity-100 transition-all bg-slate-50 cursor-pointer" onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
+                                            <div className="flex flex-col md:flex-row gap-6 items-center">
+                                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500 font-bold">
+                                                    {proposal.brand_name?.[0] || "C"}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-center">
+                                                        <h3 className="font-bold text-lg text-slate-700 line-through decoration-slate-400">{proposal.product_name}</h3>
+                                                        <Badge variant="outline" className="border-slate-400 text-slate-500">COMPLETED</Badge>
+                                                    </div>
+                                                    <p className="text-sm text-slate-500 mt-1">{proposal.brand_name} • {proposal.completed_at ? new Date(proposal.completed_at).toLocaleDateString() : '완료됨'}</p>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground">완료된 프로젝트 내역이 없습니다.</div>
                                 )}
                             </TabsContent>
                         </Tabs>
