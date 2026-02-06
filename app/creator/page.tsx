@@ -223,6 +223,37 @@ function InfluencerDashboardContent() {
         }
     }
 
+    const handleProductReceived = async () => {
+        if (!chatProposal) return
+
+        if (!confirm("제품을 수령하셨습니까? 수령 처리 후에는 취소할 수 없습니다.")) return
+
+        try {
+            const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
+            const proposalId = chatProposal.id?.toString()
+            const brandId = isCampaignProposal ? chatProposal.campaign?.brand_id : chatProposal.brand_id
+
+            const updateData: any = {
+                delivery_status: 'delivered'
+            }
+
+            if (isCampaignProposal) {
+                await updateProposal(proposalId, updateData)
+            } else {
+                await updateBrandProposal(proposalId, updateData)
+            }
+
+            setChatProposal(prev => ({ ...prev, ...updateData }))
+
+            await sendMessage(brandId, "📦 [자동 알림] 크리에이터가 제품 수령을 완료했습니다.", isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
+
+            alert("제품 수령이 확인되었습니다. 이제 작업물을 제출할 수 있습니다.")
+        } catch (e) {
+            console.error(e)
+            alert("오류가 발생했습니다.")
+        }
+    }
+
     const handleSaveShippingInfo = async () => {
         if (!shippingName || !shippingPhone || !shippingAddress) {
             alert("모든 배송 정보를 입력해주세요.")
@@ -2123,12 +2154,31 @@ function InfluencerDashboardContent() {
 
                                                                 <div className="mt-4 pt-4 border-t border-slate-200">
                                                                     {chatProposal.tracking_number ? (
-                                                                        <div className="bg-white p-3 rounded border border-emerald-100 flex items-center gap-3">
-                                                                            <Package className="h-5 w-5 text-emerald-600" />
-                                                                            <div>
-                                                                                <p className="text-xs text-emerald-600 font-bold mb-0.5">배송이 시작되었습니다!</p>
-                                                                                <p className="text-sm font-bold text-slate-900">운송장 번호: {chatProposal.tracking_number}</p>
+                                                                        <div className="space-y-3">
+                                                                            <div className="bg-white p-3 rounded border border-emerald-100 flex items-center gap-3">
+                                                                                <Package className="h-5 w-5 text-emerald-600" />
+                                                                                <div className="flex-1">
+                                                                                    <p className="text-xs text-emerald-600 font-bold mb-0.5">배송이 시작되었습니다!</p>
+                                                                                    <p className="text-sm font-bold text-slate-900">운송장 번호: {chatProposal.tracking_number}</p>
+                                                                                </div>
                                                                             </div>
+
+                                                                            {/* Product Received Confirmation Logic */}
+                                                                            {chatProposal.delivery_status === 'delivered' ? (
+                                                                                <div className="bg-emerald-50 text-emerald-700 text-sm font-bold p-3 rounded flex items-center gap-2 justify-center">
+                                                                                    <BadgeCheck className="h-4 w-4" />
+                                                                                    제품 수령이 완료되었습니다.
+                                                                                </div>
+                                                                            ) : (
+                                                                                <Button
+                                                                                    onClick={handleProductReceived}
+                                                                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                                                                                    variant="default"
+                                                                                >
+                                                                                    <Package className="mr-2 h-4 w-4" />
+                                                                                    제품 수령 완료 (클릭하여 확인)
+                                                                                </Button>
+                                                                            )}
                                                                         </div>
                                                                     ) : (
                                                                         <div className="flex items-center gap-2 text-slate-400 text-xs">
@@ -2179,16 +2229,17 @@ function InfluencerDashboardContent() {
                                                     <div className="border-t border-slate-100 my-6" />
 
                                                     {/* Step 2: Content Submission (Unlocked after delivery) */}
-                                                    <div className={`mt-6 transition-opacity ${chatProposal.delivery_status !== 'completed' ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                    <div className={`mt-6 transition-opacity ${chatProposal.delivery_status !== 'delivered' ? 'opacity-50 pointer-events-none' : ''}`}>
                                                         <h4 className="font-bold flex items-center gap-2 mb-4">
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${chatProposal.delivery_status === 'completed' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>STEP 2</span>
+                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${chatProposal.delivery_status === 'delivered' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>STEP 2</span>
                                                             작업물 제출
                                                         </h4>
 
-                                                        {chatProposal.delivery_status !== 'completed' ? (
+                                                        {chatProposal.delivery_status !== 'delivered' ? (
                                                             <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed">
                                                                 <Package className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                                                                <p className="text-sm text-slate-500">배송 완료 후 작업물을 제출할 수 있습니다.</p>
+                                                                <p className="text-sm text-slate-500 font-bold">제품 수령 완료 버튼을 누른 후 제출할 수 있습니다.</p>
+                                                                <p className="text-xs text-slate-400 mt-1">상단의 '제품 수령 완료' 버튼을 눌러주세요.</p>
                                                             </div>
                                                         ) : chatProposal.content_submission_status === 'submitted' || chatProposal.content_submission_status === 'approved' ? (
                                                             <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg">

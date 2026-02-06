@@ -2308,21 +2308,29 @@ function BrandDashboardContent() {
                                                     </h4>
 
                                                     {chatProposal.tracking_number ? (
-                                                        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex items-center justify-between">
-                                                            <div>
-                                                                <p className="text-emerald-700 font-bold text-xs uppercase mb-1">Status: Shipped</p>
-                                                                <p className="text-slate-900 font-black text-lg">{chatProposal.tracking_number}</p>
+                                                        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex flex-col gap-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-emerald-700 font-bold text-xs uppercase mb-1">Status: Shipped</p>
+                                                                    <p className="text-slate-900 font-black text-lg">{chatProposal.tracking_number}</p>
+                                                                </div>
+                                                                <Button variant="outline" size="sm" className="h-8 text-xs bg-white text-slate-500 hover:text-slate-900"
+                                                                    onClick={() => {
+                                                                        if (confirm("운송장 번호를 수정하시겠습니까?")) {
+                                                                            // Logic to allow clear/edit could go here. For now simple toggle or just input below
+                                                                            // A simple way is to clear local state to show input, but state comes from DB.
+                                                                            // Let's just show the input below to overwrite.
+                                                                        }
+                                                                    }}>
+                                                                    발송 완료됨
+                                                                </Button>
                                                             </div>
-                                                            <Button variant="outline" size="sm" className="h-8 text-xs bg-white text-slate-500 hover:text-slate-900"
-                                                                onClick={() => {
-                                                                    if (confirm("운송장 번호를 수정하시겠습니까?")) {
-                                                                        // Logic to allow clear/edit could go here. For now simple toggle or just input below
-                                                                        // A simple way is to clear local state to show input, but state comes from DB.
-                                                                        // Let's just show the input below to overwrite.
-                                                                    }
-                                                                }}>
-                                                                발송 완료됨
-                                                            </Button>
+                                                            {chatProposal.delivery_status === 'delivered' && (
+                                                                <div className="bg-white/60 p-3 rounded-xl flex items-center gap-2 text-emerald-800 font-bold text-sm">
+                                                                    <BadgeCheck className="h-4 w-4 text-emerald-600" />
+                                                                    크리에이터가 제품을 수령 하였습니다.
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <div className="flex gap-3">
