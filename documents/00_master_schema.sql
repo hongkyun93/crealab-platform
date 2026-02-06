@@ -414,3 +414,41 @@ ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_version
 
 -- Notify PostgREST to reload the schema cache
 NOTIFY pgrst, 'reload schema';
+
+-- ==========================================
+-- 8. REALTIME CONFIGURATION
+-- ==========================================
+-- Enable Supabase Realtime for core tables to ensure immediate UI updates.
+-- Re-runnable (Idempotent)
+
+DO $$
+BEGIN
+    -- Add tables to the supabase_realtime publication if not already present
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'influencer_events') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE influencer_events;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'campaigns') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE campaigns;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'proposals') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE proposals;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'brand_proposals') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE brand_proposals;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'brand_products') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE brand_products;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'messages') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'profiles') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+    END IF;
+END $$;

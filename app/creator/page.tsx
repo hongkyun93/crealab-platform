@@ -585,19 +585,59 @@ function InfluencerDashboardContent() {
         }
     }
 
+    // Use a ref or state for proposal update loading
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+
     const handleStatusUpdate = async (proposalId: string, status: string) => {
-        await updateBrandProposal(proposalId, status)
-        if (status === 'accepted' || status === 'pending') {
-            const proposal = brandProposals.find(p => p.id === proposalId)
-            if (proposal) {
-                setChatProposal(proposal)
+        if (isUpdatingStatus) return
+        setIsUpdatingStatus(true)
+
+        try {
+            console.log(`[handleStatusUpdate] Updating proposal ${proposalId} to ${status}`)
+            const success = await updateBrandProposal(proposalId, status)
+            if (!success) {
+                setIsUpdatingStatus(false)
+                return
+            }
+
+            // Immediately update local UI state (chatProposal)
+            if (chatProposal && chatProposal.id === proposalId) {
+                setChatProposal((prev: any) => prev ? { ...prev, status } : prev)
+            }
+
+            // Also update the local state from brandProposals list (if needed)
+            // But usually the context update will trigger a re-render soon.
+
+            if (status === 'accepted' || status === 'pending') {
                 setIsChatOpen(true)
 
-                // Send confirmation message to brand
-                if (status === 'accepted') {
-                    await sendMessage(proposal.brand_id, "협업 제안을 수락했습니다! 대화를 통해 상세 내용을 협의해요.")
+                // Try to find the proposal to get brand_id for messaging
+                // We'll look in current brandProposals.
+                const proposal = brandProposals.find((p: any) => p.id === proposalId)
+                    || (chatProposal?.id === proposalId ? chatProposal : null)
+
+                if (proposal) {
+                    if (!chatProposal) {
+                        setChatProposal({ ...proposal, status })
+                    }
+
+                    // Send notification/message to brand
+                    if (status === 'accepted') {
+                        await sendMessage(proposal.brand_id, `✅ [시스템 알림] 크리에이터가 협업 제안을 수락했습니다! 대화를 시작해보세요.`)
+                        alert("제안을 수락했습니다. 이제 워크스페이스에서 브랜드와 대화할 수 있습니다.")
+                    } else if (status === 'pending') {
+                        await sendMessage(proposal.brand_id, `⏳ [시스템 알림] 크리에이터가 제안을 확인했으며, 현재 검토(보류) 중입니다.`)
+                        alert("제안을 보류 처리했습니다. 나중에 다시 수락할 수 있습니다.")
+                    }
                 }
+            } else if (status === 'rejected') {
+                alert("제안을 거절했습니다.")
             }
+        } catch (e) {
+            console.error("Status update error:", e)
+            alert("업데이트 중 오류가 발생했습니다. 다시 시도해주세요.")
+        } finally {
+            setIsUpdatingStatus(false)
         }
     }
 
@@ -1203,7 +1243,14 @@ function InfluencerDashboardContent() {
                                                         <span className="text-muted-foreground">{proposal.message}</span>
                                                     </div>
                                                     <div className="flex gap-2 justify-end">
-                                                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(proposal.id, 'accepted'); }}>수락하기</Button>
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-70"
+                                                            onClick={(e) => { e.stopPropagation(); handleStatusUpdate(proposal.id, 'accepted'); }}
+                                                            disabled={isUpdatingStatus}
+                                                        >
+                                                            {isUpdatingStatus ? <Loader2 className="h-3 w-3 animate-spin" /> : "수락하기"}
+                                                        </Button>
                                                         <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setChatProposal(proposal); setIsChatOpen(true); }}>상세 보기</Button>
                                                     </div>
                                                 </div>
@@ -2043,16 +2090,18 @@ function InfluencerDashboardContent() {
                                                                     size="sm"
                                                                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold h-9"
                                                                     onClick={() => handleStatusUpdate(chatProposal.id, 'accepted')}
+                                                                    disabled={isUpdatingStatus}
                                                                 >
-                                                                    수락하기
+                                                                    {isUpdatingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : "수락하기"}
                                                                 </Button>
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
                                                                     className="flex-1 font-bold h-9 border-amber-200 text-amber-700 hover:bg-amber-50"
                                                                     onClick={() => handleStatusUpdate(chatProposal.id, 'pending')}
+                                                                    disabled={isUpdatingStatus}
                                                                 >
-                                                                    보류
+                                                                    {isUpdatingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : "보류"}
                                                                 </Button>
                                                             </div>
                                                         )}
