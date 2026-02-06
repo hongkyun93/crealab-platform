@@ -223,7 +223,9 @@ function InfluencerDashboardContent() {
         }
     }
 
-    const handleProductReceived = async () => {
+    const handleProductReceived = async (e?: React.MouseEvent) => {
+        e?.preventDefault()
+        e?.stopPropagation()
         if (!chatProposal) return
 
         if (!confirm("제품을 수령하셨습니까? 수령 처리 후에는 취소할 수 없습니다.")) return
@@ -249,7 +251,7 @@ function InfluencerDashboardContent() {
 
             alert("제품 수령이 확인되었습니다. 이제 작업물을 제출할 수 있습니다.")
         } catch (e) {
-            console.error(e)
+            console.error("Product update failed:", e)
             alert("오류가 발생했습니다.")
         }
     }
@@ -2171,6 +2173,7 @@ function InfluencerDashboardContent() {
                                                                                 </div>
                                                                             ) : (
                                                                                 <Button
+                                                                                    type="button"
                                                                                     onClick={handleProductReceived}
                                                                                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
                                                                                     variant="default"
