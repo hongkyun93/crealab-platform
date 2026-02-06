@@ -14,6 +14,8 @@ export type User = {
     website?: string
     handle?: string
     followers?: number
+    phone?: string
+    address?: string
     isMock?: boolean
 }
 
@@ -39,6 +41,7 @@ export type Campaign = {
     eventDate?: string
     postingDate?: string
     targetProduct?: string
+    status?: string // 'active' | 'completed' | 'paused'
     isMock?: boolean
 }
 
@@ -111,6 +114,14 @@ export type Proposal = {
     fromId?: string
     toId?: string
     date: string
+    created_at?: string
+    completed_at?: string
+
+    // Content Submission
+    content_submission_url?: string
+    content_submission_file_url?: string
+    content_submission_status?: 'pending' | 'submitted' | 'approved' | 'rejected'
+    content_submission_date?: string
 }
 
 
@@ -132,6 +143,13 @@ export type BrandProposal = {
     influencer_name?: string
     event_id?: string
     isMock?: boolean
+    completed_at?: string
+
+    // Content Submission
+    content_submission_url?: string
+    content_submission_file_url?: string
+    content_submission_status?: 'pending' | 'submitted' | 'approved' | 'rejected'
+    content_submission_date?: string
 }
 
 
@@ -149,6 +167,8 @@ export const MOCK_INFLUENCER_USER: User = {
     avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
     bio: "안녕하세요! 일상을 기록하는 크리에이터 김수민입니다.",
     tags: ["💄 뷰티", "✈️ 여행", "🥗 다이어트", "💍 웨딩/결혼"],
+    phone: "010-0000-0000",
+    address: "서울특별시 강남구 테헤란로 123",
     isMock: true
 }
 
@@ -160,6 +180,8 @@ export const MOCK_BRAND_USER: User = {
     website: "https://www.creadypick.co.kr",
     avatar: "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=400&h=400&fit=crop",
     bio: "완벽한 광고를 위해 준비된 크리에이터를 완벽한 광고를 원하는 브랜드와 연결시켜 줍니다.\n데이터 기반의 매칭으로 최적의 파트너를 찾아드려요.\n누구나 쉽고 빠르게 시작하는 인플루언서 마케팅 플랫폼.",
+    phone: "02-1234-5678",
+    address: "서울특별시 강남구 역삼동 789-1",
     isMock: true
 }
 
@@ -436,7 +458,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     website: profile.website,
                     handle: details?.instagram_handle || undefined,
                     followers: details?.followers_count || 0,
-                    tags: details?.tags || []
+                    tags: details?.tags || [],
+                    phone: profile.phone,
+                    address: profile.address
                 }
             }
 
@@ -691,7 +715,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         message: a.message,
                         cost: a.price_offer,
                         status: a.status as any,
-                        date: a.created_at
+                        date: a.created_at,
+                        created_at: a.created_at
                     }))
 
                     console.log('[fetchEvents] Fetched applications:', mappedApps.length)
@@ -889,6 +914,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (data.bio !== undefined) profileUpdates.bio = data.bio
             if (data.avatar !== undefined) profileUpdates.avatar_url = data.avatar
             if (data.website !== undefined) profileUpdates.website = data.website
+            if (data.phone !== undefined) profileUpdates.phone = data.phone
+            if (data.address !== undefined) profileUpdates.address = data.address
 
             console.log('[updateUser] Sending profile update to Supabase...', profileUpdates)
 
@@ -1351,7 +1378,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 alert("협업 제안이 성공적으로 전달되었습니다!")
 
                 // Also send a message if needed
-                await sendMessage(newProposal.toId, `[협업 제안] ${productName} 제품에 대한 제안이 도착했습니다.`, undefined, data.id)
+                if (newProposal.toId) {
+                    await sendMessage(newProposal.toId, `[협업 제안] ${productName} 제품에 대한 제안이 도착했습니다.`, undefined, data.id)
+                }
             }
         } catch (e: any) {
             console.error("Failed to add proposal:", e)
