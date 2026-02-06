@@ -162,6 +162,40 @@ function InfluencerDashboardContent() {
     const [isChatOpen, setIsChatOpen] = useState(false)
     const [chatProposal, setChatProposal] = useState<any>(null)
     const [chatMessage, setChatMessage] = useState("")
+    const [generatedContract, setGeneratedContract] = useState("")
+    const [isGeneratingContract, setIsGeneratingContract] = useState(false)
+
+    const handleGenerateContract = async () => {
+        if (!chatProposal || !user) return
+
+        setIsGeneratingContract(true)
+        try {
+            const influencerMessages = allMessages.filter(m => m.proposalId?.toString() === chatProposal.id?.toString())
+
+            const response = await fetch('/api/generate-contract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: influencerMessages,
+                    proposal: chatProposal,
+                    brandName: chatProposal.brand_name || "브랜드",
+                    influencerName: user.display_name || user.name || "크리에이터"
+                })
+            })
+
+            const data = await response.json()
+            if (data.result) {
+                setGeneratedContract(data.result)
+            } else {
+                alert("계약서 생성에 실패했습니다: " + (data.error || "알 수 없는 오류"))
+            }
+        } catch (e) {
+            console.error(e)
+            alert("계약서 생성 중 오류가 발생했습니다.")
+        } finally {
+            setIsGeneratingContract(false)
+        }
+    }
     const [activeProposalTab, setActiveProposalTab] = useState<string>("new")
     const [productSearchQuery, setProductSearchQuery] = useState("")
 
@@ -1669,13 +1703,30 @@ function InfluencerDashboardContent() {
                                             </div>
 
                                             <div className="space-y-4 mb-8">
-                                                <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed font-mono">
-                                                    제 1조 [목적]<br />
-                                                    본 계약은 '갑'(브랜드)과 '을'(크리에이터)간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.<br />
-                                                    <br />
-                                                    제 2조 [원고료 및 지급]<br />
-                                                    1. '갑'은 '을'에게 콘텐츠 제작의 대가로 <strong>{chatProposal?.compensation_amount || '협의된 금액'}</strong>을 지급한다.<br />
-                                                    2. 지급 시기는 콘텐츠 업로드 후 30일 이내로 한다.
+                                                <div className="flex justify-between items-center px-1">
+                                                    <h4 className="text-sm font-bold text-slate-700">계약서 초안</h4>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-xs text-indigo-600 gap-1.5 h-7 hover:text-indigo-700 hover:bg-indigo-50"
+                                                        onClick={handleGenerateContract}
+                                                        disabled={isGeneratingContract}
+                                                    >
+                                                        {isGeneratingContract ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Settings className="h-3.5 w-3.5" />}
+                                                        AI로 대화 기반 초안 작성
+                                                    </Button>
+                                                </div>
+                                                <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed font-mono min-h-[200px] overflow-y-auto max-h-[400px] whitespace-pre-wrap">
+                                                    {generatedContract || (
+                                                        <>
+                                                            제 1조 [목적]<br />
+                                                            본 계약은 '갑'(브랜드)과 '을'(크리에이터)간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.<br />
+                                                            <br />
+                                                            제 2조 [원고료 및 지급]<br />
+                                                            1. '갑'은 '을'에게 콘텐츠 제작의 대가로 <strong>{chatProposal?.compensation_amount || '협의된 금액'}</strong>을 지급한다.<br />
+                                                            2. 지급 시기는 콘텐츠 업로드 후 30일 이내로 한다.
+                                                        </>
+                                                    )}
                                                 </div>
                                                 <div className="text-center text-xs text-muted-foreground">
                                                     (전체 계약서 내용 보기)

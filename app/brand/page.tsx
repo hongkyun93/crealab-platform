@@ -103,6 +103,41 @@ function BrandDashboardContent() {
     const [isChatOpen, setIsChatOpen] = useState(false)
     const [chatProposal, setChatProposal] = useState<any>(null)
     const [chatMessage, setChatMessage] = useState("")
+    const [generatedContract, setGeneratedContract] = useState("")
+    const [isGeneratingContract, setIsGeneratingContract] = useState(false)
+
+    const handleGenerateContract = async () => {
+        if (!chatProposal || !user) return
+
+        setIsGeneratingContract(true)
+        try {
+            const influencerId = chatProposal.influencer_id || chatProposal.influencerId
+            const influencerMessages = allMessages.filter(m => m.proposalId?.toString() === chatProposal.id?.toString())
+
+            const response = await fetch('/api/generate-contract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: influencerMessages,
+                    proposal: chatProposal,
+                    brandName: user.display_name || user.name || "브랜드",
+                    influencerName: chatProposal.influencer_name || chatProposal.influencerName || "크리에이터"
+                })
+            })
+
+            const data = await response.json()
+            if (data.result) {
+                setGeneratedContract(data.result)
+            } else {
+                alert("계약서 생성에 실패했습니다: " + (data.error || "알 수 없는 오류"))
+            }
+        } catch (e) {
+            console.error(e)
+            alert("계약서 생성 중 오류가 발생했습니다.")
+        } finally {
+            setIsGeneratingContract(false)
+        }
+    }
 
     const handleSendMessage = async () => {
         if (!chatMessage.trim() || !chatProposal || !user) return
@@ -1770,12 +1805,29 @@ function BrandDashboardContent() {
                                 </div>
 
                                 <div className="space-y-4 mb-8">
-                                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed font-mono">
-                                        제 1조 [목적]<br />
-                                        본 계약은 '갑'(브랜드)과 '을'(크리에이터)간의...<br />
-                                        <br />
-                                        제 2조 [원고료]<br />
-                                        금 <strong>{chatProposal?.cost ? parseInt(chatProposal.cost).toLocaleString() : chatProposal?.compensation_amount || '0'}원</strong>
+                                    <div className="flex justify-between items-center px-1">
+                                        <h4 className="text-sm font-bold text-slate-700">계약서 초안</h4>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-xs text-indigo-600 gap-1.5 h-7 hover:text-indigo-700 hover:bg-indigo-50"
+                                            onClick={handleGenerateContract}
+                                            disabled={isGeneratingContract}
+                                        >
+                                            {isGeneratingContract ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Settings className="h-3.5 w-3.5" />}
+                                            AI로 대화 기반 초안 작성
+                                        </Button>
+                                    </div>
+                                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed font-mono min-h-[200px] overflow-y-auto max-h-[400px] whitespace-pre-wrap">
+                                        {generatedContract || (
+                                            <>
+                                                제 1조 [목적]<br />
+                                                본 계약은 '갑'(브랜드)과 '을'(크리에이터)간의...<br />
+                                                <br />
+                                                제 2조 [원고료]<br />
+                                                금 <strong>{chatProposal?.cost ? parseInt(chatProposal.cost).toLocaleString() : chatProposal?.compensation_amount || '0'}원</strong>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
