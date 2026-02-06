@@ -542,17 +542,17 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .from('influencer_events')
                 .select(`
                     *,
-                    profiles!influencer_id(
+                    profiles:influencer_id(
                         display_name,
                         avatar_url,
-                        role,
-                        influencer_details(instagram_handle, followers_count)
+                        role
                     )
                 `)
                 .order('created_at', { ascending: false })
 
             if (eventsError) {
-                console.error('[fetchEvents] Error fetching events:', eventsError)
+                console.error('[fetchEvents] Error fetching events:', JSON.stringify(eventsError, null, 2))
+                console.error('Error Object:', eventsError)
             }
 
             if (eventsData) {
@@ -907,6 +907,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             if (profileError) {
                 console.error('[updateUser] Profile update DB error:', profileError)
+                alert(`저장 실패 (Profile): ${profileError.message}`)
                 throw profileError
             }
             console.log('[updateUser] Profile table update success')

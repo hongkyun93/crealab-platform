@@ -38,7 +38,8 @@ import {
     Upload,
     Gift,
     Star,
-    Briefcase
+    Briefcase,
+    Link as LinkIcon
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import SignatureCanvas from 'react-signature-canvas'
@@ -79,7 +80,7 @@ function BrandDashboardContent() {
         events, user, resetData, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages: allMessages,
         updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
-        switchRole, proposals, updateCampaignStatus, updateProposal
+        switchRole, proposals, updateCampaignStatus, updateProposal, notifications, sendNotification
     } = usePlatform()
 
     const displayUser = user || MOCK_BRAND_USER
@@ -88,7 +89,8 @@ function BrandDashboardContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
 
-    const initialView = searchParams.get('view') || "discover"
+    const initialViewRaw = searchParams.get('view') || "discover"
+    const initialView = initialViewRaw === "dashboard" ? "my-campaigns" : initialViewRaw
     const [currentView, setCurrentView] = useState(initialView)
     const [sortOrder, setSortOrder] = useState("latest")
 
@@ -133,7 +135,7 @@ function BrandDashboardContent() {
                 body: JSON.stringify({
                     messages: influencerMessages,
                     proposal: chatProposal,
-                    brandName: user.display_name || user.name || "브랜드",
+                    brandName: (user as any).display_name || (user as any).name || "브랜드",
                     influencerName: chatProposal.influencer_name || chatProposal.influencerName || "크리에이터"
                 })
             })
@@ -253,7 +255,7 @@ function BrandDashboardContent() {
             }
 
             // Update local state for immediate feedback
-            setChatProposal(prev => ({ ...prev, contract_status: 'sent', contract_content: generatedContract, brand_signature: signatureData }))
+            setChatProposal((prev: any) => ({ ...prev, contract_status: 'sent', contract_content: generatedContract, brand_signature: signatureData }))
             setIsSignatureModalOpen(false)
 
             // Send system message
@@ -365,7 +367,7 @@ function BrandDashboardContent() {
 
             if (success) {
                 // Update local state
-                setChatProposal(prev => ({ ...prev, ...updateData }))
+                setChatProposal((prev: any) => ({ ...prev, ...updateData }))
 
                 // Notify Creator
                 if (receiverId) {
@@ -476,8 +478,11 @@ function BrandDashboardContent() {
     // Sync view with URL
     useEffect(() => {
         const view = searchParams.get('view')
-        if (view && view !== currentView) {
-            setCurrentView(view)
+        if (view) {
+            const mappedView = view === "dashboard" ? "my-campaigns" : view
+            if (mappedView !== currentView) {
+                setCurrentView(mappedView)
+            }
         }
     }, [searchParams, currentView])
 
@@ -911,7 +916,7 @@ function BrandDashboardContent() {
                                             </CardHeader>
                                             <CardContent className="space-y-3 flex-1 relative">
                                                 {item.status === 'completed' && (
-                                                    <div className="absolute top-0 right-4 transform -translate-y-1/2">
+                                                    <div className="absolute top-[-14px] right-4 z-10">
                                                         <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
                                                             지나간 모먼트
                                                         </span>
@@ -1056,7 +1061,7 @@ function BrandDashboardContent() {
                                                                         <div className="text-[10px] text-muted-foreground">{new Date(p.date).toLocaleDateString()}</div>
                                                                     </div>
                                                                 </div>
-                                                                <Badge variant={p.status === 'accepted' ? 'default' : 'secondary'} className="text-[10px] h-5">
+                                                                <Badge variant={p.status === 'accepted' ? 'default' : (p.status === 'viewed' ? 'outline' : 'secondary')} className="text-[10px] h-5">
                                                                     {p.status === 'accepted' ? '수락됨' : '대기중'}
                                                                 </Badge>
                                                             </div>
@@ -1171,8 +1176,8 @@ function BrandDashboardContent() {
                                                         </div>
                                                     </div>
 
-                                                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground hover:text-primary">
-                                                        확인하기 <ArrowRight className="h-3 w-3" />
+                                                    <Button variant="ghost" size="sm" className="h-8 text-primary font-bold gap-1" asChild>
+                                                        <Link href="/brand?view=proposals">워크스페이스로 이동 <ArrowRight className="h-3 w-3" /></Link>
                                                     </Button>
 
                                                     <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
@@ -1189,7 +1194,7 @@ function BrandDashboardContent() {
                                                             onClick={(e) => {
                                                                 e.stopPropagation()
                                                                 if (confirm(c.status === 'active' ? "캠페인을 마감하시겠습니까? 더 이상 지원을 받을 수 없습니다." : "캠페인을 다시 진행하시겠습니까?")) {
-                                                                    updateCampaignStatus(c.id, c.status === 'active' ? 'closed' : 'active')
+                                                                    updateCampaignStatus(c.id.toString(), c.status === 'active' ? 'closed' : 'active')
                                                                 }
                                                             }}
                                                         >
@@ -1209,15 +1214,15 @@ function BrandDashboardContent() {
             case "proposals":
                 // 1. Inbound (Received Applications from Creators) - Waiting
                 // Source: 'proposals' table (Creator applied to My Campaign)
-                const inboundApplications = proposals?.filter(p => p.status === 'pending' || p.status === 'viewed') || []
+                const inboundApplications = proposals?.filter((p: any) => p.status === 'pending' || p.status === 'viewed') || []
 
                 // 2. Outbound (Sent Offers to Creators) - Waiting
                 // Source: 'brand_proposals' table (I offered to Creator)
                 const outboundOffers = brandProposals?.filter(p => !p.status || p.status === 'offered' || p.status === 'negotiating') || []
 
                 // 3. Active (In Progress) - Both sources
-                const activeInbound = proposals?.filter(p => p.status === 'accepted' || p.status === 'signed') || []
-                const activeOutbound = brandProposals?.filter(p => p.status === 'accepted' || p.status === 'signed') || []
+                const activeInbound = proposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed') || []
+                const activeOutbound = brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed') || []
                 const allActive = [...activeInbound, ...activeOutbound].sort((a: any, b: any) => new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime())
 
                 // 4. Completed - Both sources
@@ -1586,6 +1591,69 @@ function BrandDashboardContent() {
                         )}
                     </div>
                 )
+            case "notifications":
+                const sortedNotifications = [...(notifications || [])].sort((a: any, b: any) => Number(b.id) - Number(a.id))
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+                                    <Bell className="h-8 w-8 text-primary" /> 알림 센터
+                                </h1>
+                                <p className="text-slate-500 mt-1">캠페인 지원 및 협업 진행 상황을 실시간으로 확인하세요.</p>
+                            </div>
+                        </div>
+
+                        {sortedNotifications.length === 0 ? (
+                            <Card className="p-20 text-center border-dashed bg-slate-50/50 rounded-[40px] border-2">
+                                <Bell className="mx-auto h-16 w-16 text-slate-200 mb-6" />
+                                <h3 className="text-xl font-bold text-slate-900">새로운 알림이 없습니다.</h3>
+                                <p className="text-sm text-slate-400 mt-2">중요한 협업 업데이트가 발생하면 여기에 실시간으로 표시됩니다.</p>
+                            </Card>
+                        ) : (
+                            <div className="space-y-4">
+                                {sortedNotifications.map((n: any) => (
+                                    <Card
+                                        key={n.id}
+                                        className={`overflow-hidden border-0 shadow-sm transition-all hover:shadow-md cursor-pointer group rounded-3xl ${n.read ? 'bg-white opacity-70' : 'bg-white ring-2 ring-primary/5'}`}
+                                        onClick={() => {
+                                            if (n.message.includes('지원') || n.message.includes('제안') || n.message.includes('계약')) {
+                                                setCurrentView("proposals")
+                                                if (n.message.includes('지원')) setWorkspaceTab("inbound")
+                                            }
+                                        }}
+                                    >
+                                        <CardContent className="p-6 flex items-start gap-5">
+                                            <div className={`mt-1 h-14 w-14 shrink-0 rounded-[22px] flex items-center justify-center transition-all group-hover:scale-110 shadow-sm ${n.read ? 'bg-slate-100 text-slate-400' : 'bg-primary/10 text-primary'}`}>
+                                                {n.message.includes('지원') || n.message.includes('제안') ? <Briefcase className="h-7 w-7" /> :
+                                                    n.message.includes('계약') || n.message.includes('서명') ? <FileText className="h-7 w-7" /> :
+                                                        n.message.includes('배송') || n.message.includes('운송장') ? <Package className="h-7 w-7" /> : <Bell className="h-7 w-7" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0 py-1">
+                                                <div className="flex justify-between items-center mb-1.5">
+                                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Notification</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1 rounded-full">{n.date}</span>
+                                                </div>
+                                                <p className="text-[15px] font-bold text-slate-800 leading-snug mb-2 group-hover:text-primary transition-colors">{n.message}</p>
+                                                <div className="flex items-center gap-2">
+                                                    {!n.read && (
+                                                        <Badge className="text-[9px] h-5 px-2 font-black bg-primary rounded-lg shadow-md border-0 uppercase">New Update</Badge>
+                                                    )}
+                                                    <span className="text-[11px] text-slate-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">워크스페이스로 이동하여 확인하기 →</span>
+                                                </div>
+                                            </div>
+                                            <div className="self-center">
+                                                <div className="h-10 w-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
+                                                    <ArrowRight className="h-5 w-5" />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )
             case "settings":
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -1709,8 +1777,15 @@ function BrandDashboardContent() {
                             >
                                 <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
                             </Button>
-                            <Button variant="ghost" className="w-full justify-start" asChild>
-                                <Link href="/message"><Bell className="mr-2 h-4 w-4" /> 메시지 센터</Link>
+                            <Button
+                                variant={currentView === "notifications" ? "secondary" : "ghost"}
+                                className="w-full justify-start"
+                                onClick={() => setCurrentView("notifications")}
+                            >
+                                <Bell className={`mr-2 h-4 w-4 ${notifications.some(n => !n.read) ? 'text-blue-500 animate-bounce' : ''}`} /> 알림 센터
+                                {notifications.filter(n => !n.read).length > 0 && (
+                                    <Badge className="ml-auto bg-blue-500 text-[10px] h-4 px-1">{notifications.filter(n => !n.read).length}</Badge>
+                                )}
                             </Button>
                             <Button
                                 variant={currentView === "proposals" ? "secondary" : "ghost"}
@@ -1991,7 +2066,7 @@ function BrandDashboardContent() {
                                                         chatProposal?.status === 'pending' ? '보류 중' : '검토 요청됨'}
                                             </span>
                                             <span className="text-[10px] font-bold text-emerald-600">
-                                                {chatProposal?.cost ? `${parseInt(chatProposal.cost).toLocaleString()}원` : chatProposal?.compensation_amount || '0'}
+                                                {chatProposal?.cost ? `${(chatProposal.cost as any).toLocaleString()}원` : chatProposal?.compensation_amount || '0'}
                                             </span>
                                         </div>
                                     </div>
@@ -2066,11 +2141,11 @@ function BrandDashboardContent() {
 
                                                     try {
                                                         if (isCampaignProposal) {
-                                                            await updateProposal(proposalId, { status: 'completed', completed_at: new Date().toISOString() });
+                                                            await updateProposal(proposalId as string, { status: 'completed', completed_at: new Date().toISOString() });
                                                         } else {
-                                                            await updateBrandProposal(proposalId, { status: 'completed', completed_at: new Date().toISOString() });
+                                                            await updateBrandProposal(proposalId as string, { status: 'completed', completed_at: new Date().toISOString() });
                                                         }
-                                                        setChatProposal(prev => ({ ...prev, status: 'completed', completed_at: new Date().toISOString() }));
+                                                        setChatProposal((prev: any) => ({ ...prev, status: 'completed', completed_at: new Date().toISOString() }));
                                                         alert("협업이 성공적으로 완료되었습니다!");
                                                     } catch (e) {
                                                         console.error(e);
@@ -2434,7 +2509,7 @@ function BrandDashboardContent() {
                                                         <div className="bg-white p-4 rounded-xl border border-indigo-100 flex items-center justify-between group hover:border-indigo-300 transition-colors">
                                                             <div className="flex items-center gap-3 overflow-hidden">
                                                                 <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
-                                                                    <Link className="h-5 w-5" />
+                                                                    <LinkIcon className="h-5 w-5" />
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs text-indigo-500 font-bold mb-0.5">CONTENT LINK</p>
@@ -2483,7 +2558,7 @@ function BrandDashboardContent() {
                                                                     } else {
                                                                         await updateBrandProposal(chatProposal.id, updateData);
                                                                     }
-                                                                    setChatProposal(prev => (prev ? { ...prev, ...updateData } : prev));
+                                                                    setChatProposal((prev: any) => (prev ? { ...prev, ...updateData } : prev));
                                                                     alert("프로젝트가 완료되었습니다!");
                                                                 } catch (e) {
                                                                     console.error(e);

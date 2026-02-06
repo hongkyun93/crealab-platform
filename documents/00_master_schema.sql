@@ -28,8 +28,15 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
--- Add missing columns
+-- Add missing columns to profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS display_name text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS website text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS address text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone DEFAULT timezone('utc'::text, now());
 
 -- 2.2 INFLUENCER DETAILS
 CREATE TABLE IF NOT EXISTS public.influencer_details (
@@ -93,12 +100,13 @@ CREATE TABLE IF NOT EXISTS public.campaigns (
   status text DEFAULT 'active',
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
--- Add missing columns
+-- Add missing columnsa
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS event_date text;
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS posting_date text;
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS category text;
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS budget text;
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS target text;
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS tags text[];
 
 -- 2.6 INFLUENCER EVENTS (MOMENTS)
 CREATE TABLE IF NOT EXISTS public.influencer_events (
