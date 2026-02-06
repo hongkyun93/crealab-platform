@@ -277,6 +277,20 @@ export function PlatformProvider({ children, initialSession }: { children: React
     const isFetchingMessages = React.useRef(false)
     const lastUserId = React.useRef<string | null>(null)
 
+    // Safety: Force loading to finish if it takes too long (e.g. 8 seconds)
+    useEffect(() => {
+        if (!isInitialized || !isAuthChecked || (!isDataLoaded && !!user)) {
+            const timer = setTimeout(() => {
+                console.warn('[PlatformProvider] Loading taking too long, forcing completion...')
+                if (!isInitialized) setIsInitialized(true)
+                if (!isAuthChecked) setIsAuthChecked(true)
+                if (!isDataLoaded) setIsDataLoaded(true)
+            }, 8000)
+            return () => clearTimeout(timer)
+        }
+    }, [isInitialized, isAuthChecked, isDataLoaded, user])
+
+
     useEffect(() => {
         console.log('[PlatformProvider] COMPONENT MOUNTED')
         console.log('[PlatformProvider] Initial State:', { isInitialized, isAuthChecked, isDataLoaded, userExists: !!user })
