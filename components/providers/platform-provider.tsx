@@ -279,10 +279,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     useEffect(() => {
         console.log('[PlatformProvider] COMPONENT MOUNTED')
+        console.log('[PlatformProvider] Initial State:', { isInitialized, isAuthChecked, isDataLoaded, userExists: !!user })
         return () => {
             console.log('[PlatformProvider] COMPONENT UNMOUNTED')
         }
     }, [])
+
+    useEffect(() => {
+        console.log('[PlatformProvider] Loading State Changed:', { isInitialized, isAuthChecked, isDataLoaded, userExists: !!user })
+    }, [isInitialized, isAuthChecked, isDataLoaded, user])
 
     // Initialize state with Server Session if available
     useEffect(() => {
@@ -473,10 +478,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             if (session?.user && mounted) {
                 console.log('[PlatformProvider] User found in session:', session.user.id)
+                lastUserId.current = session.user.id
                 const fetchedUser = await fetchUserProfile(session.user)
-                if (fetchedUser) {
+                if (mounted) {
                     setUser(fetchedUser)
-                    fetchEvents(session.user.id)
+                    setIsDataLoaded(false)
+                    await refreshData(session.user.id)
                 }
             } else if (mounted) {
                 // IMPORTANT: If no session, clear local user state to prevent "ghost login"
@@ -506,8 +513,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     const fetchedUser = await fetchUserProfile(session.user)
                     setUser(fetchedUser)
                     console.log('[Auth] User recognized, ensuring data sync...')
-                    // Always try to fetch if it's a critical event or first time
-                    await refreshData()
+                    // Pass ID directly to bypass state update delay
+                    await refreshData(fetchedUser.id)
                 }
             } else if (event === 'SIGNED_OUT' && mounted) {
                 console.log('[Auth] User signed out, clearing data')
@@ -531,7 +538,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     const fetchEvents = React.useCallback(async (userId?: string) => {
         const targetId = userId || user?.id
-        if (!targetId || isFetchingEvents.current) return
+        console.log('[fetchEvents] Starting fetch for:', targetId)
+
+        if (!targetId) {
+            console.log('[fetchEvents] No target ID, skipping fetch')
+            setIsDataLoaded(true)
+            return
+        }
+
+        if (isFetchingEvents.current) return
 
         isFetchingEvents.current = true
         try {
@@ -635,7 +650,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             }
 
             // 2. Fetch Brand Proposals (Both sent and received, or all if admin)
-            if (userId) {
+            if (targetId) {
                 let query = supabase
                     .from('brand_proposals')
                     .select('*, brand_profile:profiles!brand_id(display_name), influencer_profile:profiles!influencer_id(display_name)')
@@ -643,14 +658,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 // Fetch user role to check admin status (with fallback)
                 let userRole = 'influencer'
                 try {
-                    const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
+                    const { data: profile } = await supabase.from('profiles').select('role').eq('id', targetId).single()
                     if (profile) userRole = profile.role
                 } catch (e) {
                     console.warn('[fetchEvents] Could not determine role for query filter, defaulting to mutual visibility')
                 }
 
                 if (userRole !== 'admin') {
-                    query = query.or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
+                    query = query.or(`brand_id.eq.${targetId},influencer_id.eq.${targetId}`)
                 }
 
                 const { data: bpData } = await query.order('created_at', { ascending: false })
@@ -690,8 +705,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     const filteredApps = appData.filter((a: any) => {
                         if (!a.campaign) return false
                         if (role === 'admin') return true
-                        if (role === 'brand') return a.campaign.brand_id === userId
-                        return a.influencer_id === userId
+                        if (role === 'brand') return a.campaign.brand_id === targetId
+                        return a.influencer_id === targetId
                     })
 
                     const mappedApps: Proposal[] = filteredApps.map((a: any) => ({
@@ -1576,15 +1591,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
         fetchEvents(user?.id) // Attempt refetch
     }
 
-    const refreshData = async () => {
-        if (user?.id) {
-            console.log("Refreshing data...")
+    const refreshData = async (userId?: string) => {
+        const targetId = userId || user?.id
+        if (targetId) {
+            console.log("Refreshing data for:", targetId)
             isFetchingEvents.current = false
             isFetchingMessages.current = false
             await Promise.all([
-                fetchEvents(user.id),
-                fetchMessages(user.id)
+                fetchEvents(targetId),
+                fetchMessages(targetId)
             ])
+        } else {
+            setIsDataLoaded(true)
         }
     }
 

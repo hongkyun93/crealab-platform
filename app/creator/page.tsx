@@ -559,7 +559,7 @@ function InfluencerDashboardContent() {
         }
     }, [isLoading, user, router])
 
-    if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    if (isLoading) return <div className="min-h-screen flex items-center justify-center">Creator Dashboard Loading...</div>
     // if (!user) return null // Allow guest view
 
 
