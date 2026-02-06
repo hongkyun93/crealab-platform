@@ -1726,7 +1726,7 @@ function BrandDashboardContent() {
         }
     }
 
-    if (isLoading) return <div className="min-h-screen flex items-center justify-center">Brand Dashboard Loading...</div>
+    if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>
 
     return (
         <div className="min-h-screen bg-muted/30">
