@@ -99,6 +99,8 @@ export type Proposal = {
     influencerId?: string
     influencerName?: string
     influencerAvatar?: string
+    brandId?: string
+    brandName?: string
 
     cost?: number // 희망 광고비
     commission?: number // 희망 수수료 (%)
@@ -656,7 +658,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     .from('proposals')
                     .select(`
                         *,
-                        campaign:campaigns(id, title, product_name, brand_id),
+                        campaign:campaigns(
+                            id, 
+                            title, 
+                            product_name, 
+                            brand_id,
+                            brand_profile:profiles!brand_id(display_name)
+                        ),
                         influencer:profiles!influencer_id(display_name, avatar_url)
                     `)
                     .order('created_at', { ascending: false })
@@ -680,11 +688,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         influencerId: a.influencer_id,
                         influencerName: a.influencer?.display_name || 'Unknown',
                         influencerAvatar: a.influencer?.avatar_url,
+                        brandId: a.campaign?.brand_id,
+                        brandName: a.campaign?.brand_profile?.display_name || 'Brand',
                         message: a.message,
                         cost: a.price_offer,
                         status: a.status as any,
                         date: a.created_at,
-                        created_at: a.created_at
+                        created_at: a.created_at,
+                        campaign: a.campaign
                     }))
 
                     console.log('[fetchEvents] Fetched applications:', mappedApps.length)

@@ -677,8 +677,12 @@ function InfluencerDashboardContent() {
 
     const handleSendMessage = async () => {
         if (!chatMessage.trim() || !chatProposal || isSendingMessage) return
-        const receiverId = chatProposal.brand_id || chatProposal.brandId || chatProposal.toId || chatProposal.brand?.id
-        if (!receiverId) return
+        const receiverId = chatProposal.brand_id || chatProposal.brandId || chatProposal.toId || chatProposal.to_id || chatProposal.brand?.id || chatProposal.campaign?.brand_id
+        if (!receiverId) {
+            console.error("[handleSendMessage] No receiver ID found in chatProposal:", chatProposal)
+            alert("수신인 정보를 찾을 수 없습니다.")
+            return
+        }
 
         const msgContent = chatMessage
         setChatMessage("")
