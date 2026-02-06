@@ -473,24 +473,31 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
         const initAuth = async () => {
             console.log('[PlatformProvider] Initializing Auth Check...')
-            const { data: { session }, error } = await supabase.auth.getSession()
-            console.log('[PlatformProvider] getSession result:', session ? 'Session found' : 'No session', error || '')
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession()
+                console.log('[PlatformProvider] getSession result:', session ? 'Session found' : 'No session', error || '')
 
-            if (session?.user && mounted) {
-                console.log('[PlatformProvider] User found in session:', session.user.id)
-                lastUserId.current = session.user.id
-                const fetchedUser = await fetchUserProfile(session.user)
-                if (mounted) {
-                    setUser(fetchedUser)
-                    setIsDataLoaded(false)
-                    await refreshData(session.user.id)
+                if (session?.user && mounted) {
+                    console.log('[PlatformProvider] User found in session:', session.user.id)
+                    lastUserId.current = session.user.id
+                    const fetchedUser = await fetchUserProfile(session.user)
+                    if (mounted) {
+                        setUser(fetchedUser)
+                        setIsDataLoaded(false)
+                        await refreshData(session.user.id)
+                    }
+                } else if (mounted) {
+                    // IMPORTANT: If no session, clear local user state to prevent "ghost login"
+                    console.log('[PlatformProvider] No session found, clearing user state')
+                    setUser(null)
+                    setIsDataLoaded(true) // No user, so data is "loaded" (empty)
                 }
-            } else if (mounted) {
-                // IMPORTANT: If no session, clear local user state to prevent "ghost login"
-                console.log('[PlatformProvider] No session found, clearing user state')
-                setUser(null)
+            } catch (e) {
+                console.error('[PlatformProvider] initAuth failed:', e)
+                if (mounted) setIsDataLoaded(true)
+            } finally {
+                if (mounted) setIsAuthChecked(true)
             }
-            if (mounted) setIsAuthChecked(true)
         }
 
         initAuth()

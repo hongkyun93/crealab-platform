@@ -559,6 +559,8 @@ function InfluencerDashboardContent() {
         }
     }, [isLoading, user, router])
 
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+
     if (isLoading) return <div className="min-h-screen flex items-center justify-center">Creator Dashboard Loading...</div>
     // if (!user) return null // Allow guest view
 
@@ -586,7 +588,6 @@ function InfluencerDashboardContent() {
     }
 
     // Use a ref or state for proposal update loading
-    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
     const handleStatusUpdate = async (proposalId: string, status: string) => {
         if (isUpdatingStatus) return
