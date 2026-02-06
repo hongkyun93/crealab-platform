@@ -1728,9 +1728,7 @@ function BrandDashboardContent() {
 
                                 {/* Messages */}
                                 {allMessages
-                                    .filter(m => m.proposalId === chatProposal?.id ||
-                                        (m.senderId === user?.id && m.receiverId === (chatProposal?.influencer_id || chatProposal?.influencerId)) ||
-                                        (m.senderId === (chatProposal?.influencer_id || chatProposal?.influencerId) && m.receiverId === user?.id))
+                                    .filter(m => m.proposalId?.toString() === chatProposal?.id?.toString())
                                     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
                                     .map((msg) => (
                                         <div key={msg.id} className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>

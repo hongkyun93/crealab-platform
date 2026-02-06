@@ -76,29 +76,35 @@ export default function MessagePage() {
             const otherId = isMe ? msg.receiverId : msg.senderId
             const otherName = isMe ? msg.receiverName : msg.senderName
             const otherAvatar = isMe ? msg.receiverAvatar : msg.senderAvatar
+            const pId = msg.proposalId ? msg.proposalId.toString() : 'general'
 
-            if (!groups[otherId]) {
-                groups[otherId] = {
-                    id: otherId,
-                    user: otherName || "사용자",
+            // Unique key for each thread: other user + proposal ID
+            const threadKey = `${otherId}-${pId}`
+
+            if (!groups[threadKey]) {
+                const proposal = msg.proposalId ? brandProposals?.find(p => p.id?.toString() === msg.proposalId?.toString()) : null
+                const proposalSuffix = proposal ? ` (${proposal.product_name})` : ""
+
+                groups[threadKey] = {
+                    id: threadKey, // Use key as thread ID
+                    user: (otherName || "사용자") + proposalSuffix,
                     avatar: otherAvatar || "",
                     lastMessage: msg.content,
                     time: msg.timestamp,
                     messages: [],
                     unread: 0,
-                    online: false, // In real app, this would come from presence
-                    handle: "" // Could fetch from profile if needed
+                    online: false,
+                    handle: ""
                 }
             }
-            groups[otherId].messages.push(msg)
+            groups[threadKey].messages.push(msg)
 
-            // Update last message if this one is newer
-            if (new Date(msg.timestamp) >= new Date(groups[otherId].time)) {
-                groups[otherId].lastMessage = msg.content
-                groups[otherId].time = msg.timestamp
-                // Update names if available (helpful if some messages have them and some don't)
-                if (otherName) groups[otherId].user = otherName
-                if (otherAvatar) groups[otherId].avatar = otherAvatar
+            if (new Date(msg.timestamp) >= new Date(groups[threadKey].time)) {
+                groups[threadKey].lastMessage = msg.content
+                groups[threadKey].time = msg.timestamp
+                if (otherName && !msg.proposalId) { // Only update name from message if it's general, or if name is provided
+                    // Actually let's keep the user name stable but add proposal suffix
+                }
             }
         })
 
@@ -136,7 +142,13 @@ export default function MessagePage() {
         setMessageInput("") // Optimistic clear
 
         try {
-            await sendMessage(activeThreadId, content)
+            // activeThreadId is "otherId-pId"
+            const lastDashIndex = activeThreadId.lastIndexOf('-')
+            const toUserId = activeThreadId.substring(0, lastDashIndex)
+            const pIdStr = activeThreadId.substring(lastDashIndex + 1)
+            const pId = pIdStr === 'general' ? undefined : pIdStr
+
+            await sendMessage(toUserId, content, pId)
         } catch (e) {
             console.error("Failed to send message:", e)
             setMessageInput(content) // Restore on error

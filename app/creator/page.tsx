@@ -1624,7 +1624,7 @@ function InfluencerDashboardContent() {
                                             )}
 
                                             {allMessages
-                                                .filter((m: any) => m.proposalId === chatProposal?.id || (m.senderId === chatProposal?.brand_id && m.receiverId === user?.id) || (m.senderId === user?.id && m.receiverId === chatProposal?.brand_id))
+                                                .filter((m: any) => m.proposalId?.toString() === chatProposal?.id?.toString())
                                                 .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
                                                 .map((msg: any, idx: any) => (
                                                     <div key={idx} className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
