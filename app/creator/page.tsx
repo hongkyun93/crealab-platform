@@ -199,6 +199,7 @@ function InfluencerDashboardContent() {
     const [activeProposalTab, setActiveProposalTab] = useState<string>("new")
     const [productSearchQuery, setProductSearchQuery] = useState("")
     const [isFullContractOpen, setIsFullContractOpen] = useState(false)
+    const [isSendingMessage, setIsSendingMessage] = useState(false)
 
     // Discovery States (for searching other moments)
     const [discoverTag, setDiscoverTag] = useState<string | null>(null)
@@ -376,11 +377,22 @@ function InfluencerDashboardContent() {
     }
 
     const handleSendMessage = async () => {
-        if (!chatMessage.trim() || !chatProposal) return
+        if (!chatMessage.trim() || !chatProposal || isSendingMessage) return
         const receiverId = chatProposal.brand_id || chatProposal.brandId || chatProposal.toId || chatProposal.brand?.id
         if (!receiverId) return
-        await sendMessage(receiverId, chatMessage, chatProposal.id?.toString())
+
+        const msgContent = chatMessage
         setChatMessage("")
+        setIsSendingMessage(true)
+
+        try {
+            await sendMessage(receiverId, msgContent, chatProposal.id?.toString())
+        } catch (e) {
+            console.error("Message send failed:", e)
+            setChatMessage(msgContent)
+        } finally {
+            setIsSendingMessage(false)
+        }
     }
 
     const filteredProposals = (status: string) => {
@@ -1669,7 +1681,8 @@ function InfluencerDashboardContent() {
                                                                 : 'bg-white border rounded-tl-none'
                                                                 }`}>
                                                                 {msg.content}
-                                                                {msg.proposalId && renderProposalCard(msg.proposalId)}
+                                                                {/* Only show proposal card for the very first message in the thread */}
+                                                                {idx === 0 && msg.proposalId && renderProposalCard(msg.proposalId)}
                                                                 <span className="block text-[10px] opacity-70 mt-1">
                                                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                 </span>

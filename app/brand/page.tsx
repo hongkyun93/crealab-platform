@@ -140,7 +140,7 @@ function BrandDashboardContent() {
     }
 
     const handleSendMessage = async () => {
-        if (!chatMessage.trim() || !chatProposal || !user) return
+        if (!chatMessage.trim() || !chatProposal || !user || isSendingMessage) return
 
         const receiverId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id
 
@@ -149,8 +149,18 @@ function BrandDashboardContent() {
             return
         }
 
-        await sendMessage(receiverId, chatMessage, chatProposal.id?.toString())
+        const msgContent = chatMessage
         setChatMessage("")
+        setIsSendingMessage(true)
+
+        try {
+            await sendMessage(receiverId, msgContent, chatProposal.id?.toString())
+        } catch (e) {
+            console.error("Message send failed:", e)
+            setChatMessage(msgContent)
+        } finally {
+            setIsSendingMessage(false)
+        }
     }
 
     // Propose Modal State
@@ -174,6 +184,7 @@ function BrandDashboardContent() {
     const [newProductCategory, setNewProductCategory] = useState("")
     const [newProductDescription, setNewProductDescription] = useState("")
     const [isFullContractOpen, setIsFullContractOpen] = useState(false)
+    const [isSendingMessage, setIsSendingMessage] = useState(false)
     const [newProductImage, setNewProductImage] = useState("")
     const [newProductLink, setNewProductLink] = useState("")
     const [newProductPoints, setNewProductPoints] = useState("")
@@ -1766,7 +1777,7 @@ function BrandDashboardContent() {
                                 {allMessages
                                     .filter(m => m.proposalId?.toString() === chatProposal?.id?.toString())
                                     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                                    .map((msg) => (
+                                    .map((msg, idx) => (
                                         <div key={msg.id} className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
                                             <div className={`p-3 rounded-2xl max-w-[80%] text-sm shadow-sm ${msg.senderId === user?.id
                                                 ? 'bg-primary text-primary-foreground rounded-tr-none'
