@@ -1776,15 +1776,15 @@ function BrandDashboardContent() {
                                 {/* Workflow Steps */}
                                 <div className="space-y-6 overflow-y-auto">
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">준비 단계</h4>
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">진행 단계</h4>
                                         <ul className="space-y-1">
                                             {[
-                                                { id: 1, label: "조건 조율 및 확정", status: chatProposal?.status === 'accepted' ? 'done' : 'current' },
-                                                { id: 2, label: "전자 계약서 발송", status: chatProposal?.status === 'accepted' ? 'current' : 'locked' },
-                                                { id: 3, label: "제품 발송/제공", status: 'locked' },
-                                                { id: 4, label: "콘텐츠 초안 검토", status: 'locked' },
-                                                { id: 5, label: "최종 콘텐츠 발행", status: 'locked' },
-                                                { id: 6, label: "성과 보고 및 정산", status: 'locked' }
+                                                { id: 1, label: "조건 조율 및 확정", status: chatProposal?.status === 'accepted' || chatProposal?.status === 'completed' ? 'done' : 'current' },
+                                                { id: 2, label: "전자 계약서 발송", status: (chatProposal?.contract_status === 'signed' || chatProposal?.status === 'completed') ? 'done' : (chatProposal?.status === 'accepted' ? 'current' : 'locked') },
+                                                { id: 3, label: "제품 발송/제공", status: chatProposal?.status === 'completed' ? 'done' : 'locked' },
+                                                { id: 4, label: "콘텐츠 초안 검토", status: chatProposal?.status === 'completed' ? 'done' : 'locked' },
+                                                { id: 5, label: "최종 콘텐츠 발행", status: chatProposal?.status === 'completed' ? 'done' : 'locked' },
+                                                { id: 6, label: "성과 보고 및 정산", status: chatProposal?.status === 'completed' ? 'done' : 'locked' }
                                             ].map((step) => (
                                                 <li key={step.id} className={`
                                                     relative pl-8 py-2.5 text-sm rounded-lg transition-all duration-200
@@ -1803,6 +1803,38 @@ function BrandDashboardContent() {
                                             ))}
                                         </ul>
                                     </div>
+
+                                    {chatProposal?.status === 'accepted' && (
+                                        <div className="px-2">
+                                            <Button
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md animate-in slide-in-from-bottom-2 fade-in duration-500"
+                                                onClick={async () => {
+                                                    if (!confirm("모든 절차(정산 포함)가 완료되었나요? 완료 처리하면 '완료된 워크스페이스'로 이동합니다.")) return;
+
+                                                    const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply';
+                                                    const proposalId = chatProposal.id?.toString();
+
+                                                    try {
+                                                        if (isCampaignProposal) {
+                                                            await updateProposal(proposalId, { status: 'completed', completed_at: new Date().toISOString() });
+                                                        } else {
+                                                            await updateBrandProposal(proposalId, { status: 'completed', completed_at: new Date().toISOString() });
+                                                        }
+                                                        setChatProposal(prev => ({ ...prev, status: 'completed', completed_at: new Date().toISOString() }));
+                                                        alert("협업이 성공적으로 완료되었습니다!");
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                        alert("상태 업데이트 실패");
+                                                    }
+                                                }}
+                                            >
+                                                <BadgeCheck className="mr-2 h-4 w-4" /> 프로젝트 최종 완료
+                                            </Button>
+                                            <p className="text-[10px] text-slate-400 mt-2 text-center">
+                                                * 정산 및 성과 보고가 끝난 후 눌러주세요.
+                                            </p>
+                                        </div>
+                                    )}
 
                                     <div className="px-2">
                                         <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 text-xs shadow-sm">
