@@ -78,7 +78,7 @@ function BrandDashboardContent() {
         events, user, resetData, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages: allMessages,
         updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
-        switchRole, proposals, updateCampaignStatus
+        switchRole, proposals, updateCampaignStatus, updateProposal
     } = usePlatform()
 
     const displayUser = user || MOCK_BRAND_USER
