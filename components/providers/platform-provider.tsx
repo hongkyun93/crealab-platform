@@ -772,7 +772,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             if (data) {
                 const formattedMessages: Message[] = data.map((msg: any) => ({
-                    id: msg.id,
+                    id: msg.id.toString(),
                     senderId: msg.sender_id,
                     receiverId: msg.receiver_id,
                     proposalId: msg.proposal_id,
@@ -802,13 +802,48 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }, [supabase])
 
+    const fetchSingleMessage = async (messageId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('messages')
+                .select(`
+                    *,
+                    sender:profiles!sender_id(id, display_name, avatar_url),
+                    receiver:profiles!receiver_id(id, display_name, avatar_url)
+                `)
+                .eq('id', messageId)
+                .single()
+
+            if (error || !data) return null
+
+            const formatted: Message = {
+                id: data.id.toString(),
+                senderId: data.sender_id,
+                receiverId: data.receiver_id,
+                proposalId: data.proposal_id,
+                brandProposalId: data.brand_proposal_id,
+                content: data.content,
+                timestamp: data.created_at,
+                read: data.is_read || false,
+                senderName: data.sender?.display_name || 'User',
+                senderAvatar: data.sender?.avatar_url,
+                receiverName: data.receiver?.display_name || 'User',
+                receiverAvatar: data.receiver?.avatar_url
+            }
+            return formatted
+        } catch (e) {
+            console.error('[fetchSingleMessage] Error:', e)
+            return null
+        }
+    }
+
     // Polling for new messages every 5 seconds
     useEffect(() => {
         if (!user) return
 
         const interval = setInterval(() => {
             fetchMessages(user.id)
-        }, 5000)
+        }, 30000)
 
         return () => clearInterval(interval)
     }, [user?.id])
@@ -1574,8 +1609,34 @@ export function PlatformProvider({ children, initialSession }: { children: React
             )
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'messages' },
-                () => { console.log('[Realtime] Message change detected'); refreshData(); }
+                { event: 'INSERT', schema: 'public', table: 'messages' },
+                async (payload) => {
+                    console.log('[Realtime] New Message INSERT detected');
+                    const newId = payload.new.id.toString();
+
+                    // Avoid double-append for the sender (who already added it optimistically)
+                    setMessages(prev => {
+                        if (prev.some(m => m.id === newId)) return prev;
+                        // If not found, fetch it with joints and append
+                        fetchSingleMessage(newId).then(msg => {
+                            if (msg) setMessages(current => {
+                                if (current.some(m => m.id === newId)) return current;
+                                return [...current, msg];
+                            });
+                        });
+                        return prev;
+                    });
+                }
+            )
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'messages' },
+                () => { console.log('[Realtime] Message UPDATE detected'); refreshData(); }
+            )
+            .on(
+                'postgres_changes',
+                { event: 'DELETE', schema: 'public', table: 'messages' },
+                () => { console.log('[Realtime] Message DELETE detected'); refreshData(); }
             )
             .subscribe()
 
