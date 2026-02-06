@@ -2357,25 +2357,25 @@ function BrandDashboardContent() {
 
                                     {/* Existing Result Management Section */}
                                     {/* Work Result (Submission) Section */}
-                                    <div className={`border border-slate-200 rounded-[30px] p-8 transition-all ${chatProposal.content_submission_status === 'submitted' ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-100/50 opacity-70 hover:opacity-100'}`}>
+                                    <div className={`border border-slate-200 rounded-[30px] p-8 transition-all ${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-100/50 opacity-70 hover:opacity-100'}`}>
                                         <div className="flex items-center gap-4 mb-4">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center rotate-3 shadow-sm ${chatProposal.content_submission_status === 'submitted' ? 'bg-indigo-600 text-white' : 'bg-white'}`}>
-                                                <Star className={`h-6 w-6 ${chatProposal.content_submission_status === 'submitted' ? 'text-white' : 'text-slate-400'}`} />
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center rotate-3 shadow-sm ${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-600 text-white' : 'bg-white'}`}>
+                                                <Star className={`h-6 w-6 ${chatProposal?.content_submission_status === 'submitted' ? 'text-white' : 'text-slate-400'}`} />
                                             </div>
-                                            <h3 className={`text-xl font-bold ${chatProposal.content_submission_status === 'submitted' ? 'text-indigo-900' : 'text-slate-900'}`}>작업 결과물</h3>
-                                            {chatProposal.content_submission_status && (
-                                                <Badge className={`${chatProposal.content_submission_status === 'submitted' ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-200 text-slate-600'}`}>
-                                                    {chatProposal.content_submission_status === 'submitted' ? '제출됨' : chatProposal.content_submission_status}
+                                            <h3 className={`text-xl font-bold ${chatProposal?.content_submission_status === 'submitted' ? 'text-indigo-900' : 'text-slate-900'}`}>작업 결과물</h3>
+                                            {chatProposal?.content_submission_status && (
+                                                <Badge className={`${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-200 text-slate-600'}`}>
+                                                    {chatProposal?.content_submission_status === 'submitted' ? '제출됨' : chatProposal?.content_submission_status}
                                                 </Badge>
                                             )}
                                         </div>
 
-                                        {(chatProposal.content_submission_url || chatProposal.content_submission_file_url) ? (
+                                        {(chatProposal?.content_submission_url || chatProposal?.content_submission_file_url) ? (
                                             <div className="space-y-4">
                                                 <p className="text-slate-600 mb-2 text-sm font-medium">크리에이터가 작업물을 제출했습니다.</p>
 
                                                 <div className="grid gap-3">
-                                                    {chatProposal.content_submission_url && (
+                                                    {chatProposal?.content_submission_url && (
                                                         <div className="bg-white p-4 rounded-xl border border-indigo-100 flex items-center justify-between group hover:border-indigo-300 transition-colors">
                                                             <div className="flex items-center gap-3 overflow-hidden">
                                                                 <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
@@ -2383,16 +2383,16 @@ function BrandDashboardContent() {
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs text-indigo-500 font-bold mb-0.5">CONTENT LINK</p>
-                                                                    <p className="text-sm font-bold text-slate-800 truncate">{chatProposal.content_submission_url}</p>
+                                                                    <p className="text-sm font-bold text-slate-800 truncate">{chatProposal?.content_submission_url}</p>
                                                                 </div>
                                                             </div>
                                                             <Button size="sm" variant="ghost" className="text-indigo-600" asChild>
-                                                                <a href={chatProposal.content_submission_url} target="_blank" rel="noopener noreferrer">열기</a>
+                                                                <a href={chatProposal?.content_submission_url} target="_blank" rel="noopener noreferrer">열기</a>
                                                             </Button>
                                                         </div>
                                                     )}
 
-                                                    {chatProposal.content_submission_file_url && (
+                                                    {chatProposal?.content_submission_file_url && (
                                                         <div className="bg-white p-4 rounded-xl border border-indigo-100 flex items-center justify-between group hover:border-indigo-300 transition-colors">
                                                             <div className="flex items-center gap-3 overflow-hidden">
                                                                 <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
@@ -2401,33 +2401,34 @@ function BrandDashboardContent() {
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs text-indigo-500 font-bold mb-0.5">ATTACHED FILE</p>
                                                                     <p className="text-sm font-bold text-slate-800 truncate">
-                                                                        {chatProposal.content_submission_file_url.split('/').pop()}
+                                                                        {chatProposal?.content_submission_file_url.split('/').pop()}
                                                                     </p>
                                                                 </div>
                                                             </div>
                                                             <Button size="sm" variant="ghost" className="text-indigo-600" asChild>
-                                                                <a href={chatProposal.content_submission_file_url} target="_blank" rel="noopener noreferrer">다운로드</a>
+                                                                <a href={chatProposal?.content_submission_file_url} target="_blank" rel="noopener noreferrer">다운로드</a>
                                                             </Button>
                                                         </div>
                                                     )}
                                                 </div>
 
-                                                {chatProposal.status !== 'completed' && (
+                                                {chatProposal?.status !== 'completed' && (
                                                     <div className="flex gap-2 justify-end mt-4">
                                                         <Button
                                                             onClick={async () => {
+                                                                if (!chatProposal) return;
                                                                 if (!confirm("프로젝트를 완료 처리하시겠습니까?")) return;
                                                                 // Handle completion logic
                                                                 const updateData = { status: 'completed', completed_at: new Date().toISOString() };
                                                                 // Use specific update function based on proposal type
-                                                                const isCampaign = !!chatProposal.campaignId || chatProposal.type === 'creator_apply';
+                                                                const isCampaign = !!chatProposal?.campaignId || chatProposal?.type === 'creator_apply';
                                                                 try {
                                                                     if (isCampaign) {
                                                                         await updateProposal(chatProposal.id, updateData);
                                                                     } else {
                                                                         await updateBrandProposal(chatProposal.id, updateData);
                                                                     }
-                                                                    setChatProposal(prev => ({ ...prev, ...updateData }));
+                                                                    setChatProposal(prev => (prev ? { ...prev, ...updateData } : prev));
                                                                     alert("프로젝트가 완료되었습니다!");
                                                                 } catch (e) {
                                                                     console.error(e);
