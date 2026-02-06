@@ -198,6 +198,7 @@ function InfluencerDashboardContent() {
     }
     const [activeProposalTab, setActiveProposalTab] = useState<string>("new")
     const [productSearchQuery, setProductSearchQuery] = useState("")
+    const [isFullContractOpen, setIsFullContractOpen] = useState(false)
 
     // Discovery States (for searching other moments)
     const [discoverTag, setDiscoverTag] = useState<string | null>(null)
@@ -1729,7 +1730,9 @@ function InfluencerDashboardContent() {
                                                     )}
                                                 </div>
                                                 <div className="text-center text-xs text-muted-foreground">
-                                                    (전체 계약서 내용 보기)
+                                                    <Button variant="link" size="sm" className="text-xs text-muted-foreground underline h-auto p-0" onClick={() => setIsFullContractOpen(true)}>
+                                                        (전체 계약서 내용 보기)
+                                                    </Button>
                                                 </div>
                                             </div>
 
@@ -1763,6 +1766,34 @@ function InfluencerDashboardContent() {
                                     </TabsContent>
                                 </Tabs>
                             </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Full Contract Viewer Dialog */}
+                    <Dialog open={isFullContractOpen} onOpenChange={setIsFullContractOpen}>
+                        <DialogContent className="sm:max-w-3xl h-[80vh] flex flex-col p-6 overflow-hidden">
+                            <DialogHeader className="mb-4">
+                                <DialogTitle>표준 광고 협업 계약서</DialogTitle>
+                                <DialogDescription>작성된 계약서의 전체 내용입니다.</DialogDescription>
+                            </DialogHeader>
+                            <div className="flex-1 overflow-y-auto p-6 bg-slate-50 rounded-xl border border-slate-200 font-mono text-sm whitespace-pre-wrap">
+                                {generatedContract || `제 1조 [목적]
+본 계약은 '갑'(${chatProposal?.brand_name || '브랜드'})과 '을'(${user?.name || '크리에이터'})간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.
+
+제 2조 [원고료 및 지급]
+1. '갑'은 '을'에게 콘텐츠 제작의 대가로 금 ${chatProposal?.compensation_amount || '0'}을 지급한다.
+2. 지급 시기는 콘텐츠 업로드 후 30일 이내로 한다.
+
+제 3조 [콘텐츠 제작]
+'을'은 '갑'의 가이드를 준수하여 고품질의 콘텐츠를 제작하며, 합의된 일정 내에 업로드한다.
+
+... (중략) ...
+
+상기 내용을 확인하였으며, 계약에 동의합니다.`}
+                            </div>
+                            <DialogFooter className="mt-6">
+                                <Button onClick={() => setIsFullContractOpen(false)}>닫기</Button>
+                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
 
