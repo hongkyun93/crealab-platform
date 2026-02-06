@@ -121,7 +121,7 @@ function InfluencerDashboardContent() {
     const {
         user, updateUser, campaigns, events, isLoading, notifications, resetData,
         brandProposals, updateBrandProposal, sendMessage, messages: allMessages, deleteEvent, proposals, updateProposal,
-        products, switchRole, updateEvent
+        products, switchRole, updateEvent, supabase
     } = usePlatform()
 
     const displayUser = user || MOCK_INFLUENCER_USER
@@ -199,9 +199,6 @@ function InfluencerDashboardContent() {
 
             // NOTE: The above logic inside 'if' is tricky because I need access to 'updateProposal' from context if I want to use it.
             // I see 'updateBrandProposal' is destructured. I need to make sure 'updateProposal' is also destructured.
-
-            // Looking at line 122: const { ..., updateBrandProposal, ..., proposals } = usePlatform()
-            // I need to add updateProposal to destructuring in the component.
 
             // Local update
             setChatProposal(prev => ({ ...prev, contract_status: status, influencer_signature: signatureData }))
@@ -314,11 +311,39 @@ function InfluencerDashboardContent() {
 
             let fileUrl = ""
 
-            // Mock File Upload (In production, use Supabase Storage)
+            // Actual File Upload using Supabase Storage
             if (submissionFile) {
-                // await supabase.storage.from('submissions').upload(...)
-                console.log("File uploaded:", submissionFile.name)
-                fileUrl = `https://storage.crealab.com/submissions/${proposalId}/${submissionFile.name}`
+                const fileExt = submissionFile.name.split('.').pop()
+                const fileName = `${proposalId}_${Date.now()}.${fileExt}` // Unique path per proposal
+                const filePath = `submissions/${fileName}`
+
+                console.log('Uploading file to:', filePath)
+
+                const { data, error } = await supabase.storage
+                    .from('submissions')
+                    .upload(filePath, submissionFile, {
+                        cacheControl: '3600',
+                        upsert: true
+                    })
+
+                if (error) {
+                    console.error('Supabase Upload Error:', error)
+                    if (error.message?.includes('bucket')) {
+                        // Fallback message if bucket missing
+                        alert("업로드 실패: 'submissions' 버킷이 존재하지 않거나 권한이 없습니다.")
+                    } else {
+                        alert(`파일 업로드 실패: ${error.message}`)
+                    }
+                    throw error
+                }
+
+                // Get Public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('submissions')
+                    .getPublicUrl(filePath)
+
+                fileUrl = publicUrl
+                console.log('File uploaded successfully. URL:', fileUrl)
             }
 
             const updateData = {
