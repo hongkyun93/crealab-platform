@@ -270,6 +270,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
     const [messages, setMessages] = useState<Message[]>([])
     const [isInitialized, setIsInitialized] = useState(false)
     const [isAuthChecked, setIsAuthChecked] = useState(false)
+    const [isDataLoaded, setIsDataLoaded] = useState(false)
 
     // Refs must be at the top level
     const isFetchingEvents = React.useRef(false)
@@ -491,28 +492,33 @@ export function PlatformProvider({ children, initialSession }: { children: React
             console.log(`[Auth] onAuthStateChange event: ${event}`, session?.user?.id)
 
             if (session?.user) {
-                if (lastUserId.current === session.user.id && event !== 'SIGNED_IN') {
-                    console.log('[Auth] Skip redundant fetch for same user')
+                // Prevent redundant refreshes if ID hasn't changed
+                if (lastUserId.current === session.user.id && (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+                    console.log('[Auth] Skip refresh for transient event:', event)
                     return
                 }
 
+                if (lastUserId.current !== session.user.id) {
+                    setIsDataLoaded(false)
+                }
                 lastUserId.current = session.user.id
                 if (mounted) {
                     const fetchedUser = await fetchUserProfile(session.user)
                     setUser(fetchedUser)
-                    console.log('[Auth] User session valid, fetching data...')
-                    fetchEvents(session.user.id)
-                    fetchMessages(session.user.id)
+                    console.log('[Auth] User recognized, ensuring data sync...')
+                    // Always try to fetch if it's a critical event or first time
+                    await refreshData()
                 }
-            } else if (mounted) {
+            } else if (event === 'SIGNED_OUT' && mounted) {
+                console.log('[Auth] User signed out, clearing data')
                 lastUserId.current = null
                 setUser(null)
-                if (events.length > 0 && !events[0].isMock) {
-                    setEvents(INITIAL_EVENTS)
-                    setProducts(INITIAL_PRODUCTS)
-                    setBrandProposals(INITIAL_PROPOSALS)
-                    setMessages(INITIAL_MESSAGES)
-                }
+                // Clear all state to initial/mock
+                setEvents(INITIAL_EVENTS)
+                setProducts(INITIAL_PRODUCTS)
+                setBrandProposals(INITIAL_PROPOSALS)
+                setMessages(INITIAL_MESSAGES)
+                localStorage.clear() // Clear all cache on logout
             }
             if (mounted) setIsAuthChecked(true)
         })
@@ -634,10 +640,16 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     .from('brand_proposals')
                     .select('*, brand_profile:profiles!brand_id(display_name), influencer_profile:profiles!influencer_id(display_name)')
 
-                // Fetch user role to check admin status
-                const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
+                // Fetch user role to check admin status (with fallback)
+                let userRole = 'influencer'
+                try {
+                    const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
+                    if (profile) userRole = profile.role
+                } catch (e) {
+                    console.warn('[fetchEvents] Could not determine role for query filter, defaulting to mutual visibility')
+                }
 
-                if (profile?.role !== 'admin') {
+                if (userRole !== 'admin') {
                     query = query.or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
                 }
 
@@ -669,8 +681,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     `)
                     .order('created_at', { ascending: false })
 
+                if (appError) {
+                    console.error('[fetchEvents] Error fetching campaign applications:', appError)
+                }
+
                 if (appData) {
-                    const role = profile?.role || 'influencer'
+                    const role = userRole || 'influencer'
                     const filteredApps = appData.filter((a: any) => {
                         if (!a.campaign) return false
                         if (role === 'admin') return true
@@ -745,6 +761,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             console.error('[fetchEvents] Fetch exception:', err)
         } finally {
             isFetchingEvents.current = false
+            setIsDataLoaded(true)
         }
     }, [user, supabase])
 
@@ -1668,7 +1685,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             notifications, sendNotification,
             messages, sendMessage,
             switchRole,
-            isLoading: !isInitialized || !isAuthChecked,
+            isLoading: !isInitialized || !isAuthChecked || (!!user && !isDataLoaded),
             resetData,
             refreshData,
             updateCampaignStatus,
