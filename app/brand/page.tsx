@@ -105,6 +105,7 @@ function BrandDashboardContent() {
     const [chatMessage, setChatMessage] = useState("")
     const [generatedContract, setGeneratedContract] = useState("")
     const [isGeneratingContract, setIsGeneratingContract] = useState(false)
+    const [isSendingContract, setIsSendingContract] = useState(false)
 
     const handleGenerateContract = async () => {
         if (!chatProposal || !user) return
@@ -168,13 +169,46 @@ function BrandDashboardContent() {
     const [proposeModalOpen, setProposeModalOpen] = useState(false)
     const [selectedInfluencer, setSelectedInfluencer] = useState<any>(null)
     const [offerProduct, setOfferProduct] = useState("")
-    const [productType, setProductType] = useState("gift")
+    const [productType, setProductType] = useState("gift") // gift, loan
     const [compensation, setCompensation] = useState("")
     const [hasIncentive, setHasIncentive] = useState(false)
     const [incentiveDetail, setIncentiveDetail] = useState("")
     const [contentType, setContentType] = useState("")
     const [message, setMessage] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+
+
+    const handleSendContract = async () => {
+        if (!chatProposal || !generatedContract || isSendingContract) return
+
+        if (!confirm("계약서를 발송하시겠습니까? 발송 후에는 수정이 불가능합니다.")) return
+
+        setIsSendingContract(true)
+        try {
+            // Update proposal with contract data
+            await updateBrandProposal(chatProposal.id, {
+                contract_content: generatedContract,
+                contract_status: 'sent'
+            })
+
+            // Update local state for immediate feedback
+            setChatProposal(prev => ({ ...prev, contract_status: 'sent', contract_content: generatedContract }))
+
+            // Send system message
+            const receiverId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id
+            if (receiverId) {
+                await sendMessage(receiverId, "📄 [시스템] 표준 계약서가 발송되었습니다. [계약 관리] 탭에서 확인 후 서명해주세요.", undefined, chatProposal.id?.toString())
+            }
+
+            alert("계약서가 성공적으로 발송되었습니다.")
+        } catch (e) {
+            console.error("Contract send failed:", e)
+            alert("계약서 발송 중 오류가 발생했습니다.")
+        } finally {
+            setIsSendingContract(false)
+        }
+    }
     const [selectedCampaignId, setSelectedCampaignId] = useState<string | number | null>(null)
 
     // Product Upload State
@@ -1853,7 +1887,7 @@ function BrandDashboardContent() {
                                             <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 rotate-3">
                                                 <FileText className="h-10 w-10 text-primary" />
                                             </div>
-                                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">AI 협업 계약서 발송</h3>
+                                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">협업 전자 계약서</h3>
                                             <p className="text-slate-500 mt-3 max-w-md mx-auto leading-relaxed">대화 내용을 분석하여 법적 효력을 갖춘 표준 계약서 초안을 생성합니다.</p>
                                         </div>
 
@@ -1876,7 +1910,17 @@ function BrandDashboardContent() {
                                             </div>
 
                                             <div className="flex-1 p-8 bg-slate-50/80 rounded-3xl border border-slate-200 text-sm text-slate-700 leading-relaxed font-mono min-h-[300px] overflow-y-auto shadow-inner relative whitespace-pre-wrap selection:bg-primary/20">
-                                                {generatedContract || (
+                                                {generatedContract ? (
+                                                    <div>
+                                                        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
+                                                            <strong>Tip:</strong> 이 내용은 AI가 생성한 초안의 일부(요약)입니다. 전체 내용은 하단의 '전체 내용 본문 보기'를 통해 확인하세요.
+                                                        </div>
+                                                        {generatedContract.slice(0, 500)}...
+                                                        <div className="mt-4 text-center text-muted-foreground text-xs">
+                                                            (이하 생략)
+                                                        </div>
+                                                    </div>
+                                                ) : (
                                                     <div className="flex flex-col items-center justify-center h-full opacity-30 select-none">
                                                         <p className="text-lg font-bold">계약서 초안을 작성해주세요</p>
                                                         <p className="text-[11px] mt-1">상단의 자동 생성 버튼을 누르면 대화를 분석합니다.</p>
@@ -1899,11 +1943,11 @@ function BrandDashboardContent() {
                                         <div className="pt-8 mt-auto">
                                             <Button
                                                 className="w-full h-14 text-lg font-black bg-slate-900 hover:bg-black rounded-2xl shadow-xl transition-all active:scale-[0.98] group"
-                                                onClick={() => alert("표준 계약서가 크리에이터에게 발송되었습니다.")}
-                                                disabled={!generatedContract}
+                                                onClick={handleSendContract}
+                                                disabled={!generatedContract || isSendingContract || chatProposal?.contract_status === 'sent'}
                                             >
                                                 <Send className="mr-3 h-5 w-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                                작성된 계약서 크리에이터에게 발송하기
+                                                {chatProposal?.contract_status === 'sent' ? "이미 발송되었습니다" : isSendingContract ? "발송 중..." : "작성된 계약서 크리에이터에게 발송하기"}
                                             </Button>
                                             <p className="text-center text-[10px] text-slate-400 mt-4 font-medium uppercase tracking-widest">
                                                 Electronic Signature Powered by Crealab Secure™

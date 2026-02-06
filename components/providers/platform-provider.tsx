@@ -241,7 +241,7 @@ interface PlatformContextType {
     notifications: Notification[]
     sendNotification: (toUserId: string, message: string) => void
     messages: Message[]
-    updateBrandProposal: (id: string, status: string) => Promise<void>
+    updateBrandProposal: (id: string, updates: string | object) => Promise<void>
     sendMessage: (toUserId: string, content: string, proposalId?: string, brandProposalId?: string) => Promise<void>
     switchRole: (newRole: 'brand' | 'influencer') => Promise<void>
     isLoading: boolean
@@ -1367,20 +1367,22 @@ export function PlatformProvider({ children, initialSession }: { children: React
         setProposals(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     }
 
-    const updateBrandProposal = async (id: string, status: string) => {
+    const updateBrandProposal = async (id: string, updates: string | object) => {
         try {
+            const payload = typeof updates === 'string' ? { status: updates } : updates
+
             const { error } = await supabase
                 .from('brand_proposals')
-                .update({ status })
+                .update(payload)
                 .eq('id', id)
 
             if (error) throw error
 
             // Update local state
-            setBrandProposals(prev => prev.map(p => p.id === id ? { ...p, status } : p))
+            setBrandProposals(prev => prev.map(p => p.id === id ? { ...p, ...payload } : p))
         } catch (e) {
-            console.error("Failed to update proposal status:", e)
-            alert("상태 수정에 실패했습니다.")
+            console.error("Failed to update proposal:", e)
+            alert("수정에 실패했습니다.")
         }
     }
 

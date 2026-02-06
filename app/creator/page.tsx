@@ -141,6 +141,32 @@ function InfluencerDashboardContent() {
         ? (brandProposals?.filter((p: any) => p.event_id === selectedMomentId) || [])
         : []
 
+    const handleContractResponse = async (status: 'signed' | 'negotiating' | 'rejected') => {
+        if (!chatProposal) return
+
+        if (!confirm(status === 'signed' ? "계약서에 서명하시겠습니까?" : status === 'negotiating' ? "수정 요청을 보내시겠습니까?" : "거절하시겠습니까?")) return
+
+        try {
+            await updateBrandProposal(chatProposal.id, {
+                contract_status: status
+            })
+
+            // Local update
+            setChatProposal(prev => ({ ...prev, contract_status: status }))
+
+            // Notify brand
+            const msg = status === 'signed' ? "✅ 계약서에 서명했습니다! 콘텐츠 제작을 시작하겠습니다." :
+                status === 'negotiating' ? "📝 계약서 내용 수정을 요청했습니다. 확인 부탁드립니다." :
+                    "❌ 계약 제안을 거절했습니다."
+
+            await sendMessage(chatProposal.brand_id, msg, undefined, chatProposal.id)
+            alert("상태가 업데이트되었습니다.")
+        } catch (e) {
+            console.error("Contract update failed:", e)
+            alert("오류가 발생했습니다.")
+        }
+    }
+
     // Profile Edit States
     const [editName, setEditName] = useState("")
     const [editBio, setEditBio] = useState("")
@@ -1716,42 +1742,43 @@ function InfluencerDashboardContent() {
                                                 <p className="text-slate-500 mt-2">브랜드와 협의된 내용으로 작성된 계약서입니다.<br />꼼꼼히 확인 후 서명해주세요.</p>
                                             </div>
 
-                                            <div className="space-y-4 mb-8">
-                                                <div className="flex justify-between items-center px-1">
-                                                    <h4 className="text-sm font-bold text-slate-700">계약서 초안</h4>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-xs text-indigo-600 gap-1.5 h-7 hover:text-indigo-700 hover:bg-indigo-50"
-                                                        onClick={handleGenerateContract}
-                                                        disabled={isGeneratingContract}
-                                                    >
-                                                        {isGeneratingContract ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Settings className="h-3.5 w-3.5" />}
-                                                        AI로 대화 기반 초안 작성
-                                                    </Button>
-                                                </div>
-                                                <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed font-mono min-h-[200px] overflow-y-auto max-h-[400px] whitespace-pre-wrap">
-                                                    {generatedContract || (
-                                                        <>
-                                                            제 1조 [목적]<br />
-                                                            본 계약은 '갑'(브랜드)과 '을'(크리에이터)간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.<br />
-                                                            <br />
-                                                            제 2조 [원고료 및 지급]<br />
-                                                            1. '갑'은 '을'에게 콘텐츠 제작의 대가로 <strong>{chatProposal?.compensation_amount || '협의된 금액'}</strong>을 지급한다.<br />
-                                                            2. 지급 시기는 콘텐츠 업로드 후 30일 이내로 한다.
-                                                        </>
+                                            {chatProposal?.contract_status === 'sent' || chatProposal?.contract_status === 'signed' ? (
+                                                <div className="space-y-4 mb-8">
+                                                    <div className="flex justify-between items-center px-1">
+                                                        <h4 className="text-sm font-bold text-slate-700">
+                                                            계약서 내용
+                                                            {chatProposal.contract_status === 'signed' && <span className="ml-2 text-emerald-600">(서명 완료됨)</span>}
+                                                        </h4>
+                                                    </div>
+                                                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed font-mono min-h-[200px] overflow-y-auto max-h-[400px] whitespace-pre-wrap">
+                                                        {chatProposal.contract_content || "계약서 내용을 불러오는 중..."}
+                                                    </div>
+
+                                                    {chatProposal.contract_status !== 'signed' && (
+                                                        <div className="grid grid-cols-3 gap-3 mt-6">
+                                                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleContractResponse('rejected')}>
+                                                                거절
+                                                            </Button>
+                                                            <Button variant="outline" className="border-amber-200 text-amber-600 hover:bg-amber-50" onClick={() => handleContractResponse('negotiating')}>
+                                                                보류/수정요청
+                                                            </Button>
+                                                            <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => handleContractResponse('signed')}>
+                                                                동의 및 서명
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                    {chatProposal.contract_status === 'signed' && (
+                                                        <Button className="w-full" disabled variant="secondary">
+                                                            <BadgeCheck className="mr-2 h-4 w-4" /> 이미 서명된 계약서입니다
+                                                        </Button>
                                                     )}
                                                 </div>
-                                                <div className="text-center text-xs text-muted-foreground">
-                                                    <Button variant="link" size="sm" className="text-xs text-muted-foreground underline h-auto p-0" onClick={() => setIsFullContractOpen(true)}>
-                                                        (전체 계약서 내용 보기)
-                                                    </Button>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
+                                                    <p>아직 계약서가 도착하지 않았습니다.</p>
+                                                    <p className="text-xs mt-1">브랜드가 계약서를 발송하면 이곳에서 확인할 수 있습니다.</p>
                                                 </div>
-                                            </div>
-
-                                            <Button className="w-full h-12 text-lg font-bold bg-indigo-600 hover:bg-indigo-700">
-                                                <BadgeCheck className="mr-2 h-5 w-5" /> 위 내용에 동의하고 전자 서명하기
-                                            </Button>
+                                            )}
                                         </div>
                                     </TabsContent>
 
