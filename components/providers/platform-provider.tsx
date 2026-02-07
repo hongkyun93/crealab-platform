@@ -1344,6 +1344,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 selling_points: newProduct.points,
                 required_shots: newProduct.shots,
                 website_url: newProduct.link,
+                content_guide: newProduct.contentGuide,
+                format_guide: newProduct.formatGuide,
+                tags: newProduct.tags,
+                account_tag: newProduct.accountTag,
                 is_mock: user.isMock || false
             }
 
@@ -1375,6 +1379,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     points: data.selling_points,
                     shots: data.required_shots,
                     link: data.website_url,
+                    contentGuide: data.content_guide,
+                    formatGuide: data.format_guide,
+                    tags: data.tags,
+                    accountTag: data.account_tag,
                     createdAt: data.created_at,
                     isMock: user.isMock || false
                 }
@@ -1405,6 +1413,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (updates.points !== undefined) productData.selling_points = updates.points
             if (updates.shots !== undefined) productData.required_shots = updates.shots
             if (updates.link !== undefined) productData.website_url = updates.link
+            if (updates.contentGuide !== undefined) productData.content_guide = updates.contentGuide
+            if (updates.formatGuide !== undefined) productData.format_guide = updates.formatGuide
+            if (updates.tags !== undefined) productData.tags = updates.tags
+            if (updates.accountTag !== undefined) productData.account_tag = updates.accountTag
+
 
             // Simple update call with timeout
             const timeoutPromise = new Promise((_, reject) =>
