@@ -17,7 +17,7 @@ export default function Home() {
               className="rounded-2xl bg-muted px-4 py-1.5 text-sm font-medium"
               target="_blank"
             >
-              Creadypick의 새로운 소식 받기
+              CreadyPick의 새로운 소식 받기
             </Link>
             <h1 className="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent break-keep">
               광고는 타이밍! <br />
@@ -47,7 +47,7 @@ export default function Home() {
         <section id="features" className="container mx-auto space-y-6 bg-slate-50 py-8 dark:bg-transparent md:py-12 lg:py-24">
           <div className="mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center">
             <h2 className="font-heading text-3xl leading-[1.1] sm:text-3xl md:text-6xl">
-              왜 Creadypick 인가요?
+              왜 CreadyPick 인가요?
             </h2>
             <p className="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7 break-keep">
               우리는 크리에이터와 브랜드의 연결의 방식을 바꿨습니다. <br />

@@ -24,9 +24,25 @@ CREATE TABLE IF NOT EXISTS public.influencer_details (
   followers_count integer,
   tier text,
   tags text[],
+  price_video integer,
+  price_feed integer,
+  secondary_rights boolean DEFAULT false,
+  usage_rights_month integer,
+  usage_rights_price integer,
+  auto_dm_month integer,
+  auto_dm_price integer,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 ALTER TABLE public.influencer_details ENABLE ROW LEVEL SECURITY;
+
+-- Ensure columns exist if table already existed
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS price_video integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS price_feed integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS secondary_rights boolean DEFAULT false;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS usage_rights_month integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS usage_rights_price integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS auto_dm_month integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS auto_dm_price integer;
 
 DROP POLICY IF EXISTS "Influencer details viewable by everyone" ON influencer_details;
 DROP POLICY IF EXISTS "Influencers can update own details" ON influencer_details;

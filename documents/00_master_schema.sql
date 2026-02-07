@@ -45,8 +45,24 @@ CREATE TABLE IF NOT EXISTS public.influencer_details (
   followers_count integer,
   tier text,
   tags text[],
+  price_video integer, -- Short-form video price
+  price_feed integer, -- Feed post price
+  secondary_rights boolean DEFAULT false, -- Secondary usage rights availability
+  usage_rights_month integer, -- 2nd usage rights duration (months)
+  usage_rights_price integer, -- 2nd usage rights price
+  auto_dm_month integer, -- Auto DM duration (months)
+  auto_dm_price integer, -- Auto DM price
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Add missing columns for Rate Card
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS price_video integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS price_feed integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS secondary_rights boolean DEFAULT false;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS usage_rights_month integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS usage_rights_price integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS auto_dm_month integer;
+ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS auto_dm_price integer;
 
 -- 2.3 LIFE MOMENTS
 CREATE TABLE IF NOT EXISTS public.life_moments (
@@ -83,7 +99,13 @@ CREATE TABLE IF NOT EXISTS public.brand_products (
   created_at timestamp with time zone DEFAULT now() NOT NULL,
   updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
--- Add missing columns
+-- Add missing columns to brand_products (Safety measure for existing tables)
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS selling_points text;
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS required_shots text;
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS website_url text;
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS category text;
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS price integer DEFAULT 0;
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
 
 -- 2.5 CAMPAIGNS
@@ -127,6 +149,8 @@ CREATE TABLE IF NOT EXISTS public.influencer_events (
 -- Add missing columns
 ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS guide text;
 ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS schedule JSONB DEFAULT '{}'::jsonb;
 
 -- 2.7 BRAND PROPOSALS (Direct Offers)
 CREATE TABLE IF NOT EXISTS public.brand_proposals (
@@ -153,13 +177,17 @@ ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS brand_signature TEXT
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS influencer_signature TEXT;
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS brand_signed_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS influencer_signed_at TIMESTAMP WITH TIME ZONE;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS product_id uuid;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS product_id uuid REFERENCES public.brand_products(id);
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS product_url text; -- New
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS event_id uuid REFERENCES public.influencer_events(id) ON DELETE SET NULL;
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS shipping_name text;
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS shipping_phone text;
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS shipping_address text;
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS tracking_number text;
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS delivery_status text DEFAULT 'pending';
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS date_flexible boolean DEFAULT false;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS desired_date date;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS video_guide boolean DEFAULT false;
 
 -- 2.8 PROPOSALS (Applications)
 CREATE TABLE IF NOT EXISTS public.proposals (
@@ -201,6 +229,18 @@ ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS brand_proposal_id uuid REFE
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.messages ALTER COLUMN proposal_id DROP NOT NULL; -- Ensure proposal_id is optional
 
+
+-- 2.10 NOTIFICATIONS
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  recipient_id uuid REFERENCES public.profiles(id) NOT NULL,
+  sender_id uuid REFERENCES public.profiles(id),
+  type text NOT NULL, -- 'proposal_accepted', 'condition_confirmed', 'new_message', etc.
+  content text NOT NULL,
+  reference_id uuid, -- Link to proposal_id or brand_proposal_id
+  is_read boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
 -- ==========================================
 -- 3. FUNCTIONS & TRIGGERS
@@ -322,6 +362,14 @@ CREATE POLICY "Messages viewable by sender and receiver" ON messages FOR SELECT 
 CREATE POLICY "Users can send messages" ON messages FOR INSERT WITH CHECK ( auth.uid() = sender_id );
 CREATE POLICY "Users can update messages" ON messages FOR UPDATE USING ( auth.uid() = sender_id OR auth.uid() = receiver_id );
 
+-- 4.9 Notifications
+DROP POLICY IF EXISTS "Users can view their own notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can insert notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can update their own notifications" ON notifications;
+CREATE POLICY "Users can view their own notifications" ON notifications FOR SELECT USING ( auth.uid() = recipient_id );
+CREATE POLICY "Users can insert notifications" ON notifications FOR INSERT WITH CHECK ( true ); -- Allow sending to others
+CREATE POLICY "Users can update their own notifications" ON notifications FOR UPDATE USING ( auth.uid() = recipient_id );
+
 
 -- ==========================================
 -- 5. STORAGE BUCKETS
@@ -412,6 +460,15 @@ ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_status 
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_date TIMESTAMP WITH TIME ZONE;
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_version NUMERIC(3,1) DEFAULT 1.0;
 
+-- 7.4 Mutual Condition Confirmation Fields (Added via Agent)
+-- For Direct Offers
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS brand_condition_confirmed BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS influencer_condition_confirmed BOOLEAN DEFAULT FALSE;
+
+-- For Campaign Applications
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS brand_condition_confirmed BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS influencer_condition_confirmed BOOLEAN DEFAULT FALSE;
+
 -- Notify PostgREST to reload the schema cache
 NOTIFY pgrst, 'reload schema';
 
@@ -450,5 +507,9 @@ BEGIN
     
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'profiles') THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'notifications') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
     END IF;
 END $$;

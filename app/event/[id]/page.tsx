@@ -3,44 +3,126 @@
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, User, BadgeCheck, MessageCircle, Share2, MapPin, Package, Send, SearchX } from "lucide-react"
+import { ArrowLeft, Calendar, User, BadgeCheck, MessageCircle, Share2, MapPin, Package, Send, SearchX, Loader2, Lock } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { usePlatform } from "@/components/providers/platform-provider"
 import { useEffect, useState } from "react"
 import { InfluencerEvent } from "@/components/providers/platform-provider"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+import { ko } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
 export default function EventDetailPage() {
     const params = useParams()
     const router = useRouter()
-    const { events, user, sendNotification, supabase } = usePlatform()
+    const { events, user, sendNotification, supabase, products } = usePlatform()
     const [event, setEvent] = useState<InfluencerEvent | null>(null)
     const [showProposalDialog, setShowProposalDialog] = useState(false)
 
     // Proposal form state
     const [productName, setProductName] = useState("")
+    const [selectedProduct, setSelectedProduct] = useState<any>(null)
+    const [productUrl, setProductUrl] = useState("")
     const [productType, setProductType] = useState<"gift" | "loan">("gift")
     const [compensationAmount, setCompensationAmount] = useState("")
     const [hasIncentive, setHasIncentive] = useState(false)
     const [incentiveDetail, setIncentiveDetail] = useState("")
-    const [contentType, setContentType] = useState("")
+    const [selectedContentTypes, setSelectedContentTypes] = useState<string[]>([])
+    const [customContentType, setCustomContentType] = useState("")
+    const [desiredDate, setDesiredDate] = useState<Date>()
+    const [dateFlexible, setDateFlexible] = useState(false)
     const [proposalMessage, setProposalMessage] = useState("")
+    const [videoGuide, setVideoGuide] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isLoadingEvent, setIsLoadingEvent] = useState(false)
 
     useEffect(() => {
-        if (params.id) {
-            const found = events.find(e => String(e.id) === String(params.id))
-            if (found) {
-                setEvent(found)
+        const loadEvent = async () => {
+            if (!params.id || params.id === 'default') return
+
+            // 1. Try to find in context first
+            const fromContext = events.find(e => String(e.id) === String(params.id))
+
+            let targetEvent: InfluencerEvent | null | undefined = fromContext
+
+            // 2. If not in context, fetch from DB
+            if (!targetEvent) {
+                setIsLoadingEvent(true)
+                try {
+                    const { data: e, error } = await supabase
+                        .from('influencer_events')
+                        .select(`
+                            *,
+                            profiles:influencer_id(
+                                display_name,
+                                avatar_url,
+                                role,
+                                influencer_details(*)
+                            )
+                        `)
+                        .eq('id', params.id)
+                        .single()
+
+                    if (e) {
+                        const profile = e.profiles;
+                        const details = profile?.influencer_details ? (Array.isArray(profile.influencer_details) ? profile.influencer_details[0] : profile.influencer_details) : null;
+
+                        targetEvent = {
+                            id: e.id,
+                            influencer: profile?.display_name || "Unknown",
+                            influencerId: e.influencer_id,
+                            handle: details?.instagram_handle || "",
+                            avatar: profile?.avatar_url || "",
+                            category: e.category,
+                            event: e.title,
+                            date: new Date(e.created_at).toISOString().split('T')[0],
+                            description: e.description,
+                            tags: e.tags || [],
+                            verified: e.is_verified || false,
+                            followers: details?.followers_count || 0,
+                            priceVideo: details?.price_video || 0,
+                            targetProduct: e.target_product || "",
+                            eventDate: e.event_date || "",
+                            postingDate: e.posting_date || "",
+                            guide: e.guide || "",
+                            status: e.status || ((e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'recruiting'),
+                            isPrivate: e.is_private,
+                            schedule: e.schedule
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to load event directly:", err)
+                } finally {
+                    setIsLoadingEvent(false)
+                }
+            }
+
+            // 3. Update state
+            if (targetEvent) {
+                setEvent(targetEvent)
             }
         }
-    }, [params.id, events])
+
+        loadEvent()
+    }, [params.id, events, supabase])
 
     const handlePropose = () => {
         if (!user) {
@@ -50,7 +132,10 @@ export default function EventDetailPage() {
         setShowProposalDialog(true)
     }
 
-    const handleSubmitProposal = async () => {
+    const handleSubmitProposal = async (e?: React.MouseEvent) => {
+        // Prevent default form submission if any
+        if (e) e.preventDefault()
+
         // Prevent duplicate submissions
         if (isSubmitting) return
 
@@ -63,52 +148,78 @@ export default function EventDetailPage() {
 
         setIsSubmitting(true)
         try {
-            const { data, error } = await supabase
-                .from('brand_proposals')
-                .insert({
-                    brand_id: user.id,
-                    influencer_id: event.influencerId,
-                    product_name: productName,
-                    product_type: productType,
-                    compensation_amount: compensationAmount || null,
-                    has_incentive: hasIncentive,
-                    incentive_detail: hasIncentive ? incentiveDetail : null,
-                    content_type: contentType || null,
-                    message: proposalMessage,
-                    status: 'offered'
-                })
+            // Timeout after 10 seconds
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timed out')), 10000)
+            )
+
+            const { data, error } = await Promise.race([
+                supabase
+                    .from('brand_proposals')
+                    .insert({
+                        brand_id: user.id,
+                        influencer_id: event.influencerId,
+                        product_name: productName,
+                        product_type: productType,
+                        compensation_amount: compensationAmount || null,
+                        has_incentive: hasIncentive,
+                        incentive_detail: hasIncentive ? incentiveDetail : null,
+                        content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ') || null,
+                        desired_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+                        date_flexible: dateFlexible,
+                        message: proposalMessage,
+                        video_guide: videoGuide,
+                        product_id: selectedProduct?.id || null, // Ensure product_id is set
+                        product_url: productUrl || null,        // Ensure product_url is set
+                        status: 'offered'
+                    })
+                    .select()
+                    .single(),
+                timeoutPromise
+            ]) as any
 
             if (error) {
-                console.error('Error creating proposal:', error)
-                alert('제안서 저장 중 오류가 발생했습니다.')
+                console.error('Error creating proposal (Full):', error)
+                console.error('Error Message:', error.message)
+                console.error('Error Details:', error.details)
+                console.error('Error Hint:', error.hint)
+                alert(`제안서 저장 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`)
                 return
             }
 
-
-            if (event.influencerId) {
-                sendNotification(
-                    event.influencerId,
-                    `[${user.name}]님이 협업 제안을 보냈습니다!`
-                )
-            }
-
+            // Success
             alert("제안서가 성공적으로 발송되었습니다!")
             setShowProposalDialog(false)
 
             // Reset form
             setProductName("")
+            setProductType("gift")
             setCompensationAmount("")
             setHasIncentive(false)
             setIncentiveDetail("")
-            setContentType("")
+            setCustomContentType("")
+            setSelectedContentTypes([])
             setProposalMessage("")
 
         } catch (error) {
-            console.error('Error submitting proposal:', error)
-            alert('제안서 발송 중 오류가 발생했습니다.')
+            console.error("Failed to submit proposal:", error)
+            alert("제안서 발송 중 예기치 못한 오류가 발생했습니다.")
         } finally {
             setIsSubmitting(false)
         }
+    }
+
+
+
+    if (isLoadingEvent) {
+        return (
+            <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">모먼트 정보를 불러오는 중입니다...</p>
+                </div>
+            </div>
+        )
     }
 
     if (!event) {
@@ -247,6 +358,80 @@ export default function EventDetailPage() {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Rate Card (New) */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <BadgeCheck className="h-5 w-5 text-emerald-600" />
+                                    예상 단가표 <span className="text-xs font-normal text-muted-foreground ml-1">(Rate Card)</span>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4 relative">
+                                {/* Lock Overlay or just visual blur */}
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center pb-2 border-b border-dashed">
+                                        <span className="text-sm font-medium text-muted-foreground">숏폼 영상 (Reels)</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <Lock className="h-3 w-3 text-muted-foreground/70" />
+                                            <span className="font-bold text-emerald-700 blur-[6px] select-none hover:blur-sm transition-all text-sm">
+                                                {/* @ts-ignore */}
+                                                {event.priceVideo ? `₩${event.priceVideo.toLocaleString()}` : '협의 필요'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center pb-2 border-b border-dashed">
+                                        <span className="text-sm font-medium text-muted-foreground">이미지 (Feed)</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <Lock className="h-3 w-3 text-muted-foreground/70" />
+                                            <span className="font-bold text-emerald-700 blur-[6px] select-none hover:blur-sm transition-all text-sm">
+                                                {/* @ts-ignore */}
+                                                {event.priceFeed ? `₩${event.priceFeed.toLocaleString()}` : '협의 필요'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center pb-2 border-b border-dashed">
+                                        <span className="text-sm font-medium text-muted-foreground">2차 활용 권한</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <Lock className="h-3 w-3 text-muted-foreground/70" />
+                                            <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none hover:blur-sm transition-all">
+                                                {/* @ts-ignore */}
+                                                {event.usageRightsPrice ? (
+                                                    <>{/* @ts-ignore */}
+                                                        {event.usageRightsMonth}개월 / ₩{event.usageRightsPrice.toLocaleString()}
+                                                    </>
+                                                ) : (
+                                                    '협의 필요'
+                                                )}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-muted-foreground">자동 DM (Auto Reply)</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <Lock className="h-3 w-3 text-muted-foreground/70" />
+                                            <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none hover:blur-sm transition-all">
+                                                {/* @ts-ignore */}
+                                                {event.autoDmPrice ? (
+                                                    <>{/* @ts-ignore */}
+                                                        {event.autoDmMonth}개월 / ₩{event.autoDmPrice.toLocaleString()}
+                                                    </>
+                                                ) : (
+                                                    '협의 필요'
+                                                )}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-muted/50 rounded-md border border-dashed flex items-start gap-2">
+                                    <Lock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                    <p className="text-xs text-muted-foreground">
+                                        <strong>단가표 비공개 보호</strong><br />
+                                        정확한 단가는 협업 제안이 수락되어 <strong>워크스페이스가 생성된 후</strong> 공개됩니다.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </main>
@@ -265,18 +450,54 @@ export default function EventDetailPage() {
                         {/* Product Name */}
                         <div className="space-y-2">
                             <Label htmlFor="productName">제품명 *</Label>
-                            <Input
-                                id="productName"
-                                value={productName}
-                                onChange={(e) => setProductName(e.target.value)}
-                                placeholder="예: 프리미엄 스킨케어 세트"
-                            />
+                            <div className="flex gap-2">
+                                <Input
+                                    id="productName"
+                                    value={productName}
+                                    onChange={(e) => setProductName(e.target.value)}
+                                    placeholder="예: 프리미엄 스킨케어 세트"
+                                />
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="icon" title="내 제품 불러오기">
+                                            <Package className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-[300px]">
+                                        <DropdownMenuLabel>내 제품 선택</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {products.filter(p => !user || p.brandId === user.id).map(p => (
+                                            <DropdownMenuItem
+                                                key={p.id}
+                                                className="cursor-pointer flex flex-col items-start gap-1"
+                                                onClick={() => {
+                                                    setProductName(p.name)
+                                                    setSelectedProduct(p)
+                                                    setProductUrl(p.link || "")
+                                                }}
+                                            >
+                                                <span className="font-bold">{p.name}</span>
+                                                <span className="text-xs text-muted-foreground line-clamp-1">{p.name}</span>
+                                            </DropdownMenuItem>
+                                        ))}
+                                        {products.filter(p => !user || p.brandId === user.id).length === 0 && (
+                                            <div className="p-4 text-center text-sm text-muted-foreground">
+                                                등록된 제품이 없습니다.
+                                            </div>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
                         </div>
 
-                        {/* Product Type */}
+                        {/* Product Type (Inline) */}
                         <div className="space-y-2">
                             <Label>제품 제공 방식 *</Label>
-                            <RadioGroup value={productType} onValueChange={(v) => setProductType(v as "gift" | "loan")}>
+                            <RadioGroup
+                                value={productType}
+                                onValueChange={(v) => setProductType(v as "gift" | "loan")}
+                                className="flex flex-row gap-6"
+                            >
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="gift" id="gift" />
                                     <Label htmlFor="gift" className="font-normal cursor-pointer">증정 (제품 제공)</Label>
@@ -284,6 +505,26 @@ export default function EventDetailPage() {
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="loan" id="loan" />
                                     <Label htmlFor="loan" className="font-normal cursor-pointer">대여 (반납 필요)</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+
+                        {/* Video Guide (New, Inline) */}
+                        <div className="space-y-2">
+                            <Label>영상 가이드 *</Label>
+                            <RadioGroup
+                                value={videoGuide ? "yes" : "no"}
+                                // @ts-ignore
+                                onValueChange={(v) => setVideoGuide(v === "yes")}
+                                className="flex flex-row gap-6"
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="yes" id="guide_yes" />
+                                    <Label htmlFor="guide_yes" className="font-normal cursor-pointer">있음</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="no" id="guide_no" />
+                                    <Label htmlFor="guide_no" className="font-normal cursor-pointer">없음</Label>
                                 </div>
                             </RadioGroup>
                         </div>
@@ -321,15 +562,88 @@ export default function EventDetailPage() {
                             )}
                         </div>
 
-                        {/* Content Type */}
+                        {/* Content Type (Multi-select) */}
+                        <div className="space-y-3">
+                            <Label>희망 콘텐츠 형식 (중복 선택 가능)</Label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {['릴스 (Reels)', '숏츠 (Shorts)', '틱톡 (TikTok)'].map((type) => (
+                                    <div key={type} className="flex items-center space-x-2 border rounded-md p-2 hover:bg-muted/50 transition-colors">
+                                        <Checkbox
+                                            id={type}
+                                            checked={selectedContentTypes.includes(type)}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setSelectedContentTypes([...selectedContentTypes, type])
+                                                } else {
+                                                    setSelectedContentTypes(selectedContentTypes.filter(t => t !== type))
+                                                }
+                                            }}
+                                        />
+                                        <Label htmlFor={type} className="font-normal cursor-pointer text-xs w-full">{type}</Label>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="pt-1">
+                                <Label htmlFor="customContentType" className="text-xs text-muted-foreground mb-1 block">기타 (직접 입력)</Label>
+                                <Input
+                                    id="customContentType"
+                                    value={customContentType}
+                                    onChange={(e) => setCustomContentType(e.target.value)}
+                                    placeholder="예: 유튜브 브랜디드 콘텐츠, 블로그 리뷰 등"
+                                    className="h-9 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Desired Date & Flexible (New) */}
                         <div className="space-y-2">
-                            <Label htmlFor="contentType">희망 콘텐츠 형식 (선택)</Label>
-                            <Input
-                                id="contentType"
-                                value={contentType}
-                                onChange={(e) => setContentType(e.target.value)}
-                                placeholder="예: 인스타그램 릴스, 유튜브 쇼츠"
-                            />
+                            <Label>희망 업로드일 (선택)</Label>
+                            <div className="flex items-center gap-2">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-[240px] pl-3 text-left font-normal",
+                                                !desiredDate && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {desiredDate ? (
+                                                format(desiredDate, "yyyy-MM-dd", { locale: ko })
+                                            ) : (
+                                                <span>날짜 선택</span>
+                                            )}
+                                            <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <CalendarComponent
+                                            mode="single"
+                                            selected={desiredDate}
+                                            onSelect={setDesiredDate}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+
+                                <Button
+                                    type="button"
+                                    variant={dateFlexible ? "default" : "outline"}
+                                    onClick={() => setDateFlexible(!dateFlexible)}
+                                    className={cn(
+                                        "gap-1",
+                                        dateFlexible && "bg-primary text-primary-foreground hover:bg-primary/90"
+                                    )}
+                                >
+                                    {dateFlexible && <BadgeCheck className="h-4 w-4" />}
+                                    (쯔음)
+                                </Button>
+                            </div>
+                            {dateFlexible && (
+                                <p className="text-xs text-muted-foreground text-primary">
+                                    * 희망일 전후로 유동적인 조정이 가능합니다.
+                                </p>
+                            )}
                         </div>
 
                         {/* Message */}
@@ -349,12 +663,25 @@ export default function EventDetailPage() {
                         <Button variant="outline" onClick={() => setShowProposalDialog(false)} disabled={isSubmitting}>
                             취소
                         </Button>
-                        <Button onClick={handleSubmitProposal} disabled={isSubmitting}>
+                        <Button onClick={handleSubmitProposal} disabled={isSubmitting} type="button">
                             {isSubmitting ? "발송 중..." : "제안서 발송"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {/* Security Watermark (Only visible if logged in) */}
+            {user && (
+                <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden flex flex-wrap content-center justify-center opacity-[0.03] select-none">
+                    {Array.from({ length: 20 }).map((_, i) => (
+                        <div key={i} className="w-[300px] h-[300px] flex items-center justify-center -rotate-45">
+                            <span className="text-xl font-black text-slate-900 whitespace-nowrap">
+                                {user.name} ({user.handle || user.type})<br />
+                                CreadyPick Security
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }

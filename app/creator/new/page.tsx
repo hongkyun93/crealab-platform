@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Calendar, Plus, Package, Send, Sparkles, Loader2 } from "lucide-react"
+import { ArrowLeft, Calendar, Plus, Package, Send, Sparkles, Loader2, Lock, Globe } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -39,6 +39,53 @@ export default function NewEventPage() {
     const [description, setDescription] = useState("")
     const [guide, setGuide] = useState("")
     const [customTags, setCustomTags] = useState("")
+    const [isPrivate, setIsPrivate] = useState(false)
+
+    // Schedule Template State
+    const [showSchedule, setShowSchedule] = useState(false)
+    const [schedule, setSchedule] = useState({
+        product_delivery: "",
+        draft_submission: "",
+        shooting: "",
+        feedback: "",
+        upload: ""
+    })
+
+    const applyTemplate = () => {
+        if (!eventMonth) {
+            alert("먼저 모먼트 일정을 선택해주세요!")
+            return
+        }
+
+        const year = parseInt(eventYear)
+        const monthIndex = MONTHS.indexOf(eventMonth)
+        // Default to current year if parsing fails, though it shouldn't with select
+
+        // Base date: 1st of selected month
+        const baseDate = new Date(year, monthIndex, 1)
+
+        const formatDate = (date: Date) => {
+            const y = date.getFullYear()
+            const m = String(date.getMonth() + 1).padStart(2, '0')
+            const d = String(date.getDate()).padStart(2, '0')
+            return `${y}-${m}-${d}`
+        }
+
+        const addDays = (d: Date, days: number) => {
+            const newDate = new Date(d)
+            newDate.setDate(d.getDate() + days)
+            return newDate
+        }
+
+        setSchedule({
+            product_delivery: formatDate(addDays(baseDate, 5)),
+            draft_submission: formatDate(addDays(baseDate, 12)),
+            shooting: formatDate(addDays(baseDate, 15)),
+            feedback: formatDate(addDays(baseDate, 18)),
+            upload: formatDate(addDays(baseDate, 25))
+        })
+        setShowSchedule(true)
+    }
 
     const [isGenerating, setIsGenerating] = useState(false)
 
@@ -118,7 +165,9 @@ export default function NewEventPage() {
             tags: tags,
             targetProduct: targetProduct || "미정",
             eventDate: `${eventYear}년 ${eventMonth}`,
-            postingDate: `${postingYear}년 ${postingMonth}`
+            postingDate: `${postingYear}년 ${postingMonth}`,
+            isPrivate: isPrivate,
+            schedule: schedule
         })
 
         if (success) {
@@ -323,14 +372,120 @@ export default function NewEventPage() {
                             </p>
                         </div>
 
-                        <div className="flex justify-end gap-4 pt-4">
-                            <Button variant="outline" asChild>
-                                <Link href="/creator">취소</Link>
-                            </Button>
-                            <Button size="lg" className="w-full md:w-auto" onClick={handleSubmit}>
-                                <Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기
+                        <div className="space-y-3">
+                            <Label>공개 범위 설정</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div
+                                    className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${!isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                                    onClick={() => setIsPrivate(false)}
+                                >
+                                    <Globe className={`h-5 w-5 mt-0.5 ${!isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                                    <div>
+                                        <div className={`font-medium ${!isPrivate ? "text-primary" : "text-foreground"}`}>전체 공개 (Public)</div>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            브랜드가 내 모먼트를 검색하고 제안을 보낼 수 있습니다.
+                                        </p>
+                                    </div>
+                                    {!isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
+                                </div>
+
+                                <div
+                                    className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                                    onClick={() => setIsPrivate(true)}
+                                >
+                                    <Lock className={`h-5 w-5 mt-0.5 ${isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                                    <div>
+                                        <div className={`font-medium ${isPrivate ? "text-primary" : "text-foreground"}`}>나만 보기 (Private)</div>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            다른 사람에게 노출되지 않으며, 개인 일정 관리용으로 저장됩니다.
+                                        </p>
+                                    </div>
+                                    {isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    {/* Schedule Template Section */}
+                    <div className="space-y-4 border-t pt-6">
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                                <Label className="text-base">상세 일정 관리</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    브랜드와의 원활한 협업을 위해 주요 마일스톤을 미리 계획해보세요.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={applyTemplate}
+                                className="gap-2 text-primary border-primary/20 hover:bg-primary/5"
+                            >
+                                <Sparkles className="h-3 w-3" />
+                                일정 템플릿 자동 적용
                             </Button>
                         </div>
+
+                        {(showSchedule || schedule.product_delivery) && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 bg-slate-50 p-4 rounded-lg border">
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-muted-foreground">📦 제품 배송/수령</Label>
+                                    <Input
+                                        type="date"
+                                        value={schedule.product_delivery}
+                                        onChange={(e) => setSchedule({ ...schedule, product_delivery: e.target.value })}
+                                        className="bg-white"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-muted-foreground">📝 기획안(초안) 제출</Label>
+                                    <Input
+                                        type="date"
+                                        value={schedule.draft_submission}
+                                        onChange={(e) => setSchedule({ ...schedule, draft_submission: e.target.value })}
+                                        className="bg-white"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-muted-foreground">📸 촬영 진행</Label>
+                                    <Input
+                                        type="date"
+                                        value={schedule.shooting}
+                                        onChange={(e) => setSchedule({ ...schedule, shooting: e.target.value })}
+                                        className="bg-white"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-muted-foreground">📢 피드백 반영</Label>
+                                    <Input
+                                        type="date"
+                                        value={schedule.feedback}
+                                        onChange={(e) => setSchedule({ ...schedule, feedback: e.target.value })}
+                                        className="bg-white"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-muted-foreground font-bold text-primary">🚀 최종 업로드</Label>
+                                    <Input
+                                        type="date"
+                                        value={schedule.upload}
+                                        onChange={(e) => setSchedule({ ...schedule, upload: e.target.value })}
+                                        className="bg-white border-primary/50 ring-primary/20"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end gap-4 pt-4">
+                        <Button variant="outline" asChild>
+                            <Link href="/creator">취소</Link>
+                        </Button>
+                        <Button size="lg" className="w-full md:w-auto" onClick={handleSubmit}>
+                            <Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기
+                        </Button>
                     </div>
                 </div>
             </main>

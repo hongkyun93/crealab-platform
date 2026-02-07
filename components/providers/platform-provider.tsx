@@ -17,14 +17,26 @@ export type User = {
     phone?: string
     address?: string
     isMock?: boolean
+
+    // Rate Card
+    priceVideo?: number
+    priceFeed?: number
+    secondaryRights?: number
+    usageRightsMonth?: number
+    usageRightsPrice?: number
+    autoDmMonth?: number
+    autoDmPrice?: number
 }
 
 export type Notification = {
-    id: number
-    toUserId: string
-    message: string
-    date: string
-    read: boolean
+    id: string
+    recipient_id: string
+    sender_id?: string
+    type: string
+    content: string
+    reference_id?: string
+    is_read: boolean
+    created_at: string
 }
 
 export type Campaign = {
@@ -51,6 +63,7 @@ export type InfluencerEvent = {
     influencerId?: string // Link to actual user ID
     handle: string
     avatar: string
+    priceVideo?: number
     category: string
     event: string // Mapped to 'title' in DB
     date: string // Created date (or event date? logic specific)
@@ -64,6 +77,14 @@ export type InfluencerEvent = {
     guide?: string
     status?: string // 'active' | 'completed' - 모먼트 상태
     isMock?: boolean
+    isPrivate?: boolean
+    schedule?: {
+        product_delivery?: string
+        draft_submission?: string
+        shooting?: string
+        feedback?: string
+        upload?: string
+    }
 }
 
 export type Product = {
@@ -149,11 +170,17 @@ export type BrandProposal = {
     completed_at?: string
 
     // Content Submission
+    // Content Submission
     content_submission_url?: string
     content_submission_file_url?: string
     content_submission_status?: 'pending' | 'submitted' | 'approved' | 'rejected'
     content_submission_date?: string
     content_submission_version?: number
+
+    // Product Card
+    product_id?: string
+    product_url?: string
+    product?: any
 }
 
 
@@ -164,6 +191,12 @@ import { createClient } from "@/lib/supabase/client"
 
 export const MOCK_INFLUENCER_USER: User = {
     id: "guest_influencer",
+    // ... (lines 187-670 skipped for brevity in replacement, but I need to position correctly)
+    // I will use multiple chunks or a larger chunk.
+    // Actually I'll split into two replacements.
+    // First: Type definition.
+    // Then: Fetch query.
+
     name: "김수민",
     type: "influencer",
     handle: "@im_breath_ing",
@@ -240,7 +273,7 @@ interface PlatformContextType {
     deleteBrandProposal: (id: string) => Promise<void>
 
     notifications: Notification[]
-    sendNotification: (toUserId: string, message: string) => void
+    sendNotification: (toUserId: string, message: string, type?: string, referenceId?: string) => Promise<void>
     messages: Message[]
     updateBrandProposal: (id: string, updates: string | object) => Promise<boolean>
     sendMessage: (toUserId: string, content: string, proposalId?: string, brandProposalId?: string) => Promise<void>
@@ -305,13 +338,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     // Load from localStorage on client mount
     useEffect(() => {
-        const storedUser = localStorage.getItem("crealab_user")
-        const storedCampaigns = localStorage.getItem("crealab_campaigns")
-        const storedEvents = localStorage.getItem("crealab_events")
-        const storedProducts = localStorage.getItem("crealab_products")
-        const storedProposals = localStorage.getItem("crealab_proposals")
-        const storedNotifs = localStorage.getItem("crealab_notifications")
-        const storedMessages = localStorage.getItem("crealab_messages")
+        const storedUser = localStorage.getItem("creadypick_user")
+        const storedCampaigns = localStorage.getItem("creadypick_campaigns")
+        const storedEvents = localStorage.getItem("creadypick_events")
+        const storedProducts = localStorage.getItem("creadypick_products")
+        const storedProposals = localStorage.getItem("creadypick_proposals")
+        const storedNotifs = localStorage.getItem("creadypick_notifications")
+        const storedMessages = localStorage.getItem("creadypick_messages")
 
         if (storedUser) { try { setUser(JSON.parse(storedUser)) } catch (e) { } }
         if (storedCampaigns) { try { setCampaigns(JSON.parse(storedCampaigns)) } catch (e) { } }
@@ -328,40 +361,34 @@ export function PlatformProvider({ children, initialSession }: { children: React
     useEffect(() => {
         if (!isInitialized) return
         if (user) {
-            localStorage.setItem("crealab_user", JSON.stringify(user))
+            localStorage.setItem("creadypick_user", JSON.stringify(user))
         } else {
-            localStorage.removeItem("crealab_user")
+            localStorage.removeItem("creadypick_user")
         }
     }, [user, isInitialized])
 
     useEffect(() => {
-        if (!isInitialized) return
-        localStorage.setItem("crealab_campaigns", JSON.stringify(campaigns))
-    }, [campaigns, isInitialized])
+        localStorage.setItem("creadypick_campaigns", JSON.stringify(campaigns))
+    }, [campaigns])
 
     useEffect(() => {
-        if (!isInitialized) return
-        localStorage.setItem("crealab_events", JSON.stringify(events))
-    }, [events, isInitialized])
+        localStorage.setItem("creadypick_events", JSON.stringify(events))
+    }, [events])
 
     useEffect(() => {
-        if (!isInitialized) return
-        localStorage.setItem("crealab_products", JSON.stringify(products))
-    }, [products, isInitialized])
+        localStorage.setItem("creadypick_products", JSON.stringify(products))
+    }, [products])
 
     useEffect(() => {
-        if (!isInitialized) return
-        localStorage.setItem("crealab_proposals", JSON.stringify(proposals))
-    }, [proposals, isInitialized])
+        localStorage.setItem("creadypick_proposals", JSON.stringify(proposals))
+    }, [proposals])
 
     useEffect(() => {
-        if (!isInitialized) return
-        localStorage.setItem("crealab_notifications", JSON.stringify(notifications))
-    }, [notifications, isInitialized])
+        localStorage.setItem("creadypick_notifications", JSON.stringify(notifications))
+    }, [notifications])
 
     useEffect(() => {
-        if (!isInitialized) return
-        localStorage.setItem("crealab_messages", JSON.stringify(messages))
+        localStorage.setItem("creadypick_messages", JSON.stringify(messages))
     }, [messages, isInitialized])
 
     const login = async (id: string, pw: string): Promise<User> => {
@@ -425,7 +452,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
                 console.log('[fetchUserProfile] Extracted details:', {
                     hasDetails: !!details,
-                    tags: details?.tags
+                    tags: details?.tags,
+                    prices: {
+                        v: details?.price_video,
+                        f: details?.price_feed,
+                        ur_m: details?.usage_rights_month
+                    }
                 });
 
                 return {
@@ -439,7 +471,16 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     followers: details?.followers_count || 0,
                     tags: details?.tags || [],
                     phone: profile.phone,
-                    address: profile.address
+                    address: profile.address,
+
+                    // Map Rate Card Fields
+                    priceVideo: details?.price_video || 0,
+                    priceFeed: details?.price_feed || 0,
+                    secondaryRights: details?.secondary_rights || 0,
+                    usageRightsMonth: details?.usage_rights_month || 0,
+                    usageRightsPrice: details?.usage_rights_price || 0,
+                    autoDmMonth: details?.auto_dm_month || 0,
+                    autoDmPrice: details?.auto_dm_price || 0
                 }
             }
 
@@ -533,17 +574,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // 1. Fetch Events
             const { data: eventsData, error: eventsError } = await supabase
                 .from('influencer_events')
-                .select(`
-                    *,
-                    profiles:influencer_id(
-                        display_name,
-                        avatar_url,
-                        role
-                    )
-                `)
+                .select('*, profiles:influencer_id(*, influencer_details(*))')
                 .order('created_at', { ascending: false })
 
             if (eventsError) {
+                // @ts-ignore
+                if (eventsError.message?.includes('AbortError') || eventsError.name === 'AbortError' || eventsError.code === '20') {
+                    console.log('[fetchEvents] Request aborted (harmless)')
+                    return
+                }
                 console.error('[fetchEvents] Error fetching events:', JSON.stringify(eventsError, null, 2))
                 console.error('Error Object:', eventsError)
             }
@@ -551,16 +590,16 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (eventsData) {
                 console.log('[fetchEvents] Fetched events from DB:', eventsData.length, 'events')
                 const mappedEvents: InfluencerEvent[] = eventsData.map((e: any) => {
-                    const details = Array.isArray(e.profiles?.influencer_details)
-                        ? e.profiles?.influencer_details[0]
-                        : e.profiles?.influencer_details;
+                    const profile = e.profiles;
+                    // Supabase returns array for 1:M or if configured, but here it's likely single object or array
+                    const details = profile?.influencer_details ? (Array.isArray(profile.influencer_details) ? profile.influencer_details[0] : profile.influencer_details) : null;
 
                     return {
                         id: e.id,
-                        influencer: e.profiles?.display_name || "Unknown",
+                        influencer: profile?.display_name || "Unknown",
                         influencerId: e.influencer_id,
                         handle: details?.instagram_handle || "",
-                        avatar: e.profiles?.avatar_url || "",
+                        avatar: profile?.avatar_url || "",
                         category: e.category,
                         event: e.title,
                         date: new Date(e.created_at).toISOString().split('T')[0],
@@ -568,6 +607,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         tags: e.tags || [],
                         verified: e.is_verified || false,
                         followers: details?.followers_count || 0,
+                        priceVideo: details?.price_video || 0, // Mapped new field
                         targetProduct: e.target_product || "",
                         eventDate: e.event_date || "",
                         postingDate: e.posting_date || "",
@@ -632,7 +672,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (userId) {
                 let query = supabase
                     .from('brand_proposals')
-                    .select('*, brand_profile:profiles!brand_id(display_name), influencer_profile:profiles!influencer_id(display_name)')
+                    .select('*, brand_profile:profiles!brand_id(display_name), influencer_profile:profiles!influencer_id(display_name), product:brand_products!product_id(*)')
 
                 // Fetch user role to check admin status
                 const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
@@ -706,14 +746,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // 4. Fetch Brand Products
             const { data: productData, error: productError } = await supabase
                 .from('brand_products')
-                .select(`
-                    *,
-                    profiles!brand_id(display_name)
-                `)
+                .select('*')
                 .order('created_at', { ascending: false })
 
             if (productData) {
-                console.log('[fetchEvents] Fetched products:', productData.length)
+                console.log('[fetchEvents] Fetched products SUCCESS:', productData.length, 'items')
+                // console.log('[fetchEvents] First product RAW:', productData[0]) 
                 const mappedProducts: Product[] = productData.map((p: any) => ({
                     id: p.id,
                     brandId: p.brand_id,
@@ -741,8 +779,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     console.warn('The "brand_products" table is missing. Please run "documents/brand_products_schema.sql" in Supabase SQL editor.')
                 }
             }
-        } catch (err) {
-            console.error('[fetchEvents] Fetch exception:', err)
+        } catch (err: any) {
+            if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+                // Silent catch for benign cancellations
+            } else {
+                console.error('[fetchEvents] Fetch exception:', err)
+            }
         } finally {
             isFetchingEvents.current = false
         }
@@ -803,10 +845,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
                 // Silent
             } else {
-                console.error('[fetchMessages] Fetch exception:', {
-                    message: err?.message,
-                    stack: err?.stack
-                })
+                // @ts-ignore
+                if (err?.message?.includes('AbortError') || err?.name === 'AbortError' || err?.code === '20') {
+                    console.log('[fetchMessages] Request aborted (harmless)')
+                } else {
+                    console.error('[fetchMessages] Fetch exception:', {
+                        message: err?.message,
+                        stack: err?.stack
+                    })
+                }
             }
         } finally {
             isFetchingMessages.current = false
@@ -886,27 +933,31 @@ export function PlatformProvider({ children, initialSession }: { children: React
             setUser(null)
 
             // Clear localStorage to prevent stale data on next login
-            localStorage.removeItem("crealab_user")
-            localStorage.removeItem("crealab_events")
-            localStorage.removeItem("crealab_campaigns")
-            localStorage.removeItem("crealab_products")
-            localStorage.removeItem("crealab_proposals")
-            localStorage.removeItem("crealab_notifications")
-            localStorage.removeItem("crealab_messages")
+            localStorage.removeItem("creadypick_user")
+            localStorage.removeItem("creadypick_events")
+            localStorage.removeItem("creadypick_campaigns")
+            localStorage.removeItem("creadypick_products")
+            localStorage.removeItem("creadypick_proposals")
+            localStorage.removeItem("creadypick_notifications")
+            localStorage.removeItem("creadypick_messages")
 
-        } catch (error) {
-            console.error('[Logout] Failed to sign out:', error)
+        } catch (error: any) {
+            if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+                console.log('[Logout] Request aborted (benign)')
+            } else {
+                console.error('[Logout] Failed to sign out:', error)
+            }
             // Still clear local user state even if signOut fails
             setUser(null)
 
             // Clear localStorage even on error
-            localStorage.removeItem("crealab_user")
-            localStorage.removeItem("crealab_events")
-            localStorage.removeItem("crealab_campaigns")
-            localStorage.removeItem("crealab_products")
-            localStorage.removeItem("crealab_proposals")
-            localStorage.removeItem("crealab_notifications")
-            localStorage.removeItem("crealab_messages")
+            localStorage.removeItem("creadypick_user")
+            localStorage.removeItem("creadypick_events")
+            localStorage.removeItem("creadypick_campaigns")
+            localStorage.removeItem("creadypick_products")
+            localStorage.removeItem("creadypick_proposals")
+            localStorage.removeItem("creadypick_notifications")
+            localStorage.removeItem("creadypick_messages")
         }
     }
 
@@ -971,6 +1022,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     hasDetailsFields = true
                 }
 
+                // Add Rate Card Mapping
+                if (data.priceVideo !== undefined) { detailsUpdates.price_video = data.priceVideo; hasDetailsFields = true; }
+                if (data.priceFeed !== undefined) { detailsUpdates.price_feed = data.priceFeed; hasDetailsFields = true; }
+                if (data.secondaryRights !== undefined) { detailsUpdates.secondary_rights = !!data.secondaryRights; hasDetailsFields = true; }
+                if (data.usageRightsMonth !== undefined) { detailsUpdates.usage_rights_month = data.usageRightsMonth; hasDetailsFields = true; }
+                if (data.usageRightsPrice !== undefined) { detailsUpdates.usage_rights_price = data.usageRightsPrice; hasDetailsFields = true; }
+                if (data.autoDmMonth !== undefined) { detailsUpdates.auto_dm_month = data.autoDmMonth; hasDetailsFields = true; }
+                if (data.autoDmPrice !== undefined) { detailsUpdates.auto_dm_price = data.autoDmPrice; hasDetailsFields = true; }
+
                 console.log('[updateUser] Upserting influencer_details...', detailsUpdates)
 
                 const { data: _, error: detailsError } = await supabase
@@ -1023,10 +1083,19 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 console.log('[switchRole] Initializing/verifying influencer_details...')
                 const { error: detailsError } = await supabase
                     .from('influencer_details')
-                    .upsert({
-                        id: user.id,
+                    .update({
+                        instagram_handle: user.handle, // Assuming user.handle is available
+                        tags: user.tags, // Assuming user.tags is available
+                        price_video: user.priceVideo,
+                        price_feed: user.priceFeed,
+                        secondary_rights: user.secondaryRights,
+                        usage_rights_month: user.usageRightsMonth,
+                        usage_rights_price: user.usageRightsPrice,
+                        auto_dm_month: user.autoDmMonth,
+                        auto_dm_price: user.autoDmPrice,
                         updated_at: new Date().toISOString()
-                    }, { onConflict: 'id' })
+                    })
+                    .eq('id', user.id)
 
                 if (detailsError) {
                     console.warn('[switchRole] influencer_details upsert error (non-fatal):', detailsError)
@@ -1107,6 +1176,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     guide: newEvent.guide,
                     tags: newEvent.tags,
                     status: 'recruiting',
+                    is_private: newEvent.isPrivate || false,
+                    schedule: newEvent.schedule || {},
                     is_mock: user.isMock || false
                 })
                 .select()
@@ -1127,6 +1198,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     followers: user.followers || 0,
                     guide: newEvent.guide,
                     date: new Date().toISOString().split('T')[0],
+                    isPrivate: newEvent.isPrivate || false,
+                    schedule: newEvent.schedule || {},
                     isMock: user.isMock || false
                 }
                 setEvents([event, ...events])
@@ -1329,11 +1402,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (updates.shots !== undefined) productData.required_shots = updates.shots
             if (updates.link !== undefined) productData.website_url = updates.link
 
-            // Simple update call without waiting for return data (avoids RLS/Single issues)
-            const { error } = await supabase
-                .from('brand_products')
-                .update(productData)
-                .eq('id', id)
+            // Simple update call with timeout
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timed out')), 10000)
+            )
+
+            const { error } = await Promise.race([
+                supabase
+                    .from('brand_products')
+                    .update(productData)
+                    .eq('id', id),
+                timeoutPromise
+            ]) as any
 
             if (error) {
                 console.error('[updateProduct] DB Error:', error)
@@ -1346,7 +1426,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             return { ...updates, id } as Product // Return constructed object
         } catch (e: any) {
             console.error("[updateProduct] Exception:", e)
-            alert(`제품 수정 실패: ${e.message || "알 수 없는 오류"}`)
+            // alert(`제품 수정 실패: ${e.message || "알 수 없는 오류"}`) // Removed to avoid double alert (handled in component)
             throw e
         }
     }
@@ -1458,15 +1538,38 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const sendNotification = (toUserId: string, message: string) => {
-        const newNotif: Notification = {
-            id: Date.now(),
-            toUserId,
-            message,
-            date: new Date().toISOString().split("T")[0],
-            read: false
+    const fetchNotifications = React.useCallback(async (userId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('recipient_id', userId)
+                .order('created_at', { ascending: false })
+
+            if (error) throw error
+            setNotifications(data || [])
+        } catch (e) {
+            console.error("Failed to fetch notifications:", e)
         }
-        setNotifications(prev => [newNotif, ...prev])
+    }, [supabase])
+
+    const sendNotification = async (toUserId: string, message: string, type: string = 'system', referenceId?: string) => {
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .insert({
+                    recipient_id: toUserId,
+                    sender_id: user?.id, // Optional, can be null for system messages
+                    content: message,
+                    type: type,
+                    reference_id: referenceId,
+                    is_read: false
+                })
+
+            if (error) throw error
+        } catch (e) {
+            console.error("Failed to send notification:", e)
+        }
     }
     const createBrandProposal = async (proposalData: any) => {
         if (!user) return
@@ -1547,19 +1650,19 @@ export function PlatformProvider({ children, initialSession }: { children: React
         setMessages([])
 
         // Clear LocalStorage (except user to keep login)
-        // localStorage.removeItem("crealab_user")
-        localStorage.removeItem("crealab_campaigns")
-        localStorage.removeItem("crealab_events")
-        localStorage.removeItem("crealab_products")
-        localStorage.removeItem("crealab_proposals")
-        localStorage.removeItem("crealab_notifications")
-        localStorage.removeItem("crealab_messages")
+        // localStorage.removeItem("creadypick_user")
+        localStorage.removeItem("creadypick_campaigns")
+        localStorage.removeItem("creadypick_events")
+        localStorage.removeItem("creadypick_products")
+        localStorage.removeItem("creadypick_proposals")
+        localStorage.removeItem("creadypick_notifications")
+        localStorage.removeItem("creadypick_messages")
 
         alert("데이터가 초기화되었습니다.")
         fetchEvents(user?.id) // Attempt refetch
     }
 
-    const refreshData = async () => {
+    const refreshData = React.useCallback(async () => {
         if (user?.id) {
             console.log("Refreshing data...")
             isFetchingEvents.current = false
@@ -1569,7 +1672,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 fetchMessages(user.id)
             ])
         }
-    }
+    }, [user, supabase, fetchEvents, fetchMessages])
 
     const updateCampaignStatus = async (id: string, status: 'active' | 'closed') => {
         try {
@@ -1617,6 +1720,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'brand_products' },
                 () => { console.log('[Realtime] Product change detected'); refreshData(); }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}` },
+                () => { console.log('[Realtime] Notification change detected'); fetchNotifications(user.id); }
             )
             .on(
                 'postgres_changes',
