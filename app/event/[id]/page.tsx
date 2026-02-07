@@ -167,7 +167,13 @@ ${u.name}의 담당자입니다.
 
         setIsSubmitting(true)
         try {
-            const { data, error } = await supabase
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 15000)
+            })
+
+            console.log("Submitting proposal to DB...")
+            const dbPromise = supabase
                 .from('brand_proposals')
                 .insert({
                     brand_id: user.id,
@@ -182,12 +188,16 @@ ${u.name}의 담당자입니다.
                     date_flexible: dateFlexible,
                     message: proposalMessage,
                     video_guide: videoGuide,
-                    product_id: selectedProduct?.id || null, // Ensure product_id is set
-                    product_url: productUrl || null,        // Ensure product_url is set
+                    product_id: selectedProduct?.id || null,
+                    product_url: productUrl || null,
                     status: 'offered'
                 })
                 .select()
                 .single()
+
+            // Race against timeout
+            const result: any = await Promise.race([dbPromise, timeoutPromise])
+            const { data, error } = result
 
             if (error) {
                 console.error('Error creating proposal (Full):', error)
@@ -223,7 +233,12 @@ ${u.name}의 담당자입니다.
 
         } catch (error: any) {
             console.error("Failed to submit proposal:", error)
-            alert(`제안서 발송 중 예기치 못한 오류가 발생했습니다: ${error.message || "알 수 없음"}`)
+
+            if (error.message === 'REQUEST_TIMEOUT') {
+                alert("서버 응답이 지연되고 있습니다. (15초 초과)\n잠시 후 다시 시도해 주세요. 네트워크 상태를 확인 부탁드립니다.")
+            } else {
+                alert(`제안서 발송 중 예기치 못한 오류가 발생했습니다: ${error.message || "알 수 없음"}`)
+            }
 
         } finally {
             setIsSubmitting(false)
