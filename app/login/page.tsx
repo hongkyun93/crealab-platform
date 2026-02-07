@@ -97,6 +97,16 @@ export default function LoginPage() {
                     </TabsList>
 
                     <TabsContent value="creator">
+                        <div className="mb-6 text-center">
+                            <Button
+                                variant="destructive"
+                                size="lg"
+                                className="w-full h-12 text-lg font-bold animate-pulse shadow-xl border-2 border-red-500"
+                                onClick={() => router.push('/login_test')}
+                            >
+                                🚀 개발용 로그인 바로가기 (CLICK ME)
+                            </Button>
+                        </div>
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-2xl flex items-center gap-2">
