@@ -2062,9 +2062,20 @@ function BrandDashboardContent() {
                                                 <SelectItem value="뷰티">💄 뷰티</SelectItem>
                                                 <SelectItem value="패션">👗 패션</SelectItem>
                                                 <SelectItem value="푸드">🍽️ 푸드</SelectItem>
+                                                <SelectItem value="여행">✈️ 여행</SelectItem>
+                                                <SelectItem value="라이프">🏡 라이프</SelectItem>
                                                 <SelectItem value="테크">💻 테크</SelectItem>
-                                                <SelectItem value="리빙">🏡 리빙</SelectItem>
+                                                <SelectItem value="육아">👶 육아</SelectItem>
+                                                <SelectItem value="반려동물">🐶 반려동물</SelectItem>
+                                                <SelectItem value="운동">💪 운동</SelectItem>
+                                                <SelectItem value="다이어트">🥗 다이어트</SelectItem>
+                                                <SelectItem value="건강">💊 건강</SelectItem>
+                                                <SelectItem value="게임">🎮 게임</SelectItem>
+                                                <SelectItem value="도서">📚 도서</SelectItem>
                                                 <SelectItem value="취미">🎨 취미</SelectItem>
+                                                <SelectItem value="교육">🎓 교육</SelectItem>
+                                                <SelectItem value="문화">🎬 문화</SelectItem>
+                                                <SelectItem value="재테크">💰 재테크</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
