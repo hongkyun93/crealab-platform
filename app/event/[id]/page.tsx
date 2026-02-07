@@ -198,6 +198,14 @@ ${u.name}의 담당자입니다.
                 return
             }
 
+
+            // Send Notification to Influencer
+            if (event.influencerId) {
+                const notifMessage = `${user.name}님이 '${productName}' 협업을 제안했습니다.`
+                // We don't await this to keep UI responsive
+                sendNotification(event.influencerId, notifMessage, 'proposal_received', data.id)
+            }
+
             // Success
             alert("제안서가 성공적으로 발송되었습니다!")
             setShowProposalDialog(false)
@@ -211,6 +219,7 @@ ${u.name}의 담당자입니다.
             setCustomContentType("")
             setSelectedContentTypes([])
             setProposalMessage("")
+
 
         } catch (error: any) {
             console.error("Failed to submit proposal:", error)

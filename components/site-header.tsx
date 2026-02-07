@@ -12,12 +12,31 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
 import { useRouter, usePathname } from "next/navigation"
+import { Bell } from "lucide-react"
 
 export function SiteHeader() {
-    const { user, messages, logout } = usePlatform()
+    const { user, messages, logout, notifications, markAsRead } = usePlatform()
     const router = useRouter()
     const pathname = usePathname()
+
+    const unreadNotifications = notifications?.filter(n => !n.is_read) || []
+
+    const handleNotificationClick = async (n: any) => {
+        if (!n.is_read) {
+            await markAsRead(n.id)
+        }
+        // Logic to navigate if needed (e.g. to specific proposal)
+        if (n.type === 'proposal_received' && n.reference_id) {
+            // If creator, maybe go to dashboard with proposal open?
+            // For now just mark read.
+        }
+    }
 
     const handleLogout = async () => {
         await logout()
@@ -115,6 +134,46 @@ export function SiteHeader() {
                 <div className="ml-auto flex items-center space-x-4">
                     {user ? (
                         <div className="flex items-center gap-4">
+                            {/* Notification Bell */}
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="relative text-foreground/60 hover:text-foreground">
+                                        <Bell className="h-5 w-5" />
+                                        {unreadNotifications.length > 0 && (
+                                            <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full ring-2 ring-background" />
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-0" align="end">
+                                    <div className="p-4 font-semibold border-b flex justify-between items-center">
+                                        <span>알림</span>
+                                        {unreadNotifications.length > 0 && (
+                                            <span className="text-xs text-muted-foreground">{unreadNotifications.length}개의 읽지 않은 알림</span>
+                                        )}
+                                    </div>
+                                    <div className="max-h-[300px] overflow-y-auto">
+                                        {notifications && notifications.length > 0 ? (
+                                            <div className="divide-y">
+                                                {notifications.map((n) => (
+                                                    <div
+                                                        key={n.id}
+                                                        className={`p-4 text-sm hover:bg-muted/50 cursor-pointer transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}
+                                                        onClick={() => handleNotificationClick(n)}
+                                                    >
+                                                        <div className="font-medium mb-1">{n.content}</div>
+                                                        <div className="text-xs text-muted-foreground">{new Date(n.created_at).toLocaleDateString()}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="p-8 text-center text-muted-foreground text-sm">
+                                                새로운 알림이 없습니다.
+                                            </div>
+                                        )}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+
                             {user.type === 'admin' && (
                                 <Link
                                     href="/admin"

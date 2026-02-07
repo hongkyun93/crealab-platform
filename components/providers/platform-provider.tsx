@@ -278,6 +278,7 @@ interface PlatformContextType {
 
     notifications: Notification[]
     sendNotification: (toUserId: string, message: string, type?: string, referenceId?: string) => Promise<void>
+    markAsRead: (id: string) => Promise<void>
     messages: Message[]
     updateBrandProposal: (id: string, updates: string | object) => Promise<boolean>
     sendMessage: (toUserId: string, content: string, proposalId?: string, brandProposalId?: string) => Promise<void>
@@ -1586,6 +1587,22 @@ export function PlatformProvider({ children, initialSession }: { children: React
             console.error("Failed to send notification:", e)
         }
     }
+
+    const markAsRead = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('id', id)
+
+            if (error) throw error
+
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+        } catch (e) {
+            console.error("Failed to mark notification as read:", e)
+        }
+    }
+
     const createBrandProposal = async (proposalData: any) => {
         if (!user) return
 
@@ -1684,10 +1701,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
             isFetchingMessages.current = false
             await Promise.all([
                 fetchEvents(user.id),
-                fetchMessages(user.id)
+                fetchMessages(user.id),
+                fetchNotifications(user.id)
             ])
         }
-    }, [user, supabase, fetchEvents, fetchMessages])
+    }, [user, supabase, fetchEvents, fetchMessages, fetchNotifications])
 
     const updateCampaignStatus = async (id: string, status: 'active' | 'closed') => {
         try {
@@ -1788,7 +1806,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             products, addProduct, updateProduct, deleteProduct,
             proposals, addProposal, updateProposal, deleteProposal, createBrandProposal,
             brandProposals, updateBrandProposal, deleteBrandProposal,
-            notifications, sendNotification,
+            notifications, sendNotification, markAsRead,
             messages, sendMessage,
             switchRole,
             isLoading: !isInitialized || !isAuthChecked,

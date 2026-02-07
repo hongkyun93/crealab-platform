@@ -2672,7 +2672,7 @@ function InfluencerDashboardContent() {
                                                                     <div className="max-w-[85%] flex flex-col items-start gap-1">
                                                                         <div className="bg-white border rounded-2xl rounded-tl-none p-3 shadow-sm text-sm">
                                                                             안녕하세요! 제안을 수락해주셔서 감사합니다. 🥰<br />
-                                                                            본격적인 진행에 앞서 제 단가표와 제작 가이드를 공유드립니다.
+                                                                            본격적인 진행에 앞서 해당 캠페인의 제작 가이드를 공유드립니다.
                                                                         </div>
                                                                     </div>
                                                                 </div>
