@@ -521,3 +521,43 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
     END IF;
 END $$;
+
+-- ==========================================
+-- 9. STORAGE CONFIGURATION
+-- ==========================================
+-- Create 'product-images' bucket if not exists
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('product-images', 'product-images', true, 52428800, ARRAY['image/png', 'image/jpeg', 'image/gif', 'image/webp']) -- 50MB limit
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Enable RLS on storage.objects (if not already enabled)
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow public read access to product images
+CREATE POLICY "Public Read Access"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'product-images');
+
+-- Policy: Allow authenticated users to upload product images
+CREATE POLICY "Authenticated Upload"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'product-images' 
+  AND auth.role() = 'authenticated'
+);
+
+-- Policy: Allow users to update their own uploaded images (optional, based on owner)
+CREATE POLICY "Owner Update"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'product-images' 
+  AND auth.uid() = owner
+);
+
+-- Policy: Allow users to delete their own uploaded images
+CREATE POLICY "Owner Delete"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'product-images' 
+  AND auth.uid() = owner
+);
