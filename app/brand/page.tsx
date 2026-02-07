@@ -452,12 +452,21 @@ function BrandDashboardContent() {
 
             console.log('[handleImageUpload] Target path:', filePath)
 
-            const { data, error } = await supabase.storage
-                .from('product-images')
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                })
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Upload timed out (15s)')), 15000)
+            )
+
+            // Race the upload against the timeout
+            const { data, error } = await Promise.race([
+                supabase.storage
+                    .from('product-images')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    }),
+                timeoutPromise
+            ]) as any
 
             if (error) {
                 console.error('[handleImageUpload] Supabase Storage Error:', error)
@@ -473,9 +482,14 @@ function BrandDashboardContent() {
             setNewProductImage(publicUrl)
         } catch (error: any) {
             console.error('[handleImageUpload] Exception:', error)
-            alert(`이미지 업로드 실패: ${error.message || "알 수 없는 오류"}`)
+            // Detailed error message for the user
+            const errorMessage = error?.message || "알 수 없는 오류"
+            const errorCode = error?.code || error?.error || "UNKNOWN"
+            alert(`이미지 업로드 실패\n오류 코드: ${errorCode}\n내용: ${errorMessage}\n(잠시 후 다시 시도해보세요)`)
         } finally {
             setIsImageUploading(false)
+            // Reset file input
+            e.target.value = ''
         }
     }
 
@@ -2035,7 +2049,7 @@ function BrandDashboardContent() {
                                 </h4>
                                 <div className="space-y-2">
                                     <Label htmlFor="op-name">제품명 <span className="text-red-500">*</span></Label>
-                                    <Input id="op-name" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="예: 시그니처 수분 크림" className="bg-white" />
+                                    <Input id="op-name" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="예: 보이브 룸 스프레이 필로우토크" className="bg-white" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
