@@ -2009,90 +2009,131 @@ function BrandDashboardContent() {
                     setNewProductShots("")
                 }
             }}>
-                <DialogContent className="sm:max-w-2xl">
+                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{editingProductId ? "제품 수정" : "우리 브랜드 제품 등록"}</DialogTitle>
                         <DialogDescription>
                             {editingProductId ? "제품 정보를 수정해주세요." : "크리에이터가 확인하고 제안할 수 있도록 제품 상세 정보를 입력해 주세요."}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="op-name">제품명 <span className="text-red-500">*</span></Label>
-                                <Input id="op-name" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="예: 시그니처 수분 크림" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
+                        {/* Left Column: Basic Info & Social */}
+                        <div className="space-y-6">
+                            <div className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                                    <Package className="h-4 w-4" /> 기본 정보
+                                </h4>
                                 <div className="space-y-2">
-                                    <Label htmlFor="op-cat">카테고리 <span className="text-red-500">*</span></Label>
-                                    <Select value={newProductCategory} onValueChange={setNewProductCategory}>
-                                        <SelectTrigger id="op-cat">
-                                            <SelectValue placeholder="카테고리 선택" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="뷰티">💄 뷰티</SelectItem>
-                                            <SelectItem value="패션">👗 패션</SelectItem>
-                                            <SelectItem value="푸드">🍽️ 푸드</SelectItem>
-                                            <SelectItem value="테크">💻 테크</SelectItem>
-                                            <SelectItem value="리빙">🏡 리빙</SelectItem>
-                                            <SelectItem value="취미">🎨 취미</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <Label htmlFor="op-name">제품명 <span className="text-red-500">*</span></Label>
+                                    <Input id="op-name" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="예: 시그니처 수분 크림" className="bg-white" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="op-cat">카테고리 <span className="text-red-500">*</span></Label>
+                                        <Select value={newProductCategory} onValueChange={setNewProductCategory}>
+                                            <SelectTrigger id="op-cat" className="bg-white">
+                                                <SelectValue placeholder="선택" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="뷰티">💄 뷰티</SelectItem>
+                                                <SelectItem value="패션">👗 패션</SelectItem>
+                                                <SelectItem value="푸드">🍽️ 푸드</SelectItem>
+                                                <SelectItem value="테크">💻 테크</SelectItem>
+                                                <SelectItem value="리빙">🏡 리빙</SelectItem>
+                                                <SelectItem value="취미">🎨 취미</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="op-price">판매가 (원)</Label>
+                                        <Input id="op-price" type="number" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} placeholder="0" className="bg-white" />
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="op-price">판매가 (원)</Label>
-                                    <Input id="op-price" type="number" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} placeholder="0" />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="op-img">제품 이미지 (300MB 이하)</Label>
-                                <div className="flex gap-2 items-center">
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={handleImageUpload}
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={isImageUploading}
-                                        className="w-full"
-                                    >
-                                        {isImageUploading ? (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <Upload className="mr-2 h-4 w-4" />
+                                    <Label htmlFor="op-img">제품 이미지 (300MB 이하)</Label>
+                                    <div className="flex gap-2 items-center">
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={handleImageUpload}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isImageUploading}
+                                            className="w-full bg-white"
+                                        >
+                                            {isImageUploading ? (
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Upload className="mr-2 h-4 w-4" />
+                                            )}
+                                            {isImageUploading ? "업로드 중..." : "이미지 업로드"}
+                                        </Button>
+                                        {newProductImage && newProductImage !== "📦" && (
+                                            <div className="h-10 w-10 relative bg-muted rounded overflow-hidden shrink-0 border">
+                                                <img src={newProductImage} alt="Preview" className="h-full w-full object-cover" />
+                                            </div>
                                         )}
-                                        {isImageUploading ? "업로드 중..." : "이미지 업로드"}
-                                    </Button>
-                                    {newProductImage && newProductImage !== "📦" && (
-                                        <div className="h-10 w-10 relative bg-muted rounded overflow-hidden shrink-0 border">
-                                            <img src={newProductImage} alt="Preview" className="h-full w-full object-cover" />
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
-                                {/* Hidden input to keep value synced if needed, represented by state newProductImage */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="op-link">브랜드 몰 링크</Label>
+                                    <Input id="op-link" value={newProductLink} onChange={(e) => setNewProductLink(e.target.value)} placeholder="https://..." className="bg-white" />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="op-link">브랜드 몰 링크</Label>
-                                <Input id="op-link" value={newProductLink} onChange={(e) => setNewProductLink(e.target.value)} placeholder="https://..." />
+
+                            <div className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                                    <AtSign className="h-4 w-4" /> 태그 및 필수 표기
+                                </h4>
+                                <div className="space-y-2">
+                                    <Label htmlFor="op-account">브랜드 계정 태그</Label>
+                                    <Input id="op-account" value={newProductAccountTag} onChange={(e) => setNewProductAccountTag(e.target.value)} placeholder="@voib_official" className="bg-white" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="op-tags">필수 해시태그 (공백 구분)</Label>
+                                    <Input id="op-tags" value={newProductHashtags} onChange={(e) => setNewProductHashtags(e.target.value)} placeholder="#보이브 #룸스프레이" className="bg-white" />
+                                </div>
+                                <div className="bg-white p-3 rounded-lg text-xs text-muted-foreground flex items-start gap-2 border border-slate-200">
+                                    <Info className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+                                    <span>
+                                        <span className="font-bold text-red-500">*[광고] 또는 [협찬] 문구</span>를 상단에 필수로 기재해달라는 안내가 자동으로 포함됩니다.
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="op-desc">제품 상세 설명</Label>
-                                <Textarea id="op-desc" value={newProductDescription} onChange={(e) => setNewProductDescription(e.target.value)} placeholder="제품의 핵심 특징을 요약해주세요." className="min-h-[80px]" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="op-pts">제품 소구 포인트 (Selling Points)</Label>
-                                <Textarea id="op-pts" value={newProductPoints} onChange={(e) => setNewProductPoints(e.target.value)} placeholder="크리에이터가 강조해주길 원하는 장점" className="min-h-[80px]" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="op-shot">필수 촬영 컷 (Required Shots)</Label>
-                                <Textarea id="op-shot" value={newProductShots} onChange={(e) => setNewProductShots(e.target.value)} placeholder="예: 언박싱 장면, 얼굴 근접 샷 1회 이상" className="min-h-[80px]" />
+
+                        {/* Right Column: Detailed Guide */}
+                        <div className="space-y-6">
+                            <div className="space-y-4 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm h-full">
+                                <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                                    <FileText className="h-4 w-4" /> 상세 가이드라인
+                                </h4>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="op-desc">제품 상세 설명</Label>
+                                    <Textarea id="op-desc" value={newProductDescription} onChange={(e) => setNewProductDescription(e.target.value)} placeholder="제품의 핵심 특징을 요약해주세요." className="min-h-[80px] resize-none" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="op-pts">제품 소구 포인트 (Selling Points)</Label>
+                                    <Textarea id="op-pts" value={newProductPoints} onChange={(e) => setNewProductPoints(e.target.value)} placeholder="크리에이터가 강조해주길 원하는 장점" className="min-h-[80px] resize-none" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="op-shot">필수 촬영 컷 (Required Shots)</Label>
+                                    <Textarea id="op-shot" value={newProductShots} onChange={(e) => setNewProductShots(e.target.value)} placeholder="예: 언박싱 장면, 얼굴 근접 샷 1회 이상" className="min-h-[80px] resize-none" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="op-content-guide">필수 포함 내용</Label>
+                                    <Textarea id="op-content-guide" value={newProductContentGuide} onChange={(e) => setNewProductContentGuide(e.target.value)} placeholder="예: 향 지속력을 강조해주세요." className="min-h-[80px] resize-none" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="op-format-guide">필수 형식</Label>
+                                    <Textarea id="op-format-guide" value={newProductFormatGuide} onChange={(e) => setNewProductFormatGuide(e.target.value)} placeholder="예: 9:16 비율, 30초 이내 영상" className="min-h-[80px] resize-none" />
+                                </div>
                             </div>
                         </div>
                     </div>
