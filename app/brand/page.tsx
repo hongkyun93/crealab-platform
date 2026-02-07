@@ -2250,7 +2250,7 @@ function BrandDashboardContent() {
 
             {/* Product Guide Preview Modal */}
             <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
-                <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto bg-slate-50">
+                <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto bg-slate-50">
                     <DialogHeader>
                         <DialogTitle className="text-center text-xl font-bold text-slate-900">제작 가이드 미리보기</DialogTitle>
                         <DialogDescription className="text-center">
@@ -2283,16 +2283,28 @@ function BrandDashboardContent() {
                                 </p>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-6">
+                                {/* Points */}
                                 <div className="space-y-2">
                                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                                         <CheckCircle2 className="h-3 w-3" /> 소구 포인트
                                     </h4>
-                                    <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50 text-sm text-emerald-900 leading-relaxed whitespace-pre-wrap">
-                                        {newProductPoints || "-"}
+                                    <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100/50 text-sm text-emerald-900 leading-relaxed whitespace-pre-wrap">
+                                        {newProductPoints || "등록된 소구 포인트가 없습니다."}
                                     </div>
                                 </div>
 
+                                {/* Required Shots */}
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                        <Camera className="h-3 w-3" /> 필수 촬영 컷
+                                    </h4>
+                                    <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50 text-sm text-indigo-900 leading-relaxed whitespace-pre-wrap">
+                                        {newProductShots || "등록된 필수 촬영 컷이 없습니다."}
+                                    </div>
+                                </div>
+
+                                {/* Guide */}
                                 <div className="space-y-2">
                                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                                         <FileText className="h-3 w-3" /> 필수 가이드
