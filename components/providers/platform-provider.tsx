@@ -767,8 +767,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     points: p.selling_points || '',
                     shots: p.required_shots || '',
                     category: p.category || '기타',
+                    contentGuide: p.content_guide || '',
+                    formatGuide: p.format_guide || '',
+                    tags: p.tags || [],
+                    accountTag: p.account_tag || '',
                     description: p.description,
-                    createdAt: p.created_at
+                    createdAt: p.created_at,
+                    isMock: p.is_mock || false
                 }))
                 setProducts(mappedProducts)
             } else if (productError) {
