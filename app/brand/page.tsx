@@ -2155,7 +2155,26 @@ function BrandDashboardContent() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="op-tags">필수 해시태그 (공백 구분)</Label>
-                                    <Input id="op-tags" value={newProductHashtags} onChange={(e) => setNewProductHashtags(e.target.value)} placeholder="#보이브 #룸스프레이" className="bg-white" />
+                                    <Input
+                                        id="op-tags"
+                                        value={newProductHashtags}
+                                        onChange={(e) => {
+                                            let val = e.target.value
+                                            // Ensure first char is # if not empty
+                                            if (val && !val.startsWith('#')) {
+                                                val = '#' + val
+                                            }
+                                            setNewProductHashtags(val)
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === ' ') {
+                                                e.preventDefault()
+                                                setNewProductHashtags(prev => prev + ' #')
+                                            }
+                                        }}
+                                        placeholder="#보이브 #룸스프레이"
+                                        className="bg-white"
+                                    />
                                 </div>
                                 <div className="bg-white p-3 rounded-lg text-xs text-muted-foreground flex items-start gap-2 border border-slate-200">
                                     <Info className="h-4 w-4 shrink-0 text-primary mt-0.5" />
