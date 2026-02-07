@@ -665,7 +665,6 @@ function InfluencerDashboardContent() {
 
     // Chat states
     const [isChatOpen, setIsChatOpen] = useState(false)
-    const [chatProposal, setChatProposal] = useState<any>(null)
     const [chatMessage, setChatMessage] = useState("")
     const [generatedContract, setGeneratedContract] = useState("")
     const [isGeneratingContract, setIsGeneratingContract] = useState(false)
