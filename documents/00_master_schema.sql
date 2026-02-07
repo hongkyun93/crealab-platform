@@ -103,7 +103,8 @@ CREATE TABLE IF NOT EXISTS public.brand_products (
   created_at timestamp with time zone DEFAULT now() NOT NULL,
   updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
--- Add missing columns to brand_products (Safety measure for existing tables)
+
+-- FORCE ADD COLUMNS TO ENSURE THEY EXIST (Even if table exists)
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS selling_points text;
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS required_shots text;
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS website_url text;
@@ -113,6 +114,11 @@ ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS price integer DEFAULT
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS content_guide text;
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS format_guide text;
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS tags text[];
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS account_tag text;
+
+-- Notify PostgREST to reload schema
+NOTIFY pgrst, 'reload schema';
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS tags text[];
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS account_tag text;
 
