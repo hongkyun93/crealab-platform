@@ -743,11 +743,18 @@ function BrandDashboardContent() {
 
             console.log('[handleFinalSubmit] Product data prepared:', productData)
 
+            let result;
             if (editingProductId) {
-                await updateProduct(editingProductId, productData)
+                result = await updateProduct(editingProductId, productData)
             } else {
-                await addProduct(productData)
+                result = await addProduct(productData)
             }
+
+            console.log('[handleFinalSubmit] Result:', result)
+
+            // Temporary Debug Alert
+            // alert(`Debug: Submission Successful\nID: ${result?.id}\nTags: ${result?.tags}\nAccountTag: ${result?.accountTag}\nLink: ${result?.link}`)
+
 
             // Clear inputs
             setNewProductName("")
@@ -2273,17 +2280,17 @@ function BrandDashboardContent() {
                                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                                         <FileText className="h-3 w-3" /> 필수 가이드
                                     </h4>
-                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs space-y-3">
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm space-y-4">
                                         {newProductContentGuide && (
                                             <div>
-                                                <strong className="block text-slate-700 mb-1">필수 포함 내용</strong>
-                                                <p className="text-slate-600 whitespace-pre-wrap">{newProductContentGuide}</p>
+                                                <strong className="block text-slate-900 mb-1 font-bold">필수 포함 내용</strong>
+                                                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{newProductContentGuide}</p>
                                             </div>
                                         )}
                                         {newProductFormatGuide && (
                                             <div>
-                                                <strong className="block text-slate-700 mb-1">필수 형식</strong>
-                                                <p className="text-slate-600 whitespace-pre-wrap">{newProductFormatGuide}</p>
+                                                <strong className="block text-slate-900 mb-1 font-bold">필수 형식</strong>
+                                                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{newProductFormatGuide}</p>
                                             </div>
                                         )}
                                         {!newProductContentGuide && !newProductFormatGuide && <p className="text-slate-400">등록된 필수 가이드가 없습니다.</p>}
