@@ -685,6 +685,23 @@ function BrandDashboardContent() {
         }
     }
 
+    const handleViewGuide = (product: any) => {
+        setEditingProductId(null) // Ensure we are not in "edit mode" for submission
+        setNewProductName(product.name)
+        setNewProductPrice(product.price?.toString() || "")
+        setNewProductCategory(product.category)
+        setNewProductDescription(product.description || "")
+        setNewProductImage(product.image === "📦" ? "" : (product.image || ""))
+        setNewProductPoints(product.points || "")
+        setNewProductShots(product.shots || "")
+        setNewProductContentGuide(product.contentGuide || "")
+        setNewProductFormatGuide(product.formatGuide || "")
+        setNewProductAccountTag(product.accountTag || "")
+        setNewProductHashtags(product.tags ? product.tags.join(" ") : "")
+        // Do NOT open productModal (form), ONLY previewModal
+        setPreviewModalOpen(true)
+    }
+
     const handleEditProduct = (product: any) => {
         setEditingProductId(product.id)
         setNewProductName(product.name)
@@ -2318,22 +2335,7 @@ function BrandDashboardContent() {
                         </div>
                     </div>
 
-    const handleViewGuide = (product: any) => {
-                        setEditingProductId(null) // Ensure we are not in "edit mode" for submission
-        setNewProductName(product.name)
-                    setNewProductPrice(product.price?.toString() || "")
-                    setNewProductCategory(product.category)
-                    setNewProductDescription(product.description || "")
-                    setNewProductImage(product.image === "📦" ? "" : (product.image || ""))
-                    setNewProductPoints(product.points || "")
-                    setNewProductShots(product.shots || "")
-                    setNewProductContentGuide(product.contentGuide || "")
-                    setNewProductFormatGuide(product.formatGuide || "")
-                    setNewProductAccountTag(product.accountTag || "")
-                    setNewProductHashtags(product.tags ? product.tags.join(" ") : "")
-                    // Do NOT open productModal (form), ONLY previewModal
-                    setPreviewModalOpen(true)
-    }
+
 
                     <DialogFooter className="gap-2 sm:gap-0">
                         {!productModalOpen ? (
