@@ -351,6 +351,11 @@ CREATE POLICY "Campaigns viewable by everyone" ON campaigns FOR SELECT USING (tr
 CREATE POLICY "Brands can manage campaigns" ON campaigns FOR ALL USING (auth.uid() = brand_id);
 
 -- BRAND PRODUCTS POLICIES
+DROP POLICY IF EXISTS "Public Read Brand Products" ON public.brand_products;
+DROP POLICY IF EXISTS "Users can create their own products" ON public.brand_products;
+DROP POLICY IF EXISTS "Users can update their own products" ON public.brand_products;
+DROP POLICY IF EXISTS "Users can delete their own products" ON public.brand_products;
+
 -- Allow Read for everyone (or authenticated)
 CREATE POLICY "Public Read Brand Products" ON public.brand_products FOR SELECT USING (true);
 
