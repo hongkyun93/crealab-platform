@@ -604,17 +604,7 @@ function BrandDashboardContent() {
         return result
     }
 
-    const handlePropose = (influencer: any) => {
-        setSelectedInfluencer(influencer)
-        setOfferProduct("")
-        setProductType("gift")
-        setCompensation("")
-        setHasIncentive(false)
-        setIncentiveDetail("")
-        setContentType("")
-        setMessage(`안녕하세요, ${influencer.influencer}님! ${influencer.category} 콘텐츠를 인상 깊게 보았습니다. 저희 브랜드의 신제품과 잘 어울릴 것 같아 제안 드립니다.`)
-        setProposeModalOpen(true)
-    }
+
 
     const submitProposal = async () => {
         // Prevent duplicate submissions
@@ -1025,7 +1015,7 @@ function BrandDashboardContent() {
                                             </CardHeader>
                                             <CardContent className="space-y-3 flex-1 relative">
                                                 {item.status === 'completed' && (
-                                                    <div className="absolute top-[-14px] right-4 z-10">
+                                                    <div className="absolute top-[-26px] right-4 z-10">
                                                         <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
                                                             지나간 모먼트
                                                         </span>
@@ -1059,19 +1049,7 @@ function BrandDashboardContent() {
                                                     ))}
                                                 </div>
                                             </CardContent>
-                                            <CardFooter className="p-4 border-t">
-                                                <Button
-                                                    className="w-full"
-                                                    variant="secondary"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        handlePropose(item);
-                                                    }}
-                                                >
-                                                    협업 제안
-                                                </Button>
-                                            </CardFooter>
+                                            <div className="pb-4"></div>
                                         </Card>
                                     </Link>
                                 )
