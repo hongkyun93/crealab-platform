@@ -350,6 +350,19 @@ DROP POLICY IF EXISTS "Brands can manage campaigns" ON campaigns;
 CREATE POLICY "Campaigns viewable by everyone" ON campaigns FOR SELECT USING (true);
 CREATE POLICY "Brands can manage campaigns" ON campaigns FOR ALL USING (auth.uid() = brand_id);
 
+-- BRAND PRODUCTS POLICIES
+-- Allow Read for everyone (or authenticated)
+CREATE POLICY "Public Read Brand Products" ON public.brand_products FOR SELECT USING (true);
+
+-- Allow Insert for authenticated users (users can create products for themselves)
+CREATE POLICY "Users can create their own products" ON public.brand_products FOR INSERT WITH CHECK (auth.uid() = brand_id);
+
+-- Allow Update for owners
+CREATE POLICY "Users can update their own products" ON public.brand_products FOR UPDATE USING (auth.uid() = brand_id);
+
+-- Allow Delete for owners
+CREATE POLICY "Users can delete their own products" ON public.brand_products FOR DELETE USING (auth.uid() = brand_id);
+
 -- 4.6 Brand Proposals
 DROP POLICY IF EXISTS "Brand proposals viewable by sender and receiver" ON brand_proposals;
 DROP POLICY IF EXISTS "Brands can create proposals" ON brand_proposals;
