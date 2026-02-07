@@ -44,7 +44,8 @@ import {
     Briefcase,
     Link as LinkIcon,
     AtSign,
-    Hash
+    Hash,
+    Camera
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import SignatureCanvas from 'react-signature-canvas'
