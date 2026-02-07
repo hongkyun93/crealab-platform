@@ -1426,7 +1426,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             // Simple update call with timeout
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Request timed out')), 30000)
+                setTimeout(() => reject(new Error('Request timed out')), 60000)
             )
 
             const { error } = await Promise.race([
