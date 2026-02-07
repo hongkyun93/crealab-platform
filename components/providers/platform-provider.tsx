@@ -1424,18 +1424,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (updates.accountTag !== undefined) productData.account_tag = updates.accountTag
 
 
-            // Simple update call with timeout
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Request timed out')), 60000)
-            )
-
-            const { error } = await Promise.race([
-                supabase
-                    .from('brand_products')
-                    .update(productData)
-                    .eq('id', id),
-                timeoutPromise
-            ]) as any
+            // Direct update call without artificial timeout
+            const { error } = await supabase
+                .from('brand_products')
+                .update(productData)
+                .eq('id', id)
 
             if (error) {
                 console.error('[updateProduct] DB Error:', error)
