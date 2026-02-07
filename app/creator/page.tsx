@@ -348,6 +348,28 @@ function InfluencerDashboardContent() {
     const [guideModalOpen, setGuideModalOpen] = useState(false)
     const [guideModalData, setGuideModalData] = useState<any>(null)
 
+    // Product Guide View State (Restored)
+    const [isProductGuideOpen, setIsProductGuideOpen] = useState(false)
+    const [guideProduct, setGuideProduct] = useState<any>(null)
+
+    const fetchProductGuide = async (productId: string) => {
+        if (!productId) return;
+        try {
+            const { data, error } = await supabase
+                .from('brand_products')
+                .select('*')
+                .eq('id', productId)
+                .single()
+
+            if (error) throw error;
+            setGuideProduct(data);
+            setIsProductGuideOpen(true);
+        } catch (e) {
+            console.error("Failed to fetch product guide:", e);
+            alert("제작 가이드를 불러올 수 없습니다.");
+        }
+    }
+
     // Filter events (Admins see all, users see theirs)
     const displayEvents = displayUser.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser.id || e.handle === displayUser.handle)
     const pastMoments = displayEvents.filter((e: any) => e.status === 'completed')
