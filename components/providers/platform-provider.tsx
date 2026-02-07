@@ -1564,8 +1564,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             if (error) throw error
             setNotifications(data || [])
-        } catch (e) {
-            console.error("Failed to fetch notifications:", e)
+        } catch (e: any) {
+            console.error(`Failed to fetch notifications for user ${userId}:`, JSON.stringify(e, null, 2))
+            console.error("Full Error Object:", e)
         }
     }, [supabase])
 
