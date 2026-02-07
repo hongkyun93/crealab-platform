@@ -179,29 +179,26 @@ CREATE TABLE IF NOT EXISTS public.brand_proposals (
   content_type text,
   message text,
   status text DEFAULT 'offered',
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  is_mock boolean DEFAULT false,
+  contract_content text,
+  contract_status text DEFAULT 'none',
+  brand_signature text,
+  influencer_signature text,
+  brand_signed_at timestamp with time zone,
+  influencer_signed_at timestamp with time zone,
+  product_id uuid REFERENCES public.brand_products(id),
+  product_url text,
+  event_id uuid REFERENCES public.influencer_events(id) ON DELETE SET NULL,
+  shipping_name text,
+  shipping_phone text,
+  shipping_address text,
+  tracking_number text,
+  delivery_status text DEFAULT 'pending',
+  date_flexible boolean DEFAULT false,
+  desired_date date,
+  video_guide boolean DEFAULT false
 );
--- Add missing columns
-
--- Add missing columns
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS contract_content TEXT;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS contract_status TEXT DEFAULT 'none';
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS brand_signature TEXT;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS influencer_signature TEXT;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS brand_signed_at TIMESTAMP WITH TIME ZONE;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS influencer_signed_at TIMESTAMP WITH TIME ZONE;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS product_id uuid REFERENCES public.brand_products(id);
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS product_url text; -- New
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS event_id uuid REFERENCES public.influencer_events(id) ON DELETE SET NULL;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS shipping_name text;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS shipping_phone text;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS shipping_address text;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS tracking_number text;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS delivery_status text DEFAULT 'pending';
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS date_flexible boolean DEFAULT false;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS desired_date date;
-ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS video_guide boolean DEFAULT false;
 
 -- 2.8 PROPOSALS (Applications)
 CREATE TABLE IF NOT EXISTS public.proposals (

@@ -164,36 +164,30 @@ ${u.name}의 담당자입니다.
         }
 
         setIsSubmitting(true)
-        try {
-            // Timeout after 10 seconds
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Request timed out')), 10000)
-            )
 
-            const { data, error } = await Promise.race([
-                supabase
-                    .from('brand_proposals')
-                    .insert({
-                        brand_id: user.id,
-                        influencer_id: event.influencerId,
-                        product_name: productName,
-                        product_type: productType,
-                        compensation_amount: compensationAmount || null,
-                        has_incentive: hasIncentive,
-                        incentive_detail: hasIncentive ? incentiveDetail : null,
-                        content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ') || null,
-                        desired_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
-                        date_flexible: dateFlexible,
-                        message: proposalMessage,
-                        video_guide: videoGuide,
-                        product_id: selectedProduct?.id || null, // Ensure product_id is set
-                        product_url: productUrl || null,        // Ensure product_url is set
-                        status: 'offered'
-                    })
-                    .select()
-                    .single(),
-                timeoutPromise
-            ]) as any
+        setIsSubmitting(true)
+        try {
+            const { data, error } = await supabase
+                .from('brand_proposals')
+                .insert({
+                    brand_id: user.id,
+                    influencer_id: event.influencerId,
+                    product_name: productName,
+                    product_type: productType,
+                    compensation_amount: compensationAmount || null,
+                    has_incentive: hasIncentive,
+                    incentive_detail: hasIncentive ? incentiveDetail : null,
+                    content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ') || null,
+                    desired_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+                    date_flexible: dateFlexible,
+                    message: proposalMessage,
+                    video_guide: videoGuide,
+                    product_id: selectedProduct?.id || null, // Ensure product_id is set
+                    product_url: productUrl || null,        // Ensure product_url is set
+                    status: 'offered'
+                })
+                .select()
+                .single()
 
             if (error) {
                 console.error('Error creating proposal (Full):', error)
@@ -218,9 +212,10 @@ ${u.name}의 담당자입니다.
             setSelectedContentTypes([])
             setProposalMessage("")
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to submit proposal:", error)
-            alert("제안서 발송 중 예기치 못한 오류가 발생했습니다.")
+            alert(`제안서 발송 중 예기치 못한 오류가 발생했습니다: ${error.message || "알 수 없음"}`)
+
         } finally {
             setIsSubmitting(false)
         }
