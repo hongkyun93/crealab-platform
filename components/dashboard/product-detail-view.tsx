@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { usePlatform } from "@/components/providers/platform-provider"
-import { ArrowLeft, CheckCircle2, DollarSign, Percent, Send, ExternalLink, Package, ImageIcon } from "lucide-react"
+import { ArrowLeft, CheckCircle2, DollarSign, Percent, Send, ExternalLink, Package, ImageIcon, Copy, Hash, AtSign, FileText } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 
@@ -68,7 +68,13 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
         })
 
         setIsOpen(false)
+        setIsOpen(false)
         onBack() // Go back to list after proposing
+    }
+
+    const handleCopy = (text: string, label: string) => {
+        navigator.clipboard.writeText(text)
+        alert(`${label} 복사되었습니다!`)
     }
 
     return (
@@ -183,6 +189,70 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
                             </div>
                         </div>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <h3 className="font-bold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-tight">
+                                <FileText className="h-4 w-4 text-primary" /> 필수 포함 내용
+                            </h3>
+                            <div className="bg-background p-4 rounded-xl border border-border/60 text-xs leading-relaxed text-foreground/80 shadow-sm whitespace-pre-wrap">
+                                {product.contentGuide || "등록된 필수 포함 내용이 없습니다."}
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="font-bold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-tight">
+                                <FileText className="h-4 w-4 text-primary" /> 필수 형식
+                            </h3>
+                            <div className="bg-background p-4 rounded-xl border border-border/60 text-xs leading-relaxed text-foreground/80 shadow-sm whitespace-pre-wrap">
+                                {product.formatGuide || "등록된 필수 형식이 없습니다."}
+                            </div>
+                        </div>
+                    </div>
+
+                    {(product.tags?.length || product.accountTag) && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                            <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+                                <div className="space-y-4 flex-1">
+                                    {product.accountTag && (
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-white p-2 rounded-full shadow-sm border border-slate-100">
+                                                <AtSign className="h-4 w-4 text-slate-600" />
+                                            </div>
+                                            <span className="font-bold text-slate-700">{product.accountTag}</span>
+                                        </div>
+                                    )}
+                                    {product.tags && product.tags.length > 0 && (
+                                        <div className="flex items-start gap-3">
+                                            <div className="bg-white p-2 rounded-full shadow-sm border border-slate-100 mt-1">
+                                                <Hash className="h-4 w-4 text-slate-600" />
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {product.tags.map((tag: string, i: number) => (
+                                                    <span key={i} className="text-sm text-slate-600 bg-white px-2 py-1 rounded-md border border-slate-100">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="text-[10px] text-muted-foreground mt-2">
+                                        <span className="text-red-500 font-bold">*[광고] 또는 [협찬]</span> 문구를 상단에 필수로 기재해주세요.
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    className="gap-2 shrink-0 h-10 border-slate-300 hover:bg-white hover:border-slate-400"
+                                    onClick={() => {
+                                        const tags = product.tags ? product.tags.join(" ") : ""
+                                        const account = product.accountTag || ""
+                                        handleCopy(`${account} ${tags}`, "태그가")
+                                    }}
+                                >
+                                    <Copy className="h-4 w-4" /> 태그 전체 복사
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -96,6 +96,10 @@ CREATE TABLE IF NOT EXISTS public.brand_products (
   selling_points text,
   required_shots text,
   website_url text,
+  content_guide text,
+  format_guide text,
+  tags text[],
+  account_tag text,
   created_at timestamp with time zone DEFAULT now() NOT NULL,
   updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -107,6 +111,10 @@ ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS image_url text;
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS category text;
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS price integer DEFAULT 0;
 ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS content_guide text;
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS format_guide text;
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS tags text[];
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS account_tag text;
 
 -- 2.5 CAMPAIGNS
 CREATE TABLE IF NOT EXISTS public.campaigns (

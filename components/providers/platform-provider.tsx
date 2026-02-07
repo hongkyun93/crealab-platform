@@ -98,7 +98,11 @@ export type Product = {
     points: string // selling_points
     shots: string // required_shots
     category: string
-    description?: string
+    description?: string // description
+    contentGuide?: string // content_guide (NEW)
+    formatGuide?: string // format_guide (NEW)
+    tags?: string[] // tags (NEW)
+    accountTag?: string // account_tag (NEW)
     createdAt?: string
     isMock?: boolean
 }

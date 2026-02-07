@@ -397,7 +397,13 @@ function BrandDashboardContent() {
     }
     const [newProductLink, setNewProductLink] = useState("")
     const [newProductPoints, setNewProductPoints] = useState("")
+
     const [newProductShots, setNewProductShots] = useState("")
+    const [newProductContentGuide, setNewProductContentGuide] = useState("")
+    const [newProductFormatGuide, setNewProductFormatGuide] = useState("")
+    const [newProductAccountTag, setNewProductAccountTag] = useState("")
+    const [newProductHashtags, setNewProductHashtags] = useState("") // Store as string, split on save
+
     const [isUploading, setIsUploading] = useState(false)
     const [isImageUploading, setIsImageUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -667,9 +673,12 @@ function BrandDashboardContent() {
         setNewProductDescription(product.description || "")
         // Remove emoji if present so user can input URL cleanly
         setNewProductImage(product.image === "📦" ? "" : (product.image || ""))
-        setNewProductLink(product.link || "")
         setNewProductPoints(product.points || "")
         setNewProductShots(product.shots || "")
+        setNewProductContentGuide(product.contentGuide || "")
+        setNewProductFormatGuide(product.formatGuide || "")
+        setNewProductAccountTag(product.accountTag || "")
+        setNewProductHashtags(product.tags ? product.tags.join(" ") : "")
         setProductModalOpen(true)
     }
 
@@ -702,7 +711,11 @@ function BrandDashboardContent() {
                 image: cleanImage || "📦",
                 link: newProductLink,
                 points: newProductPoints,
-                shots: newProductShots
+                shots: newProductShots,
+                contentGuide: newProductContentGuide,
+                formatGuide: newProductFormatGuide,
+                accountTag: newProductAccountTag,
+                tags: newProductHashtags.split(/[\s,]+/).filter(tag => tag.trim() !== "").map(tag => tag.startsWith('#') ? tag : `#${tag}`)
             }
 
             console.log('[handleUploadProduct] Product data prepared:', productData)
@@ -722,6 +735,10 @@ function BrandDashboardContent() {
             setNewProductLink("")
             setNewProductPoints("")
             setNewProductShots("")
+            setNewProductContentGuide("")
+            setNewProductFormatGuide("")
+            setNewProductAccountTag("")
+            setNewProductHashtags("")
             setEditingProductId(null)
 
             setProductModalOpen(false)
