@@ -2106,7 +2106,18 @@ function BrandDashboardContent() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="op-link">브랜드 몰 링크</Label>
-                                    <Input id="op-link" value={newProductLink} onChange={(e) => setNewProductLink(e.target.value)} placeholder="https://..." className="bg-white" />
+                                    <Input
+                                        id="op-link"
+                                        value={newProductLink}
+                                        onChange={(e) => setNewProductLink(e.target.value)}
+                                        onBlur={() => {
+                                            if (newProductLink && !/^https?:\/\//i.test(newProductLink)) {
+                                                setNewProductLink('https://' + newProductLink)
+                                            }
+                                        }}
+                                        placeholder="https://..."
+                                        className="bg-white"
+                                    />
                                 </div>
                             </div>
 
@@ -2116,7 +2127,20 @@ function BrandDashboardContent() {
                                 </h4>
                                 <div className="space-y-2">
                                     <Label htmlFor="op-account">브랜드 계정 태그</Label>
-                                    <Input id="op-account" value={newProductAccountTag} onChange={(e) => setNewProductAccountTag(e.target.value)} placeholder="@voib_official" className="bg-white" />
+                                    <Input
+                                        id="op-account"
+                                        value={newProductAccountTag}
+                                        onChange={(e) => {
+                                            let value = e.target.value
+                                            // Auto-prepend @ if user types something and it's missing
+                                            if (value && !value.startsWith('@')) {
+                                                value = '@' + value
+                                            }
+                                            setNewProductAccountTag(value)
+                                        }}
+                                        placeholder="@voib_official"
+                                        className="bg-white"
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="op-tags">필수 해시태그 (공백 구분)</Label>
