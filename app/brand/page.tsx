@@ -2233,7 +2233,7 @@ function BrandDashboardContent() {
 
             {/* Product Guide Preview Modal */}
             <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
-                <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-slate-50">
+                <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto bg-slate-50">
                     <DialogHeader>
                         <DialogTitle className="text-center text-xl font-bold text-slate-900">제작 가이드 미리보기</DialogTitle>
                         <DialogDescription className="text-center">
@@ -2318,17 +2318,42 @@ function BrandDashboardContent() {
                         </div>
                     </div>
 
+    const handleViewGuide = (product: any) => {
+                        setEditingProductId(null) // Ensure we are not in "edit mode" for submission
+        setNewProductName(product.name)
+                    setNewProductPrice(product.price?.toString() || "")
+                    setNewProductCategory(product.category)
+                    setNewProductDescription(product.description || "")
+                    setNewProductImage(product.image === "📦" ? "" : (product.image || ""))
+                    setNewProductPoints(product.points || "")
+                    setNewProductShots(product.shots || "")
+                    setNewProductContentGuide(product.contentGuide || "")
+                    setNewProductFormatGuide(product.formatGuide || "")
+                    setNewProductAccountTag(product.accountTag || "")
+                    setNewProductHashtags(product.tags ? product.tags.join(" ") : "")
+                    // Do NOT open productModal (form), ONLY previewModal
+                    setPreviewModalOpen(true)
+    }
+
                     <DialogFooter className="gap-2 sm:gap-0">
-                        <Button variant="outline" onClick={() => setPreviewModalOpen(false)} className="w-full sm:w-auto">
-                            <Pencil className="mr-2 h-4 w-4" /> 수정하기
-                        </Button>
-                        <Button onClick={handleFinalSubmit} disabled={isUploading} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90">
-                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
-                                <>
-                                    <Send className="mr-2 h-4 w-4" /> {editingProductId ? "이대로 수정" : "이대로 등록"}
-                                </>
-                            )}
-                        </Button>
+                        {!productModalOpen ? (
+                            <Button onClick={() => setPreviewModalOpen(false)} className="w-full sm:w-auto font-bold">
+                                닫기
+                            </Button>
+                        ) : (
+                            <>
+                                <Button variant="outline" onClick={() => setPreviewModalOpen(false)} className="w-full sm:w-auto">
+                                    <Pencil className="mr-2 h-4 w-4" /> 수정하기
+                                </Button>
+                                <Button onClick={handleFinalSubmit} disabled={isUploading} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90">
+                                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
+                                        <>
+                                            <Send className="mr-2 h-4 w-4" /> {editingProductId ? "이대로 수정" : "이대로 등록"}
+                                        </>
+                                    )}
+                                </Button>
+                            </>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
