@@ -13,31 +13,45 @@ export default function LoginTestPage() {
     const handleLogin = async (email: string, roleName: string) => {
         setLoading(roleName)
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            // Priority 1: 'password'
+            let { error } = await supabase.auth.signInWithPassword({
                 email,
-                password: "password", // Assuming standard dev password
+                password: "password",
             })
 
             if (error) {
-                // Try fallback password if needed
-                console.error("Login failed with 'password', trying '12341234'")
-                const { error: error2 } = await supabase.auth.signInWithPassword({
+                console.warn(`[LoginTest] 'password' failed for ${email}, trying '12341234'...`)
+                // Priority 2: '12341234'
+                const res2 = await supabase.auth.signInWithPassword({
                     email,
                     password: "12341234",
                 })
+                error = res2.error
 
-                if (error2) {
-                    throw error2
+                if (error) {
+                    console.warn(`[LoginTest] '12341234' failed for ${email}, trying '1234'...`)
+                    // Priority 3: '1234'
+                    const res3 = await supabase.auth.signInWithPassword({
+                        email,
+                        password: "1234",
+                    })
+                    error = res3.error
                 }
             }
 
-            // Redirect based on role logic (usually handled by middleware or callback, but let's force expected paths)
+            if (error) {
+                throw error
+            }
+
+            console.log(`[LoginTest] Success! Logged in as ${roleName}`)
+
+            // Redirect based on role logic
             if (roleName === "Kim Sumin") {
                 router.push("/creator")
             } else if (roleName === "Voib") {
                 router.push("/brand")
             } else if (roleName === "Admin") {
-                router.push("/admin") // Assuming admin path
+                router.push("/admin")
             } else {
                 router.refresh()
             }
@@ -82,7 +96,7 @@ export default function LoginTestPage() {
             </div>
 
             <div className="mt-8 text-sm text-slate-500">
-                * 비밀번호는 `password` 또는 `12341234`로 시도합니다.
+                * 비밀번호는 `password`, `12341234`, `1234` 순서로 자동 시도합니다.
             </div>
         </div>
     )
