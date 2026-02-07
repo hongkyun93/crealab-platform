@@ -1607,6 +1607,14 @@ function BrandDashboardContent() {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                className="h-8 px-2 text-xs gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                                onClick={() => handleViewGuide(p)}
+                                            >
+                                                <FileText className="h-3 w-3" /> 가이드
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
                                                 className="h-8 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                 onClick={() => handleEditProduct(p)}
                                             >
