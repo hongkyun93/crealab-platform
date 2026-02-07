@@ -124,10 +124,27 @@ export default function EventDetailPage() {
         loadEvent()
     }, [params.id, events, supabase])
 
+    const generateDefaultMessage = (ev: InfluencerEvent, u: any) => {
+        return `안녕하세요 ${ev.influencer}님,
+${u.name}의 담당자입니다.
+
+올려주신 '${ev.event}' 모먼트${ev.eventDate ? `(${ev.eventDate} 예정)` : ''}를 인상 깊게 보았습니다.
+저희 브랜드의 결과 핏이 잘 맞을 것 같아 협업을 제안드립니다.
+
+[ 제안 드리는 제품명 ] 제품을 제공해드리고 싶으며,
+[ 희망 콘텐츠 형식 ] 형식으로 소개해주시면 좋을 것 같습니다.
+
+긍정적인 검토 부탁드립니다.
+감사합니다.`
+    }
+
     const handlePropose = () => {
         if (!user) {
             router.push("/login")
             return
+        }
+        if (event && !proposalMessage) {
+            setProposalMessage(generateDefaultMessage(event, user))
         }
         setShowProposalDialog(true)
     }
@@ -654,8 +671,11 @@ export default function EventDetailPage() {
                                 value={proposalMessage}
                                 onChange={(e) => setProposalMessage(e.target.value)}
                                 placeholder="크리에이터에게 전달할 메시지를 작성해주세요."
-                                rows={5}
+                                rows={8}
                             />
+                            <p className="text-xs text-muted-foreground">
+                                * 제안 메시지는 크리에이터에게 첫 인상을 결정하는 중요한 요소입니다. 정중하고 명확하게 작성해주세요.
+                            </p>
                         </div>
                     </div>
 
