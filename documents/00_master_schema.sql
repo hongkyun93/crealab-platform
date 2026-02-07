@@ -531,33 +531,61 @@ VALUES ('product-images', 'product-images', true, 52428800, ARRAY['image/png', '
 ON CONFLICT (id) DO UPDATE SET public = true;
 
 -- Enable RLS on storage.objects (if not already enabled)
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY; -- Commented out to avoid ownership error (usually enabled by default)
 
 -- Policy: Allow public read access to product images
-CREATE POLICY "Public Read Access"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'product-images');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Public Read Access'
+    ) THEN
+        CREATE POLICY "Public Read Access"
+        ON storage.objects FOR SELECT
+        USING (bucket_id = 'product-images');
+    END IF;
+END $$;
 
 -- Policy: Allow authenticated users to upload product images
-CREATE POLICY "Authenticated Upload"
-ON storage.objects FOR INSERT
-WITH CHECK (
-  bucket_id = 'product-images' 
-  AND auth.role() = 'authenticated'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Authenticated Upload'
+    ) THEN
+        CREATE POLICY "Authenticated Upload"
+        ON storage.objects FOR INSERT
+        WITH CHECK (
+            bucket_id = 'product-images' 
+            AND auth.role() = 'authenticated'
+        );
+    END IF;
+END $$;
 
 -- Policy: Allow users to update their own uploaded images (optional, based on owner)
-CREATE POLICY "Owner Update"
-ON storage.objects FOR UPDATE
-USING (
-  bucket_id = 'product-images' 
-  AND auth.uid() = owner
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Owner Update'
+    ) THEN
+        CREATE POLICY "Owner Update"
+        ON storage.objects FOR UPDATE
+        USING (
+            bucket_id = 'product-images' 
+            AND auth.uid() = owner
+        );
+    END IF;
+END $$;
 
 -- Policy: Allow users to delete their own uploaded images
-CREATE POLICY "Owner Delete"
-ON storage.objects FOR DELETE
-USING (
-  bucket_id = 'product-images' 
-  AND auth.uid() = owner
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Owner Delete'
+    ) THEN
+        CREATE POLICY "Owner Delete"
+        ON storage.objects FOR DELETE
+        USING (
+            bucket_id = 'product-images' 
+            AND auth.uid() = owner
+        );
+    END IF;
+END $$;
