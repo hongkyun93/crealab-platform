@@ -1887,30 +1887,6 @@ function BrandDashboardContent() {
                                 <Package className="mr-2 h-4 w-4" /> 내 캠페인
                             </Button>
                             <Button
-                                variant={currentView === "my-products" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("my-products")}
-                            >
-                                <ShoppingBag className="mr-2 h-4 w-4" /> 내 브랜드 제품
-                            </Button>
-                            <Button
-                                variant={currentView === "discover-products" ? "secondary" : "ghost"}
-                                className="w-full justify-start text-primary font-medium"
-                                onClick={() => setCurrentView("discover-products")}
-                            >
-                                <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
-                            </Button>
-                            <Button
-                                variant={currentView === "notifications" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("notifications")}
-                            >
-                                <Bell className={`mr-2 h-4 w-4 ${notifications.some(n => !n.is_read) ? 'text-blue-500 animate-bounce' : ''}`} /> 알림 센터
-                                {notifications.filter(n => !n.is_read).length > 0 && (
-                                    <Badge className="ml-auto bg-blue-500 text-[10px] h-4 px-1">{notifications.filter(n => !n.is_read).length}</Badge>
-                                )}
-                            </Button>
-                            <Button
                                 variant={currentView === "proposals" ? "secondary" : "ghost"}
                                 className="w-full justify-start"
                                 onClick={() => setCurrentView("proposals")}
@@ -1953,6 +1929,31 @@ function BrandDashboardContent() {
                                     </Button>
                                 </div>
                             )}
+                            <Button
+                                variant={currentView === "my-products" ? "secondary" : "ghost"}
+                                className="w-full justify-start"
+                                onClick={() => setCurrentView("my-products")}
+                            >
+                                <ShoppingBag className="mr-2 h-4 w-4" /> 내 브랜드 제품
+                            </Button>
+                            <Button
+                                variant={currentView === "discover-products" ? "secondary" : "ghost"}
+                                className="w-full justify-start text-primary font-medium"
+                                onClick={() => setCurrentView("discover-products")}
+                            >
+                                <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
+                            </Button>
+                            <Button
+                                variant={currentView === "notifications" ? "secondary" : "ghost"}
+                                className="w-full justify-start"
+                                onClick={() => setCurrentView("notifications")}
+                            >
+                                <Bell className={`mr-2 h-4 w-4 ${notifications.some(n => !n.is_read) ? 'text-blue-500 animate-bounce' : ''}`} /> 알림 센터
+                                {notifications.filter(n => !n.is_read).length > 0 && (
+                                    <Badge className="ml-auto bg-blue-500 text-[10px] h-4 px-1">{notifications.filter(n => !n.is_read).length}</Badge>
+                                )}
+                            </Button>
+
                             <div className="my-2 border-t" />
                             <Button
                                 variant={currentView === "settings" ? "secondary" : "ghost"}
