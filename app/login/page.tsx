@@ -10,54 +10,79 @@ export default function LoginTestPage() {
     const router = useRouter()
     const [loading, setLoading] = useState<string | null>(null)
 
+    // Helper for timeout
+    const loginWithTimeout = async (payload: any) => {
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("로그인 요청 시간 초과 (10초)")), 10000)
+        )
+        const loginPromise = supabase.auth.signInWithPassword(payload)
+        return Promise.race([loginPromise, timeoutPromise]) as Promise<{ data: any; error: any }>
+    }
+
     const handleLogin = async (email: string, roleName: string) => {
+        console.log(`[Login] Starting login for ${roleName} (${email})`)
         setLoading(roleName)
         try {
+            console.log(`[Login] Attempting password 'password'...`)
             // Priority 1: 'password'
-            let { error } = await supabase.auth.signInWithPassword({
+            let { data, error } = await loginWithTimeout({
                 email,
                 password: "password",
             })
 
             if (error) {
-                console.warn(`[LoginTest] 'password' failed for ${email}, trying '12341234'...`)
+                console.warn(`[Login] 'password' failed:`, error.message)
+                console.log(`[Login] Trying '12341234'...`)
                 // Priority 2: '12341234'
-                const res2 = await supabase.auth.signInWithPassword({
+                const res2 = await loginWithTimeout({
                     email,
                     password: "12341234",
                 })
                 error = res2.error
+                data = res2.data
 
                 if (error) {
-                    console.warn(`[LoginTest] '12341234' failed for ${email}, trying '1234'...`)
+                    console.warn(`[Login] '12341234' failed:`, error.message)
+                    console.log(`[Login] Trying '1234'...`)
                     // Priority 3: '1234'
-                    const res3 = await supabase.auth.signInWithPassword({
+                    const res3 = await loginWithTimeout({
                         email,
                         password: "1234",
                     })
                     error = res3.error
+                    data = res3.data
                 }
             }
 
             if (error) {
+                console.error(`[Login] All password attempts failed for ${email}`)
                 throw error
             }
 
-            console.log(`[LoginTest] Success! Logged in as ${roleName}`)
+            console.log(`[Login] Success! Logged in as ${roleName}`, data.user?.id)
+
+            // Refetch to ensure session is active before redirect
+            await supabase.auth.refreshSession() // Explicit refresh
 
             // Redirect based on role logic
             if (roleName === "Kim Sumin") {
+                console.log(`[Login] Redirecting to /creator...`)
                 router.push("/creator")
             } else if (roleName === "Voib") {
+                console.log(`[Login] Redirecting to /brand...`)
                 router.push("/brand")
             } else if (roleName === "Admin") {
+                console.log(`[Login] Redirecting to /admin...`)
                 router.push("/admin")
             } else {
+                console.log(`[Login] Redirecting to refresh...`)
                 router.refresh()
             }
         } catch (e: any) {
+            console.error(`[Login] Exception caught:`, e)
             alert(`로그인 실패: ${e.message}`)
         } finally {
+            console.log(`[Login] Finally block executed. Clearing loading state.`)
             setLoading(null)
         }
     }

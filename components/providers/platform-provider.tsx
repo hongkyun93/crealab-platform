@@ -316,10 +316,19 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     useEffect(() => {
         console.log('[PlatformProvider] COMPONENT MOUNTED')
+        // Safety: Force Auth Check completion after 5s
+        const timer = setTimeout(() => {
+            if (!isAuthChecked) {
+                console.warn("[PlatformProvider] Auth check timed out, forcing render.")
+                setIsAuthChecked(true)
+            }
+        }, 5000)
+
         return () => {
             console.log('[PlatformProvider] COMPONENT UNMOUNTED')
+            clearTimeout(timer)
         }
-    }, [])
+    }, [isAuthChecked])
 
     // Initialize state with Server Session if available
     useEffect(() => {
