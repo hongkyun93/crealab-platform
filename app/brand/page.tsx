@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { Camera } from "lucide-react" // Explicit import for debugging
 import { RateCardMessage } from "@/components/chat/rate-card-message"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
@@ -45,7 +46,8 @@ import {
     Link as LinkIcon,
     AtSign,
     Hash,
-    Camera
+    Hash,
+    // Camera moved to separate import
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import SignatureCanvas from 'react-signature-canvas'
@@ -82,6 +84,7 @@ const POPULAR_TAGS = [
 ]
 
 function BrandDashboardContent() {
+    console.log("Camera Component:", Camera) // Debug log
     const {
         events, user, resetData, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages: allMessages,
