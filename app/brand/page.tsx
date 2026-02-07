@@ -404,7 +404,10 @@ function BrandDashboardContent() {
     const [newProductContentGuide, setNewProductContentGuide] = useState("")
     const [newProductFormatGuide, setNewProductFormatGuide] = useState("")
     const [newProductAccountTag, setNewProductAccountTag] = useState("")
-    const [newProductHashtags, setNewProductHashtags] = useState("") // Store as string, split on save
+    const [newProductHashtags, setNewProductHashtags] = useState("")
+
+    // Preview Modal State
+    const [previewModalOpen, setPreviewModalOpen] = useState(false) // Store as string, split on save
 
     const [isUploading, setIsUploading] = useState(false)
     const [isImageUploading, setIsImageUploading] = useState(false)
@@ -685,20 +688,23 @@ function BrandDashboardContent() {
     }
 
 
-    const handleUploadProduct = async () => {
-        // Prevent duplicate submissions or submitting while image is still uploading
-        if (isUploading) return
-        if (isImageUploading) {
-            alert("이미지 업로드가 아직 완료되지 않았습니다. 잠시만 기다려주세요.")
-            return
-        }
-
+    const handlePreview = () => {
         if (!newProductName || !newProductCategory) {
             alert("제품명과 카테고리는 필수입니다.")
             return
         }
+        if (isImageUploading) {
+            alert("이미지 업로드가 아직 완료되지 않았습니다.")
+            return
+        }
+        setPreviewModalOpen(true)
+    }
 
-        console.log('[handleUploadProduct] Starting upload for:', newProductName)
+    const handleFinalSubmit = async () => {
+        // Prevent duplicate submissions or submitting while image is still uploading
+        if (isUploading) return
+
+        console.log('[handleFinalSubmit] Starting upload for:', newProductName)
         setIsUploading(true)
 
         try {
@@ -720,7 +726,7 @@ function BrandDashboardContent() {
                 tags: newProductHashtags.split(/[\s,]+/).filter(tag => tag.trim() !== "").map(tag => tag.startsWith('#') ? tag : `#${tag}`)
             }
 
-            console.log('[handleUploadProduct] Product data prepared:', productData)
+            console.log('[handleFinalSubmit] Product data prepared:', productData)
 
             if (editingProductId) {
                 await updateProduct(editingProductId, productData)
@@ -743,11 +749,12 @@ function BrandDashboardContent() {
             setNewProductHashtags("")
             setEditingProductId(null)
 
-            setProductModalOpen(false)
-            console.log('[handleUploadProduct] Success!')
+            setPreviewModalOpen(false) // Close preview
+            setProductModalOpen(false) // Close form
+            console.log('[handleFinalSubmit] Success!')
             alert(isEditing ? "제품이 성공적으로 수정되었습니다!" : "제품이 성공적으로 등록되었습니다!")
         } catch (e: any) {
-            console.error("[handleUploadProduct] Exception:", e)
+            console.error("[handleFinalSubmit] Exception:", e)
             alert(`제품 ${editingProductId ? '수정' : '등록'} 실패: ${e?.message || "알 수 없는 오류"}`)
         } finally {
             setIsUploading(false)
@@ -2141,8 +2148,110 @@ function BrandDashboardContent() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setProductModalOpen(false)}>취소</Button>
-                        <Button onClick={handleUploadProduct} disabled={isUploading} type="button">
-                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : editingProductId ? "수정 완료" : "제품 등록 완료"}
+                        <Button onClick={handlePreview} disabled={isUploading} type="button">
+                            미리보기 및 등록
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Product Guide Preview Modal */}
+            <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
+                <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-slate-50">
+                    <DialogHeader>
+                        <DialogTitle className="text-center text-xl font-bold text-slate-900">제작 가이드 미리보기</DialogTitle>
+                        <DialogDescription className="text-center">
+                            크리에이터에게 보여질 가이드 화면입니다.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden my-2">
+                        {/* Header Image */}
+                        <div className="h-40 bg-slate-100 relative group">
+                            {newProductImage && newProductImage !== "📦" ? (
+                                <img src={newProductImage} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>
+                            )}
+                            <div className="absolute top-3 right-3 bg-black/50 text-white text-[10px] font-bold px-2 py-1 rounded-full backdrop-blur-sm">
+                                {newProductCategory || "카테고리"}
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-6">
+                            <div className="text-center space-y-2 border-b border-slate-100 pb-6">
+                                <h3 className="text-xl font-black text-slate-900">{newProductName || "제품명 없음"}</h3>
+                                <p className="text-lg font-bold text-primary">
+                                    {newProductPrice ? `${parseInt(newProductPrice).toLocaleString()}원` : "가격 미정"}
+                                </p>
+                                <p className="text-sm text-slate-500 leading-relaxed px-4">
+                                    {newProductDescription || "제품 설명이 없습니다."}
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                        <CheckCircle2 className="h-3 w-3" /> 소구 포인트
+                                    </h4>
+                                    <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50 text-sm text-emerald-900 leading-relaxed whitespace-pre-wrap">
+                                        {newProductPoints || "-"}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                        <FileText className="h-3 w-3" /> 필수 가이드
+                                    </h4>
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs space-y-3">
+                                        {newProductContentGuide && (
+                                            <div>
+                                                <strong className="block text-slate-700 mb-1">필수 포함 내용</strong>
+                                                <p className="text-slate-600 whitespace-pre-wrap">{newProductContentGuide}</p>
+                                            </div>
+                                        )}
+                                        {newProductFormatGuide && (
+                                            <div>
+                                                <strong className="block text-slate-700 mb-1">필수 형식</strong>
+                                                <p className="text-slate-600 whitespace-pre-wrap">{newProductFormatGuide}</p>
+                                            </div>
+                                        )}
+                                        {!newProductContentGuide && !newProductFormatGuide && <p className="text-slate-400">등록된 필수 가이드가 없습니다.</p>}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                        <AtSign className="h-3 w-3" /> 태그 및 계정
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {newProductAccountTag && (
+                                            <span className="px-2 py-1 bg-white border border-slate-200 rounded-md text-xs font-bold text-slate-700 shadow-sm">
+                                                {newProductAccountTag}
+                                            </span>
+                                        )}
+                                        {newProductHashtags.split(/[\s,]+/).filter(t => t).map((tag, i) => (
+                                            <span key={i} className="px-2 py-1 bg-slate-100 border border-slate-200 rounded-md text-xs text-slate-600">
+                                                {tag.startsWith('#') ? tag : `#${tag}`}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="outline" onClick={() => setPreviewModalOpen(false)} className="w-full sm:w-auto">
+                            <Pencil className="mr-2 h-4 w-4" /> 수정하기
+                        </Button>
+                        <Button onClick={handleFinalSubmit} disabled={isUploading} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90">
+                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
+                                <>
+                                    <Send className="mr-2 h-4 w-4" /> {editingProductId ? "이대로 수정" : "이대로 등록"}
+                                </>
+                            )}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
