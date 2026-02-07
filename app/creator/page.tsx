@@ -342,6 +342,7 @@ function InfluencerDashboardContent() {
     const initialView = searchParams.get('view') || "dashboard"
     const [currentView, setCurrentView] = useState(initialView)
     const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
+    const [chatProposal, setChatProposal] = useState<any>(null)
 
     // Guide Modal State
     const [guideModalOpen, setGuideModalOpen] = useState(false)
