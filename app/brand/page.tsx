@@ -84,7 +84,7 @@ const POPULAR_TAGS = [
 ]
 
 function BrandDashboardContent() {
-    console.log("Camera Component:", Camera) // Debug log
+
     const {
         events, user, resetData, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages: allMessages,
