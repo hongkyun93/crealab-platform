@@ -308,6 +308,33 @@ ALTER TABLE public.brand_proposals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
+-- ==========================================
+-- 3.1 RLS POLICIES
+-- ==========================================
+
+-- Profiles: Users can view all, update own
+CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+-- Influencer Details: Users can view all, update own
+CREATE POLICY "Public details are viewable by everyone" ON public.influencer_details FOR SELECT USING (true);
+CREATE POLICY "Users can insert own details" ON public.influencer_details FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update own details" ON public.influencer_details FOR UPDATE USING (auth.uid() = id);
+
+-- Brand Products: Brands can manage own products, everyone can view
+CREATE POLICY "Everyone can view products" ON public.brand_products FOR SELECT USING (true);
+CREATE POLICY "Brands can insert own products" ON public.brand_products FOR INSERT WITH CHECK (auth.uid() = brand_id);
+CREATE POLICY "Brands can update own products" ON public.brand_products FOR UPDATE USING (auth.uid() = brand_id);
+CREATE POLICY "Brands can delete own products" ON public.brand_products FOR DELETE USING (auth.uid() = brand_id);
+
+-- Campaigns: Everyone can view, Brands manage own
+CREATE POLICY "Everyone can view campaigns" ON public.campaigns FOR SELECT USING (true);
+CREATE POLICY "Brands can insert own campaigns" ON public.campaigns FOR INSERT WITH CHECK (auth.uid() = brand_id);
+CREATE POLICY "Brands can update own campaigns" ON public.campaigns FOR UPDATE USING (auth.uid() = brand_id);
+CREATE POLICY "Brands can delete own campaigns" ON public.campaigns FOR DELETE USING (auth.uid() = brand_id);
+
+
 -- 4.1 Profiles
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;

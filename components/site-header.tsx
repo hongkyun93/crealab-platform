@@ -55,7 +55,7 @@ export function SiteHeader() {
             <div className="container flex h-14 items-center max-w-[1920px] px-6 md:px-8">
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-6 flex items-center space-x-2">
-                        <span className="font-bold text-xl tracking-tight">CreadyPick.</span>
+                        <img src="/logo_created.png" alt="CreadyPick" className="h-8 w-auto object-contain" />
                         <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full">V1.6.6</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
