@@ -25,7 +25,7 @@ export function WorkspaceProgressBar({ status, contract_status, delivery_status,
     let currentStepIndex = 0; // Default to step 1 (Matched)
 
     // Step 2: Negotiation
-    if (['negotiating', 'accepted', 'signed', 'shipped', 'started', 'completed'].includes(status || '')) {
+    if (['negotiating', 'accepted', 'signed', 'shipped', 'started', 'completed', 'confirmed'].includes(status || '')) {
         currentStepIndex = 1;
     }
 

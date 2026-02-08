@@ -134,12 +134,12 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-full">제목</TableHead>
-                                <TableHead className="text-right px-2 w-[100px]">제품</TableHead>
-                                <TableHead className="text-right px-2 w-[100px]">기획</TableHead>
-                                <TableHead className="text-right px-2 w-[100px]">촬영</TableHead>
-                                <TableHead className="text-right px-2 w-[100px]">피드백</TableHead>
-                                <TableHead className="text-right px-2 w-[100px]">업로드</TableHead>
+                                <TableHead className="w-[120px]">브랜드</TableHead>
+                                <TableHead className="w-[180px]">제품/캠페인</TableHead>
+                                <TableHead className="w-[100px]">원고료</TableHead>
+                                <TableHead className="text-center w-[120px]">초안 제출</TableHead>
+                                <TableHead className="text-center w-[120px]">최종본 제출</TableHead>
+                                <TableHead className="text-center w-[120px]">업로드</TableHead>
                                 <TableHead className="text-right w-[100px]">상태</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -152,38 +152,47 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                         onClick={() => onSelectEvent?.(event)}
                                     >
                                         <TableCell className="font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg">{event.category === '뷰티' ? '💄' : event.category === '패션' ? '👗' : '📝'}</span>
-                                                <div className="flex flex-col w-full">
-                                                    <span className="flex items-center gap-1.5 font-medium">
-                                                        {event.event}
-                                                        {event.isPrivate && <Lock className="h-3 w-3 text-slate-400" />}
-                                                    </span>
-                                                    <span className="text-[10px] text-muted-foreground">{event.targetProduct || "제품 미정"}</span>
-                                                </div>
+                                            {event.brand_name || event.brandName || event.campaign?.brand_name || (event.type === 'upcoming' ? '-' : '미정')}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium truncate">{event.product_name || event.productName || event.title || event.event || "제목 없음"}</span>
+                                                {event.type === 'upcoming' && <span className="text-[10px] text-muted-foreground">내 모먼트</span>}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground text-right px-2 whitespace-nowrap">{event.schedule?.product_delivery ? event.schedule.product_delivery.slice(5) : '-'}</TableCell>
-                                        <TableCell className="text-xs text-muted-foreground text-right px-2 whitespace-nowrap">{event.schedule?.draft_submission ? event.schedule.draft_submission.slice(5) : '-'}</TableCell>
-                                        <TableCell className="text-xs text-muted-foreground text-right px-2 whitespace-nowrap">{event.schedule?.shooting ? event.schedule.shooting.slice(5) : '-'}</TableCell>
-                                        <TableCell className="text-xs text-muted-foreground text-right px-2 whitespace-nowrap">{event.schedule?.feedback ? event.schedule.feedback.slice(5) : '-'}</TableCell>
-                                        <TableCell className="text-xs text-muted-foreground text-right px-2 whitespace-nowrap">{event.schedule?.upload ? event.schedule.upload.slice(5) : (event.date || '-')}</TableCell>
+                                        <TableCell>
+                                            {event.compensation_amount
+                                                ? `${Number(event.compensation_amount).toLocaleString()}원`
+                                                : event.cost
+                                                    ? `${Number(event.cost).toLocaleString()}원`
+                                                    : '-'
+                                            }
+                                        </TableCell>
+                                        <TableCell className="text-center text-xs">
+                                            {event.condition_draft_submission_date ? (
+                                                <div className="flex flex-col items-center">
+                                                    <span>{event.condition_draft_submission_date}</span>
+                                                    {/* D-Day Logic could go here */}
+                                                </div>
+                                            ) : '-'}
+                                        </TableCell>
+                                        <TableCell className="text-center text-xs">
+                                            {event.condition_final_submission_date || '-'}
+                                        </TableCell>
+                                        <TableCell className="text-center text-xs font-semibold text-slate-700">
+                                            {event.condition_upload_date || event.date || '-'}
+                                        </TableCell>
                                         <TableCell className="text-right">
                                             {(() => {
-                                                if (event.type !== 'active') return <Badge variant="secondary" className="text-slate-500">대기중</Badge>
-                                                if (!event.schedule) return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-0">진행중</Badge>
+                                                if (event.type === 'upcoming') return <Badge variant="outline" className="text-slate-500">모집중</Badge>
+                                                if (event.status === 'completed') return <Badge className="bg-slate-100 text-slate-600 border-0">완료됨</Badge>
 
-                                                const today = new Date().toISOString().split('T')[0]
-                                                const s = event.schedule
+                                                // Active Status Logic
+                                                if (event.status === 'confirmed') return <Badge className="bg-indigo-100 text-indigo-700 border-0">확정됨</Badge>
+                                                if (event.status === 'signed') return <Badge className="bg-purple-100 text-purple-700 border-0">계약완료</Badge>
+                                                if (event.status === 'accepted') return <Badge className="bg-blue-100 text-blue-700 border-0">매칭됨</Badge>
 
-                                                if (s.upload && today >= s.upload) return <Badge className="bg-slate-100 text-slate-600 border-0">업로드완료</Badge>
-                                                if (s.upload && today >= s.feedback) return <Badge className="bg-pink-100 text-pink-700 border-0">D-{Math.ceil((new Date(s.upload).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}</Badge>
-                                                if (s.feedback && today >= s.shooting) return <Badge className="bg-purple-100 text-purple-700 border-0">피드백</Badge>
-                                                if (s.shooting && today >= s.draft_submission) return <Badge className="bg-orange-100 text-orange-700 border-0">촬영중</Badge>
-                                                if (s.draft_submission && today >= s.product_delivery) return <Badge className="bg-blue-100 text-blue-700 border-0">기획중</Badge>
-                                                if (s.product_delivery) return <Badge className="bg-slate-100 text-slate-700 border-0">배송대기</Badge>
-
-                                                return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-0">진행중</Badge>
+                                                return <Badge className="bg-emerald-100 text-emerald-700 border-0">진행중</Badge>
                                             })()}
                                         </TableCell>
                                     </TableRow>

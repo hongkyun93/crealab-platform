@@ -49,8 +49,11 @@ export default function EventDetailPage() {
     const [customContentType, setCustomContentType] = useState("")
     const [desiredDate, setDesiredDate] = useState<Date>()
     const [dateFlexible, setDateFlexible] = useState(false)
+    const [draftSubmissionDate, setDraftSubmissionDate] = useState<Date>()
+    const [finalSubmissionDate, setFinalSubmissionDate] = useState<Date>()
+    const [secondaryUsagePeriod, setSecondaryUsagePeriod] = useState("")
     const [proposalMessage, setProposalMessage] = useState("")
-    const [videoGuide, setVideoGuide] = useState(false)
+    const [videoGuide, setVideoGuide] = useState("brand_provided")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isLoadingEvent, setIsLoadingEvent] = useState(false)
 
@@ -185,6 +188,10 @@ ${u.name}의 담당자입니다.
                     incentive_detail: hasIncentive ? incentiveDetail : null,
                     content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ') || null,
                     desired_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+                    condition_draft_submission_date: draftSubmissionDate ? format(draftSubmissionDate, "yyyy-MM-dd") : null,
+                    condition_final_submission_date: finalSubmissionDate ? format(finalSubmissionDate, "yyyy-MM-dd") : null,
+                    condition_upload_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null, // Sync desired_date with condition_upload_date
+                    condition_secondary_usage_period: secondaryUsagePeriod || "불가",
                     date_flexible: dateFlexible,
                     message: proposalMessage,
                     video_guide: videoGuide,
@@ -228,6 +235,9 @@ ${u.name}의 담당자입니다.
             setIncentiveDetail("")
             setCustomContentType("")
             setSelectedContentTypes([])
+            setDraftSubmissionDate(undefined)
+            setFinalSubmissionDate(undefined)
+            setSecondaryUsagePeriod("")
             setProposalMessage("")
 
 
@@ -549,22 +559,20 @@ ${u.name}의 담당자입니다.
                         <div className="space-y-2">
                             <Label>영상 가이드 *</Label>
                             <RadioGroup
-                                value={videoGuide ? "yes" : "no"}
-                                // @ts-ignore
-                                onValueChange={(v) => setVideoGuide(v === "yes")}
+                                value={videoGuide}
+                                onValueChange={setVideoGuide}
                                 className="flex flex-row gap-6"
                             >
                                 <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="yes" id="guide_yes" />
-                                    <Label htmlFor="guide_yes" className="font-normal cursor-pointer">있음</Label>
+                                    <RadioGroupItem value="brand_provided" id="guide_brand" />
+                                    <Label htmlFor="guide_brand" className="font-normal cursor-pointer">브랜드 제공</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="no" id="guide_no" />
-                                    <Label htmlFor="guide_no" className="font-normal cursor-pointer">없음</Label>
+                                    <RadioGroupItem value="creator_planned" id="guide_creator" />
+                                    <Label htmlFor="guide_creator" className="font-normal cursor-pointer">크리에이터 기획</Label>
                                 </div>
                             </RadioGroup>
                         </div>
-
                         {/* Compensation */}
                         <div className="space-y-2">
                             <Label htmlFor="compensation">보상 금액 (선택)</Label>
@@ -631,9 +639,86 @@ ${u.name}의 담당자입니다.
                             </div>
                         </div>
 
+                        {/* Secondary Usage Period (New) */}
+                        <div className="space-y-2">
+                            <Label htmlFor="secondaryUsage">2차 활용 기간 (선택)</Label>
+                            <Input
+                                id="secondaryUsage"
+                                value={secondaryUsagePeriod}
+                                onChange={(e) => setSecondaryUsagePeriod(e.target.value)}
+                                placeholder="예: 3개월, 6개월 (협의 가능)"
+                                className="h-9 text-sm"
+                            />
+                        </div>
+
+                        {/* Date Pickers Group */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Draft Submission Date */}
+                            <div className="space-y-2">
+                                <Label>초안 제출일 (선택)</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full pl-3 text-left font-normal h-9 text-sm",
+                                                !draftSubmissionDate && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {draftSubmissionDate ? (
+                                                format(draftSubmissionDate, "yyyy-MM-dd", { locale: ko })
+                                            ) : (
+                                                <span>초안 제출일 선택</span>
+                                            )}
+                                            <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <CalendarComponent
+                                            mode="single"
+                                            selected={draftSubmissionDate}
+                                            onSelect={setDraftSubmissionDate}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            {/* Final Submission Date */}
+                            <div className="space-y-2">
+                                <Label>최종본 제출일 (선택)</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full pl-3 text-left font-normal h-9 text-sm",
+                                                !finalSubmissionDate && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {finalSubmissionDate ? (
+                                                format(finalSubmissionDate, "yyyy-MM-dd", { locale: ko })
+                                            ) : (
+                                                <span>최종본 제출일 선택</span>
+                                            )}
+                                            <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <CalendarComponent
+                                            mode="single"
+                                            selected={finalSubmissionDate}
+                                            onSelect={setFinalSubmissionDate}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        </div>
+
                         {/* Desired Date & Flexible (New) */}
                         <div className="space-y-2">
-                            <Label>희망 업로드일 (선택)</Label>
+                            <Label>콘텐츠 업로드일 (선택)</Label>
                             <div className="flex items-center gap-2">
                                 <Popover>
                                     <PopoverTrigger asChild>
@@ -647,7 +732,7 @@ ${u.name}의 담당자입니다.
                                             {desiredDate ? (
                                                 format(desiredDate, "yyyy-MM-dd", { locale: ko })
                                             ) : (
-                                                <span>날짜 선택</span>
+                                                <span>콘텐츠 업로드일 선택</span>
                                             )}
                                             <Calendar className="ml-auto h-4 w-4 opacity-50" />
                                         </Button>

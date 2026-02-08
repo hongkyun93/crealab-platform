@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS public.brand_proposals (
   delivery_status text DEFAULT 'pending',
   date_flexible boolean DEFAULT false,
   desired_date date,
-  video_guide boolean DEFAULT false
+  video_guide text DEFAULT 'brand_provided'
 );
 
 -- 2.8 PROPOSALS (Applications)
@@ -787,3 +787,63 @@ ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS event_date text;
 ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS posting_date text;
 ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS category text;
 ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS tags text[];
+
+-- ==========================================
+-- 2024-02-08: Add Condition Negotiation Fields
+-- ==========================================
+
+-- For Brand Proposals (Direct Offers)
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_product_receipt_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_plan_sharing_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_draft_submission_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_final_submission_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_upload_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_maintenance_period text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_secondary_usage_period text;
+
+-- For Campaign Applications (Proposals)
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_product_receipt_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_plan_sharing_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_draft_submission_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_final_submission_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_upload_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_maintenance_period text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_secondary_usage_period text;
+
+-- Notify PostgREST to reload the schema cache
+NOTIFY pgrst, 'reload schema';
+
+
+-- ==========================================
+-- 2024-02-08: Update Video Guide Column Type (Bundled)
+-- ==========================================
+-- This block ensures existing data is migrated if the column was boolean.
+
+DO $$
+BEGIN
+    -- Check if column exists as boolean
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'brand_proposals' 
+        AND column_name = 'video_guide' 
+        AND data_type = 'boolean'
+    ) THEN
+        -- Rename boolean column for safety
+        ALTER TABLE public.brand_proposals RENAME COLUMN video_guide TO video_guide_old;
+
+        -- Add new text column
+        ALTER TABLE public.brand_proposals ADD COLUMN video_guide text NOT NULL DEFAULT 'brand_provided';
+
+        -- Migrate data
+        UPDATE public.brand_proposals
+        SET video_guide = CASE
+            WHEN video_guide_old = true THEN 'brand_provided'
+            ELSE 'creator_planned'
+        END;
+
+        -- Drop old column
+        ALTER TABLE public.brand_proposals DROP COLUMN video_guide_old;
+    END IF;
+END $$;
+

@@ -38,7 +38,7 @@ export default function LoginTestPage() {
             if (roleName === "Kim Sumin") {
                 console.log(`[Login] Redirecting to /creator...`)
                 window.location.href = "/creator"
-            } else if (roleName === "Voib") {
+            } else if (roleName === "Voib" || roleName === "365mc") {
                 console.log(`[Login] Redirecting to /brand...`)
                 window.location.href = "/brand"
             } else if (roleName === "Admin") {
@@ -78,6 +78,15 @@ export default function LoginTestPage() {
                     disabled={!!loading}
                 >
                     {loading === 'Voib' ? '로그인 중...' : '🏢 보이브로 로그인 (브랜드)'}
+                </Button>
+
+                <Button
+                    size="lg"
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold h-16 text-lg"
+                    onClick={() => handleLogin('365mc@brand.com', '365mc')}
+                    disabled={!!loading}
+                >
+                    {loading === '365mc' ? '로그인 중...' : '🏥 365mc로 로그인 (브랜드)'}
                 </Button>
 
                 <Button
