@@ -359,6 +359,10 @@ function InfluencerDashboardContent() {
     const [currentView, setCurrentView] = useState(initialView)
     const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
     const [chatProposal, setChatProposal] = useState<any>(null)
+    const [isChatOpen, setIsChatOpen] = useState(false)
+    const [chatMessage, setChatMessage] = useState("")
+    const [generatedContract, setGeneratedContract] = useState("")
+    const [isGeneratingContract, setIsGeneratingContract] = useState(false)
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
     const [favoritesOnly, setFavoritesOnly] = useState(false)
 
@@ -842,10 +846,7 @@ function InfluencerDashboardContent() {
     }
 
     // Chat states
-    const [isChatOpen, setIsChatOpen] = useState(false)
-    const [chatMessage, setChatMessage] = useState("")
-    const [generatedContract, setGeneratedContract] = useState("")
-    const [isGeneratingContract, setIsGeneratingContract] = useState(false)
+    // Chat states moved to top
 
     const handleGenerateContract = async () => {
         if (!chatProposal || !user) return
