@@ -1289,14 +1289,34 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const addEvent = async (newEvent: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">): Promise<boolean> => {
-        if (!user) return false
+        // Robust check: If user state is not ready, try explicit session check
+        let targetUserId = user?.id;
+        let targetUserName = user?.name || "Unknown";
+        let targetUserAvatar = user?.avatar || "";
+        let targetUserHandle = user?.handle || "";
+        let targetUserFollowers = user?.followers || 0;
+
+        if (!targetUserId) {
+            console.log("[addEvent] User state missing, checking session...");
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) {
+                targetUserId = data.session.user.id;
+                // Try to recover simple profile details if possible, or fallback
+                targetUserName = data.session.user.user_metadata?.name || data.session.user.email?.split('@')[0] || "User";
+                targetUserAvatar = data.session.user.user_metadata?.avatar_url || "";
+                console.log("[addEvent] Recovered userId from session:", targetUserId);
+            } else {
+                console.error("[addEvent] No active session found.");
+                return false;
+            }
+        }
 
         try {
             // 2. Insert into DB
             const { data, error } = await supabase
                 .from('influencer_events')
                 .insert({
-                    influencer_id: user.id,
+                    influencer_id: targetUserId,
                     title: newEvent.event,
                     description: newEvent.description,
                     target_product: newEvent.targetProduct,
@@ -1320,17 +1340,17 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 const event: InfluencerEvent = {
                     ...newEvent,
                     id: data.id,
-                    influencer: user.name, // Local user name
-                    influencerId: user.id,
-                    handle: user.handle || "",
-                    avatar: user.avatar || "",
+                    influencer: targetUserName,
+                    influencerId: targetUserId,
+                    handle: targetUserHandle,
+                    avatar: targetUserAvatar,
                     verified: false,
-                    followers: user.followers || 0,
+                    followers: targetUserFollowers,
                     guide: newEvent.guide,
                     date: new Date().toISOString().split('T')[0],
                     isPrivate: newEvent.isPrivate || false,
                     schedule: newEvent.schedule || {},
-                    isMock: user.isMock || false
+                    isMock: false
                 }
                 setEvents([event, ...events])
                 return true
