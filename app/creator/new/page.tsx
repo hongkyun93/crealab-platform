@@ -173,6 +173,10 @@ export default function NewEventPage() {
         if (success) {
             alert("모먼트가 성공적으로 등록되었습니다!")
             router.push("/creator")
+        } else {
+            // Fallback alert if addEvent fails silently (e.g. auth issue)
+            // Note: addEvent usually alerts on DB error, but might return false on !user
+            alert("모먼트 등록에 실패했습니다. 다시 시도해주세요. (로그인이 필요할 수 있습니다)")
         }
     }
 
@@ -195,298 +199,301 @@ export default function NewEventPage() {
                         </div>
                     </div>
 
-                    <div className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
+                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+                        <div className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
 
-                        <div className="space-y-2">
-                            <Label htmlFor="title">모먼트 제목</Label>
-                            <Input
-                                id="title"
-                                placeholder="예: 한남동으로 이사, 여름 다이어트 시작"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                브랜드가 한눈에 알아볼 수 있는 직관적인 제목을 지어주세요. (예: 비행기에서 사용할 마스크팩 광고할 준비가 되었어요.)
-                            </p>
-                        </div>
-
-                        <div className="space-y-4">
-                            <Label>희망 제품</Label>
-                            <div className="relative">
-                                <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <div className="space-y-2">
+                                <Label htmlFor="title">모먼트 제목</Label>
                                 <Input
-                                    placeholder="협찬받고 싶은 제품을 입력하세요 (예: 로봇청소기, 립스틱)"
-                                    className="pl-9"
-                                    value={targetProduct}
-                                    onChange={(e) => setTargetProduct(e.target.value)}
+                                    id="title"
+                                    placeholder="예: 한남동으로 이사, 여름 다이어트 시작"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
                                 />
+                                <p className="text-xs text-muted-foreground">
+                                    브랜드가 한눈에 알아볼 수 있는 직관적인 제목을 지어주세요. (예: 비행기에서 사용할 마스크팩 광고할 준비가 되었어요.)
+                                </p>
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Event Date Picker */}
                             <div className="space-y-4">
-                                <Label className="flex items-center gap-2">
-                                    <Calendar className="h-4 w-4" />
-                                    모먼트 일정
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setEventYear(prev => prev === "2026" ? "2027" : "2026")}
-                                        className="h-6 px-2 text-xs ml-1 bg-background"
-                                    >
-                                        {eventYear}년 🔄
-                                    </Button>
-                                </Label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {MONTHS.map((m) => {
-                                        const isSelected = eventMonth === m
-                                        return (
-                                            <Button
-                                                key={`event-${m}`}
-                                                type="button"
-                                                variant={isSelected ? "default" : "outline"}
-                                                className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
-                                                onClick={() => setEventMonth(m)}
-                                            >
-                                                {m}
-                                            </Button>
-                                        )
-                                    })}
+                                <Label>희망 제품</Label>
+                                <div className="relative">
+                                    <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="협찬받고 싶은 제품을 입력하세요 (예: 로봇청소기, 립스틱)"
+                                        className="pl-9"
+                                        value={targetProduct}
+                                        onChange={(e) => setTargetProduct(e.target.value)}
+                                    />
                                 </div>
                             </div>
 
-                            {/* Posting Date Picker */}
-                            <div className="space-y-4">
-                                <Label className="flex items-center gap-2">
-                                    <Send className="h-4 w-4" />
-                                    콘텐츠 업로드 시기
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
-                                        className="h-6 px-2 text-xs ml-1 bg-background"
-                                    >
-                                        {postingYear}년 🔄
-                                    </Button>
-                                </Label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {MONTHS.map((m) => {
-                                        const isSelected = postingMonth === m
-                                        return (
-                                            <Button
-                                                key={`posting-${m}`}
-                                                type="button"
-                                                variant={isSelected ? "default" : "outline"}
-                                                className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
-                                                onClick={() => setPostingMonth(m)}
-                                            >
-                                                {m}
-                                            </Button>
-                                        )
-                                    })}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Event Date Picker */}
+                                <div className="space-y-4">
+                                    <Label className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4" />
+                                        모먼트 일정
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setEventYear(prev => prev === "2026" ? "2027" : "2026")}
+                                            className="h-6 px-2 text-xs ml-1 bg-background"
+                                        >
+                                            {eventYear}년 🔄
+                                        </Button>
+                                    </Label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {MONTHS.map((m) => {
+                                            const isSelected = eventMonth === m
+                                            return (
+                                                <Button
+                                                    key={`event-${m}`}
+                                                    type="button"
+                                                    variant={isSelected ? "default" : "outline"}
+                                                    className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
+                                                    onClick={() => setEventMonth(m)}
+                                                >
+                                                    {m}
+                                                </Button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Posting Date Picker */}
+                                <div className="space-y-4">
+                                    <Label className="flex items-center gap-2">
+                                        <Send className="h-4 w-4" />
+                                        콘텐츠 업로드 시기
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
+                                            className="h-6 px-2 text-xs ml-1 bg-background"
+                                        >
+                                            {postingYear}년 🔄
+                                        </Button>
+                                    </Label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {MONTHS.map((m) => {
+                                            const isSelected = postingMonth === m
+                                            return (
+                                                <Button
+                                                    key={`posting-${m}`}
+                                                    type="button"
+                                                    variant={isSelected ? "default" : "outline"}
+                                                    className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
+                                                    onClick={() => setPostingMonth(m)}
+                                                >
+                                                    {m}
+                                                </Button>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="space-y-3">
-                            <Label>관심 카테고리 (복수 선택 가능)</Label>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                {POPULAR_TAGS.map((tag) => (
-                                    <button
-                                        key={tag}
-                                        onClick={() => toggleTag(tag)}
-                                        className={`
+                            <div className="space-y-3">
+                                <Label>관심 카테고리 (복수 선택 가능)</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    {POPULAR_TAGS.map((tag) => (
+                                        <button
+                                            type="button"
+                                            key={tag}
+                                            onClick={() => toggleTag(tag)}
+                                            className={`
                                 text-sm px-3 py-2.5 rounded-md border transition-all duration-200 text-left md:text-center
                                 ${selectedTags.includes(tag)
-                                                ? "bg-primary text-primary-foreground border-primary font-medium ring-2 ring-offset-2 ring-primary/20"
-                                                : "bg-background hover:bg-muted/50 hover:border-primary/50 text-muted-foreground"
-                                            }
+                                                    ? "bg-primary text-primary-foreground border-primary font-medium ring-2 ring-offset-2 ring-primary/20"
+                                                    : "bg-background hover:bg-muted/50 hover:border-primary/5 text-muted-foreground"
+                                                }
                             `}
-                                    >
-                                        {tag}
-                                    </button>
-                                ))}
+                                        >
+                                            {tag}
+                                        </button>
+                                    ))}
+                                </div>
+                                {selectedTags.length > 0 && (
+                                    <p className="text-xs text-primary font-medium">
+                                        {selectedTags.length}개 선택됨: {selectedTags.join(", ")}
+                                    </p>
+                                )}
                             </div>
-                            {selectedTags.length > 0 && (
-                                <p className="text-xs text-primary font-medium">
-                                    {selectedTags.length}개 선택됨: {selectedTags.join(", ")}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="tags">직접 입력 태그</Label>
+                                <Input
+                                    id="tags"
+                                    placeholder="추가하고 싶은 태그가 있다면 입력해주세요 (예: #자취 #이사)"
+                                    value={customTags}
+                                    onChange={(e) => setCustomTags(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="description">상세 설명</Label>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleGenerateAI}
+                                        disabled={isGenerating}
+                                        className="h-7 text-xs gap-1.5 border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
+                                    >
+                                        {isGenerating ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                            <Sparkles className="h-3 w-3 text-yellow-500" />
+                                        )}
+                                        AI 작문 도우미
+                                    </Button>
+                                </div>
+                                <Textarea
+                                    id="description"
+                                    placeholder="어떤 상황이고 어떤 제품이 필요한지 자세히 적어주세요.&#10;예: 25평 아파트로 이사하게 되었습니다. 거실 커튼과 조명을 바꾸고 싶은데..."
+                                    className="min-h-[150px] resize-y"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="guide">제작 가이드</Label>
+                                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Optional</span>
+                                </div>
+                                <Textarea
+                                    id="guide"
+                                    placeholder="브랜드에게 제안할 콘텐츠의 방향성이나 촬영 구도를 미리 적어주세요.&#10;예:&#10;1. 비포/애프터 컷 필수 포함&#10;2. 자연광에서 제품 텍스처 강조&#10;3. 실사용 1주일 후기 위주"
+                                    className="min-h-[120px] resize-y bg-muted/20"
+                                    value={guide}
+                                    onChange={(e) => setGuide(e.target.value)}
+                                />
+                                <p className="text-xs text-primary/80 font-medium">
+                                    ✨ 꿀팁: 가이드를 작성하면 브랜드로부터 광고 제안을 받을 확률이 높아져요!
                                 </p>
-                            )}
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label>공개 범위 설정</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div
+                                        className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${!isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                                        onClick={() => setIsPrivate(false)}
+                                    >
+                                        <Globe className={`h-5 w-5 mt-0.5 ${!isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                                        <div>
+                                            <div className={`font-medium ${!isPrivate ? "text-primary" : "text-foreground"}`}>전체 공개 (Public)</div>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                브랜드가 내 모먼트를 검색하고 제안을 보낼 수 있습니다.
+                                            </p>
+                                        </div>
+                                        {!isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
+                                    </div>
+
+                                    <div
+                                        className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                                        onClick={() => setIsPrivate(true)}
+                                    >
+                                        <Lock className={`h-5 w-5 mt-0.5 ${isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                                        <div>
+                                            <div className={`font-medium ${isPrivate ? "text-primary" : "text-foreground"}`}>나만 보기 (Private)</div>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                다른 사람에게 노출되지 않으며, 개인 일정 관리용으로 저장됩니다.
+                                            </p>
+                                        </div>
+                                        {isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="tags">직접 입력 태그</Label>
-                            <Input
-                                id="tags"
-                                placeholder="추가하고 싶은 태그가 있다면 입력해주세요 (예: #자취 #이사)"
-                                value={customTags}
-                                onChange={(e) => setCustomTags(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
+                        {/* Schedule Template Section */}
+                        <div className="space-y-4 border-t pt-6 mt-6">
                             <div className="flex items-center justify-between">
-                                <Label htmlFor="description">상세 설명</Label>
+                                <div className="space-y-1">
+                                    <Label className="text-base">상세 일정 관리</Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        브랜드와의 원활한 협업을 위해 주요 마일스톤을 미리 계획해보세요.
+                                    </p>
+                                </div>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={handleGenerateAI}
-                                    disabled={isGenerating}
-                                    className="h-7 text-xs gap-1.5 border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
+                                    onClick={applyTemplate}
+                                    className="gap-2 text-primary border-primary/20 hover:bg-primary/5"
                                 >
-                                    {isGenerating ? (
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                        <Sparkles className="h-3 w-3 text-yellow-500" />
-                                    )}
-                                    AI 작문 도우미
+                                    <Sparkles className="h-3 w-3" />
+                                    일정 템플릿 자동 적용
                                 </Button>
                             </div>
-                            <Textarea
-                                id="description"
-                                placeholder="어떤 상황이고 어떤 제품이 필요한지 자세히 적어주세요.&#10;예: 25평 아파트로 이사하게 되었습니다. 거실 커튼과 조명을 바꾸고 싶은데..."
-                                className="min-h-[150px] resize-y"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                            />
-                        </div>
 
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <Label htmlFor="guide">제작 가이드</Label>
-                                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Optional</span>
-                            </div>
-                            <Textarea
-                                id="guide"
-                                placeholder="브랜드에게 제안할 콘텐츠의 방향성이나 촬영 구도를 미리 적어주세요.&#10;예:&#10;1. 비포/애프터 컷 필수 포함&#10;2. 자연광에서 제품 텍스처 강조&#10;3. 실사용 1주일 후기 위주"
-                                className="min-h-[120px] resize-y bg-muted/20"
-                                value={guide}
-                                onChange={(e) => setGuide(e.target.value)}
-                            />
-                            <p className="text-xs text-primary/80 font-medium">
-                                ✨ 꿀팁: 가이드를 작성하면 브랜드로부터 광고 제안을 받을 확률이 높아져요!
-                            </p>
-                        </div>
-
-                        <div className="space-y-3">
-                            <Label>공개 범위 설정</Label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div
-                                    className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${!isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
-                                    onClick={() => setIsPrivate(false)}
-                                >
-                                    <Globe className={`h-5 w-5 mt-0.5 ${!isPrivate ? "text-primary" : "text-muted-foreground"}`} />
-                                    <div>
-                                        <div className={`font-medium ${!isPrivate ? "text-primary" : "text-foreground"}`}>전체 공개 (Public)</div>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            브랜드가 내 모먼트를 검색하고 제안을 보낼 수 있습니다.
-                                        </p>
+                            {(showSchedule || schedule.product_delivery) && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 bg-slate-50 p-4 rounded-lg border">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">📦 제품 배송/수령</Label>
+                                        <Input
+                                            type="date"
+                                            value={schedule.product_delivery}
+                                            onChange={(e) => setSchedule({ ...schedule, product_delivery: e.target.value })}
+                                            className="bg-white"
+                                        />
                                     </div>
-                                    {!isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
-                                </div>
-
-                                <div
-                                    className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
-                                    onClick={() => setIsPrivate(true)}
-                                >
-                                    <Lock className={`h-5 w-5 mt-0.5 ${isPrivate ? "text-primary" : "text-muted-foreground"}`} />
-                                    <div>
-                                        <div className={`font-medium ${isPrivate ? "text-primary" : "text-foreground"}`}>나만 보기 (Private)</div>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            다른 사람에게 노출되지 않으며, 개인 일정 관리용으로 저장됩니다.
-                                        </p>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">📝 기획안(초안) 제출</Label>
+                                        <Input
+                                            type="date"
+                                            value={schedule.draft_submission}
+                                            onChange={(e) => setSchedule({ ...schedule, draft_submission: e.target.value })}
+                                            className="bg-white"
+                                        />
                                     </div>
-                                    {isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">📸 촬영 진행</Label>
+                                        <Input
+                                            type="date"
+                                            value={schedule.shooting}
+                                            onChange={(e) => setSchedule({ ...schedule, shooting: e.target.value })}
+                                            className="bg-white"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">📢 피드백 반영</Label>
+                                        <Input
+                                            type="date"
+                                            value={schedule.feedback}
+                                            onChange={(e) => setSchedule({ ...schedule, feedback: e.target.value })}
+                                            className="bg-white"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground font-bold text-primary">🚀 최종 업로드</Label>
+                                        <Input
+                                            type="date"
+                                            value={schedule.upload}
+                                            onChange={(e) => setSchedule({ ...schedule, upload: e.target.value })}
+                                            className="bg-white border-primary/50 ring-primary/20"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
-                    </div>
-
-                    {/* Schedule Template Section */}
-                    <div className="space-y-4 border-t pt-6">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                                <Label className="text-base">상세 일정 관리</Label>
-                                <p className="text-xs text-muted-foreground">
-                                    브랜드와의 원활한 협업을 위해 주요 마일스톤을 미리 계획해보세요.
-                                </p>
-                            </div>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={applyTemplate}
-                                className="gap-2 text-primary border-primary/20 hover:bg-primary/5"
-                            >
-                                <Sparkles className="h-3 w-3" />
-                                일정 템플릿 자동 적용
+                        <div className="flex justify-end gap-4 pt-4 mt-6">
+                            <Button variant="outline" asChild type="button">
+                                <Link href="/creator">취소</Link>
+                            </Button>
+                            <Button size="lg" className="w-full md:w-auto" type="submit">
+                                <Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기
                             </Button>
                         </div>
-
-                        {(showSchedule || schedule.product_delivery) && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 bg-slate-50 p-4 rounded-lg border">
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-muted-foreground">📦 제품 배송/수령</Label>
-                                    <Input
-                                        type="date"
-                                        value={schedule.product_delivery}
-                                        onChange={(e) => setSchedule({ ...schedule, product_delivery: e.target.value })}
-                                        className="bg-white"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-muted-foreground">📝 기획안(초안) 제출</Label>
-                                    <Input
-                                        type="date"
-                                        value={schedule.draft_submission}
-                                        onChange={(e) => setSchedule({ ...schedule, draft_submission: e.target.value })}
-                                        className="bg-white"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-muted-foreground">📸 촬영 진행</Label>
-                                    <Input
-                                        type="date"
-                                        value={schedule.shooting}
-                                        onChange={(e) => setSchedule({ ...schedule, shooting: e.target.value })}
-                                        className="bg-white"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-muted-foreground">📢 피드백 반영</Label>
-                                    <Input
-                                        type="date"
-                                        value={schedule.feedback}
-                                        onChange={(e) => setSchedule({ ...schedule, feedback: e.target.value })}
-                                        className="bg-white"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-muted-foreground font-bold text-primary">🚀 최종 업로드</Label>
-                                    <Input
-                                        type="date"
-                                        value={schedule.upload}
-                                        onChange={(e) => setSchedule({ ...schedule, upload: e.target.value })}
-                                        className="bg-white border-primary/50 ring-primary/20"
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex justify-end gap-4 pt-4">
-                        <Button variant="outline" asChild>
-                            <Link href="/creator">취소</Link>
-                        </Button>
-                        <Button size="lg" className="w-full md:w-auto" onClick={handleSubmit}>
-                            <Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기
-                        </Button>
-                    </div>
+                    </form>
                 </div>
             </main>
         </div>

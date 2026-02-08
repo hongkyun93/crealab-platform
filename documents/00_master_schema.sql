@@ -772,3 +772,18 @@ ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_secondary_usage_
 
 -- Notify PostgREST to reload the schema cache
 NOTIFY pgrst, 'reload schema';
+
+
+-- ==========================================
+-- 14. INFLUENCER EVENTS MISSING COLUMNS (Added via Agent)
+-- ==========================================
+
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS guide text;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS schedule JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS target_product text;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS event_date text;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS posting_date text;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS category text;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS tags text[];
