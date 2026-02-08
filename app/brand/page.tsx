@@ -159,6 +159,42 @@ function BrandDashboardContent() {
         }
     }, [chatProposal])
 
+    // Auto-open proposal from URL (Notification Redirect)
+    useEffect(() => {
+        const proposalId = searchParams.get('proposalId')
+
+        // Wait for data to load
+        if (isLoading) return;
+
+        if (proposalId && !chatProposal) {
+            console.log("[Brand] Checking URL proposalId:", proposalId)
+
+            // Search in brandProposals (Direct Offers)
+            let target = brandProposals.find((p: any) => p.id === proposalId)
+
+            // Search in campaigns (Applications)
+            if (!target) {
+                // Flatten all proposals from campaigns
+                for (const campaign of campaigns) {
+                    const anyCampaign = campaign as any
+                    if (anyCampaign.proposals) {
+                        const found = anyCampaign.proposals.find((p: any) => p.id === proposalId)
+                        if (found) {
+                            target = found
+                            break
+                        }
+                    }
+                }
+            }
+
+            if (target) {
+                console.log("[Brand] Auto-opening proposal:", target)
+                setChatProposal(target)
+                setIsChatOpen(true)
+            }
+        }
+    }, [searchParams, brandProposals, campaigns, isLoading, chatProposal])
+
     // Fetch Messages when Chat Opens, workspaceTab])
 
     // Auto-scroll for Work Feedback Chat

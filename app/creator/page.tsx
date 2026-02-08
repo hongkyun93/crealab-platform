@@ -365,6 +365,19 @@ function InfluencerDashboardContent() {
     const [uploadProgress, setUploadProgress] = useState(0)
     const [isReuploading, setIsReuploading] = useState(false)
 
+    // Auto-open proposal from URL (Notification Redirect)
+    useEffect(() => {
+        const proposalId = searchParams.get('proposalId')
+        if (proposalId && !chatProposal && brandProposals && brandProposals.length > 0) {
+            console.log("Checking for proposalId:", proposalId)
+            const targetProposal = brandProposals.find((p: any) => p.id === proposalId)
+            if (targetProposal) {
+                console.log("Auto-opening proposal from URL:", targetProposal)
+                setChatProposal(targetProposal)
+            }
+        }
+    }, [searchParams, brandProposals, chatProposal])
+
     // Force data refresh on mount to avoid stale data from navigation
     useEffect(() => {
         console.log('[CreatorDashboard] Forcing data refresh on mount')

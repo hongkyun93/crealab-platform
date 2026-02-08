@@ -790,9 +790,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         currentRole = profile?.role || 'influencer';
                     }
 
+                    /*
+                    // RLS handles visibility now. Removing redundant filter which might cause issues.
                     if (currentRole !== 'admin') {
                         query = query.or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
                     }
+                    */
 
                     const { data: bpData, error: bpError } = await query.order('created_at', { ascending: false })
 

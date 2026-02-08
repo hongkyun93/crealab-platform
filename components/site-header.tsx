@@ -31,10 +31,29 @@ export function SiteHeader() {
         if (!n.is_read) {
             await markAsRead(n.id)
         }
-        // Logic to navigate if needed (e.g. to specific proposal)
-        if (n.type === 'proposal_received' && n.reference_id) {
-            // If creator, maybe go to dashboard with proposal open?
-            // For now just mark read.
+
+        // Redirect Logic based on Notification Type
+        if (n.type === 'proposal_received' || n.type === 'proposal_accepted' || n.type === 'condition_confirmed' || n.type === 'contract_signed') {
+            // Check user role to determine destination
+            // If user is influencer, go to Creator Dashboard
+            // If user is brand, go to Brand Dashboard
+            // However, the notification is specific to the recipient.
+
+            if (user?.type === 'influencer') {
+                router.push(`/creator?view=inbound&proposalId=${n.reference_id}`)
+            } else if (user?.type === 'brand') {
+                router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
+            }
+        } else if (n.type === 'application_received') {
+            // Brand received an application
+            router.push(`/brand?view=outbound&proposalId=${n.reference_id}`)
+        } else if (n.type === 'new_message') {
+            // Generic message redirect - ideally should link to chat
+            if (user?.type === 'influencer') {
+                router.push(`/creator?view=inbound&proposalId=${n.reference_id}`)
+            } else if (user?.type === 'brand') {
+                router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
+            }
         }
     }
 
