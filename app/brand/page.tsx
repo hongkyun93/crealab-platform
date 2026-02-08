@@ -57,6 +57,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import SignatureCanvas from 'react-signature-canvas'
 import Link from "next/link"
+import { ProductDetailView } from "@/components/dashboard/product-detail-view"
 import { useEffect, useState, Suspense, useRef } from "react"
 import { usePlatform, MOCK_BRAND_USER } from "@/components/providers/platform-provider"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -278,6 +279,7 @@ function BrandDashboardContent() {
     const [incentiveDetail, setIncentiveDetail] = useState("")
     const [contentType, setContentType] = useState("")
     const [message, setMessage] = useState("")
+    const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
 
@@ -1748,6 +1750,15 @@ function BrandDashboardContent() {
                         )}
                     </div>
                 )
+            case "product-detail":
+                return (
+                    <div className="animate-in fade-in slide-in-from-right-4">
+                        <ProductDetailView
+                            productId={selectedProductId!}
+                            onBack={() => setCurrentView("discover-products")}
+                        />
+                    </div>
+                )
             case "discover-products":
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -1779,46 +1790,41 @@ function BrandDashboardContent() {
                         ) : (
                             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                                 {filteredProducts.map((product) => (
-                                    <Card
-                                        key={product.id}
-                                        className="h-full overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 bg-background border-border/60 group cursor-pointer"
-                                        onClick={() => setSelectedBrandProduct(product)}
-                                    >
-                                        <div className="aspect-square bg-muted flex items-center justify-center text-6xl overflow-hidden relative">
-                                            {product.image?.startsWith('http') ? (
-                                                <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                            ) : (
-                                                <span className="transition-transform group-hover:scale-125">{product.image || "📦"}</span>
-                                            )}
-                                        </div>
-                                        <CardHeader className="p-4 pb-2">
-                                            <div className="flex justify-between items-start mb-1">
-                                                <span className="text-xs font-bold text-primary uppercase tracking-tight truncate max-w-[120px]">{product.brandName || "브랜드"}</span>
-                                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium">{product.category}</Badge>
+                                    <div key={product.id} className="cursor-pointer" onClick={() => {
+                                        setSelectedProductId(String(product.id));
+                                        setCurrentView("product-detail");
+                                    }}>
+                                        <Card className="h-full overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 bg-background border-border/60 group">
+                                            <div className="aspect-square bg-muted flex items-center justify-center text-6xl overflow-hidden relative">
+                                                {product.image?.startsWith('http') ? (
+                                                    <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                ) : (
+                                                    <span className="transition-transform group-hover:scale-125">{product.image || "📦"}</span>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Button variant="secondary" size="sm" className="font-bold">자세히 보기</Button>
+                                                </div>
                                             </div>
-                                            <CardTitle className="text-sm font-bold line-clamp-2 leading-tight h-10">
-                                                {product.name}
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="p-4 pt-1">
-                                            <p className="font-extrabold text-lg text-foreground">
-                                                {product.price > 0 ? `${product.price.toLocaleString()}원` : "가격 미정"}
-                                            </p>
-                                        </CardContent>
-                                        <CardFooter className="p-4 pt-0 text-[10px] font-bold text-muted-foreground uppercase flex items-center border-t mt-2 pt-3">
-                                            {product.link && (
-                                                <a
-                                                    href={product.link}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-primary hover:underline flex items-center gap-1"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    제품 보기 <ExternalLink className="h-3 w-3" />
-                                                </a>
-                                            )}
-                                        </CardFooter>
-                                    </Card>
+                                            <CardHeader className="p-4 pb-2">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="text-xs font-bold text-primary uppercase tracking-tight truncate max-w-[120px]">{product.brandName || "브랜드"}</span>
+                                                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium">{product.category}</Badge>
+                                                </div>
+                                                <CardTitle className="text-sm font-bold line-clamp-2 leading-tight h-10">
+                                                    {product.name}
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="p-4 pt-1">
+                                                <p className="font-extrabold text-lg text-foreground">
+                                                    {product.price > 0 ? `${product.price.toLocaleString()}원` : "가격 미정"}
+                                                </p>
+                                            </CardContent>
+                                            <CardFooter className="p-4 pt-0 text-[10px] font-bold text-muted-foreground uppercase flex items-center border-t mt-2 pt-3">
+                                                <span className="text-primary group-hover:underline">상세 정보 보기</span>
+                                                <ChevronRight className="ml-auto h-3 w-3 text-primary" />
+                                            </CardFooter>
+                                        </Card>
+                                    </div>
                                 ))}
                             </div>
                         )}
@@ -3467,72 +3473,7 @@ function BrandDashboardContent() {
                 </DialogContent>
             </Dialog >
 
-            {/* Brand Detail Modal */}
-            <Dialog open={!!selectedBrandProduct} onOpenChange={(open) => !open && setSelectedBrandProduct(null)}>
-                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
-                    <div className="relative h-32 bg-gradient-to-r from-indigo-500 to-purple-600">
-                        <div className="absolute -bottom-10 left-6 h-20 w-20 rounded-full border-4 border-white bg-white shadow-md overflow-hidden">
-                            {selectedBrandProduct?.brandAvatar ? (
-                                <img src={selectedBrandProduct.brandAvatar} alt={selectedBrandProduct.brandName} className="h-full w-full object-cover" />
-                            ) : (
-                                <div className="h-full w-full bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-400">
-                                    {selectedBrandProduct?.brandName?.[0]}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="pt-12 pb-6 px-6">
-                        <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-slate-900">{selectedBrandProduct?.brandName}</h2>
-                            <p className="text-sm text-slate-500 font-medium">@{selectedBrandProduct?.brandHandle || 'brand_official'}</p>
-                            {selectedBrandProduct?.brandBio && (
-                                <p className="mt-2 text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                    "{selectedBrandProduct.brandBio}"
-                                </p>
-                            )}
-                        </div>
 
-                        <div className="space-y-4">
-                            <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                                <Package className="h-4 w-4 text-indigo-600" />
-                                관심 제품 정보
-                            </h4>
-                            <div className="flex gap-4 p-4 border rounded-xl bg-white shadow-sm">
-                                <div className="h-20 w-20 shrink-0 bg-slate-100 rounded-lg overflow-hidden border border-slate-100">
-                                    {selectedBrandProduct?.image ? (
-                                        <img src={selectedBrandProduct.image} alt={selectedBrandProduct.name} className="h-full w-full object-cover" />
-                                    ) : (
-                                        <div className="h-full w-full flex items-center justify-center text-slate-300">
-                                            <ImageIcon className="h-8 w-8" />
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <Badge variant="outline" className="mb-1 text-[10px]">{selectedBrandProduct?.category || 'General'}</Badge>
-                                            <h3 className="font-bold text-slate-900 truncate">{selectedBrandProduct?.name}</h3>
-                                        </div>
-                                        <p className="font-bold text-indigo-600 text-sm">{selectedBrandProduct?.price?.toLocaleString()}원</p>
-                                    </div>
-                                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{selectedBrandProduct?.description}</p>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 flex gap-3">
-                                <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={() => {
-                                    alert("브랜드간 협업 제안 기능은 준비중입니다.")
-                                }}>
-                                    <Send className="mr-2 h-4 w-4" /> 제안 보내기
-                                </Button>
-                                <Button variant="outline" className="flex-1" onClick={() => setSelectedBrandProduct(null)}>
-                                    닫기
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
         </div >
     )
 }
