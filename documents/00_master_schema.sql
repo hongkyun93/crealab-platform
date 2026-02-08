@@ -656,24 +656,6 @@ CREATE TABLE IF NOT EXISTS public.submission_feedback (
 -- Enable RLS
 ALTER TABLE public.submission_feedback ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can view feedback for their own proposals
-CREATE POLICY "Users can view relevant feedback"
-ON public.submission_feedback FOR SELECT
-USING (
-    sender_id = auth.uid() OR
-    EXISTS (
-        SELECT 1 FROM public.proposals p 
-        WHERE p.id = proposal_id AND (p.influencer_id = auth.uid() OR EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = p.campaign_id AND c.brand_id = auth.uid()))
-    ) OR
-    EXISTS (
-        SELECT 1 FROM public.brand_proposals bp
-        WHERE bp.id = brand_proposal_id AND (bp.influencer_id = auth.uid() OR bp.brand_id = auth.uid())
-    )
-);
-
--- Policy: Users can insert feedback for their own proposals
-CREATE POLICY "Users can insert relevant feedback"
-ON public.submission_feedback FOR INSERT
 WITH CHECK (
     sender_id = auth.uid() AND (
         EXISTS (
