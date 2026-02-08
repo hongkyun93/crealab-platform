@@ -38,7 +38,6 @@ export default function NewEventPage() {
     const [targetProduct, setTargetProduct] = useState("")
     const [description, setDescription] = useState("")
     const [guide, setGuide] = useState("")
-    const [customTags, setCustomTags] = useState("")
     const [isPrivate, setIsPrivate] = useState(false)
 
     // Schedule Template State
@@ -148,13 +147,7 @@ export default function NewEventPage() {
         }
 
         const tags = [...selectedTags]
-        if (customTags) {
-            // Split by space or comma and add clean tags
-            customTags.split(/[\s,]+/).forEach(t => {
-                const cleanTag = t.replace("#", "").trim()
-                if (cleanTag) tags.push(cleanTag)
-            })
-        }
+
 
         const success = await addEvent({
             category: selectedTags[0] || "기타",
@@ -324,15 +317,7 @@ export default function NewEventPage() {
                                 )}
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="tags">직접 입력 태그</Label>
-                                <Input
-                                    id="tags"
-                                    placeholder="추가하고 싶은 태그가 있다면 입력해주세요 (예: #자취 #이사)"
-                                    value={customTags}
-                                    onChange={(e) => setCustomTags(e.target.value)}
-                                />
-                            </div>
+
 
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
