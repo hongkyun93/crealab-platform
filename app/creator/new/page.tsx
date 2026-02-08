@@ -199,7 +199,8 @@ export default function NewEventPage() {
                         </div>
                     </div>
 
-                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+                    {/* Main Content Div - Form Removed */}
+                    <div>
                         <div className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
 
                             <div className="space-y-2">
@@ -485,15 +486,21 @@ export default function NewEventPage() {
                             )}
                         </div>
 
-                        <div className="flex justify-end gap-4 pt-4 mt-6">
+                        <div className="flex justify-end gap-4 pt-4 mt-6 relative z-50 pb-20">
                             <Button variant="outline" asChild type="button">
                                 <Link href="/creator">취소</Link>
                             </Button>
-                            <Button size="lg" className="w-full md:w-auto" type="submit">
+                            <Button
+                                size="lg"
+                                className="w-full md:w-auto cursor-pointer"
+                                onClick={handleSubmit}
+                                type="button"
+                                disabled={false}
+                            >
                                 <Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기
                             </Button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </main>
         </div>
