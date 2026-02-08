@@ -398,6 +398,23 @@ function InfluencerDashboardContent() {
 
     // Refs for auto-scrolling
     const workspaceChatRef = useRef<HTMLDivElement>(null)
+
+    // Auto-scroll for Chat
+    useEffect(() => {
+        if (workspaceChatRef.current) {
+            workspaceChatRef.current.scrollTop = workspaceChatRef.current.scrollHeight
+        }
+    }, [messages, isChatOpen])
+
+    // Fetch Feedback History when Chat Opens (Data Sync Fix)
+    useEffect(() => {
+        if (chatProposal) {
+            const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
+            const pId = chatProposal.id.toString()
+            console.log('[Creator] Fetching feedback for:', pId, 'isCampaign:', isCampaign)
+            fetchSubmissionFeedback(pId, !isCampaign)
+        }
+    }, [chatProposal, isChatOpen])
     const workFeedbackChatRef = useRef<HTMLDivElement>(null)
 
 
