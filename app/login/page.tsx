@@ -13,7 +13,7 @@ export default function LoginTestPage() {
     // Helper for timeout
     const loginWithTimeout = async (payload: any) => {
         const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("로그인 요청 시간 초과 (10초)")), 10000)
+            setTimeout(() => reject(new Error("로그인 요청 시간 초과 (30초) - 연결 상태를 확인해주세요.")), 30000)
         )
         const loginPromise = supabase.auth.signInWithPassword(payload)
         return Promise.race([loginPromise, timeoutPromise]) as Promise<{ data: any; error: any }>
@@ -23,41 +23,11 @@ export default function LoginTestPage() {
         console.log(`[Login] Starting login for ${roleName} (${email})`)
         setLoading(roleName)
         try {
-            console.log(`[Login] Attempting password 'password'...`)
-            // Priority 1: 'password'
-            let { data, error } = await loginWithTimeout({
+            console.log(`[Login] Attempting password '12341234'...`)
+            const { data, error } = await loginWithTimeout({
                 email,
-                password: "password",
+                password: "12341234",
             })
-
-            if (error) {
-                console.warn(`[Login] 'password' failed:`, error.message)
-                console.log(`[Login] Trying '12341234'...`)
-                // Priority 2: '12341234'
-                const res2 = await loginWithTimeout({
-                    email,
-                    password: "12341234",
-                })
-                error = res2.error
-                data = res2.data
-
-                if (error) {
-                    console.warn(`[Login] '12341234' failed:`, error.message)
-                    console.log(`[Login] Trying '1234'...`)
-                    // Priority 3: '1234'
-                    const res3 = await loginWithTimeout({
-                        email,
-                        password: "1234",
-                    })
-                    error = res3.error
-                    data = res3.data
-                }
-            }
-
-            if (error) {
-                console.error(`[Login] All password attempts failed for ${email}`)
-                throw error
-            }
 
             console.log(`[Login] Success! Logged in as ${roleName}`, data.user?.id)
 
@@ -67,16 +37,16 @@ export default function LoginTestPage() {
             // Redirect based on role logic
             if (roleName === "Kim Sumin") {
                 console.log(`[Login] Redirecting to /creator...`)
-                router.push("/creator")
+                window.location.href = "/creator"
             } else if (roleName === "Voib") {
                 console.log(`[Login] Redirecting to /brand...`)
-                router.push("/brand")
+                window.location.href = "/brand"
             } else if (roleName === "Admin") {
                 console.log(`[Login] Redirecting to /admin...`)
-                router.push("/admin")
+                window.location.href = "/admin"
             } else {
-                console.log(`[Login] Redirecting to refresh...`)
-                router.refresh()
+                console.log(`[Login] Redirecting to reload...`)
+                window.location.reload()
             }
         } catch (e: any) {
             console.error(`[Login] Exception caught:`, e)
@@ -121,7 +91,7 @@ export default function LoginTestPage() {
             </div>
 
             <div className="mt-8 text-sm text-slate-500">
-                * 비밀번호는 `password`, `12341234`, `1234` 순서로 자동 시도합니다.
+                * 비밀번호는 `12341234`로 자동 시도합니다.
             </div>
             <div className="mt-4 text-xs text-slate-400">
                 Note: Original Login Page backed up to <code>app/login/page.original.tsx</code>

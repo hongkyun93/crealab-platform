@@ -22,7 +22,7 @@ export default function LoginPage() {
 
     // We can use same state for both forms since they replace each other
     const [id, setId] = useState("")
-    const [password, setPassword] = useState("")
+    const [password, setPassword] = useState("12341234")
 
     const handleSocialLogin = async (provider: 'google' | 'kakao', role: 'brand' | 'influencer') => {
         setIsLoading(true)
@@ -133,7 +133,7 @@ export default function LoginPage() {
                                         <Input
                                             id="creator-pw"
                                             type="password"
-                                            placeholder="1234"
+                                            placeholder="12341234"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                         />
@@ -192,7 +192,7 @@ export default function LoginPage() {
                             </CardContent>
                             <CardFooter>
                                 <div className="text-xs text-muted-foreground text-center w-full">
-                                    <span className="font-semibold">테스트 계정:</span> creator1 / 1234
+                                    <span className="font-semibold">테스트 계정:</span> creator1 / 12341234
                                 </div>
                             </CardFooter>
                         </Card>
@@ -225,7 +225,7 @@ export default function LoginPage() {
                                         <Input
                                             id="brand-pw"
                                             type="password"
-                                            placeholder="1234"
+                                            placeholder="12341234"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                         />
@@ -284,7 +284,7 @@ export default function LoginPage() {
                             </CardContent>
                             <CardFooter>
                                 <div className="text-xs text-muted-foreground text-center w-full">
-                                    <span className="font-semibold">테스트 계정:</span> brand1 / 1234
+                                    <span className="font-semibold">테스트 계정:</span> brand1 / 12341234
                                 </div>
                             </CardFooter>
                         </Card>

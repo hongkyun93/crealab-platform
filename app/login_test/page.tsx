@@ -13,31 +13,10 @@ export default function LoginTestPage() {
     const handleLogin = async (email: string, roleName: string) => {
         setLoading(roleName)
         try {
-            // Priority 1: 'password'
-            let { error } = await supabase.auth.signInWithPassword({
+            const { error } = await supabase.auth.signInWithPassword({
                 email,
-                password: "password",
+                password: "12341234",
             })
-
-            if (error) {
-                console.warn(`[LoginTest] 'password' failed for ${email}, trying '12341234'...`)
-                // Priority 2: '12341234'
-                const res2 = await supabase.auth.signInWithPassword({
-                    email,
-                    password: "12341234",
-                })
-                error = res2.error
-
-                if (error) {
-                    console.warn(`[LoginTest] '12341234' failed for ${email}, trying '1234'...`)
-                    // Priority 3: '1234'
-                    const res3 = await supabase.auth.signInWithPassword({
-                        email,
-                        password: "1234",
-                    })
-                    error = res3.error
-                }
-            }
 
             if (error) {
                 throw error
@@ -47,13 +26,13 @@ export default function LoginTestPage() {
 
             // Redirect based on role logic
             if (roleName === "Kim Sumin") {
-                router.push("/creator")
+                window.location.href = "/creator"
             } else if (roleName === "Voib") {
-                router.push("/brand")
+                window.location.href = "/brand"
             } else if (roleName === "Admin") {
-                router.push("/admin")
+                window.location.href = "/admin"
             } else {
-                router.refresh()
+                window.location.reload()
             }
         } catch (e: any) {
             alert(`로그인 실패: ${e.message}`)
@@ -96,7 +75,7 @@ export default function LoginTestPage() {
             </div>
 
             <div className="mt-8 text-sm text-slate-500">
-                * 비밀번호는 `password`, `12341234`, `1234` 순서로 자동 시도합니다.
+                * 비밀번호는 `12341234`로 자동 시도합니다.
             </div>
         </div>
     )

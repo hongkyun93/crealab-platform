@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email text,
   role user_role DEFAULT 'influencer',
   display_name text,
+  handle text,
   avatar_url text,
   bio text,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -35,6 +36,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS website text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS address text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS handle text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone DEFAULT timezone('utc'::text, now());
 
@@ -483,12 +485,26 @@ ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_s
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_date TIMESTAMP WITH TIME ZONE;
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_version NUMERIC(3,1) DEFAULT 1.0;
 
+-- For Content Submission 2 (Brand Proposals)
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_url_2 text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_file_url_2 text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_status_2 text DEFAULT 'pending';
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_date_2 TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9;
+
 -- For Campaign Applications (Proposals)
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_url text;
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_file_url text;
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_status text DEFAULT 'pending';
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_date TIMESTAMP WITH TIME ZONE;
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_version NUMERIC(3,1) DEFAULT 1.0;
+
+-- For Content Submission 2 (Proposals)
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_url_2 text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_file_url_2 text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_status_2 text DEFAULT 'pending';
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_date_2 TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9;
 
 -- 7.4 Mutual Condition Confirmation Fields (Added via Agent)
 -- For Direct Offers
@@ -611,3 +627,58 @@ BEGIN
         );
     END IF;
 END $$;
+-- ==========================================
+-- 11. SUBMISSION FEEDBACK SYSTEM (Added via Agent)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS public.submission_feedback (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    proposal_id UUID REFERENCES public.proposals(id) ON DELETE CASCADE,
+    brand_proposal_id UUID REFERENCES public.brand_proposals(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    
+    -- Constraint: Must belong to either a campaign proposal or a direct offer
+    CONSTRAINT feedback_target_check CHECK (
+        (proposal_id IS NOT NULL AND brand_proposal_id IS NULL) OR
+        (proposal_id IS NULL AND brand_proposal_id IS NOT NULL)
+    )
+);
+
+-- Enable RLS
+ALTER TABLE public.submission_feedback ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can view feedback for their own proposals
+CREATE POLICY "Users can view relevant feedback"
+ON public.submission_feedback FOR SELECT
+USING (
+    sender_id = auth.uid() OR
+    EXISTS (
+        SELECT 1 FROM public.proposals p 
+        WHERE p.id = proposal_id AND (p.influencer_id = auth.uid() OR EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = p.campaign_id AND c.brand_id = auth.uid()))
+    ) OR
+    EXISTS (
+        SELECT 1 FROM public.brand_proposals bp
+        WHERE bp.id = brand_proposal_id AND (bp.influencer_id = auth.uid() OR bp.brand_id = auth.uid())
+    )
+);
+
+-- Policy: Users can insert feedback for their own proposals
+CREATE POLICY "Users can insert relevant feedback"
+ON public.submission_feedback FOR INSERT
+WITH CHECK (
+    sender_id = auth.uid() AND (
+        EXISTS (
+            SELECT 1 FROM public.proposals p 
+            WHERE p.id = proposal_id AND (p.influencer_id = auth.uid() OR EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = p.campaign_id AND c.brand_id = auth.uid()))
+        ) OR
+        EXISTS (
+            SELECT 1 FROM public.brand_proposals bp
+            WHERE bp.id = brand_proposal_id AND (bp.influencer_id = auth.uid() OR bp.brand_id = auth.uid())
+        )
+    )
+);
+
+-- Realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE submission_feedback;

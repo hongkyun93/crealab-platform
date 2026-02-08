@@ -144,12 +144,14 @@ export type Proposal = {
     created_at?: string
     completed_at?: string
 
-    // Content Submission
-    content_submission_url?: string
-    content_submission_file_url?: string
-    content_submission_status?: 'pending' | 'submitted' | 'approved' | 'rejected'
-    content_submission_date?: string
     content_submission_version?: number
+
+    // Content Submission 2
+    content_submission_url_2?: string
+    content_submission_file_url_2?: string
+    content_submission_status_2?: 'pending' | 'submitted' | 'approved' | 'rejected'
+    content_submission_date_2?: string
+    content_submission_version_2?: number
 }
 
 
@@ -173,13 +175,14 @@ export type BrandProposal = {
     isMock?: boolean
     completed_at?: string
 
-    // Content Submission
-    // Content Submission
-    content_submission_url?: string
-    content_submission_file_url?: string
-    content_submission_status?: 'pending' | 'submitted' | 'approved' | 'rejected'
-    content_submission_date?: string
     content_submission_version?: number
+
+    // Content Submission 2
+    content_submission_url_2?: string
+    content_submission_file_url_2?: string
+    content_submission_status_2?: 'pending' | 'submitted' | 'approved' | 'rejected'
+    content_submission_date_2?: string
+    content_submission_version_2?: number
 
     // Product Card
     product_id?: string
@@ -248,7 +251,20 @@ export type Message = {
     senderAvatar?: string
     receiverName?: string
     receiverAvatar?: string
+    influencer_avatar?: string
     isMock?: boolean
+}
+
+export interface SubmissionFeedback {
+    id: string
+    proposal_id?: string
+    brand_proposal_id?: string
+    sender_id: string
+    content: string
+    created_at: string
+    // Optional sender info for UI
+    sender_name?: string
+    sender_avatar?: string
 }
 
 interface PlatformContextType {
@@ -279,9 +295,17 @@ interface PlatformContextType {
     notifications: Notification[]
     sendNotification: (toUserId: string, message: string, type?: string, referenceId?: string) => Promise<void>
     markAsRead: (id: string) => Promise<void>
+
+    // Messages
     messages: Message[]
-    updateBrandProposal: (id: string, updates: string | object) => Promise<boolean>
     sendMessage: (toUserId: string, content: string, proposalId?: string, brandProposalId?: string) => Promise<void>
+
+    // Feedback
+    submissionFeedback: SubmissionFeedback[]
+    fetchSubmissionFeedback: (proposalId: string, isBrandProposal: boolean) => Promise<SubmissionFeedback[]>
+    sendSubmissionFeedback: (proposalId: string, isBrandProposal: boolean, senderId: string, content: string) => Promise<boolean>
+
+    updateBrandProposal: (id: string, updates: string | object) => Promise<boolean>
     switchRole: (newRole: 'brand' | 'influencer') => Promise<void>
     isLoading: boolean
     resetData: () => void
@@ -302,10 +326,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
     const [campaigns, setCampaigns] = useState<Campaign[]>(INITIAL_CAMPAIGNS)
     const [events, setEvents] = useState<InfluencerEvent[]>(INITIAL_EVENTS)
     const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS)
-    const [proposals, setProposals] = useState<Proposal[]>([])
-    const [brandProposals, setBrandProposals] = useState<BrandProposal[]>(INITIAL_PROPOSALS)
+    const [proposals, setProposals] = React.useState<Proposal[]>([])
+    const [brandProposals, setBrandProposals] = React.useState<BrandProposal[]>([])
+    const [messages, setMessages] = React.useState<Message[]>([])
+    const [submissionFeedback, setSubmissionFeedback] = React.useState<SubmissionFeedback[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
-    const [messages, setMessages] = useState<Message[]>([])
     const [isInitialized, setIsInitialized] = useState(false)
     const [isAuthChecked, setIsAuthChecked] = useState(false)
 
@@ -530,7 +555,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 const fetchedUser = await fetchUserProfile(session.user)
                 if (fetchedUser) {
                     setUser(fetchedUser)
-                    fetchEvents(session.user.id)
+                    // Await initial data fetch to prevent blank screen
+                    await Promise.all([
+                        fetchEvents(session.user.id),
+                        fetchMessages(session.user.id),
+                        fetchNotifications(session.user.id)
+                    ])
                 }
             } else if (mounted) {
                 // IMPORTANT: If no session, clear local user state to prevent "ghost login"
@@ -556,8 +586,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     const fetchedUser = await fetchUserProfile(session.user)
                     setUser(fetchedUser)
                     console.log('[Auth] User session valid, fetching data...')
-                    fetchEvents(session.user.id)
-                    fetchMessages(session.user.id)
+                    // Await data fetch here as well
+                    await Promise.all([
+                        fetchEvents(session.user.id),
+                        fetchMessages(session.user.id),
+                        fetchNotifications(session.user.id)
+                    ])
                 }
             } else if (mounted) {
                 lastUserId.current = null
@@ -588,7 +622,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // 1. Fetch Events
             const { data: eventsData, error: eventsError } = await supabase
                 .from('influencer_events')
-                .select('*, profiles:influencer_id(*, influencer_details(*))')
+                .select('*, profiles(*, influencer_details(*))')
                 .order('created_at', { ascending: false })
 
             if (eventsError) {
@@ -644,7 +678,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .from('campaigns')
                 .select(`
                     *,
-                    profiles!brand_id(display_name)
+                    profiles(display_name)
                 `)
                 .order('created_at', { ascending: false })
 
@@ -686,71 +720,80 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (userId) {
                 let query = supabase
                     .from('brand_proposals')
-                    .select('*, brand_profile:profiles!brand_id(display_name), influencer_profile:profiles!influencer_id(display_name), product:brand_products!product_id(*)')
+                    .select('*, brand_profile:profiles!brand_proposals_brand_id_fkey(display_name), influencer_profile:profiles!brand_proposals_influencer_id_fkey(display_name), product:brand_products(*)')
 
-                // Fetch user role to check admin status
-                const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
+                // Fetch user role to check admin status (Use local state if available to avoid race conditions)
+                let currentRole = user?.id === userId ? user?.type : null;
 
-                if (profile?.role !== 'admin') {
+                if (!currentRole) {
+                    const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
+                    currentRole = profile?.role || 'influencer';
+                }
+
+                if (currentRole !== 'admin') {
                     query = query.or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
                 }
 
-                const { data: bpData } = await query.order('created_at', { ascending: false })
+                const { data: bpData, error: bpError } = await query.order('created_at', { ascending: false })
+
+                if (bpError) {
+                    console.error('[fetchEvents] Brand proposals fetch error:', JSON.stringify(bpError, null, 2))
+                }
 
                 if (bpData) {
                     console.log('[fetchEvents] Fetched proposals:', bpData.length)
                     const mappedBP: BrandProposal[] = bpData.map((b: any) => ({
-                        ...b,
+                        ...(b as any),
+                        type: 'brand_offer',
                         brand_name: b.brand_profile?.display_name || 'Brand',
                         influencer_name: b.influencer_profile?.display_name || 'Creator'
-                    }))
+                    })) as any
                     setBrandProposals(mappedBP)
                 }
-
                 // B. Campaign Applications (proposals table)
-                const { data: appData, error: appError } = await supabase
+                // B. Campaign Applications (proposals table)
+                const isBrand = currentRole === 'brand';
+
+                let campQuery = supabase
                     .from('proposals')
                     .select(`
                         *,
-                        campaign:campaigns(
-                            id, 
-                            title, 
-                            product_name, 
-                            brand_id,
-                            brand_profile:profiles!brand_id(display_name)
+                        campaign:campaigns${isBrand ? '!inner' : ''}(
+                            *,
+                            brand:profiles(display_name, avatar_url)
                         ),
-                        influencer:profiles!influencer_id(display_name, avatar_url)
+                        influencer_profile:profiles(display_name, avatar_url)
                     `)
-                    .order('created_at', { ascending: false })
 
-                if (appData) {
-                    const role = profile?.role || 'influencer'
-                    const filteredApps = appData.filter((a: any) => {
-                        if (!a.campaign) return false
-                        if (role === 'admin') return true
-                        if (role === 'brand') return a.campaign.brand_id === userId
-                        return a.influencer_id === userId
-                    })
+                if (currentRole !== 'admin') {
+                    if (isBrand) {
+                        // For Brands: fetch proposals where the CAMPAIGN belongs to them
+                        campQuery = campQuery.eq('campaign.brand_id', userId)
+                    } else {
+                        // For Influencers: fetch their own proposals
+                        campQuery = campQuery.eq('influencer_id', userId)
+                    }
+                }
 
-                    const mappedApps: Proposal[] = filteredApps.map((a: any) => ({
-                        id: a.id,
+                const { data: pData, error: pError } = await campQuery.order('created_at', { ascending: false })
+
+                if (pError) {
+                    console.error('[fetchEvents] Campaign proposals fetch error:', JSON.stringify(pError, null, 2))
+                }
+
+                if (pData) {
+                    console.log('[fetchEvents] Fetched campaign proposals:', pData.length)
+                    const mappedApps: Proposal[] = pData.map((p: any) => ({
+                        ...p,
                         type: 'creator_apply',
-                        dealType: 'ad',
-                        campaignId: a.campaign?.id,
-                        campaignName: a.campaign?.title,
-                        productName: a.campaign?.product_name,
-                        influencerId: a.influencer_id,
-                        influencerName: a.influencer?.display_name || 'Unknown',
-                        influencerAvatar: a.influencer?.avatar_url,
-                        brandId: a.campaign?.brand_id,
-                        brandName: a.campaign?.brand_profile?.display_name || 'Brand',
-                        message: a.message,
-                        cost: a.price_offer,
-                        status: a.status as any,
-                        date: a.created_at,
-                        created_at: a.created_at,
-                        campaign: a.campaign
-                    }))
+                        brand_name: p.campaign?.brand?.display_name || 'Brand', // Access nested brand
+                        influencer_name: p.influencer_profile?.display_name || 'Creator',
+                        influencer_avatar: p.influencer_profile?.avatar_url,
+                        // influencer_handle: p.influencer_profile?.handle, // Removed to prevent error if column missing
+                        product_name: p.campaign?.product_name || p.campaign?.title || 'Campaign', // Use campaign product name
+                        product_image: p.campaign?.product_image_url, // Use campaign product image
+                        campaign_name: p.campaign?.title
+                    })) as any
 
                     console.log('[fetchEvents] Fetched applications:', mappedApps.length)
                     setProposals(mappedApps)
@@ -760,12 +803,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // 4. Fetch Brand Products
             const { data: productData, error: productError } = await supabase
                 .from('brand_products')
-                .select('*')
+                .select(`
+                    *,
+                    profiles(display_name, avatar_url, bio)
+                `)
                 .order('created_at', { ascending: false })
 
             if (productData) {
                 console.log('[fetchEvents] Fetched products SUCCESS:', productData.length, 'items')
-                // console.log('[fetchEvents] First product RAW:', productData[0]) 
                 const mappedProducts: Product[] = productData.map((p: any) => ({
                     id: p.id,
                     brandId: p.brand_id,
@@ -783,16 +828,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     accountTag: p.account_tag || '',
                     description: p.description,
                     createdAt: p.created_at,
-                    isMock: p.is_mock || false
+                    isMock: p.is_mock || false,
+                    brandAvatar: p.profiles?.avatar_url,
+                    brandHandle: p.profiles?.handle, // Might be undefined if not fetched
+                    brandBio: p.profiles?.bio
                 }))
                 setProducts(mappedProducts)
             } else if (productError) {
-                console.error('[fetchEvents] Error fetching products:', {
-                    code: productError.code,
-                    message: productError.message,
-                    details: productError.details,
-                    hint: productError.hint
-                })
+                console.error('[fetchEvents] Error fetching products:', JSON.stringify(productError, null, 2))
 
                 if (productError.code === '42P01') {
                     console.warn('The "brand_products" table is missing. Please run "documents/brand_products_schema.sql" in Supabase SQL editor.')
@@ -1563,6 +1606,92 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
+    // Helper to check if a string is a valid UUID
+    const isUUID = (str: string) => {
+        if (!str || typeof str !== 'string') return false
+        // More permissive UUID regex to handle various versions/variants
+        const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        return regex.test(str)
+    }
+
+    const fetchSubmissionFeedback = async (proposalId: string, isBrandProposal: boolean): Promise<SubmissionFeedback[]> => {
+        // Skip mock IDs to avoid Supabase errors (400/403)
+        if (!isUUID(proposalId)) {
+            console.log('[fetchSubmissionFeedback] Skipping fetch for mock ID:', proposalId)
+            return []
+        }
+
+        try {
+            const query = supabase
+                .from('submission_feedback')
+                .select(`
+                    *,
+                    sender:profiles(id, display_name, avatar_url)
+                `)
+                .order('created_at', { ascending: true })
+
+            if (isBrandProposal) {
+                query.eq('brand_proposal_id', proposalId)
+            } else {
+                query.eq('proposal_id', proposalId)
+            }
+
+            const { data, error } = await query
+
+            if (data) {
+                const feedback = data.map((item: any) => ({
+                    ...item,
+                    sender_name: item.sender?.display_name,
+                    sender_avatar: item.sender?.avatar_url
+                }))
+
+                setSubmissionFeedback(feedback)
+                return feedback
+            }
+            return []
+        } catch (e) {
+            console.error("Failed to fetch feedback:", e)
+            return []
+        }
+    }
+
+    const sendSubmissionFeedback = async (proposalId: string, isBrandProposal: boolean, senderId: string, content: string): Promise<boolean> => {
+        // Skip mock IDs to avoid Supabase errors (403/UUID failure)
+        if (!isUUID(proposalId) || !isUUID(senderId)) {
+            console.warn('[sendSubmissionFeedback] Cannot send feedback for mock data:', { proposalId, senderId })
+            return false
+        }
+
+        try {
+            const payload: any = {
+                sender_id: senderId,
+                content
+            }
+
+            if (isBrandProposal) {
+                payload.brand_proposal_id = proposalId
+            } else {
+                payload.proposal_id = proposalId
+            }
+
+            const { error } = await supabase
+                .from('submission_feedback')
+                .insert(payload)
+
+            if (error) throw error
+            return true
+        } catch (e: any) {
+            console.error("Failed to send feedback details:", {
+                error: e,
+                message: e?.message,
+                details: e?.details,
+                hint: e?.hint,
+                code: e?.code
+            })
+            return false
+        }
+    }
+
     const fetchNotifications = React.useCallback(async (userId: string) => {
         try {
             const { data, error } = await supabase
@@ -1800,6 +1929,37 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 { event: 'DELETE', schema: 'public', table: 'messages' },
                 () => { console.log('[Realtime] Message DELETE detected'); refreshData(); }
             )
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'submission_feedback' },
+                async (payload) => {
+                    console.log('[Realtime] Submission Feedback INSERT detected');
+                    const newFeedback = payload.new;
+
+                    // Fetch sender info and append
+                    const { data: senderData } = await supabase
+                        .from('profiles')
+                        .select('id, display_name, avatar_url')
+                        .eq('id', newFeedback.sender_id)
+                        .single();
+
+                    const feedbackWithSender: SubmissionFeedback = {
+                        id: newFeedback.id,
+                        proposal_id: newFeedback.proposal_id,
+                        brand_proposal_id: newFeedback.brand_proposal_id,
+                        sender_id: newFeedback.sender_id,
+                        content: newFeedback.content,
+                        created_at: newFeedback.created_at,
+                        sender_name: senderData?.display_name,
+                        sender_avatar: senderData?.avatar_url
+                    };
+
+                    setSubmissionFeedback(prev => {
+                        if (prev.some(f => f.id === feedbackWithSender.id)) return prev;
+                        return [...prev, feedbackWithSender];
+                    });
+                }
+            )
             .subscribe()
 
         return () => {
@@ -1808,23 +1968,35 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }, [user, supabase]) // Depends on user to re-subscribe if user changes
 
+    const contextValue = React.useMemo(() => ({
+        user, login, logout, updateUser,
+        campaigns, addCampaign, deleteCampaign,
+        events, addEvent, deleteEvent, updateEvent,
+        products, addProduct, updateProduct, deleteProduct,
+        proposals, addProposal, updateProposal, deleteProposal, createBrandProposal,
+        brandProposals, updateBrandProposal, deleteBrandProposal,
+        notifications, sendNotification, markAsRead,
+        messages, sendMessage,
+        submissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
+        switchRole,
+        isLoading: !isInitialized || !isAuthChecked,
+        resetData,
+        refreshData,
+        updateCampaignStatus,
+        supabase
+    }), [
+        user, campaigns, events, products, proposals, brandProposals,
+        notifications, messages, submissionFeedback, isInitialized, isAuthChecked,
+        login, logout, updateUser, addCampaign, deleteCampaign, addEvent, deleteEvent,
+        updateEvent, addProduct, updateProduct, deleteProduct, addProposal, updateProposal,
+        deleteProposal, createBrandProposal, updateBrandProposal, deleteBrandProposal,
+        sendNotification, markAsRead, sendMessage, fetchSubmissionFeedback,
+        sendSubmissionFeedback, switchRole, resetData, refreshData, updateCampaignStatus,
+        supabase
+    ])
+
     return (
-        <PlatformContext.Provider value={{
-            user, login, logout, updateUser,
-            campaigns, addCampaign, deleteCampaign,
-            events, addEvent, deleteEvent, updateEvent,
-            products, addProduct, updateProduct, deleteProduct,
-            proposals, addProposal, updateProposal, deleteProposal, createBrandProposal,
-            brandProposals, updateBrandProposal, deleteBrandProposal,
-            notifications, sendNotification, markAsRead,
-            messages, sendMessage,
-            switchRole,
-            isLoading: !isInitialized || !isAuthChecked,
-            resetData,
-            refreshData,
-            updateCampaignStatus,
-            supabase
-        }}>
+        <PlatformContext.Provider value={contextValue}>
             {children}
         </PlatformContext.Provider>
     )
