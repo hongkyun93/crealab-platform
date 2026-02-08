@@ -223,7 +223,141 @@ function GuideDialog({
     )
 }
 
-// Product Guide Dialog Component
+function DetailsModal({
+    isOpen,
+    onOpenChange,
+    data,
+    type,
+    proposals = [],
+    onViewProposal,
+    onEdit,
+    onDelete
+}: {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    data: any;
+    type: 'moment' | 'campaign';
+    proposals?: any[];
+    onViewProposal: (proposalId: string) => void;
+    onEdit?: (id: string) => void;
+    onDelete?: (id: string) => void;
+}) {
+    if (!data) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-xl">
+                        {type === 'moment' ? <Rocket className="h-5 w-5 text-blue-500" /> : <Megaphone className="h-5 w-5 text-purple-500" />}
+                        {type === 'moment' ? data.title || data.event : data.productName || data.product}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {type === 'moment' ? '등록된 모먼트 상세 정보 및 제안 현황' : '지원한 캠페인 상세 정보 및 제안 현황'}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6 py-4">
+                    {/* Details Section */}
+                    <div className="rounded-lg border bg-slate-50 p-4 space-y-3">
+                        <h4 className="font-semibold flex items-center gap-2">
+                            <FileText className="h-4 w-4" />상세 내용
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            {type === 'moment' ? (
+                                <>
+                                    <div>
+                                        <span className="text-muted-foreground block mb-1">카테고리</span>
+                                        <span className="font-medium">{data.category}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground block mb-1">희망 제품</span>
+                                        <span className="font-medium">{data.targetProduct}</span>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <span className="text-muted-foreground block mb-1">설명</span>
+                                        <p className="whitespace-pre-wrap text-slate-700">{data.description}</p>
+                                    </div>
+                                    {data.tags && (
+                                        <div className="col-span-2 flex flex-wrap gap-2 mt-2">
+                                            {data.tags.map((tag: string, i: number) => (
+                                                <Badge key={i} variant="secondary">#{tag}</Badge>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <div>
+                                        <span className="text-muted-foreground block mb-1">브랜드</span>
+                                        <span className="font-medium">{data.brand}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground block mb-1">예산</span>
+                                        <span className="font-medium">{data.budget}</span>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <span className="text-muted-foreground block mb-1">모집 내용</span>
+                                        <p className="whitespace-pre-wrap text-slate-700">{data.description}</p>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Proposals Section */}
+                    <div>
+                        <h4 className="font-semibold flex items-center gap-2 mb-3">
+                            <ShoppingBag className="h-4 w-4" /> 받은 제안 목록 ({proposals.length})
+                        </h4>
+
+                        {proposals.length > 0 ? (
+                            <div className="space-y-3">
+                                {proposals.map((prop, idx) => (
+                                    <div key={prop.id || idx} className="flex items-center justify-between p-4 rounded-lg border bg-white shadow-sm hover:border-primary/50 transition-colors">
+                                        <div className="space-y-1">
+                                            <div className="font-medium flex items-center gap-2">
+                                                {prop.brand_name || "Brand"}
+                                                <Badge variant="outline" className="text-xs">{prop.product_name}</Badge>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground line-clamp-1">
+                                                {prop.message || "제안 내용 없음"}
+                                            </p>
+                                            <div className="text-xs text-slate-500">
+                                                제안일: {prop.created_at ? new Date(prop.created_at).toLocaleDateString() : '-'}
+                                            </div>
+                                        </div>
+                                        <Button size="sm" onClick={() => onViewProposal(prop.id)}>
+                                            제안 보기 <ChevronRight className="ml-1 h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
+                                아직 도착한 제안이 없습니다.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <DialogFooter className="flex justify-between sm:justify-between w-full">
+                    {type === 'moment' ? (
+                        <div className="flex gap-2">
+                            <Button variant="outline" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => onEdit?.(data.id)}>
+                                <Pencil className="h-4 w-4 mr-2" /> 수정하기
+                            </Button>
+                            <Button variant="outline" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => onDelete?.(data.id)}>
+                                <Trash2 className="h-4 w-4 mr-2" /> 삭제하기
+                            </Button>
+                        </div>
+                    ) : <div></div>}
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>닫기</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
 function ProductGuideDialog({
     isOpen,
     onOpenChange,
@@ -381,6 +515,31 @@ function InfluencerDashboardContent() {
     const [uploadProgress, setUploadProgress] = useState(0)
     const [isReuploading, setIsReuploading] = useState(false)
 
+    // Details Modal State
+    const [selectedItemDetails, setSelectedItemDetails] = useState<any>(null)
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+    const [detailsType, setDetailsType] = useState<'moment' | 'campaign'>('moment')
+    const [relatedProposals, setRelatedProposals] = useState<any[]>([])
+
+    const handleViewProposal = (proposalId: string) => {
+        // Find proposal in brandProposals (inbound) or proposals (outbound/active)
+        // Then open chat or navigate to it
+        // For simplicity, let's close details modal and open chat if found
+
+        setIsDetailsModalOpen(false);
+
+        const proposal = brandProposals.find((p: any) => p.id === proposalId) ||
+            proposals.find((p: any) => p.id === proposalId);
+
+        if (proposal) {
+            setChatProposal(proposal);
+            setIsChatOpen(true);
+        } else {
+            // If not found in loaded list (maybe archived or bug), just navigate to inbound list as fallback
+            setCurrentView('inbound_list');
+        }
+    }
+
     // Auto-open proposal from URL (Notification Redirect)
     useEffect(() => {
         const proposalId = searchParams.get('proposalId')
@@ -455,6 +614,39 @@ function InfluencerDashboardContent() {
             console.error("Failed to fetch product guide:", e);
             alert("제작 가이드를 불러올 수 없습니다.");
         }
+    }
+
+    const handleOpenDetails = (item: any, type: 'moment' | 'campaign') => {
+        setSelectedItemDetails(item)
+        setDetailsType(type)
+
+        let related: any[] = []
+        if (type === 'moment') {
+            // Filter brand proposals that target this specific moment event
+            // The schema has 'event_id' in brand_proposals referencing influencer_events(id)
+            if (item && item.id) {
+                related = brandProposals.filter((p: any) => p.event_id === item.id);
+            } else {
+                related = [];
+            }
+        } else {
+            // Campaign: Outbound applications
+            // Ideally we find the application(s) we made for this campaign
+            // But currently campaigns_list shows outbound APPLICATIONS (Campaign objects?)
+            // If item is 'campaign', it might be the Campaign info, or the Application info.
+            // If it's the Campaign, we need to find OUR application to it.
+            // proposals -> campaign_id
+            if (item && item.id) {
+                // item is likely the Campaign object if from discover, or Application if from list?
+                // In campaigns_list, we iterate 'applications' which are proposals joined with campaigns.
+                // So item is the proposal(application).
+                // We don't have 'related proposals' to an application usually.
+                related = []
+            }
+        }
+
+        setRelatedProposals(related)
+        setIsDetailsModalOpen(true)
     }
 
 
@@ -1587,7 +1779,7 @@ function InfluencerDashboardContent() {
                             <>
                                 {/* 1. Stats Overview Section */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                                    {/* Box 1: Moment Management (Was Collaborating) */}
+                                    {/* Box 1: My Moment Archive (Was Moment Management) */}
                                     <div
                                         className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-emerald-100 rounded-xl shadow-sm hover:shadow-md hover:border-emerald-300 cursor-pointer transition-all group"
                                         onClick={() => setCurrentView('moments_list')}
@@ -1596,7 +1788,7 @@ function InfluencerDashboardContent() {
                                             <Calendar className="h-8 w-8" />
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-lg font-bold text-slate-700">모먼트 관리</h3>
+                                            <h3 className="text-lg font-bold text-slate-700">내 모먼트 아카이브</h3>
                                             <Badge className="bg-emerald-600 text-white text-md px-2 py-0.5 hover:bg-emerald-700">
                                                 {upcomingMoments.length + pastMoments.length}건
                                             </Badge>
@@ -1604,7 +1796,7 @@ function InfluencerDashboardContent() {
                                         <p className="text-xs text-slate-400 mt-2">다가오는/지난 모먼트</p>
                                     </div>
 
-                                    {/* Box 2: Campaign Management (Was Upcoming) */}
+                                    {/* Box 2: My Campaign Archive (Was Campaign Management) */}
                                     <div
                                         className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all group"
                                         onClick={() => setCurrentView('campaigns_list')}
@@ -1613,7 +1805,7 @@ function InfluencerDashboardContent() {
                                             <Megaphone className="h-8 w-8" />
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-lg font-bold text-slate-700">캠페인 관리</h3>
+                                            <h3 className="text-lg font-bold text-slate-700">내 캠페인 아카이브</h3>
                                             <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-md px-2 py-0.5">
                                                 {outboundApplications.length}건
                                             </Badge>
@@ -1621,7 +1813,7 @@ function InfluencerDashboardContent() {
                                         <p className="text-xs text-slate-400 mt-2">나의 지원 현황</p>
                                     </div>
 
-                                    {/* Box 3: Received Proposals (Was Archived) */}
+                                    {/* Box 3: Received Proposal Archive (Was Received Proposals) */}
                                     <div
                                         className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-slate-300 cursor-pointer transition-all group"
                                         onClick={() => setCurrentView('inbound_list')}
@@ -1630,7 +1822,7 @@ function InfluencerDashboardContent() {
                                             <Bell className="h-8 w-8" />
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-lg font-bold text-slate-500">받은 제안</h3>
+                                            <h3 className="text-lg font-bold text-slate-500">받은 제안 아카이브</h3>
                                             <Badge variant="outline" className="text-slate-500 border-slate-300 text-md px-2 py-0.5">
                                                 {inboundProposals.length}건
                                             </Badge>
@@ -1681,7 +1873,7 @@ function InfluencerDashboardContent() {
                                 <ChevronRight className="h-4 w-4 rotate-180" />
                                 돌아가기
                             </Button>
-                            <h1 className="text-2xl font-bold">내 모먼트 관리</h1>
+                            <h1 className="text-2xl font-bold">내 모먼트 아카이브</h1>
                         </div>
 
                         <Tabs defaultValue="upcoming" className="w-full">
@@ -1694,7 +1886,7 @@ function InfluencerDashboardContent() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {upcomingMoments.length > 0 ? (
                                         upcomingMoments.map((moment: any) => (
-                                            <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500" onClick={() => setSelectedMomentId(moment.id)}>
+                                            <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500" onClick={() => handleOpenDetails(moment, 'moment')}>
                                                 <CardContent className="p-4 space-y-4">
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex items-center gap-3">
@@ -1734,7 +1926,7 @@ function InfluencerDashboardContent() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {pastMoments.length > 0 ? (
                                         pastMoments.map((moment: any) => (
-                                            <Card key={moment.id} className="cursor-pointer opacity-75 hover:opacity-100 transition-all border-l-4 border-l-slate-300" onClick={() => setSelectedMomentId(moment.id)}>
+                                            <Card key={moment.id} className="cursor-pointer opacity-75 hover:opacity-100 transition-all border-l-4 border-l-slate-300" onClick={() => handleOpenDetails(moment, 'moment')}>
                                                 <CardContent className="p-4 space-y-4">
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex items-center gap-3">
@@ -1773,13 +1965,13 @@ function InfluencerDashboardContent() {
                                 <ChevronRight className="h-4 w-4 rotate-180" />
                                 돌아가기
                             </Button>
-                            <h1 className="text-2xl font-bold">캠페인 관리 (지원 현황)</h1>
+                            <h1 className="text-2xl font-bold">내 캠페인 아카이브</h1>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {outboundApplications.length > 0 ? (
                                 outboundApplications.map((app: any) => (
-                                    <Card key={app.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-blue-500" onClick={() => { setChatProposal(app); setIsChatOpen(true); }}>
+                                    <Card key={app.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-blue-500" onClick={() => handleOpenDetails(app, 'campaign')}>
                                         <CardContent className="p-4 space-y-4">
                                             <div className="flex justify-between items-start">
                                                 <div className="flex items-center gap-3">
@@ -1828,7 +2020,7 @@ function InfluencerDashboardContent() {
                                 <ChevronRight className="h-4 w-4 rotate-180" />
                                 돌아가기
                             </Button>
-                            <h1 className="text-2xl font-bold">받은 제안 (Brand Offers)</h1>
+                            <h1 className="text-2xl font-bold">받은 제안 아카이브 (Brand Offers)</h1>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -3899,6 +4091,26 @@ function InfluencerDashboardContent() {
                         </DialogContent>
                     </Dialog>
                 </div>
+
+                {/* Details Modal */}
+                <DetailsModal
+                    isOpen={isDetailsModalOpen}
+                    onOpenChange={setIsDetailsModalOpen}
+                    data={selectedItemDetails}
+                    type={detailsType}
+                    proposals={relatedProposals}
+                    onViewProposal={handleViewProposal}
+                    onEdit={(id) => {
+                        setIsDetailsModalOpen(false);
+                        router.push(`/creator/edit/${id}`);
+                    }}
+                    onDelete={(id) => {
+                        if (confirm("정말 이 모먼트를 삭제하시겠습니까? 복구할 수 없습니다.")) {
+                            deleteEvent(id);
+                            setIsDetailsModalOpen(false);
+                        }
+                    }}
+                />
 
                 {/* Full Contract Viewer Dialog */}
                 <Dialog open={isFullContractOpen} onOpenChange={setIsFullContractOpen}>
