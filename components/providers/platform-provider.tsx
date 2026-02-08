@@ -1328,7 +1328,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     status: 'recruiting',
                     is_private: newEvent.isPrivate || false,
                     schedule: newEvent.schedule || {},
-                    is_mock: user.isMock || false
+                    is_mock: user?.isMock || false
                 })
                 .select()
                 .single()
@@ -1412,6 +1412,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const deleteEvent = async (id: string) => {
+        // Robust check: If user state is not ready, try explicit session check
+        let targetId = user?.id;
+        if (!targetId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) targetId = data.session.user.id;
+        }
+
+        if (!targetId) {
+            console.error("[deleteEvent] No active session found.");
+            return;
+        }
+
         const prevEvents = [...events]
         setEvents(prev => prev.filter(event => event.id !== id))
 
@@ -1430,6 +1442,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const deleteProduct = async (id: string) => {
+        // Robust check: If user state is not ready, try explicit session check
+        let targetId = user?.id;
+        if (!targetId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) targetId = data.session.user.id;
+        }
+
+        if (!targetId) {
+            console.error("[deleteProduct] No active session found.");
+            return;
+        }
+
         const prevProducts = [...products]
         setProducts(prev => prev.filter(p => p.id !== id))
 
@@ -1448,6 +1472,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const deleteBrandProposal = async (id: string) => {
+        // Robust check: If user state is not ready, try explicit session check
+        let targetId = user?.id;
+        if (!targetId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) targetId = data.session.user.id;
+        }
+
+        if (!targetId) {
+            console.error("[deleteBrandProposal] No active session found.");
+            return;
+        }
+
         const prev = [...brandProposals]
         setBrandProposals(prev => prev.filter(p => p.id !== id))
         try {
@@ -1473,15 +1509,28 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
 
     const addProduct = async (newProduct: Omit<Product, "id" | "brandId" | "brandName">) => {
-        if (!user) {
-            console.error('[addProduct] No user session found')
-            return
+        // Robust check: If user state is not ready, try explicit session check
+        let targetUserId = user?.id;
+        let targetUserName = user?.name || "Unknown Brand";
+
+        if (!targetUserId) {
+            console.log("[addProduct] User state missing, checking session...");
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) {
+                targetUserId = data.session.user.id;
+                targetUserName = data.session.user.user_metadata?.name || data.session.user.email?.split('@')[0] || "Brand";
+                console.log("[addProduct] Recovered userId from session:", targetUserId);
+            } else {
+                console.error("[addProduct] No active session found.");
+                alert("로그인이 필요합니다.")
+                return
+            }
         }
 
-        console.log('[addProduct] Starting product insert for user:', user.id)
+        console.log('[addProduct] Starting product insert for user:', targetUserId)
         try {
             const productData = {
-                brand_id: user.id,
+                brand_id: targetUserId,
                 name: newProduct.name,
                 description: newProduct.description,
                 image_url: newProduct.image,
@@ -1494,7 +1543,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 format_guide: newProduct.formatGuide,
                 tags: newProduct.tags,
                 account_tag: newProduct.accountTag,
-                is_mock: user.isMock || false
+                is_mock: false
             }
 
             console.log('[addProduct] Payload:', productData)
@@ -1515,8 +1564,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 console.log('[addProduct] Insert successful, ID:', data.id)
                 const product: Product = {
                     id: data.id,
-                    brandId: user.id,
-                    brandName: user.name,
+                    brandId: targetUserId,
+                    brandName: targetUserName,
                     name: data.name,
                     price: data.price,
                     image: data.image_url || "📦",
@@ -1530,7 +1579,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     tags: data.tags,
                     accountTag: data.account_tag,
                     createdAt: data.created_at,
-                    isMock: user.isMock || false
+                    isMock: false
                 }
                 setProducts(prev => [product, ...prev])
                 return product
@@ -1543,7 +1592,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const updateProduct = async (id: string, updates: Partial<Product>) => {
-        if (!user) {
+        // Robust check
+        let targetId = user?.id;
+        if (!targetId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) targetId = data.session.user.id;
+        }
+
+        if (!targetId) {
             console.error('[updateProduct] No user session')
             return
         }
@@ -1589,8 +1645,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     const addProposal = async (newProposal: Omit<Proposal, "id" | "date">) => {
         try {
-            // Check if user is logged in
-            if (!user) {
+            // Robust check
+            let targetId = user?.id;
+            if (!targetId) {
+                const { data } = await supabase.auth.getSession();
+                if (data.session?.user) targetId = data.session.user.id;
+            }
+
+            if (!targetId) {
                 alert("로그인이 필요합니다.")
                 return
             }
