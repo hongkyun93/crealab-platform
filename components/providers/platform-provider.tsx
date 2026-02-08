@@ -1999,15 +1999,30 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const refreshData = React.useCallback(async () => {
-        if (user?.id) {
-            console.log("Refreshing data...")
+        let targetId = user?.id;
+
+        // Robust check: If user state is not ready, try explicit session check
+        if (!targetId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user?.id) {
+                targetId = data.session.user.id;
+                console.log("[refreshData] Recovered targetId from session:", targetId);
+            }
+        }
+
+        if (targetId) {
+            console.log("Refreshing data for", targetId)
+            // Force reset locks to ensure fetch happens
             isFetchingEvents.current = false
             isFetchingMessages.current = false
+
             await Promise.all([
-                fetchEvents(user.id),
-                fetchMessages(user.id),
-                fetchNotifications(user.id)
+                fetchEvents(targetId),
+                fetchMessages(targetId),
+                fetchNotifications(targetId)
             ])
+        } else {
+            console.log("[refreshData] No user or session found, skipping refresh.")
         }
     }, [user, supabase, fetchEvents, fetchMessages, fetchNotifications])
 
