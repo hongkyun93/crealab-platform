@@ -75,6 +75,8 @@ export default function BrandSettingsPage() {
                                 id="name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
+                                onBlur={(e) => setName(e.target.value)}
+                                autoComplete="off"
                                 placeholder="브랜드 이름 입력"
                             />
                         </div>
@@ -85,6 +87,8 @@ export default function BrandSettingsPage() {
                                 id="website"
                                 value={website}
                                 onChange={(e) => setWebsite(e.target.value)}
+                                onBlur={(e) => setWebsite(e.target.value)}
+                                autoComplete="off"
                                 placeholder="https://example.com"
                             />
                         </div>
@@ -95,6 +99,8 @@ export default function BrandSettingsPage() {
                                 id="bio"
                                 value={bio}
                                 onChange={(e) => setBio(e.target.value)}
+                                onBlur={(e) => setBio(e.target.value)}
+                                autoComplete="off"
                                 placeholder="브랜드의 비전과 가치를 설명해주세요. 크리에이터들이 참고하게 됩니다."
                                 className="min-h-[120px]"
                             />

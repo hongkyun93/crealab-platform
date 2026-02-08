@@ -57,6 +57,14 @@ export type Campaign = {
     isMock?: boolean
 }
 
+export type Favorite = {
+    id: string
+    user_id: string
+    target_id: string
+    target_type: 'product' | 'campaign' | 'profile' | 'event'
+    created_at: string
+}
+
 export type InfluencerEvent = {
     id: string
     influencer: string // In DB this is joined from profiles, locally it's string name
@@ -149,9 +157,18 @@ export type Proposal = {
     // Content Submission 2
     content_submission_url_2?: string
     content_submission_file_url_2?: string
-    content_submission_status_2?: 'pending' | 'submitted' | 'approved' | 'rejected'
+    content_submission_status_2?: string
     content_submission_date_2?: string
     content_submission_version_2?: number
+
+    // Condition Fields
+    condition_product_receipt_date?: string
+    condition_plan_sharing_date?: string
+    condition_draft_submission_date?: string
+    condition_final_submission_date?: string
+    condition_upload_date?: string
+    condition_maintenance_period?: string
+    condition_secondary_usage_period?: string
 }
 
 
@@ -160,22 +177,48 @@ export type BrandProposal = {
     id: string
     brand_id: string
     influencer_id: string
-    product_name: string
-    product_type: string
-    compensation_amount: string
-    has_incentive: boolean
-    incentive_detail: string
-    content_type: string
-    message: string
+
+    // Restoring fields that might be used
+    product_name?: string
+    product_type?: string
+    compensation_amount?: string
+    has_incentive?: boolean
+    incentive_detail?: string
+    content_type?: string
+
+    product_id?: string
+    campaign_id?: string
     status: string
+    message?: string
+    cost?: number
     created_at: string
+    updated_at: string
     brand_name?: string
     influencer_name?: string
-    event_id?: string
-    isMock?: boolean
-    completed_at?: string
+    influencer_avatar?: string
 
+    payout_status?: string
+    contract_status?: string
+    delivery_status?: string
+    brand_condition_confirmed?: boolean
+    influencer_condition_confirmed?: boolean
+
+    // Condition Fields
+    condition_product_receipt_date?: string
+    condition_plan_sharing_date?: string
+    condition_draft_submission_date?: string
+    condition_final_submission_date?: string
+    condition_upload_date?: string
+    condition_maintenance_period?: string
+    condition_secondary_usage_period?: string
+
+    content_submission_file_url?: string
+    content_submission_url?: string
+    content_submission_status?: string
+    content_submission_date?: string
     content_submission_version?: number
+
+    completed_at?: string
 
     // Content Submission 2
     content_submission_url_2?: string
@@ -185,7 +228,6 @@ export type BrandProposal = {
     content_submission_version_2?: number
 
     // Product Card
-    product_id?: string
     product_url?: string
     product?: any
 }
@@ -311,6 +353,13 @@ interface PlatformContextType {
     resetData: () => void
     refreshData: () => Promise<void>
     updateCampaignStatus: (id: string, status: 'active' | 'closed') => Promise<void>
+
+    // Favorites
+    favorites: Favorite[]
+    toggleFavorite: (targetId: string, targetType: 'product' | 'campaign' | 'profile' | 'event') => Promise<void>
+
+
+
     supabase: any
 }
 
@@ -331,6 +380,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
     const [messages, setMessages] = React.useState<Message[]>([])
     const [submissionFeedback, setSubmissionFeedback] = React.useState<SubmissionFeedback[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
+    const [favorites, setFavorites] = useState<Favorite[]>([])
     const [isInitialized, setIsInitialized] = useState(false)
     const [isAuthChecked, setIsAuthChecked] = useState(false)
 
@@ -559,7 +609,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     await Promise.all([
                         fetchEvents(session.user.id),
                         fetchMessages(session.user.id),
-                        fetchNotifications(session.user.id)
+                        fetchEvents(session.user.id),
+                        fetchMessages(session.user.id),
+                        fetchNotifications(session.user.id),
+                        fetchFavorites(session.user.id)
                     ])
                 }
             } else if (mounted) {
@@ -590,7 +643,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     await Promise.all([
                         fetchEvents(session.user.id),
                         fetchMessages(session.user.id),
-                        fetchNotifications(session.user.id)
+                        fetchMessages(session.user.id),
+                        fetchNotifications(session.user.id),
+                        fetchFavorites(session.user.id)
                     ])
                 }
             } else if (mounted) {
@@ -674,89 +729,94 @@ export function PlatformProvider({ children, initialSession }: { children: React
             }
 
             // 1.5. Fetch All Active Campaigns
-            const { data: campaignData, error: campaignError } = await supabase
-                .from('campaigns')
-                .select(`
-                    *,
-                    profiles(display_name)
-                `)
-                .order('created_at', { ascending: false })
+            try {
+                const { data: campaignData, error: campaignError } = await supabase
+                    .from('campaigns')
+                    .select(`
+                        *,
+                        profiles(display_name)
+                    `)
+                    .order('created_at', { ascending: false })
 
-            if (campaignData) {
-                const mappedCampaigns: Campaign[] = campaignData.map((c: any) => {
-                    // Helper to parse legacy blob data
-                    const extractField = (text: string, tag: string) => {
-                        const match = text?.match(new RegExp(`\\[${tag}\\]\\s*(.*?)(?:\\[|$)`, 's'))
-                        return match ? match[1].trim() : null
-                    }
+                if (campaignData) {
+                    const mappedCampaigns: Campaign[] = campaignData.map((c: any) => {
+                        // Helper to parse legacy blob data
+                        const extractField = (text: string, tag: string) => {
+                            const match = text?.match(new RegExp(`\\[${tag}\\]\\s*(.*?)(?:\\[|$)`, 's'))
+                            return match ? match[1].trim() : null
+                        }
 
-                    const legacyCategory = extractField(c.description, '카테고리')
-                    const legacyBudget = extractField(c.description, '제공 혜택')
-                    const legacyTarget = extractField(c.description, '원하는 크리에이터')
-                    const legacyDescription = c.description?.split('[상세 내용]')?.[1]?.trim() || c.description
+                        const legacyCategory = extractField(c.description, '카테고리')
+                        const legacyBudget = extractField(c.description, '제공 혜택')
+                        const legacyTarget = extractField(c.description, '원하는 크리에이터')
+                        const legacyDescription = c.description?.split('[상세 내용]')?.[1]?.trim() || c.description
 
-                    // Use new columns if available (assuming 'category' presence indicates new format), otherwise fallback
-                    const isNewFormat = !!c.category
+                        // Use new columns if available (assuming 'category' presence indicates new format), otherwise fallback
+                        const isNewFormat = !!c.category
 
-                    return {
-                        id: c.id,
-                        brandId: c.brand_id,
-                        brand: c.profiles?.display_name || "Unknown Brand",
-                        product: c.product_name || "",
-                        category: c.category || legacyCategory || c.title.match(/\[(.*?)\]/)?.[1] || "기타",
-                        budget: c.budget || legacyBudget || "협의",
-                        target: c.target || legacyTarget || "전체",
-                        description: isNewFormat ? c.description : legacyDescription,
-                        matchScore: Math.floor(Math.random() * 20) + 80,
-                        date: new Date(c.created_at).toISOString().split('T')[0],
-                        postingDate: c.posting_date,
-                        eventDate: c.event_date
-                    }
-                })
-                setCampaigns(mappedCampaigns)
+                        return {
+                            id: c.id,
+                            brandId: c.brand_id,
+                            brand: c.profiles?.display_name || "Unknown Brand",
+                            product: c.product_name || "",
+                            category: c.category || legacyCategory || c.title.match(/\[(.*?)\]/)?.[1] || "기타",
+                            budget: c.budget || legacyBudget || "협의",
+                            target: c.target || legacyTarget || "전체",
+                            description: isNewFormat ? c.description : legacyDescription,
+                            matchScore: Math.floor(Math.random() * 20) + 80,
+                            date: new Date(c.created_at).toISOString().split('T')[0],
+                            postingDate: c.posting_date,
+                            eventDate: c.event_date
+                        }
+                    })
+                    setCampaigns(mappedCampaigns)
+                }
+            } catch (campEx) {
+                console.error('[fetchEvents] Exception fetching campaigns:', campEx)
             }
 
             // 2. Fetch Brand Proposals (Both sent and received, or all if admin)
             if (userId) {
-                let query = supabase
-                    .from('brand_proposals')
-                    .select('*, brand_profile:profiles!brand_proposals_brand_id_fkey(display_name), influencer_profile:profiles!brand_proposals_influencer_id_fkey(display_name), product:brand_products(*)')
+                try {
+                    let query = supabase
+                        .from('brand_proposals')
+                        .select('*, brand_profile:profiles!brand_proposals_brand_id_fkey(display_name), influencer_profile:profiles!brand_proposals_influencer_id_fkey(display_name), product:brand_products(*)')
 
-                // Fetch user role to check admin status (Use local state if available to avoid race conditions)
-                let currentRole = user?.id === userId ? user?.type : null;
+                    // Fetch user role to check admin status (Use local state if available to avoid race conditions)
+                    let currentRole = user?.id === userId ? user?.type : null;
 
-                if (!currentRole) {
-                    const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
-                    currentRole = profile?.role || 'influencer';
-                }
+                    if (!currentRole) {
+                        const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
+                        currentRole = profile?.role || 'influencer';
+                    }
 
-                if (currentRole !== 'admin') {
-                    query = query.or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
-                }
+                    if (currentRole !== 'admin') {
+                        query = query.or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
+                    }
 
-                const { data: bpData, error: bpError } = await query.order('created_at', { ascending: false })
+                    const { data: bpData, error: bpError } = await query.order('created_at', { ascending: false })
 
-                if (bpError) {
-                    console.error('[fetchEvents] Brand proposals fetch error:', JSON.stringify(bpError, null, 2))
-                }
+                    if (bpError) {
+                        console.error('[fetchEvents] Brand proposals fetch error:', JSON.stringify(bpError, null, 2))
+                    }
 
-                if (bpData) {
-                    console.log('[fetchEvents] Fetched proposals:', bpData.length)
-                    const mappedBP: BrandProposal[] = bpData.map((b: any) => ({
-                        ...(b as any),
-                        type: 'brand_offer',
-                        brand_name: b.brand_profile?.display_name || 'Brand',
-                        influencer_name: b.influencer_profile?.display_name || 'Creator'
-                    })) as any
-                    setBrandProposals(mappedBP)
-                }
-                // B. Campaign Applications (proposals table)
-                // B. Campaign Applications (proposals table)
-                const isBrand = currentRole === 'brand';
+                    if (bpData) {
+                        console.log('[fetchEvents] Fetched proposals:', bpData.length)
+                        const mappedBP: BrandProposal[] = bpData.map((b: any) => ({
+                            ...(b as any),
+                            type: 'brand_offer',
+                            brand_name: b.brand_profile?.display_name || 'Brand',
+                            influencer_name: b.influencer_profile?.display_name || 'Creator'
+                        })) as any
+                        setBrandProposals(mappedBP)
+                    }
+                    // B. Campaign Applications (proposals table)
+                    // B. Campaign Applications (proposals table)
+                    const isBrand = currentRole === 'brand';
 
-                let campQuery = supabase
-                    .from('proposals')
-                    .select(`
+                    let campQuery = supabase
+                        .from('proposals')
+                        .select(`
                         *,
                         campaign:campaigns${isBrand ? '!inner' : ''}(
                             *,
@@ -765,81 +825,88 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         influencer_profile:profiles(display_name, avatar_url)
                     `)
 
-                if (currentRole !== 'admin') {
-                    if (isBrand) {
-                        // For Brands: fetch proposals where the CAMPAIGN belongs to them
-                        campQuery = campQuery.eq('campaign.brand_id', userId)
-                    } else {
-                        // For Influencers: fetch their own proposals
-                        campQuery = campQuery.eq('influencer_id', userId)
+                    if (currentRole !== 'admin') {
+                        if (isBrand) {
+                            // For Brands: fetch proposals where the CAMPAIGN belongs to them
+                            campQuery = campQuery.eq('campaign.brand_id', userId)
+                        } else {
+                            // For Influencers: fetch their own proposals
+                            campQuery = campQuery.eq('influencer_id', userId)
+                        }
                     }
-                }
 
-                const { data: pData, error: pError } = await campQuery.order('created_at', { ascending: false })
+                    const { data: pData, error: pError } = await campQuery.order('created_at', { ascending: false })
 
-                if (pError) {
-                    console.error('[fetchEvents] Campaign proposals fetch error:', JSON.stringify(pError, null, 2))
-                }
+                    if (pError) {
+                        console.error('[fetchEvents] Campaign proposals fetch error:', JSON.stringify(pError, null, 2))
+                    }
 
-                if (pData) {
-                    console.log('[fetchEvents] Fetched campaign proposals:', pData.length)
-                    const mappedApps: Proposal[] = pData.map((p: any) => ({
-                        ...p,
-                        type: 'creator_apply',
-                        brand_name: p.campaign?.brand?.display_name || 'Brand', // Access nested brand
-                        influencer_name: p.influencer_profile?.display_name || 'Creator',
-                        influencer_avatar: p.influencer_profile?.avatar_url,
-                        // influencer_handle: p.influencer_profile?.handle, // Removed to prevent error if column missing
-                        product_name: p.campaign?.product_name || p.campaign?.title || 'Campaign', // Use campaign product name
-                        product_image: p.campaign?.product_image_url, // Use campaign product image
-                        campaign_name: p.campaign?.title
-                    })) as any
+                    if (pData) {
+                        console.log('[fetchEvents] Fetched campaign proposals:', pData.length)
+                        const mappedApps: Proposal[] = pData.map((p: any) => ({
+                            ...p,
+                            type: 'creator_apply',
+                            brand_name: p.campaign?.brand?.display_name || 'Brand', // Access nested brand
+                            influencer_name: p.influencer_profile?.display_name || 'Creator',
+                            influencer_avatar: p.influencer_profile?.avatar_url,
+                            // influencer_handle: p.influencer_profile?.handle, // Removed to prevent error if column missing
+                            product_name: p.campaign?.product_name || p.campaign?.title || 'Campaign', // Use campaign product name
+                            product_image: p.campaign?.product_image_url, // Use campaign product image
+                            campaign_name: p.campaign?.title
+                        })) as any
 
-                    console.log('[fetchEvents] Fetched applications:', mappedApps.length)
-                    setProposals(mappedApps)
+                        console.log('[fetchEvents] Fetched applications:', mappedApps.length)
+                        setProposals(mappedApps)
+                    }
+                } catch (bpEx) {
+                    console.error('[fetchEvents] Exception fetching brand proposals:', bpEx)
                 }
             }
 
             // 4. Fetch Brand Products
-            const { data: productData, error: productError } = await supabase
-                .from('brand_products')
-                .select(`
+            try {
+                const { data: productData, error: productError } = await supabase
+                    .from('brand_products')
+                    .select(`
                     *,
                     profiles(display_name, avatar_url, bio)
                 `)
-                .order('created_at', { ascending: false })
+                    .order('created_at', { ascending: false })
 
-            if (productData) {
-                console.log('[fetchEvents] Fetched products SUCCESS:', productData.length, 'items')
-                const mappedProducts: Product[] = productData.map((p: any) => ({
-                    id: p.id,
-                    brandId: p.brand_id,
-                    brandName: p.profiles?.display_name || 'Brand',
-                    name: p.name,
-                    price: p.price || 0,
-                    image: p.image_url || '',
-                    link: p.website_url || '',
-                    points: p.selling_points || '',
-                    shots: p.required_shots || '',
-                    category: p.category || '기타',
-                    contentGuide: p.content_guide || '',
-                    formatGuide: p.format_guide || '',
-                    tags: p.tags || [],
-                    accountTag: p.account_tag || '',
-                    description: p.description,
-                    createdAt: p.created_at,
-                    isMock: p.is_mock || false,
-                    brandAvatar: p.profiles?.avatar_url,
-                    brandHandle: p.profiles?.handle, // Might be undefined if not fetched
-                    brandBio: p.profiles?.bio
-                }))
-                setProducts(mappedProducts)
-            } else if (productError) {
-                console.error('[fetchEvents] Error fetching products:', JSON.stringify(productError, null, 2))
+                if (productData) {
+                    console.log('[fetchEvents] Fetched products SUCCESS:', productData.length, 'items')
+                    const mappedProducts: Product[] = productData.map((p: any) => ({
+                        id: p.id,
+                        brandId: p.brand_id,
+                        brandName: p.profiles?.display_name || 'Brand',
+                        name: p.name,
+                        price: p.price || 0,
+                        image: p.image_url || '',
+                        link: p.website_url || '',
+                        points: p.selling_points || '',
+                        shots: p.required_shots || '',
+                        category: p.category || '기타',
+                        contentGuide: p.content_guide || '',
+                        formatGuide: p.format_guide || '',
+                        tags: p.tags || [],
+                        accountTag: p.account_tag || '',
+                        description: p.description,
+                        createdAt: p.created_at,
+                        isMock: p.is_mock || false,
+                        brandAvatar: p.profiles?.avatar_url,
+                        brandHandle: p.profiles?.handle, // Might be undefined if not fetched
+                        brandBio: p.profiles?.bio
+                    }))
+                    setProducts(mappedProducts)
+                } else if (productError) {
+                    console.error('[fetchEvents] Error fetching products:', JSON.stringify(productError, null, 2))
 
-                if (productError.code === '42P01') {
-                    console.warn('The "brand_products" table is missing. Please run "documents/brand_products_schema.sql" in Supabase SQL editor.')
+                    if (productError.code === '42P01') {
+                        console.warn('The "brand_products" table is missing. Please run "documents/brand_products_schema.sql" in Supabase SQL editor.')
+                    }
                 }
+            } catch (prodEx) {
+                console.error('[fetchEvents] Exception fetching products:', prodEx)
             }
         } catch (err: any) {
             if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
@@ -1046,14 +1113,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             console.log('[updateUser] Sending profile update to Supabase...', profileUpdates)
 
-            // Use upsert to handle cases where the profile row might be missing (e.g. after a DB reset)
+            // CRITICAL FIX: Use update instead of upsert for existing profiles to avoid RLS/Conflict issues
             const { error: profileError } = await supabase
                 .from('profiles')
-                .upsert({
-                    id: user.id,
-                    role: user.type, // Ensure role is preserved/set
-                    ...profileUpdates
-                }, { onConflict: 'id' })
+                .update(profileUpdates)
+                .eq('id', user.id)
 
             if (profileError) {
                 console.error('[updateUser] Profile update DB error:', profileError)
@@ -1095,6 +1159,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
                 console.log('[updateUser] Upserting influencer_details...', detailsUpdates)
 
+                // Keep upsert for details as it might be the first time creation
                 const { data: _, error: detailsError } = await supabase
                     .from('influencer_details')
                     .upsert(detailsUpdates, { onConflict: 'id' })
@@ -1812,6 +1877,103 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
+    const fetchFavorites = async (userId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('favorites')
+                .select('*')
+                .eq('user_id', userId)
+
+            if (error) {
+                // If table doesn't exist yet, just ignore (migration pending)
+                if (error.code === '42P01') {
+                    // Table doesn't exist yet (Postgres error)
+                    console.log('[fetchFavorites] Favorites table pending migration.')
+                    return
+                }
+                // Check for PostgREST Schema Cache error (often 404 or specific message)
+                if (error.code === 'PGRST200' || error.message?.includes('schema cache')) {
+                    console.warn('[fetchFavorites] Schema Cache Stale: Please reload schema cache in Supabase Dashboard.')
+                    return
+                }
+                console.error('[fetchFavorites] Error fetching favorites:', JSON.stringify(error, null, 2))
+            }
+
+            if (data) {
+                setFavorites(data as Favorite[])
+            }
+        } catch (e) {
+            console.error('[fetchFavorites] Exception:', e)
+        }
+    }
+
+    const toggleFavorite = async (targetId: string, targetType: 'product' | 'campaign' | 'profile' | 'event') => {
+        if (!user) {
+            alert("로그인이 필요합니다.")
+            return
+        }
+
+        // Optimistic Update
+        const existing = favorites.find(f => f.target_id === targetId && f.target_type === targetType)
+        if (existing) {
+            setFavorites(prev => prev.filter(f => f.id !== existing.id))
+        } else {
+            const newFav: Favorite = {
+                id: `temp-${Date.now()}`,
+                user_id: user.id,
+                target_id: targetId,
+                target_type: targetType,
+                created_at: new Date().toISOString()
+            }
+            setFavorites(prev => [...prev, newFav])
+        }
+
+        try {
+            if (existing) {
+                // Remove
+                const { error } = await supabase
+                    .from('favorites')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .eq('target_id', targetId)
+                    .eq('target_type', targetType)
+
+                if (error) throw error
+            } else {
+                // Add
+                const { data, error } = await supabase
+                    .from('favorites')
+                    .insert({
+                        user_id: user.id,
+                        target_id: targetId,
+                        target_type: targetType
+                    })
+                    .select()
+                    .single()
+
+                if (error) throw error
+
+                // Update temp ID with real ID
+                if (data) {
+                    setFavorites(prev => prev.map(f => (f.created_at === data.created_at && f.target_id === targetId) ? (data as Favorite) : f))
+                }
+            }
+        } catch (e: any) {
+            console.error('[toggleFavorite] Error:', JSON.stringify(e, null, 2))
+            if (e.message?.includes('schema cache') || e.code === 'PGRST200') {
+                alert("시스템 업데이트가 필요합니다. 관리자에게 'Schema Cache Reload'를 요청하세요.")
+            } else {
+                alert("즐겨찾기 변경 실패: " + (e.message || "알 수 없는 오류"))
+            }
+            // Revert
+            if (existing) {
+                setFavorites(prev => [...prev, existing])
+            } else {
+                setFavorites(prev => prev.filter(f => f.target_id !== targetId))
+            }
+        }
+    }
+
     const resetData = () => {
         setCampaigns(INITIAL_CAMPAIGNS)
         setEvents([]) // Clear events, let them re-fetch or stay empty
@@ -1983,6 +2145,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
         resetData,
         refreshData,
         updateCampaignStatus,
+        favorites,
+        toggleFavorite,
         supabase
     }), [
         user, campaigns, events, products, proposals, brandProposals,

@@ -696,4 +696,79 @@ WITH CHECK (
 );
 
 -- Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE submission_feedback;
+-- Realtime (Idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+    AND schemaname = 'public'
+    AND tablename = 'submission_feedback'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.submission_feedback;
+  END IF;
+END $$;
+
+
+-- ==========================================
+-- 12. FAVORITES SYSTEM (Added via Agent)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS public.favorites (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  target_id uuid NOT NULL, -- Generic reference ID
+  target_type text NOT NULL, -- 'influencer', 'campaign', 'brand', 'product'
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  
+  -- Prevent duplicate favorites
+  UNIQUE(user_id, target_id, target_type)
+);
+
+-- Enable RLS
+ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+DROP POLICY IF EXISTS "Users can view their own favorites" ON public.favorites;
+DROP POLICY IF EXISTS "Users can manage their own favorites" ON public.favorites;
+
+CREATE POLICY "Users can view their own favorites" ON public.favorites FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage their own favorites" ON public.favorites FOR ALL USING (auth.uid() = user_id);
+
+-- Realtime
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'favorites'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.favorites;
+  END IF;
+END $$;
+
+
+-- ==========================================
+-- 13. CONDITION NEGOTIATION FIELDS (Added via Agent)
+-- ==========================================
+
+-- For Brand Proposals (Direct Offers)
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_product_receipt_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_plan_sharing_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_draft_submission_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_final_submission_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_upload_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_maintenance_period text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_secondary_usage_period text;
+
+-- For Campaign Applications (Proposals)
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_product_receipt_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_plan_sharing_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_draft_submission_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_final_submission_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_upload_date text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_maintenance_period text;
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS condition_secondary_usage_period text;
+
+-- Notify PostgREST to reload the schema cache
+NOTIFY pgrst, 'reload schema';

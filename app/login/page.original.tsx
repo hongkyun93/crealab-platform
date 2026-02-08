@@ -22,7 +22,7 @@ export default function LoginPage() {
 
     // We can use same state for both forms since they replace each other
     const [id, setId] = useState("")
-    const [password, setPassword] = useState("12341234")
+    const [password, setPassword] = useState("")
 
     const handleSocialLogin = async (provider: 'google' | 'kakao', role: 'brand' | 'influencer') => {
         setIsLoading(true)

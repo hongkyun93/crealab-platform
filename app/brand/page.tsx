@@ -2,6 +2,7 @@
 
 import React from "react"
 import { Camera, Image as ImageIcon } from "lucide-react" // Explicit import for debugging
+import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { RateCardMessage } from "@/components/chat/rate-card-message"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
@@ -97,7 +98,8 @@ function BrandDashboardContent() {
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages,
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
         updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
-        switchRole, proposals, updateCampaignStatus, updateProposal, notifications, sendNotification, refreshData
+        switchRole, proposals, updateCampaignStatus, updateProposal, notifications, sendNotification, refreshData,
+        favorites, toggleFavorite
     } = usePlatform()
 
     // Force data refresh on mount to avoid stale data from navigation
@@ -122,7 +124,7 @@ function BrandDashboardContent() {
     const [statusFilter, setStatusFilter] = useState<string>("all") // all, upcoming, past, favorites
     const [minFollowers, setMinFollowers] = useState<string>("")
     const [maxFollowers, setMaxFollowers] = useState<string>("")
-    const [favoriteEvents, setFavoriteEvents] = useState<Set<string>>(new Set())
+
 
     // Collaboration Workspace State
     const [isChatOpen, setIsChatOpen] = useState(false)
@@ -649,7 +651,7 @@ function BrandDashboardContent() {
         } else if (statusFilter === "past") {
             result = result.filter(e => e.status === 'completed')
         } else if (statusFilter === "favorites") {
-            result = result.filter(e => favoriteEvents.has(e.id))
+            result = result.filter(e => favorites.some(f => f.target_id === e.id && f.target_type === 'event'))
         }
         if (minFollowers !== "" || maxFollowers !== "") {
             const min = minFollowers === "" ? 0 : parseInt(minFollowers)
@@ -1037,7 +1039,7 @@ function BrandDashboardContent() {
 
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredEvents.map((item) => {
-                                const isFavorite = favoriteEvents.has(item.id)
+                                const isFavorite = favorites.some(f => f.target_id === item.id && f.target_type === 'event')
                                 return (
                                     <Link key={item.id} href={`/event/${item.id}`} className="block group">
                                         <Card className="overflow-hidden transition-all hover:shadow-lg border-border/60 bg-background flex flex-col h-full cursor-pointer relative">
@@ -1048,13 +1050,7 @@ function BrandDashboardContent() {
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    const newFavorites = new Set(favoriteEvents);
-                                                    if (isFavorite) {
-                                                        newFavorites.delete(item.id);
-                                                    } else {
-                                                        newFavorites.add(item.id);
-                                                    }
-                                                    setFavoriteEvents(newFavorites);
+                                                    toggleFavorite(item.id, 'event');
                                                 }}
                                             >
                                                 <Star
@@ -1405,6 +1401,18 @@ function BrandDashboardContent() {
                 const rejectedOutbound = brandProposals?.filter((p: any) => p.status === 'rejected') || []
                 const allRejected = [...rejectedInbound, ...rejectedOutbound].sort((a: any, b: any) => new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime())
 
+                // 6. All Items
+                const allWorkspaceItems = [
+                    ...inboundApplications,
+                    ...outboundOffers,
+                    ...activeInbound,
+                    ...activeOutbound,
+                    ...completedInbound,
+                    ...completedOutbound,
+                    ...rejectedInbound,
+                    ...rejectedOutbound
+                ].sort((a: any, b: any) => new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime())
+
                 const handleStatusUpdate = async (id: string | number, status: 'accepted' | 'rejected' | 'hold') => {
                     if (confirm(`이 지원서를 ${status === 'accepted' ? '수락' : status === 'hold' ? '보류' : '거절'}하시겠습니까?`)) {
                         try {
@@ -1430,6 +1438,9 @@ function BrandDashboardContent() {
 
                         <Tabs defaultValue="active" className="w-full">
                             <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0 mb-6">
+                                <TabsTrigger value="all" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-slate-700 font-medium transition-all">
+                                    전체 보기 <span className="ml-2 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
+                                </TabsTrigger>
                                 <TabsTrigger value="active" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-slate-700 font-medium transition-all">
                                     진행중 <span className="ml-2 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
                                 </TabsTrigger>
@@ -1446,6 +1457,54 @@ function BrandDashboardContent() {
                                     완료됨 <span className="ml-2 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
                                 </TabsTrigger>
                             </TabsList>
+
+                            {/* 0. All Items Tab */}
+                            <TabsContent value="all" className="space-y-4">
+                                {allWorkspaceItems.map((p: any) => (
+                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-slate-200 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex gap-6 w-full">
+                                                <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0">
+                                                    {(p.influencer_name?.[0] || "C")}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between">
+                                                        <div>
+                                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                                {p.influencer_name}
+                                                                <Badge variant="outline" className="text-xs font-normal">
+                                                                    {p.status === 'accepted' || p.status === 'signed' ? '진행중' :
+                                                                        p.status === 'completed' ? '완료됨' :
+                                                                            p.status === 'rejected' ? '거절됨' :
+                                                                                '대기중'}
+                                                                </Badge>
+                                                            </h3>
+                                                            <p className="text-sm text-slate-500">{p.product_name || "제품 협찬"}</p>
+                                                        </div>
+                                                        <span className="text-xs text-slate-400">{new Date(p.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <div className="mt-3 bg-slate-50 p-3 rounded text-sm text-slate-600">
+                                                        {p.message}
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <WorkspaceProgressBar
+                                                            status={p.status}
+                                                            contract_status={p.contract_status}
+                                                            delivery_status={p.delivery_status}
+                                                            content_submission_status={p.content_submission_status}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                ))}
+                                {allWorkspaceItems.length === 0 && (
+                                    <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground">
+                                        내역이 없습니다.
+                                    </div>
+                                )}
+                            </TabsContent>
 
                             {/* 1. Active Tab */}
                             <TabsContent value="active" className="space-y-4">
@@ -1477,46 +1536,12 @@ function BrandDashboardContent() {
                                                     <div className="flex gap-2 mt-6">
                                                         {/* 6-Stage Progress Tracker */}
                                                         <div className="w-full max-w-xl">
-                                                            <div className="flex justify-between mb-2">
-                                                                {[
-                                                                    { id: 1, label: '매칭 완료' },
-                                                                    { id: 2, label: '조건 조율' },
-                                                                    { id: 3, label: '계약 체결' },
-                                                                    { id: 4, label: '제품 배송' },
-                                                                    { id: 5, label: '콘텐츠 제출' },
-                                                                    { id: 6, label: '최종 완료' }
-                                                                ].map((step) => {
-                                                                    const isStep1Done = true;
-                                                                    const isStep2Done = (p.brand_condition_confirmed && p.influencer_condition_confirmed) || p.contract_status === 'signed';
-                                                                    const isStep3Done = p.contract_status === 'signed';
-                                                                    const isStep4Done = p.delivery_status === 'shipped' || p.delivery_status === 'delivered';
-                                                                    const isStep5Done = p.content_submission_status === 'approved' || p.status === 'completed';
-                                                                    const isStep6Done = p.status === 'completed';
-
-                                                                    const dones = [isStep1Done, isStep2Done, isStep3Done, isStep4Done, isStep5Done, isStep6Done];
-
-                                                                    let status = 'pending';
-                                                                    if (dones[step.id - 1]) {
-                                                                        status = 'done';
-                                                                    } else if (step.id === 1 || dones[step.id - 2]) {
-                                                                        status = 'active';
-                                                                    }
-
-                                                                    if (isStep6Done) status = 'done';
-
-                                                                    const colorClass = status === 'done' ? 'text-emerald-600' : status === 'active' ? 'text-amber-500' : 'text-slate-400';
-                                                                    const barClass = status === 'done' ? 'bg-emerald-500' : status === 'active' ? 'bg-amber-400' : 'bg-slate-200';
-
-                                                                    return (
-                                                                        <div key={step.id} className="flex flex-col items-center flex-1 gap-1.5 min-w-0">
-                                                                            <span className={`text-[10px] md:text-[11px] font-bold transition-colors truncate w-full text-center ${colorClass}`}>
-                                                                                {step.label}
-                                                                            </span>
-                                                                            <div className={`h-1.5 w-[90%] rounded-full transition-all ${barClass}`} />
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
+                                                            <WorkspaceProgressBar
+                                                                status={p.status}
+                                                                contract_status={p.contract_status}
+                                                                delivery_status={p.delivery_status}
+                                                                content_submission_status={p.content_submission_status}
+                                                            />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1544,6 +1569,14 @@ function BrandDashboardContent() {
                                                     </div>
                                                     <p className="text-sm text-muted-foreground mt-1">{p.campaignName} • 희망비용: {p.cost?.toLocaleString()}원</p>
                                                     <p className="text-sm mt-3 p-3 bg-slate-50 rounded-md text-slate-600 line-clamp-2 border border-slate-100">{p.message}</p>
+                                                    <div className="mt-4">
+                                                        <WorkspaceProgressBar
+                                                            status={p.status}
+                                                            contract_status={p.contract_status}
+                                                            delivery_status={p.delivery_status}
+                                                            content_submission_status={p.content_submission_status}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="flex flex-col gap-2">
@@ -1576,6 +1609,14 @@ function BrandDashboardContent() {
                                                             <p className="line-clamp-1">"{p.message}"</p>
                                                         </div>
                                                     )}
+                                                    <div className="mt-4">
+                                                        <WorkspaceProgressBar
+                                                            status={p.status}
+                                                            contract_status={p.contract_status}
+                                                            delivery_status={p.delivery_status}
+                                                            content_submission_status={p.content_submission_status}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                             <Button variant="ghost" size="sm" disabled>응답 대기중</Button>
@@ -1605,6 +1646,14 @@ function BrandDashboardContent() {
                                                         <Badge variant="secondary" className="bg-slate-200 text-slate-500">거절됨</Badge>
                                                     </div>
                                                     <p className="text-sm text-slate-500 mt-1">{p.campaignName || p.productName || "상품명 미상"} • {new Date(p.created_at || p.date).toLocaleDateString()}</p>
+                                                    <div className="mt-4">
+                                                        <WorkspaceProgressBar
+                                                            status={p.status}
+                                                            contract_status={p.contract_status}
+                                                            delivery_status={p.delivery_status}
+                                                            content_submission_status={p.content_submission_status}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                             <Button variant="ghost" size="sm" onClick={() => {
@@ -1636,6 +1685,14 @@ function BrandDashboardContent() {
                                                         <Badge className="bg-slate-100 text-slate-600 border border-slate-200 font-medium">협업 완료</Badge>
                                                     </div>
                                                     <p className="text-sm text-slate-500 mt-1">{p.campaignName || p.productName} • {p.completed_at ? new Date(p.completed_at).toLocaleDateString() : '협업 완료'}</p>
+                                                    <div className="mt-4">
+                                                        <WorkspaceProgressBar
+                                                            status={p.status}
+                                                            contract_status={p.contract_status}
+                                                            delivery_status={p.delivery_status}
+                                                            content_submission_status={p.content_submission_status}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                             <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50">협업 상세</Button>
@@ -2718,10 +2775,57 @@ function BrandDashboardContent() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-slate-500 mb-4">
+                                            <p className="text-xs text-slate-500 mb-6">
                                                 계약서 작성 전, 협의된 조건(금액, 일정 등)에 대해 양측이 최종 확정을 해야 합니다.<br />
                                                 양측 모두 확정 버튼을 누르면 계약서 생성 단계로 넘어갑니다.
                                             </p>
+
+                                            {/* Condition Fields Grid */}
+                                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                                {[
+                                                    { label: "제품 수령 (예상)", key: "condition_product_receipt_date", placeholder: "예: 2024-03-10" },
+                                                    { label: "기획안 공유", key: "condition_plan_sharing_date", placeholder: "예: 2024-03-15" },
+                                                    { label: "초안 제출", key: "condition_draft_submission_date", placeholder: "예: 2024-03-20" },
+                                                    { label: "최종본 제출", key: "condition_final_submission_date", placeholder: "예: 2024-03-25" },
+                                                    { label: "업로드 일정", key: "condition_upload_date", placeholder: "예: 2024-03-30" },
+                                                    { label: "유지 기간", key: "condition_maintenance_period", placeholder: "예: 6개월" },
+                                                    { label: "2차 활용 기간", key: "condition_secondary_usage_period", placeholder: "예: 1년" },
+                                                ].map((field) => (
+                                                    <div key={field.key} className="space-y-1">
+                                                        <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{field.label}</Label>
+                                                        <Input
+                                                            className="h-8 text-xs bg-white"
+                                                            placeholder={field.placeholder}
+                                                            value={chatProposal?.[field.key] || ""}
+                                                            onChange={async (e) => {
+                                                                const val = e.target.value;
+                                                                // Optimistic update
+                                                                setChatProposal((prev: any) => ({ ...prev, [field.key]: val }));
+
+                                                                // Debounced save could be better, but for now direct save on blur or separate save button.
+                                                                // Given the requirement "anytime write or edit", let's save on blur to avoid too many requests
+                                                            }}
+                                                            onBlur={async (e) => {
+                                                                const val = e.target.value || "해당 없음";
+                                                                const isCampaignProposal = !!chatProposal.campaignId || (chatProposal as any)?.type === 'creator_apply';
+                                                                const proposalId = chatProposal.id.toString();
+
+                                                                try {
+                                                                    if (isCampaignProposal) {
+                                                                        await updateProposal(proposalId, { [field.key]: val });
+                                                                    } else {
+                                                                        await updateBrandProposal(proposalId, { [field.key]: val });
+                                                                    }
+                                                                } catch (err) {
+                                                                    console.error("Failed to save condition:", err);
+                                                                }
+                                                                // Update local state with default if empty
+                                                                setChatProposal((prev: any) => ({ ...prev, [field.key]: val }));
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 {/* Brand Status */}
                                                 <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.brand_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
@@ -2743,7 +2847,7 @@ function BrandDashboardContent() {
                                                                 } else {
                                                                     await updateBrandProposal(proposalId, { brand_condition_confirmed: true });
                                                                 }
-                                                                setChatProposal(prev => ({ ...prev, brand_condition_confirmed: true }));
+                                                                setChatProposal((prev: any) => ({ ...prev, brand_condition_confirmed: true }));
                                                                 // Notify Creator
                                                                 const receiverId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id;
                                                                 if (receiverId) {

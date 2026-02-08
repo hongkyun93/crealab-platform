@@ -20,8 +20,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon } from "lucide-react"
 import Link from "next/link"
-import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback } from "@/components/providers/platform-provider"
+import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign } from "@/components/providers/platform-provider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
 import SignatureCanvas from 'react-signature-canvas'
 import { Badge } from "@/components/ui/badge"
@@ -335,7 +336,8 @@ function InfluencerDashboardContent() {
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
         messages, sendMessage,
         deleteEvent, proposals, updateProposal,
-        products, switchRole, updateEvent, supabase
+        products, switchRole, updateEvent, supabase,
+        favorites, toggleFavorite
     } = usePlatform()
 
     const router = useRouter()
@@ -346,6 +348,7 @@ function InfluencerDashboardContent() {
     const [currentView, setCurrentView] = useState(initialView)
     const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
     const [chatProposal, setChatProposal] = useState<any>(null)
+    const [favoritesOnly, setFavoritesOnly] = useState(false)
 
     // Guide Modal State
     const [guideModalOpen, setGuideModalOpen] = useState(false)
@@ -426,8 +429,8 @@ function InfluencerDashboardContent() {
     const outboundApplications = proposals?.filter((p: any) => p.type === 'creator_apply' && (p.status === 'pending' || p.status === 'viewed')) || []
 
     // 3. Active (In Progress) - Both sources
-    const activeInbound = brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'completed') || []
-    const activeOutbound = proposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'completed') || []
+    const activeInbound = brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started') || []
+    const activeOutbound = proposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started') || []
     const allActive = [...activeInbound, ...activeOutbound].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
 
     // Refined Inbound (Waiting for Action)
@@ -440,6 +443,17 @@ function InfluencerDashboardContent() {
     const completedInbound = brandProposals?.filter((p: any) => p.status === 'completed') || []
     const completedOutbound = proposals?.filter((p: any) => p.status === 'completed') || []
     const allCompleted = [...completedInbound, ...completedOutbound].sort((a, b) => new Date(b.completed_at || b.created_at || 0).getTime() - new Date(a.completed_at || a.created_at || 0).getTime())
+
+    // 5. All Items
+    const allWorkspaceItems = [
+        ...inboundProposals,
+        ...outboundApplications,
+        ...activeInbound,
+        ...activeOutbound,
+        ...rejectedProposals,
+        ...completedInbound,
+        ...completedOutbound
+    ].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
     // ----------------------------------------------------------------
 
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false)
@@ -501,7 +515,7 @@ function InfluencerDashboardContent() {
             // I see 'updateBrandProposal' is destructured. I need to make sure 'updateProposal' is also destructured.
 
             // Local update
-            setChatProposal(prev => ({ ...prev, contract_status: status, influencer_signature: signatureData }))
+            setChatProposal((prev: any) => ({ ...prev, contract_status: status, influencer_signature: signatureData }))
 
             // Notify brand
             const msg = status === 'signed' ? "✅ 계약서에 서명했습니다! 콘텐츠 제작을 시작하겠습니다." :
@@ -545,7 +559,7 @@ function InfluencerDashboardContent() {
                 await updateBrandProposal(proposalId, updateData)
             }
 
-            setChatProposal(prev => ({ ...prev, ...updateData }))
+            setChatProposal((prev: any) => ({ ...prev, ...updateData }))
 
             await sendMessage(brandId, "📦 [자동 알림] 크리에이터가 제품 수령을 완료했습니다.", isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
 
@@ -582,8 +596,7 @@ function InfluencerDashboardContent() {
                 await updateBrandProposal(proposalId, updateData)
             }
 
-            // Update local state
-            setChatProposal(prev => ({ ...prev, ...updateData }))
+            setChatProposal((prev: any) => ({ ...prev, ...updateData }))
 
             // Notify Brand
             await sendMessage(brandId, "🚚 배송지 정보를 입력했습니다. 제품 발송 부탁드립니다!", isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
@@ -737,7 +750,7 @@ function InfluencerDashboardContent() {
                 await updateBrandProposal(proposalId, updateData)
             }
 
-            setChatProposal(prev => ({ ...prev, ...updateData }))
+            setChatProposal((prev: any) => ({ ...prev, ...updateData }))
 
             // Send automatic notification in feedback chat
             const notificationContent = isReuploading
@@ -840,11 +853,17 @@ function InfluencerDashboardContent() {
 
 
 
-    const filteredProducts = products?.filter(p =>
-        p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-        p.brandName?.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(productSearchQuery.toLowerCase())
-    ) || []
+    const filteredProducts = products?.filter(p => {
+        const matchesQuery =
+            p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+            p.brandName?.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+            p.category.toLowerCase().includes(productSearchQuery.toLowerCase())
+
+        if (favoritesOnly) {
+            return matchesQuery && favorites.some(f => f.target_id === p.id && f.target_type === 'product')
+        }
+        return matchesQuery
+    }) || []
 
     const handlePresetClick = (key: string) => {
         setDiscoverFollowerFilter(key)
@@ -1760,6 +1779,9 @@ function InfluencerDashboardContent() {
 
                         <Tabs defaultValue="active" className="w-full">
                             <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
+                                <TabsTrigger value="all" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-slate-700 font-medium transition-all">
+                                    전체 보기 <span className="ml-2 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
+                                </TabsTrigger>
                                 <TabsTrigger value="active" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-slate-700 font-medium transition-all">
                                     진행중 <span className="ml-2 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
                                 </TabsTrigger>
@@ -1777,6 +1799,48 @@ function InfluencerDashboardContent() {
                                 </TabsTrigger>
                             </TabsList>
 
+
+                            {/* Tab 0: All Items */}
+                            <TabsContent value="all" className="space-y-4 mt-6">
+                                {allWorkspaceItems.length > 0 ? (
+                                    allWorkspaceItems.map((proposal: any) => (
+                                        <Card key={proposal.id} className="p-6 border-l-4 border-l-slate-200 bg-white cursor-pointer hover:shadow-lg hover:border-slate-300 transition-all" onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
+                                            <div className="flex flex-col md:flex-row gap-6">
+                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-50 border-2 border-slate-100 overflow-hidden">
+                                                    <span className="font-bold text-lg text-slate-400">{proposal.brand_name?.[0] || "W"}</span>
+                                                </div>
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <h3 className="font-bold text-xl flex items-center gap-2">
+                                                                {proposal.product_name}
+                                                                <Badge variant="outline" className="text-xs font-normal">
+                                                                    {proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' ? '진행중' :
+                                                                        proposal.status === 'completed' ? '완료됨' :
+                                                                            proposal.status === 'rejected' ? '거절됨' :
+                                                                                '대기중'}
+                                                                </Badge>
+                                                            </h3>
+                                                            <p className="text-sm text-slate-500">{proposal.brand_name}</p>
+                                                        </div>
+                                                        <span className="text-xs text-slate-400">{new Date(proposal.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <WorkspaceProgressBar
+                                                            status={proposal.status}
+                                                            contract_status={proposal.contract_status}
+                                                            delivery_status={proposal.delivery_status}
+                                                            content_submission_status={proposal.content_submission_status}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground">내역이 없습니다.</div>
+                                )}
+                            </TabsContent>
 
                             {/* Tab 1: Active (In Progress) */}
                             <TabsContent value="active" className="space-y-4 mt-6">
@@ -1829,46 +1893,12 @@ function InfluencerDashboardContent() {
 
                                                     {/* 6-Stage Progress Tracker */}
                                                     <div className="mt-6 w-full max-w-xl">
-                                                        <div className="flex justify-between mb-2">
-                                                            {[
-                                                                { id: 1, label: '매칭 완료' },
-                                                                { id: 2, label: '조건 조율' },
-                                                                { id: 3, label: '계약 체결' },
-                                                                { id: 4, label: '제품 배송' },
-                                                                { id: 5, label: '콘텐츠 제출' },
-                                                                { id: 6, label: '최종 완료' }
-                                                            ].map((step) => {
-                                                                const isStep1Done = true;
-                                                                const isStep2Done = (proposal.brand_condition_confirmed && proposal.influencer_condition_confirmed) || proposal.contract_status === 'signed';
-                                                                const isStep3Done = proposal.contract_status === 'signed';
-                                                                const isStep4Done = proposal.delivery_status === 'shipped' || proposal.delivery_status === 'delivered';
-                                                                const isStep5Done = proposal.content_submission_status === 'approved' || proposal.status === 'completed';
-                                                                const isStep6Done = proposal.status === 'completed';
-
-                                                                const dones = [isStep1Done, isStep2Done, isStep3Done, isStep4Done, isStep5Done, isStep6Done];
-
-                                                                let status = 'pending';
-                                                                if (dones[step.id - 1]) {
-                                                                    status = 'done';
-                                                                } else if (step.id === 1 || dones[step.id - 2]) {
-                                                                    status = 'active';
-                                                                }
-
-                                                                if (isStep6Done) status = 'done';
-
-                                                                const colorClass = status === 'done' ? 'text-emerald-600' : status === 'active' ? 'text-amber-500' : 'text-slate-400';
-                                                                const barClass = status === 'done' ? 'bg-emerald-500' : status === 'active' ? 'bg-amber-400' : 'bg-slate-200';
-
-                                                                return (
-                                                                    <div key={step.id} className="flex flex-col items-center flex-1 gap-1.5">
-                                                                        <span className={`text-[10px] md:text-[11px] font-bold transition-colors ${colorClass}`}>
-                                                                            {step.label}
-                                                                        </span>
-                                                                        <div className={`h-1.5 w-[90%] rounded-full transition-all ${barClass}`} />
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
+                                                        <WorkspaceProgressBar
+                                                            status={proposal.status}
+                                                            contract_status={proposal.contract_status}
+                                                            delivery_status={proposal.delivery_status}
+                                                            content_submission_status={proposal.content_submission_status}
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
@@ -1907,6 +1937,14 @@ function InfluencerDashboardContent() {
                                                         <span className="font-bold text-emerald-600 mr-2">{proposal.compensation_amount}</span>
                                                         <span className="text-muted-foreground">{proposal.message}</span>
                                                     </div>
+                                                    <div className="mt-4">
+                                                        <WorkspaceProgressBar
+                                                            status={proposal.status}
+                                                            contract_status={proposal.contract_status}
+                                                            delivery_status={proposal.delivery_status}
+                                                            content_submission_status={proposal.content_submission_status}
+                                                        />
+                                                    </div>
                                                     <div className="flex gap-2 justify-end">
                                                         <Button
                                                             size="sm"
@@ -1939,6 +1977,14 @@ function InfluencerDashboardContent() {
                                                         <div>
                                                             <h3 className="font-bold text-xl">{proposal.brand_name} 캠페인</h3>
                                                             <p className="text-sm text-muted-foreground mt-1">지원 메시지: "{proposal.message}"</p>
+                                                            <div className="mt-4">
+                                                                <WorkspaceProgressBar
+                                                                    status={proposal.status}
+                                                                    contract_status={proposal.contract_status}
+                                                                    delivery_status={proposal.delivery_status}
+                                                                    content_submission_status={proposal.content_submission_status}
+                                                                />
+                                                            </div>
                                                         </div>
                                                         <Badge variant="outline">지원 완료</Badge>
                                                     </div>
@@ -1965,7 +2011,7 @@ function InfluencerDashboardContent() {
                                                 <div className="flex-1">
                                                     <div className="flex justify-between items-center">
                                                         <h3 className="font-bold text-xl text-slate-800">{proposal.product_name}</h3>
-                                                        <Badge className="bg-slate-100 text-slate-600 border border-slate-200 font-medium">COMPLETED</Badge>
+                                                        <Badge className="bg-slate-100 text-slate-600 border border-slate-200 font-medium">완료됨</Badge>
                                                     </div>
                                                     <p className="text-sm text-slate-500 mt-1">{proposal.brand_name} • {proposal.completed_at ? new Date(proposal.completed_at).toLocaleDateString() : '완료됨'}</p>
                                                 </div>
@@ -2078,6 +2124,8 @@ function InfluencerDashboardContent() {
                                         id="name"
                                         value={editName}
                                         onChange={(e) => setEditName(e.target.value)}
+                                        onBlur={(e) => setEditName(e.target.value)}
+                                        autoComplete="off"
                                         placeholder="이름을 입력하세요"
                                     />
                                 </div>
@@ -2093,6 +2141,11 @@ function InfluencerDashboardContent() {
                                                 const val = e.target.value.replace(/[^a-zA-Z0-9_.]/g, '') // Basic sanitization
                                                 setEditHandle(`@${val}`)
                                             }}
+                                            onBlur={(e) => {
+                                                const val = e.target.value.replace(/[^a-zA-Z0-9_.]/g, '')
+                                                setEditHandle(`@${val}`)
+                                            }}
+                                            autoComplete="off"
                                             placeholder="username"
                                             className="pl-8"
                                         />
@@ -2106,6 +2159,8 @@ function InfluencerDashboardContent() {
                                             type="number"
                                             value={editFollowers}
                                             onChange={(e) => setEditFollowers(e.target.value)}
+                                            onBlur={(e) => setEditFollowers(e.target.value)}
+                                            autoComplete="off"
                                             placeholder="Ex: 10000"
                                             className="max-w-[200px]"
                                         />
@@ -2142,6 +2197,8 @@ function InfluencerDashboardContent() {
                                         id="phone"
                                         value={editPhone}
                                         onChange={(e) => setEditPhone(e.target.value)}
+                                        onBlur={(e) => setEditPhone(e.target.value)}
+                                        autoComplete="off"
                                         placeholder="010-0000-0000"
                                     />
                                 </div>
@@ -2151,6 +2208,8 @@ function InfluencerDashboardContent() {
                                         id="address"
                                         value={editAddress}
                                         onChange={(e) => setEditAddress(e.target.value)}
+                                        onBlur={(e) => setEditAddress(e.target.value)}
+                                        autoComplete="off"
                                         placeholder="서울시 강남구..."
                                     />
                                 </div>
@@ -2160,6 +2219,8 @@ function InfluencerDashboardContent() {
                                         id="bio"
                                         value={editBio}
                                         onChange={(e) => setEditBio(e.target.value)}
+                                        onBlur={(e) => setEditBio(e.target.value)}
+                                        autoComplete="off"
                                         placeholder="나를 표현하는 멋진 한마디를 적어주세요."
                                     />
                                 </div>
@@ -2358,7 +2419,16 @@ function InfluencerDashboardContent() {
                                     마음에 들면 광고나 공구를 먼저 제안해보세요.
                                 </p>
                             </div>
-                            <div className="flex w-full max-w-sm items-center space-x-2">
+                            <div className="flex w-full max-w-md items-center space-x-2">
+                                <Button
+                                    variant={favoritesOnly ? "secondary" : "outline"}
+                                    size="icon"
+                                    onClick={() => setFavoritesOnly(!favoritesOnly)}
+                                    className={favoritesOnly ? "bg-yellow-100 text-yellow-600 border-yellow-200 hover:bg-yellow-200" : "text-muted-foreground"}
+                                    title="즐겨찾기만 보기"
+                                >
+                                    <Star className={`h-4 w-4 ${favoritesOnly ? "fill-current" : ""}`} />
+                                </Button>
                                 <div className="relative w-full">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -2385,6 +2455,21 @@ function InfluencerDashboardContent() {
                                     }}>
                                         <Card className="h-full overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 bg-background border-border/60 group">
                                             <div className="aspect-square bg-muted flex items-center justify-center text-6xl overflow-hidden relative">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        toggleFavorite(String(product.id), 'product');
+                                                    }}
+                                                >
+                                                    <Star
+                                                        className={`h-4 w-4 transition-colors ${favorites.some(f => f.target_id === String(product.id) && f.target_type === 'product') ? 'text-yellow-500' : 'text-muted-foreground'}`}
+                                                        fill={favorites.some(f => f.target_id === String(product.id) && f.target_type === 'product') ? 'currentColor' : 'none'}
+                                                    />
+                                                </Button>
                                                 {product.image?.startsWith('http') ? (
                                                     <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                                 ) : (
@@ -2505,6 +2590,16 @@ function InfluencerDashboardContent() {
         setAppealMessage(`안녕하세요! ${campaign.brand}의 ${campaign.product} 캠페인에 제안하고 싶습니다.\n\n[제안 내용]\n`)
         setDesiredCost("")
         setApplyModalOpen(true)
+    }
+
+    const handleProductApply = (product: any) => {
+        const mockCampaign = {
+            id: product.id,
+            brand: product.brandName || "Unknown Brand",
+            product: product.name,
+            budget: product.price ? `${product.price.toLocaleString()}원` : "협의",
+        }
+        handleApplyClick(mockCampaign)
     }
 
     const handleDownloadContract = () => {
@@ -2863,10 +2958,10 @@ function InfluencerDashboardContent() {
                                                 </div>
                                             )}
 
-                                            {/* Condition Confirmation Card (Mutual Agreement) */}
+                                            {/* Condition Confirmation Card (Mutual Agreement) - Added for Creator */}
                                             {chatProposal && (
-                                                <div className="mb-4 p-4 bg-muted/30 border border-slate-200 rounded-2xl animate-in fade-in slide-in-from-top-3">
-                                                    <div className="flex items-center justify-between mb-3">
+                                                <div className="mb-6 p-6 bg-slate-50 border border-slate-200 rounded-2xl animate-in fade-in slide-in-from-top-5 duration-700">
+                                                    <div className="flex items-center justify-between mb-4">
                                                         <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                                                             <BadgeCheck className="h-5 w-5 text-indigo-600" /> 조건 확정 (Mutual Confirmation)
                                                         </h4>
@@ -2880,12 +2975,68 @@ function InfluencerDashboardContent() {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground mb-3">
-                                                        계약 진행을 위해 협의된 조건에 대해 확정이 필요합니다.
+                                                    <p className="text-xs text-slate-500 mb-6">
+                                                        계약서 작성 전, 협의된 조건(금액, 일정 등)에 대해 양측이 최종 확정을 해야 합니다.<br />
+                                                        양측 모두 확정 버튼을 누르면 계약서 생성 단계로 넘어갑니다.
                                                     </p>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        {/* Creator Status (Me) */}
-                                                        <div className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 ${chatProposal.influencer_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
+
+                                                    {/* Condition Fields Grid */}
+                                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                                        {[
+                                                            { label: "제품 수령 (예상)", key: "condition_product_receipt_date", placeholder: "예: 2024-03-10" },
+                                                            { label: "기획안 공유", key: "condition_plan_sharing_date", placeholder: "예: 2024-03-15" },
+                                                            { label: "초안 제출", key: "condition_draft_submission_date", placeholder: "예: 2024-03-20" },
+                                                            { label: "최종본 제출", key: "condition_final_submission_date", placeholder: "예: 2024-03-25" },
+                                                            { label: "업로드 일정", key: "condition_upload_date", placeholder: "예: 2024-03-30" },
+                                                            { label: "유지 기간", key: "condition_maintenance_period", placeholder: "예: 6개월" },
+                                                            { label: "2차 활용 기간", key: "condition_secondary_usage_period", placeholder: "예: 1년" },
+                                                        ].map((field) => (
+                                                            <div key={field.key} className="space-y-1">
+                                                                <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{field.label}</Label>
+                                                                <Input
+                                                                    className="h-8 text-xs bg-white"
+                                                                    placeholder={field.placeholder}
+                                                                    value={chatProposal?.[field.key] || ""}
+                                                                    onChange={async (e) => {
+                                                                        const val = e.target.value;
+                                                                        setChatProposal((prev: any) => ({ ...prev, [field.key]: val }));
+                                                                    }}
+                                                                    onBlur={async (e) => {
+                                                                        const val = e.target.value || "해당 없음";
+                                                                        const isCampaignProposal = !!chatProposal.campaignId || (chatProposal as any)?.type === 'creator_apply';
+                                                                        const proposalId = chatProposal.id.toString();
+
+                                                                        try {
+                                                                            if (isCampaignProposal) {
+                                                                                await updateProposal(proposalId, { [field.key]: val });
+                                                                            } else {
+                                                                                await updateBrandProposal(proposalId, { [field.key]: val });
+                                                                            }
+                                                                        } catch (err) {
+                                                                            console.error("Failed to save condition:", err);
+                                                                        }
+                                                                        setChatProposal((prev: any) => ({ ...prev, [field.key]: val }));
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        {/* Brand Status */}
+                                                        <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.brand_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Brand</span>
+                                                            {chatProposal.brand_condition_confirmed ? (
+                                                                <div className="text-indigo-700 font-bold text-sm flex items-center gap-1">
+                                                                    <BadgeCheck className="h-4 w-4" /> 확정 완료
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-slate-400 font-bold text-xs">확정 대기 중</div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Creator Status (Self) */}
+                                                        <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.influencer_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
                                                             <span className="text-[10px] font-bold text-slate-400 uppercase">Creator (본인)</span>
                                                             {chatProposal.influencer_condition_confirmed ? (
                                                                 <div className="text-indigo-700 font-bold text-sm flex items-center gap-1">
@@ -2894,10 +3045,10 @@ function InfluencerDashboardContent() {
                                                             ) : (
                                                                 <Button
                                                                     size="sm"
-                                                                    className="h-7 text-xs font-bold bg-indigo-600 hover:bg-indigo-700"
+                                                                    className="h-8 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 shadow-md"
                                                                     onClick={async () => {
                                                                         if (!confirm("현재 협의된 조건으로 확정하시겠습니까?")) return;
-                                                                        const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply';
+                                                                        const isCampaignProposal = !!chatProposal.campaignId || (chatProposal as any)?.type === 'creator_apply';
                                                                         const proposalId = chatProposal.id.toString();
 
                                                                         try {
@@ -2906,16 +3057,16 @@ function InfluencerDashboardContent() {
                                                                             } else {
                                                                                 await updateBrandProposal(proposalId, { influencer_condition_confirmed: true });
                                                                             }
-                                                                            setChatProposal({ ...chatProposal, influencer_condition_confirmed: true });
+                                                                            setChatProposal((prev: any) => ({ ...prev, influencer_condition_confirmed: true }));
 
                                                                             // Notify Brand
-                                                                            const receiverId = chatProposal.brand_id || chatProposal.brandId || chatProposal.brand?.id;
+                                                                            const receiverId = chatProposal.brand_id || (chatProposal as any).brandId || (chatProposal as any).brand?.id;
                                                                             if (receiverId) {
                                                                                 await sendMessage(receiverId, "✅ [시스템 알림] 크리에이터가 조건을 최종 확정했습니다. 브랜드 담당자님도 확정해주세요.", undefined, proposalId);
                                                                             }
                                                                         } catch (e) {
-                                                                            console.error(e)
-                                                                            alert("오류가 발생했습니다.")
+                                                                            console.error(e);
+                                                                            alert("업데이트 실패");
                                                                         }
                                                                     }}
                                                                 >
@@ -2923,24 +3074,9 @@ function InfluencerDashboardContent() {
                                                                 </Button>
                                                             )}
                                                         </div>
-
-                                                        {/* Brand Status */}
-                                                        <div className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 ${chatProposal.brand_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Brand</span>
-                                                            {chatProposal.brand_condition_confirmed ? (
-                                                                <div className="text-indigo-700 font-bold text-sm flex items-center gap-1">
-                                                                    <BadgeCheck className="h-4 w-4" /> 확정 완료
-                                                                </div>
-                                                            ) : (
-                                                                <div className="text-slate-400 font-bold text-xs flex items-center gap-1 animate-pulse">
-                                                                    <Loader2 className="h-3 w-3" /> 대기 중...
-                                                                </div>
-                                                            )}
-                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
-
                                             {messages.filter((m: any) => {
                                                 if (!chatProposal) return false
                                                 const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
@@ -3598,16 +3734,17 @@ function InfluencerDashboardContent() {
                             </div>
                         </DialogContent>
                     </Dialog>
+                </div>
 
-                    {/* Full Contract Viewer Dialog */}
-                    <Dialog open={isFullContractOpen} onOpenChange={setIsFullContractOpen}>
-                        <DialogContent className="sm:max-w-3xl h-[80vh] flex flex-col p-6 overflow-hidden">
-                            <DialogHeader className="mb-4">
-                                <DialogTitle>표준 광고 협업 계약서</DialogTitle>
-                                <DialogDescription>작성된 계약서의 전체 내용입니다.</DialogDescription>
-                            </DialogHeader>
-                            <div className="flex-1 overflow-y-auto p-6 bg-slate-50 rounded-xl border border-slate-200 font-mono text-sm whitespace-pre-wrap">
-                                {generatedContract || `제 1조 [목적]
+                {/* Full Contract Viewer Dialog */}
+                <Dialog open={isFullContractOpen} onOpenChange={setIsFullContractOpen}>
+                    <DialogContent className="sm:max-w-3xl h-[80vh] flex flex-col p-6 overflow-hidden">
+                        <DialogHeader className="mb-4">
+                            <DialogTitle>표준 광고 협업 계약서</DialogTitle>
+                            <DialogDescription>작성된 계약서의 전체 내용입니다.</DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-y-auto p-6 bg-slate-50 rounded-xl border border-slate-200 font-mono text-sm whitespace-pre-wrap">
+                            {generatedContract || `제 1조 [목적]
 본 계약은 '갑'(${chatProposal?.brand_name || '브랜드'})과 '을'(${user?.name || '크리에이터'})간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.
 
 제 2조 [원고료 및 지급]
@@ -3620,15 +3757,14 @@ function InfluencerDashboardContent() {
 ... (중략) ...
 
 상기 내용을 확인하였으며, 계약에 동의합니다.`}
-                            </div>
-                            <DialogFooter className="mt-6">
-                                <Button onClick={() => setIsFullContractOpen(false)}>닫기</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                        </div>
+                        <DialogFooter className="mt-6">
+                            <Button onClick={() => setIsFullContractOpen(false)}>닫기</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
-                </div>
-            </main >
+            </main>
             {/* Signature Modal */}
             <Dialog open={isSignatureModalOpen} onOpenChange={setIsSignatureModalOpen}>
                 <DialogContent className="sm:max-w-xl">
@@ -3675,13 +3811,15 @@ function InfluencerDashboardContent() {
             </Dialog>
 
             {/* Product Guide Dialog Render */}
-            {isProductGuideOpen && guideProduct && (
-                <ProductGuideDialog
-                    isOpen={isProductGuideOpen}
-                    onOpenChange={setIsProductGuideOpen}
-                    product={guideProduct}
-                />
-            )}
+            {
+                isProductGuideOpen && guideProduct && (
+                    <ProductGuideDialog
+                        isOpen={isProductGuideOpen}
+                        onOpenChange={setIsProductGuideOpen}
+                        product={guideProduct}
+                    />
+                )
+            }
             {/* Brand Detail Modal */}
             <Dialog open={!!selectedBrandProduct} onOpenChange={(open) => !open && setSelectedBrandProduct(null)}>
                 <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
@@ -3736,10 +3874,7 @@ function InfluencerDashboardContent() {
 
                             <div className="pt-4 flex gap-3">
                                 <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={() => {
-                                    // Close detail modal, open apply modal for this product
-                                    // Logic depends on existing apply flow. 
-                                    // For now, let's just trigger the existing proposal flow or simple alert
-                                    handleApply(selectedBrandProduct.id);
+                                    handleProductApply(selectedBrandProduct);
                                     setSelectedBrandProduct(null);
                                 }}>
                                     <Send className="mr-2 h-4 w-4" /> 제안 보내기
@@ -3752,13 +3887,13 @@ function InfluencerDashboardContent() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }
 
-export default function InfluencerDashboard() {
+export default function CreatorDashboardPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-indigo-600" /></div>}>
             <InfluencerDashboardContent />
         </Suspense>
     )
