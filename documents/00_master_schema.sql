@@ -26,6 +26,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   handle text,
   avatar_url text,
   bio text,
+  website text,
+  phone text,
+  address text,
+  is_mock boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -39,6 +43,8 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS address text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS handle text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone DEFAULT timezone('utc'::text, now());
+-- Explicitly notify to reload changes
+NOTIFY pgrst, 'reload schema';
 
 -- 2.2 INFLUENCER DETAILS
 CREATE TABLE IF NOT EXISTS public.influencer_details (
@@ -132,6 +138,7 @@ CREATE TABLE IF NOT EXISTS public.campaigns (
   description text NOT NULL,
   product_name text NOT NULL,
   product_image_url text,
+  image text,
   budget_min integer,
   budget_max integer,
   target_moment_id uuid REFERENCES public.life_moments(id),
@@ -145,6 +152,7 @@ ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS category text;
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS budget text;
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS target text;
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS tags text[];
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS image text;
 
 -- 2.6 INFLUENCER EVENTS (MOMENTS)
 CREATE TABLE IF NOT EXISTS public.influencer_events (
@@ -202,8 +210,9 @@ CREATE TABLE IF NOT EXISTS public.brand_proposals (
   video_guide text DEFAULT 'brand_provided'
 );
 
--- 2.8 PROPOSALS (Applications)
-CREATE TABLE IF NOT EXISTS public.proposals (
+-- 2.8 CAMPAIGN PROPOSALS (Applications)
+-- Formerly 'proposals'
+CREATE TABLE IF NOT EXISTS public.campaign_proposals (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   campaign_id uuid REFERENCES public.campaigns(id) NOT NULL,
   influencer_id uuid REFERENCES public.profiles(id) NOT NULL,
@@ -213,22 +222,27 @@ CREATE TABLE IF NOT EXISTS public.proposals (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 -- Add missing columns
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS contract_content TEXT;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS contract_status TEXT DEFAULT 'none';
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS brand_signature TEXT;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS influencer_signature TEXT;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS brand_signed_at TIMESTAMP WITH TIME ZONE;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS influencer_signed_at TIMESTAMP WITH TIME ZONE;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS shipping_name text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS shipping_phone text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS shipping_address text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS tracking_number text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS delivery_status text DEFAULT 'pending';
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS contract_content TEXT;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS contract_status TEXT DEFAULT 'none';
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS brand_signature TEXT;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS influencer_signature TEXT;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS brand_signed_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS influencer_signed_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS shipping_name text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS shipping_phone text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS shipping_address text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS tracking_number text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS delivery_status text DEFAULT 'pending';
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS motivation text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_plan text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS portfolio_links text[];
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS instagram_handle text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS insight_screenshot text;
 
 -- 2.9 MESSAGES
 CREATE TABLE IF NOT EXISTS public.messages (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-  proposal_id uuid REFERENCES public.proposals(id) ON DELETE SET NULL, -- Link to Campaign Applications
+  proposal_id uuid REFERENCES public.campaign_proposals(id) ON DELETE SET NULL, -- Link to Campaign Applications (renamed table)
   brand_proposal_id uuid REFERENCES public.brand_proposals(id) ON DELETE SET NULL, -- Link to Direct Offers
   sender_id uuid REFERENCES public.profiles(id) NOT NULL,
   receiver_id uuid REFERENCES public.profiles(id) NOT NULL,
@@ -303,7 +317,7 @@ ALTER TABLE public.influencer_details ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brand_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.influencer_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.proposals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.campaign_proposals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brand_proposals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
@@ -320,7 +334,13 @@ DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Public profiles are viewable by everyone" ON profiles FOR SELECT USING ( true );
+
+-- Users can insert their own profile
+DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
 CREATE POLICY "Users can insert their own profile" ON profiles FOR INSERT WITH CHECK ( auth.uid() = id );
+
+-- Users can update own profile
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING ( auth.uid() = id );
 
 -- 4.2 Influencer Details
@@ -357,6 +377,43 @@ DROP POLICY IF EXISTS "Brands can manage campaigns" ON campaigns;
 CREATE POLICY "Campaigns viewable by everyone" ON campaigns FOR SELECT USING (true);
 CREATE POLICY "Brands can manage campaigns" ON campaigns FOR ALL USING (auth.uid() = brand_id);
 
+-- Instagram Integration
+--
+CREATE TABLE IF NOT EXISTS public.instagram_accounts (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  instagram_user_id text NOT NULL UNIQUE,
+  access_token text NOT NULL,
+  page_id text,
+  username text,
+  profile_picture_url text,
+  follower_count integer,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- RLS for instagram_accounts
+ALTER TABLE public.instagram_accounts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own instagram account" ON public.instagram_accounts;
+CREATE POLICY "Users can view their own instagram account" 
+  ON public.instagram_accounts FOR SELECT 
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own instagram account" ON public.instagram_accounts;
+CREATE POLICY "Users can insert their own instagram account" 
+  ON public.instagram_accounts FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own instagram account" ON public.instagram_accounts;
+CREATE POLICY "Users can update their own instagram account" 
+  ON public.instagram_accounts FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own instagram account" ON public.instagram_accounts;
+CREATE POLICY "Users can delete their own instagram account" 
+  ON public.instagram_accounts FOR DELETE 
+  USING (auth.uid() = user_id);
+
 -- BRAND PRODUCTS POLICIES
 DROP POLICY IF EXISTS "Public Read Brand Products" ON public.brand_products;
 DROP POLICY IF EXISTS "Users can create their own products" ON public.brand_products;
@@ -385,13 +442,13 @@ CREATE POLICY "Brands can create proposals" ON brand_proposals FOR INSERT WITH C
 CREATE POLICY "Parties can update status" ON brand_proposals FOR UPDATE USING ( auth.uid() = brand_id OR auth.uid() = influencer_id );
 CREATE POLICY "Brands can delete proposals" ON brand_proposals FOR DELETE USING ( auth.uid() = brand_id );
 
--- 4.7 Proposals (Campaign Applications)
-DROP POLICY IF EXISTS "Proposals viewable by parties" ON proposals;
-DROP POLICY IF EXISTS "Influencers can create proposals" ON proposals;
-DROP POLICY IF EXISTS "Parties can update proposals" ON proposals;
-CREATE POLICY "Proposals viewable by parties" ON proposals FOR SELECT USING ( auth.uid() = influencer_id OR EXISTS ( SELECT 1 FROM campaigns WHERE campaigns.id = proposals.campaign_id AND campaigns.brand_id = auth.uid() ) );
-CREATE POLICY "Influencers can create proposals" ON proposals FOR INSERT WITH CHECK ( auth.uid() = influencer_id );
-CREATE POLICY "Parties can update proposals" ON proposals FOR UPDATE USING ( auth.uid() = influencer_id OR EXISTS ( SELECT 1 FROM campaigns WHERE campaigns.id = proposals.campaign_id AND campaigns.brand_id = auth.uid() ) );
+-- 4.7 Campaign Proposals (formerly Proposals)
+DROP POLICY IF EXISTS "Proposals viewable by parties" ON campaign_proposals;
+DROP POLICY IF EXISTS "Influencers can create proposals" ON campaign_proposals;
+DROP POLICY IF EXISTS "Parties can update proposals" ON campaign_proposals;
+CREATE POLICY "Proposals viewable by parties" ON campaign_proposals FOR SELECT USING ( auth.uid() = influencer_id OR EXISTS ( SELECT 1 FROM campaigns WHERE campaigns.id = campaign_proposals.campaign_id AND campaigns.brand_id = auth.uid() ) );
+CREATE POLICY "Influencers can create proposals" ON campaign_proposals FOR INSERT WITH CHECK ( auth.uid() = influencer_id );
+CREATE POLICY "Parties can update proposals" ON campaign_proposals FOR UPDATE USING ( auth.uid() = influencer_id OR EXISTS ( SELECT 1 FROM campaigns WHERE campaigns.id = campaign_proposals.campaign_id AND campaigns.brand_id = auth.uid() ) );
 
 -- 4.8 Messages
 DROP POLICY IF EXISTS "Messages viewable by sender and receiver" ON messages;
@@ -421,6 +478,10 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('submissions', 'submissions', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
 -- Reset Storage Policies
 DROP POLICY IF EXISTS "Public Access" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can upload images" ON storage.objects;
@@ -442,6 +503,16 @@ CREATE POLICY "Public Access Submissions" ON storage.objects FOR SELECT USING (b
 CREATE POLICY "Authenticated users can upload submissions" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'submissions' AND auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can update submissions" ON storage.objects FOR UPDATE USING (bucket_id = 'submissions' AND auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can delete submissions" ON storage.objects FOR DELETE USING (bucket_id = 'submissions' AND auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Public Access Avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete avatars" ON storage.objects;
+
+CREATE POLICY "Public Access Avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
+CREATE POLICY "Authenticated users can upload avatars" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can update avatars" ON storage.objects FOR UPDATE USING (bucket_id = 'avatars' AND auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can delete avatars" ON storage.objects FOR DELETE USING (bucket_id = 'avatars' AND auth.role() = 'authenticated');
 
 
 -- ==========================================
@@ -472,12 +543,12 @@ ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS shipping_address tex
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS tracking_number text;
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS delivery_status text DEFAULT 'pending'; -- pending, shipped, delivered
 
--- Add delivery related columns to proposals (Campaign Applications)
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS shipping_name text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS shipping_phone text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS shipping_address text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS tracking_number text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS delivery_status text DEFAULT 'pending';
+-- Add delivery related columns to campaign_proposals
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS shipping_name text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS shipping_phone text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS shipping_address text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS tracking_number text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS delivery_status text DEFAULT 'pending';
 
 -- 7.2 Profile Contact Fields (from add_profile_contact_fields.sql)
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone text;
@@ -500,18 +571,18 @@ ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_d
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9;
 
 -- For Campaign Applications (Proposals)
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_url text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_file_url text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_status text DEFAULT 'pending';
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_date TIMESTAMP WITH TIME ZONE;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_version NUMERIC(3,1) DEFAULT 1.0;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_url text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_file_url text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_status text DEFAULT 'pending';
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_version NUMERIC(3,1) DEFAULT 1.0;
 
 -- For Content Submission 2 (Proposals)
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_url_2 text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_file_url_2 text;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_status_2 text DEFAULT 'pending';
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_date_2 TIMESTAMP WITH TIME ZONE;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_url_2 text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_file_url_2 text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_status_2 text DEFAULT 'pending';
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_date_2 TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9;
 
 -- 7.4 Mutual Condition Confirmation Fields (Added via Agent)
 -- For Direct Offers
@@ -519,8 +590,8 @@ ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS brand_condition_conf
 ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS influencer_condition_confirmed BOOLEAN DEFAULT FALSE;
 
 -- For Campaign Applications
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS brand_condition_confirmed BOOLEAN DEFAULT FALSE;
-ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS influencer_condition_confirmed BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS brand_condition_confirmed BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS influencer_condition_confirmed BOOLEAN DEFAULT FALSE;
 
 -- Notify PostgREST to reload the schema cache
 NOTIFY pgrst, 'reload schema';
@@ -542,8 +613,8 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE campaigns;
     END IF;
     
-    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'proposals') THEN
-        ALTER PUBLICATION supabase_realtime ADD TABLE proposals;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'campaign_proposals') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE campaign_proposals;
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'brand_proposals') THEN
@@ -640,7 +711,7 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS public.submission_feedback (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    proposal_id UUID REFERENCES public.proposals(id) ON DELETE CASCADE,
+    proposal_id UUID REFERENCES public.campaign_proposals(id) ON DELETE CASCADE,
     brand_proposal_id UUID REFERENCES public.brand_proposals(id) ON DELETE CASCADE,
     sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
@@ -670,7 +741,7 @@ ON public.submission_feedback FOR SELECT
 USING (
     sender_id = auth.uid() OR
     EXISTS (
-        SELECT 1 FROM public.proposals p 
+        SELECT 1 FROM public.campaign_proposals p 
         WHERE p.id = proposal_id AND (p.influencer_id = auth.uid() OR EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = p.campaign_id AND c.brand_id = auth.uid()))
     ) OR
     EXISTS (
@@ -685,7 +756,7 @@ ON public.submission_feedback FOR INSERT
 WITH CHECK (
     sender_id = auth.uid() AND (
         EXISTS (
-            SELECT 1 FROM public.proposals p 
+            SELECT 1 FROM public.campaign_proposals p 
             WHERE p.id = proposal_id AND (p.influencer_id = auth.uid() OR EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = p.campaign_id AND c.brand_id = auth.uid()))
         ) OR
         EXISTS (
@@ -844,6 +915,50 @@ BEGIN
 
         -- Drop old column
         ALTER TABLE public.brand_proposals DROP COLUMN video_guide_old;
+    END IF;
+
+END $$;
+
+
+-- ==========================================
+-- 2026-02-09: Campaign Storage Bucket (Added via Agent)
+-- ==========================================
+
+
+-- 1. Create the 'campaigns' bucket if it doesn't exist
+insert into storage.buckets (id, name, public)
+values ('campaigns', 'campaigns', true)
+on conflict (id) do nothing;
+
+-- 2. Storage Policies (Idempotent)
+DO $$
+BEGIN
+    -- Public Access
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Public Access Campaigns') THEN
+        create policy "Public Access Campaigns"
+          on storage.objects for select
+          using ( bucket_id = 'campaigns' );
+    END IF;
+
+    -- Authenticated Upload
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Authenticated Users can Upload Campaigns') THEN
+        create policy "Authenticated Users can Upload Campaigns"
+          on storage.objects for insert
+          with check ( bucket_id = 'campaigns' and auth.role() = 'authenticated' );
+    END IF;
+
+    -- Update Own Files
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Users can Update own Campaign files') THEN
+        create policy "Users can Update own Campaign files"
+          on storage.objects for update
+          using ( bucket_id = 'campaigns' and auth.uid() = owner );
+    END IF;
+
+    -- Delete Own Files
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Users can Delete own Campaign files') THEN
+        create policy "Users can Delete own Campaign files"
+          on storage.objects for delete
+          using ( bucket_id = 'campaigns' and auth.uid() = owner );
     END IF;
 END $$;
 

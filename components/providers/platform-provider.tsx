@@ -170,6 +170,11 @@ export type Proposal = {
     condition_upload_date?: string
     condition_maintenance_period?: string
     condition_secondary_usage_period?: string
+
+    // Creator Details for Brand View
+    tags?: string[]
+    instagramHandle?: string
+    followers?: number
 }
 
 
@@ -598,8 +603,26 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
         const initAuth = async () => {
             console.log('[PlatformProvider] Initializing Auth Check...')
-            const { data: { session }, error } = await supabase.auth.getSession()
-            console.log('[PlatformProvider] getSession result:', session ? 'Session found' : 'No session', error || '')
+
+            // Retry logic: Attempt to get session multiple times to avoid race conditions
+            let session = null
+            let error = null
+
+            for (let i = 0; i < 5; i++) {
+                const result = await supabase.auth.getSession()
+                session = result.data.session
+                error = result.error
+
+                if (session?.user) {
+                    console.log(`[PlatformProvider] Session found on attempt ${i + 1}`)
+                    break
+                }
+
+                // Wait 100ms before next attempt if session is null
+                if (i < 4) await new Promise(resolve => setTimeout(resolve, 100))
+            }
+
+            console.log('[PlatformProvider] Final getSession result:', session ? 'Session found' : 'No session', error || '')
 
             if (session?.user && mounted) {
                 console.log('[PlatformProvider] User found in session:', session.user.id)
@@ -735,7 +758,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     .from('campaigns')
                     .select(`
                         *,
-                        profiles(display_name)
+                        profiles(display_name, avatar_url)
                     `)
                     .order('created_at', { ascending: false })
 
@@ -759,6 +782,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                             id: c.id,
                             brandId: c.brand_id,
                             brand: c.profiles?.display_name || "Unknown Brand",
+                            brandAvatar: c.profiles?.avatar_url,
                             product: c.product_name || "",
                             category: c.category || legacyCategory || c.title.match(/\[(.*?)\]/)?.[1] || "기타",
                             budget: c.budget || legacyBudget || "협의",
@@ -781,7 +805,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 try {
                     let query = supabase
                         .from('brand_proposals')
-                        .select('*, brand_profile:profiles!brand_proposals_brand_id_fkey(display_name), influencer_profile:profiles!brand_proposals_influencer_id_fkey(display_name), product:brand_products(*)')
+                        .select('*, brand_profile:profiles!brand_proposals_brand_id_fkey(display_name, avatar_url), influencer_profile:profiles!brand_proposals_influencer_id_fkey(display_name, avatar_url), product:brand_products(*)')
 
                     // Fetch user role to check admin status (Use local state if available to avoid race conditions)
                     let currentRole = user?.id === userId ? user?.type : null;
@@ -810,60 +834,104 @@ export function PlatformProvider({ children, initialSession }: { children: React
                             ...(b as any),
                             type: 'brand_offer',
                             brand_name: b.brand_profile?.display_name || 'Brand',
-                            influencer_name: b.influencer_profile?.display_name || 'Creator'
+                            brandAvatar: b.brand_profile?.avatar_url,
+                            influencer_name: b.influencer_profile?.display_name || 'Creator',
+                            influencerAvatar: b.influencer_profile?.avatar_url
                         })) as any
                         setBrandProposals(mappedBP)
                     }
-                    // B. Campaign Applications (proposals table)
-                    // B. Campaign Applications (proposals table)
-                    const isBrand = currentRole === 'brand';
-
-                    let campQuery = supabase
-                        .from('proposals')
-                        .select(`
-                        *,
-                        campaign:campaigns${isBrand ? '!inner' : ''}(
-                            *,
-                            brand:profiles(display_name, avatar_url)
-                        ),
-                        influencer_profile:profiles(display_name, avatar_url)
-                    `)
-
-                    if (currentRole !== 'admin') {
-                        if (isBrand) {
-                            // For Brands: fetch proposals where the CAMPAIGN belongs to them
-                            campQuery = campQuery.eq('campaign.brand_id', userId)
-                        } else {
-                            // For Influencers: fetch their own proposals
-                            campQuery = campQuery.eq('influencer_id', userId)
-                        }
-                    }
-
-                    const { data: pData, error: pError } = await campQuery.order('created_at', { ascending: false })
-
-                    if (pError) {
-                        console.error('[fetchEvents] Campaign proposals fetch error:', JSON.stringify(pError, null, 2))
-                    }
-
-                    if (pData) {
-                        console.log('[fetchEvents] Fetched campaign proposals:', pData.length)
-                        const mappedApps: Proposal[] = pData.map((p: any) => ({
-                            ...p,
-                            type: 'creator_apply',
-                            brand_name: p.campaign?.brand?.display_name || 'Brand', // Access nested brand
-                            influencer_name: p.influencer_profile?.display_name || 'Creator',
-                            influencer_avatar: p.influencer_profile?.avatar_url,
-                            // influencer_handle: p.influencer_profile?.handle, // Removed to prevent error if column missing
-                            product_name: p.campaign?.product_name || p.campaign?.title || 'Campaign', // Use campaign product name
-                            product_image: p.campaign?.product_image_url, // Use campaign product image
-                            campaign_name: p.campaign?.title
-                        })) as any
-
-                        console.log('[fetchEvents] Fetched applications:', mappedApps.length)
-                        setProposals(mappedApps)
-                    }
                 } catch (bpEx) {
                     console.error('[fetchEvents] Exception fetching brand proposals:', bpEx)
+                }
+
+                // B. Campaign Applications (campaign_proposals table)
+                try {
+                    // Fetch proposals where the user is the influencer (Applications sent)
+                    // OR where the user is the brand of the campaign (Applications received)
+                    // Note: Supabase RLS policies should simplify this, but let's be explicit with the query if possible,
+                    // or just rely on RLS with a broad select.
+
+                    // Since RLS is set up for "viewable by parties", simple select should work for both.
+                    const { data: propData, error: propError } = await supabase
+                        .from('campaign_proposals')
+                        .select(`
+                            *,
+                            campaigns (
+                                title,
+                                brand_id,
+                                profiles (display_name, avatar_url)
+                            ),
+                            profiles (
+                                display_name,
+                                avatar_url,
+                                influencer_details (instagram_handle, followers_count, tags)
+                            )
+                        `)
+                        .order('created_at', { ascending: false })
+
+                    if (propError) throw propError
+
+                    if (propData) {
+                        const mappedProposals: Proposal[] = propData.map((p: any) => {
+                            // Determine type: It's always 'creator_apply' for this table
+                            const isBrandProp = false
+
+                            // Map profile details
+                            // Note: 'profiles' in select is the influencer who applied
+                            const influencer = p.profiles
+                            const details = influencer?.influencer_details?.[0] || influencer?.influencer_details
+
+                            return {
+                                id: p.id,
+                                type: 'creator_apply',
+                                dealType: 'ad', // Default to AD for now
+                                campaignId: p.campaign_id,
+                                campaignName: p.campaigns?.title || "Unknown Campaign",
+                                productName: p.campaigns?.title || "", // Fallback
+
+                                influencerId: p.influencer_id,
+                                influencerName: influencer?.display_name || "Unknown Creator",
+                                influencerAvatar: influencer?.avatar_url,
+
+                                brandId: p.campaigns?.brand_id,
+                                brandName: p.campaigns?.profiles?.display_name,
+                                brandAvatar: p.campaigns?.profiles?.avatar_url,
+
+                                cost: p.price_offer,
+                                message: p.message,
+                                status: p.status,
+                                date: new Date(p.created_at).toISOString().split('T')[0],
+                                created_at: p.created_at,
+
+                                // New Fields
+                                motivation: p.motivation,
+                                content_plan: p.content_plan,
+                                portfolioLinks: p.portfolio_links,
+
+                                // Creator Details from Profile (for Card View)
+                                followers: details?.followers_count,
+                                tags: details?.tags || [],
+
+                                // Application Data (Prioritized)
+                                instagramHandle: p.instagram_handle || details?.instagram_handle,
+                                insightScreenshot: p.insight_screenshot,
+
+                                contract_content: p.contract_content,
+                                contract_status: p.contract_status,
+                                brand_signature: p.brand_signature,
+                                influencer_signature: p.influencer_signature,
+
+                                // Delivery
+                                shipping_name: p.shipping_name,
+                                tracking_number: p.tracking_number,
+                                delivery_status: p.delivery_status
+                            }
+                        })
+                        console.log('[fetchEvents] Fetched campaign proposals:', mappedProposals.length)
+                        setProposals(mappedProposals)
+                    }
+                } catch (e) {
+                    console.error('[fetchEvents] Error fetching campaign proposals:', e)
                 }
             }
 
@@ -975,19 +1043,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 console.log('[fetchMessages] Loaded', formattedMessages.length, 'messages')
             }
         } catch (err: any) {
-            if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
-                // Silent
-            } else {
-                // @ts-ignore
-                if (err?.message?.includes('AbortError') || err?.name === 'AbortError' || err?.code === '20') {
-                    console.log('[fetchMessages] Request aborted (harmless)')
-                } else {
-                    console.error('[fetchMessages] Fetch exception:', {
-                        message: err?.message,
-                        stack: err?.stack
-                    })
-                }
+            // Ignore AbortError
+            if (err?.name === 'AbortError' || err?.message?.includes('aborted') || err?.code === '20') {
+                return
             }
+            console.error('[fetchMessages] Fetch exception:', {
+                message: err?.message,
+                stack: err?.stack
+            })
         } finally {
             isFetchingMessages.current = false
         }
@@ -1919,8 +1982,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (error) throw error
             setNotifications(data || [])
         } catch (e: any) {
+            // Ignore AbortError which happens on rapid navigation/re-renders
+            if (e.message?.includes('AbortError') || e.name === 'AbortError') {
+                return
+            }
             console.error(`Failed to fetch notifications for user ${userId}:`, JSON.stringify(e, null, 2))
-            console.error("Full Error Object:", e)
         }
     }, [supabase])
 

@@ -37,8 +37,8 @@ export async function POST(req: Request) {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const systemPrompt = `
-당신은 베테랑 콘텐츠 기획자이자 유튜브/인스타그램 숏폼 전문가입니다.
-사용자로부터 제품 정보를 입력받아, 조회수가 잘 나올만한 매력적인 1분 미만의 숏폼 영상 기획안을 작성해주세요.
+당신은 베테랑 콘텐츠 기획자이자 인플루언서 매니지먼트 전문가입니다.
+사용자로부터 제품 정보를 입력받아, 브랜드에게 어필할 수 있는 **지원 동기**와 **콘텐츠 제작 계획**을 작성해주세요.
 
 [제품 정보]
 - 제품명: ${productName}
@@ -46,19 +46,45 @@ export async function POST(req: Request) {
 - 소구 포인트(강점): ${sellingPoints}
 - 필수 포함 장면: ${requiredShots}
 
-[요청 사항]
-1.  **후킹(Hook)**: 스크롤을 멈추게 할 강력한 오프닝 멘트나 장면을 제안하세요.
-2.  **스토리텔링**: 단순 나열이 아닌, 시청자가 공감할 수 있는 이야기 흐름으로 구성하세요.
-3.  **촬영 팁**: 예쁘게 찍을 수 있는 구도나 조명 팁도 한 줄씩 추가해주세요.
-4.  **출력 형식**: 읽기 편한 Markdown 형식으로 제목, 오프닝, 본문, 클로징, 촬영팁 섹션을 나누어 작성하세요. 이모지를 적절히 사용하여 생동감을 더하세요.
-5.  **톤앤매너**: 트렌디하고 친근한 말투를 사용하세요.
+[작성 가이드]
+1. **지원 동기 (motivation)**:
+   - "이 제품/브랜드를 왜 좋아하는지", "내 팔로워들에게 왜 잘 맞는지"를 중심으로 진정성 있게 작성하세요.
+   - 너무 딱딱하지 않게, 열정이 느껴지는 톤으로 작성하세요. (200자 내외)
 
-기획안을 작성해주세요.
+2. **콘텐츠 제작 계획 (content_plan)**:
+   - 릴스/숏폼 영상 기준으로 작성하세요.
+   - [초반 3초 후킹] -> [본론(제품 시연/특징)] -> [클로징(구매유도)] 흐름으로 구체적으로 작성하세요.
+   - 촬영 구도나 연출 팁을 포함하세요. (300자 내외)
+
+**반드시 오직 JSON 형식으로만 응답하세요.**
+형식:
+{
+  "motivation": "작성된 지원 동기 텍스트...",
+  "content_plan": "작성된 콘텐츠 기획안 텍스트..."
+}
 `;
 
-        const result = await model.generateContent(systemPrompt);
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+        });
         const response = await result.response;
         const text = response.text();
+
+        // Parse JSON safely
+        let jsonResponse;
+        try {
+            jsonResponse = JSON.parse(text);
+        } catch (e) {
+            console.error("Failed to parse AI JSON:", text);
+            // Fallback if JSON parsing fails but text exists (rare with responseMimeType)
+            jsonResponse = {
+                motivation: "AI 생성 중 오류가 발생했습니다. 직접 작성해주세요.",
+                content_plan: text
+            };
+        }
+
+        return NextResponse.json({ result: jsonResponse, isFallback: false });
 
         return NextResponse.json({ result: text, isFallback: false });
 

@@ -3,7 +3,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function submitCampaignApplication(campaignId: string, message: string, price?: number) {
+export async function submitCampaignApplication(
+    campaignId: string,
+    data: {
+        message: string;
+        price?: number;
+        motivation?: string;
+        content_plan?: string;
+        portfolio_links?: string[];
+        instagram_handle?: string;
+        insight_screenshot?: string;
+    }
+) {
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -13,12 +24,17 @@ export async function submitCampaignApplication(campaignId: string, message: str
     // For now, let's just insert.
 
     const { error } = await supabase
-        .from('proposals')
+        .from('campaign_proposals')
         .insert({
             campaign_id: campaignId,
             influencer_id: user.id,
-            message: message,
-            price_offer: price,
+            message: data.message,
+            price_offer: data.price,
+            motivation: data.motivation,
+            content_plan: data.content_plan,
+            portfolio_links: data.portfolio_links,
+            instagram_handle: data.instagram_handle,
+            insight_screenshot: data.insight_screenshot,
             status: 'applied' // Initial status
         })
 
@@ -41,7 +57,7 @@ export async function updateApplicationStatus(proposalId: string, status: 'accep
     // For speed, assuming RLS or simple update.
 
     const { error } = await supabase
-        .from('proposals')
+        .from('campaign_proposals')
         .update({ status: status })
         .eq('id', proposalId)
 

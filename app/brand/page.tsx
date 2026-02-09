@@ -1,12 +1,13 @@
 "use client"
 
 import React from "react"
-import { Camera, Image as ImageIcon, Save, AlertCircle } from "lucide-react" // Explicit import for debugging
+import { Camera, Image as ImageIcon, Save, AlertCircle, Calculator } from "lucide-react" // Explicit import for debugging
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { RateCardMessage } from "@/components/chat/rate-card-message"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AIPriceCalculator } from "@/components/ai-price-calculator"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     DropdownMenu,
@@ -93,6 +94,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { AvatarUpload } from "@/components/ui/avatar-upload"
 
 const POPULAR_TAGS = [
     "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
@@ -111,6 +113,9 @@ function BrandDashboardContent() {
         switchRole, proposals, updateCampaignStatus, updateProposal, notifications, sendNotification, refreshData,
         favorites, toggleFavorite
     } = usePlatform()
+
+    // AI Calculator State
+    const [showCalculator, setShowCalculator] = useState(false)
 
     // Force data refresh on mount to avoid stale data from navigation
     useEffect(() => {
@@ -426,7 +431,7 @@ function BrandDashboardContent() {
             return
         }
 
-        if (!confirm("서명과 함께 계약서를 발송하시겠습니까? 발송 후에는 수정이 불가능합니다.")) return
+        if (!confirm("서명과 함께 계약서를 발송하시겠습니까? (상대방이 서명하기 전까지는 수정하여 다시 보낼 수 있습니다)")) return
 
         setIsSendingContract(true)
         try {
@@ -488,6 +493,7 @@ function BrandDashboardContent() {
         }
     }
     const [selectedCampaignId, setSelectedCampaignId] = useState<string | number | null>(null)
+    const [submitProgress, setSubmitProgress] = useState(0) // New: Progress state
 
     // Product Upload State
     const [productModalOpen, setProductModalOpen] = useState(false)
@@ -808,6 +814,16 @@ function BrandDashboardContent() {
             return
         }
         setIsSubmitting(true)
+        setSubmitProgress(10) // Start progress
+
+        // Simulate progress
+        const progressInterval = setInterval(() => {
+            setSubmitProgress(prev => {
+                if (prev >= 90) return prev;
+                return prev + Math.floor(Math.random() * 10) + 1;
+            })
+        }, 500)
+
         try {
             const proposalData = {
                 brand_id: user?.id,
@@ -850,8 +866,14 @@ function BrandDashboardContent() {
             if (insertedProposal) {
                 await sendMessage(selectedInfluencer?.influencerId, `협업 제안서가 전송되었습니다.\n[${offerProduct}]`, undefined, insertedProposal.id)
             }
-            alert(`${selectedInfluencer?.influencer}님에게 제안서가 성공적으로 발송되었습니다!`)
+
+            clearInterval(progressInterval)
+            setSubmitProgress(100) // Complete
+            await new Promise(resolve => setTimeout(resolve, 800)) // Slight delay for user to see 100%
+
+            // alert(`${selectedInfluencer?.influencer}님에게 제안서가 성공적으로 발송되었습니다!`) // Removed alert in favor of UI message
             setProposeModalOpen(false)
+            setSubmitProgress(0) // Reset
 
             // Refresh the data to show the new proposal immediately
             refreshData()
@@ -867,7 +889,9 @@ function BrandDashboardContent() {
                 alert(`제안서 발송에 실패했습니다: ${error?.message || "알 수 없는 오류"}`)
             }
         } finally {
+            clearInterval(progressInterval)
             setIsSubmitting(false)
+            if (submitProgress < 100) setSubmitProgress(0) // Reset on error
         }
     }
 
@@ -1507,7 +1531,7 @@ function BrandDashboardContent() {
             case "proposals":
                 // 1. Inbound (Received Applications from Creators) - Waiting
                 // Source: 'proposals' table (Creator applied to My Campaign)
-                const inboundApplications = proposals?.filter((p: any) => p.status === 'pending' || p.status === 'viewed') || []
+                const inboundApplications = proposals?.filter((p: any) => p.status === 'applied' || p.status === 'pending' || p.status === 'viewed') || []
 
                 // 2. Outbound (Sent Offers to Creators) - Waiting
                 // Source: 'brand_proposals' table (I offered to Creator)
@@ -1548,7 +1572,12 @@ function BrandDashboardContent() {
                             if (result.error) alert(result.error)
                             else {
                                 alert("상태가 변경되었습니다.")
-                                refreshData()
+                                await refreshData()
+                                if (status === 'accepted') {
+                                    // Switch to Active tab and open Chat (Workstation)
+                                    setWorkspaceTab('active')
+                                    setActiveProposalTab('chat')
+                                }
                             }
                         } catch (err) {
                             alert("상태 변경 중 오류가 발생했습니다.")
@@ -1563,7 +1592,7 @@ function BrandDashboardContent() {
                             <p className="text-muted-foreground">크리에이터와 진행 중인 모든 협업을 한곳에서 관리하세요.</p>
                         </div>
 
-                        <Tabs defaultValue="active" className="w-full">
+                        <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="w-full">
                             <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0 mb-6">
                                 <TabsTrigger value="all" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-slate-700 font-medium transition-all">
                                     전체 보기 <span className="ml-2 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
@@ -1672,158 +1701,202 @@ function BrandDashboardContent() {
                             {/* 2. Inbound Tab (Received Proposals) */}
                             <TabsContent value="inbound" className="space-y-4">
                                 {inboundApplications.map((p: any) => (
-                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-blue-500 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
+                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-blue-500 transition-all bg-white group" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
                                         <div className="flex justify-between items-start">
-                                            <div className="flex gap-6 w-full">
-                                                <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0 overflow-hidden">
-                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
+                                            <div className="flex gap-4 w-full">
+                                                <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-lg shrink-0 overflow-hidden border border-slate-200">
+                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencerName?.[0] || "C")}
                                                 </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between">
-                                                        <div>
-                                                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                                                {p.influencer_name}
-                                                                <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-200">지원서 도착</Badge>
-                                                            </h3>
-                                                            <p className="text-sm text-slate-500">{p.campaignName || p.productName || "제품 협찬"} • 희망비용: {p.cost?.toLocaleString()}원</p>
+                                                <div className="flex-1 min-w-0">
+                                                    {/* Unified Header: Name | Insta | Followers | Tags | Cost ... Badge */}
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                                            {/* Name */}
+                                                            <h3 className="font-bold text-sm text-slate-900">{p.influencerName}</h3>
+                                                            <span className="text-slate-300">|</span>
+
+                                                            {/* Stats */}
+                                                            {p.instagramHandle && (
+                                                                <>
+                                                                    <span className="font-medium text-pink-600">@{p.instagramHandle.replace('@', '')}</span>
+                                                                    <span className="text-slate-300">|</span>
+                                                                </>
+                                                            )}
+                                                            {p.followers !== undefined && (
+                                                                <>
+                                                                    <span className="font-medium text-slate-700">{p.followers >= 10000 ? `${(p.followers / 10000).toFixed(1)}만` : p.followers.toLocaleString()}</span>
+                                                                    <span className="text-slate-300">|</span>
+                                                                </>
+                                                            )}
+                                                            {p.tags && p.tags.length > 0 && (
+                                                                <>
+                                                                    <div className="flex gap-1">
+                                                                        {p.tags.slice(0, 3).map((tag: string, i: number) => (
+                                                                            <span key={i} className="text-slate-500">#{tag}</span>
+                                                                        ))}
+                                                                    </div>
+                                                                    <span className="text-slate-300">|</span>
+                                                                </>
+                                                            )}
+                                                            <span className="font-bold text-emerald-600">{p.cost ? `${p.cost.toLocaleString()}원` : '협의'}</span>
                                                         </div>
-                                                        <span className="text-xs text-slate-400">{new Date(p.created_at).toLocaleDateString()}</span>
+
+                                                        <Badge variant="secondary" className="shrink-0 bg-blue-50 text-blue-600 border-blue-200 text-[10px] h-5 px-1.5 ml-2">지원서 도착</Badge>
                                                     </div>
+
+                                                    {/* Message Preview */}
                                                     {p.message && (
-                                                        <div className="mt-3 bg-slate-50 p-3 rounded text-sm text-slate-600 line-clamp-2 border border-slate-100">
-                                                            {p.message}
+                                                        <div className="bg-slate-50 px-3 py-2 rounded text-xs text-slate-600 line-clamp-1 border border-slate-100 italic mb-2">
+                                                            "{p.message}"
                                                         </div>
                                                     )}
-                                                    <div className="mt-4">
-                                                        <WorkspaceProgressBar
-                                                            status={p.status}
-                                                            contract_status={p.contract_status}
-                                                            delivery_status={p.delivery_status}
-                                                            content_submission_status={p.content_submission_status}
-                                                        />
+
+                                                    {/* Footer: Date & Quick Action */}
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] text-slate-400">{new Date(p.created_at).toLocaleDateString()}</span>
+
+                                                        {/* Quick Accept Button */}
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity px-3"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleStatusUpdate(p.id, 'accepted');
+                                                            }}
+                                                        >
+                                                            <CheckCircle2 className="mr-1 h-3 w-3" /> 바로 수락
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </Card>
-                                ))}
+
+                                    </Card >
+                                ))
+                                }
                                 {inboundApplications.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">도착한 지원서가 없습니다.</div>}
-                            </TabsContent>
+                            </TabsContent >
 
                             {/* 3. Outbound Tab (Sent Offers) */}
-                            <TabsContent value="outbound" className="space-y-4">
-                                {outboundOffers.map((p: any) => (
-                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-purple-500 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-6 w-full">
-                                                <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0 overflow-hidden">
-                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between">
-                                                        <div>
-                                                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                                                {p.influencer_name}
-                                                                <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">제안함</Badge>
-                                                            </h3>
-                                                            <p className="text-sm text-slate-500">{p.product_name || p.productName || "제품 협찬"}</p>
-                                                        </div>
-                                                        <span className="text-xs text-slate-400">{new Date(p.created_at).toLocaleDateString()}</span>
+                            < TabsContent value="outbound" className="space-y-4" >
+                                {
+                                    outboundOffers.map((p: any) => (
+                                        <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-purple-500 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex gap-6 w-full">
+                                                    <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0 overflow-hidden">
+                                                        {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
                                                     </div>
-                                                    <div className="mt-4">
-                                                        <WorkspaceProgressBar
-                                                            status={p.status}
-                                                            contract_status={p.contract_status}
-                                                            delivery_status={p.delivery_status}
-                                                            content_submission_status={p.content_submission_status}
-                                                        />
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between">
+                                                            <div>
+                                                                <h3 className="font-bold text-lg flex items-center gap-2">
+                                                                    {p.influencer_name}
+                                                                    <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">제안함</Badge>
+                                                                </h3>
+                                                                <p className="text-sm text-slate-500">{p.product_name || p.productName || "제품 협찬"}</p>
+                                                            </div>
+                                                            <span className="text-xs text-slate-400">{new Date(p.created_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <div className="mt-4">
+                                                            <WorkspaceProgressBar
+                                                                status={p.status}
+                                                                contract_status={p.contract_status}
+                                                                delivery_status={p.delivery_status}
+                                                                content_submission_status={p.content_submission_status}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </Card>
-                                ))}
+                                        </Card>
+                                    ))
+                                }
                                 {outboundOffers.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">보낸 제안이 없습니다.</div>}
                                 <div className="flex justify-end mt-4">
                                     <Button variant="outline" asChild>
                                         <Link href="/brand?view=discover">크리에이터 찾으러 가기</Link>
                                     </Button>
                                 </div>
-                            </TabsContent>
+                            </TabsContent >
 
                             {/* 4. Rejected Tab (Archive) */}
-                            <TabsContent value="rejected" className="space-y-4">
-                                {allRejected.map((p: any) => (
-                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-red-200 transition-all bg-slate-50 opacity-75 hover:opacity-100" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-6 w-full">
-                                                <div className="h-14 w-14 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-xl shrink-0 overflow-hidden">
-                                                    <X className="h-6 w-6" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between">
-                                                        <div>
-                                                            <h3 className="font-bold text-lg flex items-center gap-2 text-slate-500 line-through decoration-slate-400">
-                                                                {p.influencer_name || p.influencerName}
-                                                                <Badge variant="secondary" className="bg-slate-200 text-slate-500">거절됨</Badge>
-                                                            </h3>
-                                                            <p className="text-sm text-slate-500">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
-                                                        </div>
-                                                        <span className="text-xs text-slate-400">{new Date(p.created_at || p.date).toLocaleDateString()}</span>
+                            < TabsContent value="rejected" className="space-y-4" >
+                                {
+                                    allRejected.map((p: any) => (
+                                        <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-red-200 transition-all bg-slate-50 opacity-75 hover:opacity-100" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex gap-6 w-full">
+                                                    <div className="h-14 w-14 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-xl shrink-0 overflow-hidden">
+                                                        <X className="h-6 w-6" />
                                                     </div>
-                                                    <div className="mt-4 opacity-50">
-                                                        <WorkspaceProgressBar
-                                                            status={p.status}
-                                                            contract_status={p.contract_status}
-                                                            delivery_status={p.delivery_status}
-                                                            content_submission_status={p.content_submission_status}
-                                                        />
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between">
+                                                            <div>
+                                                                <h3 className="font-bold text-lg flex items-center gap-2 text-slate-500 line-through decoration-slate-400">
+                                                                    {p.influencer_name || p.influencerName}
+                                                                    <Badge variant="secondary" className="bg-slate-200 text-slate-500">거절됨</Badge>
+                                                                </h3>
+                                                                <p className="text-sm text-slate-500">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
+                                                            </div>
+                                                            <span className="text-xs text-slate-400">{new Date(p.created_at || p.date).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <div className="mt-4 opacity-50">
+                                                            <WorkspaceProgressBar
+                                                                status={p.status}
+                                                                contract_status={p.contract_status}
+                                                                delivery_status={p.delivery_status}
+                                                                content_submission_status={p.content_submission_status}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </Card>
-                                ))}
+                                        </Card>
+                                    ))
+                                }
                                 {allRejected.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">거절된 내역이 없습니다.</div>}
-                            </TabsContent>
+                            </TabsContent >
 
                             {/* 5. Completed Tab */}
-                            <TabsContent value="completed" className="space-y-4">
-                                {allCompleted.map((p: any) => (
-                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-slate-500 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-6 w-full">
-                                                <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0 overflow-hidden">
-                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between">
-                                                        <div>
-                                                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                                                {p.influencer_name || p.influencerName}
-                                                                <Badge className="bg-slate-100 text-slate-600 border border-slate-200">완료됨</Badge>
-                                                            </h3>
-                                                            <p className="text-sm text-slate-500">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
-                                                        </div>
-                                                        <span className="text-xs text-slate-400">{new Date(p.completed_at || p.created_at).toLocaleDateString()}</span>
+                            < TabsContent value="completed" className="space-y-4" >
+                                {
+                                    allCompleted.map((p: any) => (
+                                        <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-slate-500 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex gap-6 w-full">
+                                                    <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0 overflow-hidden">
+                                                        {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
                                                     </div>
-                                                    <div className="mt-4">
-                                                        <WorkspaceProgressBar
-                                                            status={p.status}
-                                                            contract_status={p.contract_status}
-                                                            delivery_status={p.delivery_status}
-                                                            content_submission_status={p.content_submission_status}
-                                                        />
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between">
+                                                            <div>
+                                                                <h3 className="font-bold text-lg flex items-center gap-2">
+                                                                    {p.influencer_name || p.influencerName}
+                                                                    <Badge className="bg-slate-100 text-slate-600 border border-slate-200">완료됨</Badge>
+                                                                </h3>
+                                                                <p className="text-sm text-slate-500">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
+                                                            </div>
+                                                            <span className="text-xs text-slate-400">{new Date(p.completed_at || p.created_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <div className="mt-4">
+                                                            <WorkspaceProgressBar
+                                                                status={p.status}
+                                                                contract_status={p.contract_status}
+                                                                delivery_status={p.delivery_status}
+                                                                content_submission_status={p.content_submission_status}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </Card>
-                                ))}
+                                        </Card>
+                                    ))
+                                }
                                 {allCompleted.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">완료된 협업이 없습니다.</div>}
-                            </TabsContent>
-                        </Tabs>
-                    </div>
+                            </TabsContent >
+                        </Tabs >
+                    </div >
                 )
 
             case "my-products":
@@ -2083,6 +2156,18 @@ function BrandDashboardContent() {
                                 <CardDescription>크리에이터에게 보여질 브랜드 정보를 관리합니다.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
+                                <div className="flex flex-col items-center justify-center mb-6">
+                                    <Label className="mb-2">프로필 이미지</Label>
+                                    <AvatarUpload
+                                        uid={user?.id || "brand"}
+                                        url={user?.avatar}
+                                        onUpload={async (url) => {
+                                            await updateUser({ avatar: url })
+                                        }}
+                                        size={120}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-2">클릭하여 이미지 변경</p>
+                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="b-name">브랜드명</Label>
                                     <Input id="b-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
@@ -2308,7 +2393,30 @@ function BrandDashboardContent() {
                         <div className="grid grid-cols-4 items-start gap-4">
                             <Label htmlFor="p-pay" className="text-right pt-2 text-xs font-bold">원고료</Label>
                             <div className="col-span-3 space-y-2">
-                                <Input id="p-pay" value={compensation} onChange={(e) => setCompensation(e.target.value)} placeholder="0원 (또는 협의)" />
+                                <div className="flex gap-2">
+                                    <Input id="p-pay" value={compensation} onChange={(e) => setCompensation(e.target.value)} placeholder="0원 (또는 협의)" />
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => setShowCalculator(!showCalculator)}
+                                        className={showCalculator ? "bg-indigo-50 border-indigo-200 text-indigo-600" : ""}
+                                        title="AI 적정 단가 계산기"
+                                    >
+                                        <Calculator className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                {showCalculator && (
+                                    <div className="animate-in slide-in-from-top-2 fade-in">
+                                        <AIPriceCalculator
+                                            initialFollowers={selectedInfluencer?.followers || 0}
+                                            initialCategory={selectedInfluencer?.category || "뷰티"}
+                                            onPriceCalculated={(price) => {
+                                                setCompensation(price)
+                                                // Don't auto-close, let user see result
+                                            }}
+                                        />
+                                    </div>
+                                )}
                                 <div className="flex items-center space-x-2">
                                     <Checkbox id="p-inc" checked={hasIncentive} onCheckedChange={(c: any) => setHasIncentive(c as boolean)} />
                                     <Label htmlFor="p-inc" className="text-xs">성과급(인센티브) 협의 가능</Label>
@@ -2375,6 +2483,22 @@ function BrandDashboardContent() {
                             </div>
                         </div>
                     </div>
+                    {isSubmitting && (
+                        <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-lg">
+                            <div className="w-[80%] max-w-sm space-y-4 text-center">
+                                <h3 className="text-lg font-bold text-slate-800 animate-pulse">
+                                    {submitProgress === 100 ? "발송 완료되었습니다!" : "제안서를 발송하고 있습니다..."}
+                                </h3>
+                                <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-primary transition-all duration-300 ease-out"
+                                        style={{ width: `${submitProgress}%` }}
+                                    />
+                                </div>
+                                <p className="text-sm font-medium text-primary">{submitProgress}%</p>
+                            </div>
+                        </div>
+                    )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setProposeModalOpen(false)}>취소</Button>
                         <Button onClick={submitProposal} disabled={isSubmitting}>
@@ -2894,9 +3018,59 @@ function BrandDashboardContent() {
                                                     <BadgeCheck className="h-5 w-5 text-blue-600" />
                                                     <h3 className="font-bold text-lg text-slate-900">지원서 검토</h3>
                                                 </div>
-                                                <p className="text-sm text-slate-600 leading-relaxed">
-                                                    크리에이터가 보낸 지원서입니다. 협업을 진행하시려면 <strong>수락하기</strong>를 눌러주세요.
-                                                </p>
+
+                                                <div className="space-y-4 py-2">
+                                                    {chatProposal.instagramHandle && (
+                                                        <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                                            <Label className="text-xs text-slate-500 block mb-1">활동 계정</Label>
+                                                            <p className="font-medium text-sm">{chatProposal.instagramHandle}</p>
+                                                        </div>
+                                                    )}
+
+                                                    {chatProposal.motivation && (
+                                                        <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                                            <Label className="text-xs text-slate-500 block mb-1">지원 동기</Label>
+                                                            <p className="text-sm text-slate-700 whitespace-pre-wrap">{chatProposal.motivation}</p>
+                                                        </div>
+                                                    )}
+
+                                                    {chatProposal.content_plan && (
+                                                        <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                                            <Label className="text-xs text-slate-500 block mb-1">콘텐츠 제작 계획</Label>
+                                                            <p className="text-sm text-slate-700 whitespace-pre-wrap">{chatProposal.content_plan}</p>
+                                                        </div>
+                                                    )}
+
+                                                    {chatProposal.portfolioLinks && chatProposal.portfolioLinks.length > 0 && (
+                                                        <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                                            <Label className="text-xs text-slate-500 block mb-1">포트폴리오</Label>
+                                                            <ul className="text-sm list-disc pl-4 space-y-1">
+                                                                {chatProposal.portfolioLinks.map((link: string, i: number) => (
+                                                                    <li key={i}>
+                                                                        <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+                                                                            {link}
+                                                                        </a>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {chatProposal.insightScreenshot && (
+                                                        <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                                            <Label className="text-xs text-slate-500 block mb-1">인사이트 캡처</Label>
+                                                            <a href={chatProposal.insightScreenshot} target="_blank" rel="noopener noreferrer">
+                                                                <img src={chatProposal.insightScreenshot} alt="Insight" className="mt-1 w-full rounded-md border border-slate-200 hover:opacity-90 transition-opacity" />
+                                                            </a>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                                        <Label className="text-xs text-slate-500 block mb-1">어필 메시지</Label>
+                                                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{chatProposal.message || "메시지 없음"}</p>
+                                                    </div>
+                                                </div>
+
                                                 <div className="flex gap-2 pt-2">
                                                     <Button
                                                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md font-bold"
@@ -3382,10 +3556,10 @@ function BrandDashboardContent() {
                                             <Button
                                                 className="w-full h-14 text-lg font-black bg-slate-900 hover:bg-black rounded-2xl shadow-xl transition-all active:scale-[0.98] group"
                                                 onClick={handleSendContract}
-                                                disabled={!generatedContract || isSendingContract || chatProposal?.contract_status === 'sent'}
+                                                disabled={!generatedContract || isSendingContract || chatProposal?.contract_status === 'signed'}
                                             >
                                                 <Send className="mr-3 h-5 w-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                                {chatProposal?.contract_status === 'sent' ? "이미 발송되었습니다" : isSendingContract ? "발송 중..." : "작성된 계약서 크리에이터에게 발송하기"}
+                                                {chatProposal?.contract_status === 'sent' ? "수정된 계약서 다시 보내기" : isSendingContract ? "발송 중..." : "작성된 계약서 크리에이터에게 발송하기"}
                                             </Button>
                                             <p className="text-center text-[10px] text-slate-400 mt-4 font-medium uppercase tracking-widest">
                                                 Electronic Signature Powered by CreadyPick Secure™

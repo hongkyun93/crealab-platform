@@ -39,7 +39,7 @@ export async function createCampaign(formData: FormData) {
             status: 'active',
             event_date: eventDate,
             posting_date: postingDate,
-            tags: tags.split(',').map(tag => tag.trim()).filter(Boolean)
+            tags: (tags || "").split(',').map(tag => tag.trim()).filter(Boolean)
         })
 
     if (error) {
@@ -85,7 +85,7 @@ export async function updateCampaign(id: string, formData: FormData) {
             image: image,
             event_date: eventDate,
             posting_date: postingDate,
-            tags: tags.split(',').map(tag => tag.trim()).filter(Boolean)
+            tags: (tags || "").split(',').map(tag => tag.trim()).filter(Boolean)
         })
         .eq('id', id)
         .eq('brand_id', user.id) // Ensure ownership

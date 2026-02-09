@@ -28,6 +28,7 @@ import SignatureCanvas from 'react-signature-canvas'
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Checkbox } from "@/components/ui/checkbox"
+import { AvatarUpload } from "@/components/ui/avatar-upload"
 import {
     Dialog,
     DialogContent,
@@ -78,6 +79,16 @@ function ApplyDialog({
     setAppealMessage,
     desiredCost,
     setDesiredCost,
+    motivation,
+    setMotivation,
+    contentPlan,
+    setContentPlan,
+    portfolioLinks,
+    setPortfolioLinks,
+    instagramHandle,
+    setInstagramHandle,
+    insightFile,
+    setInsightFile,
     onSubmit,
     isApplying,
     onClose,
@@ -91,6 +102,17 @@ function ApplyDialog({
     setAppealMessage: (val: string) => void;
     desiredCost: string;
     setDesiredCost: (val: string) => void;
+    // New Fields
+    motivation: string;
+    setMotivation: (val: string) => void;
+    contentPlan: string;
+    setContentPlan: (val: string) => void;
+    portfolioLinks: string;
+    setPortfolioLinks: (val: string) => void;
+    instagramHandle: string;
+    setInstagramHandle: (val: string) => void;
+    insightFile: File | null;
+    setInsightFile: (file: File | null) => void;
     onSubmit: () => void;
     isApplying: boolean;
     onClose: () => void;
@@ -106,10 +128,31 @@ function ApplyDialog({
                         {selectedCampaign?.brand} - {selectedCampaign?.product}
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+                <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+                    <div className="space-y-2">
+                        <Label htmlFor="handle">활동 계정 (인스타그램 ID) <span className="text-red-500">*</span></Label>
+                        <Input
+                            id="handle"
+                            value={instagramHandle}
+                            onChange={(e) => setInstagramHandle(e.target.value)}
+                            placeholder="@example_id"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="motivation">지원 동기 <span className="text-red-500">*</span></Label>
+                        <Textarea
+                            id="motivation"
+                            value={motivation}
+                            onChange={(e) => setMotivation(e.target.value)}
+                            placeholder="이 캠페인에 지원하게 된 이유와 제품에 대한 관심을 표현해주세요."
+                            className="min-h-[100px]"
+                        />
+                    </div>
+
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                            <Label htmlFor="message">어필 메시지</Label>
+                            <Label htmlFor="contentPlan">콘텐츠 제작 계획 <span className="text-red-500">*</span></Label>
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -122,14 +165,45 @@ function ApplyDialog({
                             </Button>
                         </div>
                         <Textarea
-                            id="message"
-                            value={appealMessage}
-                            onChange={(e) => setAppealMessage(e.target.value)}
+                            id="contentPlan"
+                            value={contentPlan}
+                            onChange={(e) => setContentPlan(e.target.value)}
                             className="min-h-[150px]"
-                            placeholder="브랜드에게 전달할 메시지와 본인의 강점을 어필해보세요."
+                            placeholder="어떤 컨셉과 구도로 촬영할지 구체적으로 작성해주세요."
                         />
                     </div>
+
                     <div className="space-y-2">
+                        <Label htmlFor="portfolio">포트폴리오 링크 (선택)</Label>
+                        <Textarea
+                            id="portfolio"
+                            value={portfolioLinks}
+                            onChange={(e) => setPortfolioLinks(e.target.value)}
+                            placeholder="관련된 콘텐츠 URL을 줄바꿈으로 구분하여 입력해주세요."
+                            className="min-h-[80px]"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="insight">인사이트 캡처 (선택)</Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                id="insight"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        setInsightFile(e.target.files[0])
+                                    }
+                                }}
+                                className="cursor-pointer"
+                            />
+                            {insightFile && <span className="text-xs text-emerald-600 font-bold">선택됨</span>}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">계정 도달수나 팔로워 인사이트 캡처를 첨부하면 선정 확률이 높아집니다.</p>
+                    </div>
+
+                    <div className="space-y-2 border-t pt-2">
                         <Label htmlFor="cost">희망 원고료 (선택)</Label>
                         <Input
                             id="cost"
@@ -141,6 +215,17 @@ function ApplyDialog({
                         <p className="text-xs text-muted-foreground">
                             브랜드가 제시한 예산: {selectedCampaign?.budget}
                         </p>
+                    </div>
+
+                    <div className="space-y-2 border-t pt-2">
+                        <Label htmlFor="message">추가 어필 메시지</Label>
+                        <Textarea
+                            id="message"
+                            value={appealMessage}
+                            onChange={(e) => setAppealMessage(e.target.value)}
+                            className="min-h-[80px]"
+                            placeholder="기타 브랜드에게 하고 싶은 말이 있다면 자유롭게 적어주세요."
+                        />
                     </div>
                 </div>
                 <DialogFooter>
@@ -572,6 +657,13 @@ function InfluencerDashboardContent() {
     const [aiPlanResult, setAiPlanResult] = useState("")
     const [isAIPlanModalOpen, setIsAIPlanModalOpen] = useState(false)
 
+    // Application Form States (Moved to top)
+    const [motivation, setMotivation] = useState("")
+    const [contentPlan, setContentPlan] = useState("")
+    const [portfolioLinks, setPortfolioLinks] = useState("")
+    const [instagramHandle, setInstagramHandle] = useState("")
+    const [insightFile, setInsightFile] = useState<File | null>(null)
+
     const handleGenerateAIPlan = async (campaign: any) => {
         if (!campaign) return
         setIsAIPlanning(true)
@@ -588,8 +680,12 @@ function InfluencerDashboardContent() {
             })
             const data = await response.json()
             if (data.result) {
-                setAiPlanResult(data.result)
-                setIsAIPlanModalOpen(true)
+                // Auto-fill fields
+                if (data.result.motivation) setMotivation(data.result.motivation)
+                if (data.result.content_plan) setContentPlan(data.result.content_plan)
+
+                alert("AI가 지원 동기와 콘텐츠 기획안을 자동으로 작성했습니다!")
+                // setIsAIPlanModalOpen(true) // No longer needed
             } else {
                 alert("AI 기획안 생성에 실패했습니다.")
             }
@@ -776,7 +872,7 @@ function InfluencerDashboardContent() {
     // --- SHARED DATA LOGIC (Lifted for Dashboard & Proposals View) ---
 
     // 2. Outbound (Applied to Campaigns) - Waiting
-    const outboundApplications = proposals?.filter((p: any) => p.type === 'creator_apply' && (p.status === 'pending' || p.status === 'viewed')) || []
+    const outboundApplications = proposals?.filter((p: any) => p.type === 'creator_apply' && (p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')) || []
 
     // 3. Active (In Progress) - Both sources
     const activeInbound = brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'confirmed') || []
@@ -1514,6 +1610,10 @@ function InfluencerDashboardContent() {
                         // Force refresh so the list updates (moving from inbound to active)
                         await refreshData()
 
+                        // Auto-switch to Active Tab & Workstation View
+                        setWorkspaceTab('active')
+                        setCurrentView('proposals')
+
                         // Auto-send Rate Card
                         if (user) {
                             const rateCardData = {
@@ -2128,30 +2228,38 @@ function InfluencerDashboardContent() {
                             <TabsContent value="upcoming" className="mt-6 space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {upcomingMoments.length > 0 ? (
-                                        upcomingMoments.map((moment: any) => (
-                                            <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500" onClick={() => handleOpenDetails(moment, 'moment')}>
-                                                <CardContent className="p-4 space-y-4">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700">
-                                                                <CalendarIcon className="h-5 w-5" />
+                                        upcomingMoments.map((moment: any) => {
+                                            const offerCount = brandProposals.filter((p: any) => p.event_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
+                                            return (
+                                                <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500" onClick={() => handleOpenDetails(moment, 'moment')}>
+                                                    <CardContent className="p-4 space-y-4">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700">
+                                                                    <CalendarIcon className="h-5 w-5" />
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold">{moment.event}</div>
+                                                                    <div className="text-xs text-muted-foreground">{moment.date}</div>
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <div className="font-bold">{moment.event}</div>
-                                                                <div className="text-xs text-muted-foreground">{moment.date}</div>
+                                                            <div className="flex gap-2">
+                                                                {offerCount > 0 && (
+                                                                    <Badge className="bg-indigo-600 hover:bg-indigo-700">📥 {offerCount} 제안</Badge>
+                                                                )}
+                                                                <Badge variant="outline">{moment.category}</Badge>
                                                             </div>
                                                         </div>
-                                                        <Badge variant="outline">{moment.category}</Badge>
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-sm text-slate-600">{moment.targetProduct || "제품 미정"}</p>
-                                                        <div className="flex gap-1 mt-2 flex-wrap">
-                                                            {moment.tags?.map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                                                        <div>
+                                                            <p className="font-medium text-sm text-slate-600">{moment.targetProduct || "제품 미정"}</p>
+                                                            <div className="flex gap-1 mt-2 flex-wrap">
+                                                                {moment.tags?.map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))
+                                                    </CardContent>
+                                                </Card>
+                                            )
+                                        })
                                     ) : (
                                         <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
                                             나의 모먼트가 없습니다.
@@ -2475,7 +2583,13 @@ function InfluencerDashboardContent() {
                                     inboundProposals.map((proposal: any) => (
                                         <Card key={proposal.id} className="p-6 border-l-4 border-l-emerald-500 cursor-pointer hover:shadow-lg transition-all" onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
                                             <div className="flex flex-col md:flex-row gap-6">
-                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-xl">{proposal.brand_name?.[0] || "B"}</div>
+                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+                                                    {proposal.brand_avatar ? (
+                                                        <img src={proposal.brand_avatar} alt={proposal.brand_name} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <span className="text-emerald-600 font-bold text-xl">{proposal.brand_name?.[0] || "B"}</span>
+                                                    )}
+                                                </div>
                                                 <div className="flex-1 space-y-4">
                                                     <div className="flex justify-between items-start">
                                                         <div>
@@ -2531,7 +2645,13 @@ function InfluencerDashboardContent() {
                                     outboundApplications.map((proposal: any) => (
                                         <Card key={proposal.id} className="p-6 border-l-4 border-l-blue-500 cursor-pointer hover:shadow-lg transition-all" onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
                                             <div className="flex flex-col md:flex-row gap-6">
-                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-xl">{proposal.brand_name?.[0] || "C"}</div>
+                                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+                                                    {proposal.brandAvatar ? (
+                                                        <img src={proposal.brandAvatar} alt={proposal.brand_name} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <span className="text-blue-600 font-bold text-xl">{proposal.brand_name?.[0] || "C"}</span>
+                                                    )}
+                                                </div>
                                                 <div className="flex-1 space-y-4">
                                                     <div className="div flex justify-between items-start">
                                                         <div>
@@ -2678,6 +2798,18 @@ function InfluencerDashboardContent() {
                                 <CardDescription>브랜드에게 보여질 나의 프로필 정보를 수정합니다.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
+                                <div className="flex flex-col items-center justify-center mb-6">
+                                    <Label className="mb-2">프로필 이미지</Label>
+                                    <AvatarUpload
+                                        uid={user?.id || "creator"}
+                                        url={user?.avatar}
+                                        onUpload={async (url) => {
+                                            await updateUser({ avatar: url })
+                                        }}
+                                        size={120}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-2">클릭하여 이미지 변경</p>
+                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="name">활동명 (닉네임)</Label>
                                     <Input
@@ -2783,6 +2915,27 @@ function InfluencerDashboardContent() {
                                         autoComplete="off"
                                         placeholder="나를 표현하는 멋진 한마디를 적어주세요."
                                     />
+                                </div>
+
+                                <div className="space-y-4 pt-4 border-t">
+                                    <h3 className="text-lg font-semibold">소셜 계정 연결</h3>
+                                    <div className="flex items-center justify-between p-4 border rounded-lg bg-slate-50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-lg flex items-center justify-center text-white">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-instagram"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">Instagram 비즈니스 계정</p>
+                                                <p className="text-xs text-muted-foreground">인사이트(도달수, 팔로워) 연동을 위해 필요합니다.</p>
+                                            </div>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => {
+                                            alert("Facebook App ID가 설정되지 않아 실제 연결은 되지 않습니다. (구현 완료)");
+                                            // In real implementation: call useInstagram().login()
+                                        }}>
+                                            연결하기
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4 pt-4 border-t">
@@ -3098,8 +3251,12 @@ function InfluencerDashboardContent() {
                                             </div>
                                             <CardTitle className="text-lg font-bold line-clamp-1">{camp.product}</CardTitle>
                                             <div className="flex items-center gap-2 mt-2">
-                                                <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
-                                                    {camp.brand?.[0] || 'B'}
+                                                <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 overflow-hidden">
+                                                    {camp.brandAvatar ? (
+                                                        <img src={camp.brandAvatar} alt={camp.brand} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        camp.brand?.[0] || 'B'
+                                                    )}
                                                 </div>
                                                 <span className="text-sm text-muted-foreground font-medium">{camp.brand}</span>
                                             </div>
@@ -3145,10 +3302,16 @@ function InfluencerDashboardContent() {
 
 
 
+
     const handleApplyClick = (campaign: any) => {
         setSelectedCampaign(campaign)
-        setAppealMessage(`안녕하세요! ${campaign.brand}의 ${campaign.product} 캠페인에 제안하고 싶습니다.\n\n[제안 내용]\n`)
+        setAppealMessage("") // Reset general message
         setDesiredCost("")
+        setMotivation("")
+        setContentPlan("")
+        setPortfolioLinks("")
+        setInstagramHandle(user?.handle || "") // Pre-fill handle if available
+        setInsightFile(null)
         setIsApplyDialogOpen(true)
     }
 
@@ -3208,28 +3371,61 @@ function InfluencerDashboardContent() {
         win?.document.close()
     }
     const handleSubmitApplication = async () => {
-        if (!appealMessage) {
-            alert("어피 메시지를 입력해주세요.")
+        if (!instagramHandle || !motivation || !contentPlan) {
+            alert("활동 계정, 지원 동기, 콘텐츠 제작 계획은 필수 입력 항목입니다.")
             return
         }
 
         setIsApplying(true)
         try {
             const { submitCampaignApplication } = await import('@/app/actions/proposal')
+            const { createClient } = await import('@/lib/supabase/client') // Client-side upload
+
+            let insightUrl = null;
+            if (insightFile) {
+                const supabase = createClient()
+                const fileExt = insightFile.name.split('.').pop()
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+                const filePath = `insights/${fileName}`
+
+                const { error: uploadError } = await supabase.storage
+                    .from('campaigns') // Reusing campaigns bucket or maybe 'proposal-assets'? Using campaigns for now as per user setup
+                    .upload(filePath, insightFile)
+
+                if (uploadError) {
+                    throw new Error(`이미지 업로드 실패: ${uploadError.message}`)
+                }
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('campaigns')
+                    .getPublicUrl(filePath)
+
+                insightUrl = publicUrl
+            }
 
             const cost = desiredCost ? parseInt(desiredCost.replace(/[^0-9]/g, '')) : undefined
+            const pLinks = portfolioLinks.split('\n').map(l => l.trim()).filter(Boolean)
 
-            const result = await submitCampaignApplication(selectedCampaign.id, appealMessage, cost)
+            const result = await submitCampaignApplication(selectedCampaign.id, {
+                message: appealMessage,
+                price: cost,
+                motivation,
+                content_plan: contentPlan,
+                portfolio_links: pLinks,
+                instagram_handle: instagramHandle,
+                insight_screenshot: insightUrl || undefined
+            })
 
             if (result.error) {
-                alert(result.error)
+                console.error("Submission DB Error:", result.error) // Detailed log
+                alert(`지원 실패: ${JSON.stringify(result.error)}`) // Show details to user for debugging
             } else {
                 alert("지원서가 성공적으로 발송되었습니다!")
                 setIsApplyDialogOpen(false)
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Application error:", error)
-            alert("지원 중 오류가 발생했습니다.")
+            alert(`지원 중 오류가 발생했습니다: ${error.message}`)
         } finally {
             setIsApplying(false)
         }
@@ -3254,7 +3450,10 @@ function InfluencerDashboardContent() {
                     {/* ... skipping sidebar code ... */}
                     <aside className="hidden lg:flex flex-col gap-4">
                         <div className="flex items-center gap-3 px-2 py-4">
-                            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500" />
+                            <Avatar className="h-12 w-12">
+                                <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
+                                <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                            </Avatar>
                             <div>
                                 <h2 className="font-bold">{user?.name || "사용자"}</h2>
                                 <p className="text-xs text-muted-foreground">{user?.handle || "핸들 없음"}</p>
@@ -3326,6 +3525,16 @@ function InfluencerDashboardContent() {
                         setAppealMessage={setAppealMessage}
                         desiredCost={desiredCost}
                         setDesiredCost={setDesiredCost}
+                        motivation={motivation}
+                        setMotivation={setMotivation}
+                        contentPlan={contentPlan}
+                        setContentPlan={setContentPlan}
+                        portfolioLinks={portfolioLinks}
+                        setPortfolioLinks={setPortfolioLinks}
+                        instagramHandle={instagramHandle}
+                        setInstagramHandle={setInstagramHandle}
+                        insightFile={insightFile}
+                        setInsightFile={setInsightFile}
                         onSubmit={handleSubmitApplication}
                         isApplying={isApplying}
                         onClose={() => setIsApplyDialogOpen(false)}
