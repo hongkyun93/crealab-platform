@@ -29,11 +29,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import { submitDirectProposal } from "@/app/actions/proposal"
 
 export default function EventDetailPage() {
     const params = useParams()
     const router = useRouter()
-    const { events, user, sendNotification, supabase, products } = usePlatform()
+    const { events, user, sendNotification, supabase, products, refreshData } = usePlatform()
     const [event, setEvent] = useState<InfluencerEvent | null>(null)
     const [showProposalDialog, setShowProposalDialog] = useState(false)
 
@@ -166,62 +167,46 @@ ${u.name}의 담당자입니다.
             return
         }
 
-        setIsSubmitting(true)
 
         setIsSubmitting(true)
         try {
-            // Create a timeout promise
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), 15000)
-            })
+            console.log("Submitting proposal via Server Action...")
 
-            console.log("Submitting proposal to DB...")
-            const dbPromise = supabase
-                .from('brand_proposals')
-                .insert({
-                    brand_id: user.id,
-                    influencer_id: event.influencerId,
-                    product_name: productName,
-                    product_type: productType,
-                    compensation_amount: compensationAmount || null,
-                    has_incentive: hasIncentive,
-                    incentive_detail: hasIncentive ? incentiveDetail : null,
-                    content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ') || null,
-                    desired_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
-                    condition_draft_submission_date: draftSubmissionDate ? format(draftSubmissionDate, "yyyy-MM-dd") : null,
-                    condition_final_submission_date: finalSubmissionDate ? format(finalSubmissionDate, "yyyy-MM-dd") : null,
-                    condition_upload_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null, // Sync desired_date with condition_upload_date
-                    condition_secondary_usage_period: secondaryUsagePeriod || "불가",
-                    date_flexible: dateFlexible,
-                    message: proposalMessage,
-                    video_guide: videoGuide,
-                    product_id: selectedProduct?.id || null,
-                    product_url: productUrl || null,
-                    status: 'offered'
-                })
-                .select()
-                .single()
-
-            // Race against timeout
-            const result: any = await Promise.race([dbPromise, timeoutPromise])
-            const { data, error } = result
-
-            if (error) {
-                console.error('Error creating proposal (Full):', error)
-                console.error('Error Message:', error.message)
-                console.error('Error Details:', error.details)
-                console.error('Error Hint:', error.hint)
-                alert(`제안서 저장 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`)
-                return
+            const proposalData = {
+                influencer_id: event.influencerId,
+                event_id: event.id,
+                product_name: productName,
+                product_type: productType,
+                compensation_amount: compensationAmount || null,
+                has_incentive: hasIncentive,
+                incentive_detail: hasIncentive ? incentiveDetail : null,
+                content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ') || null,
+                desired_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+                condition_draft_submission_date: draftSubmissionDate ? format(draftSubmissionDate, "yyyy-MM-dd") : null,
+                condition_final_submission_date: finalSubmissionDate ? format(finalSubmissionDate, "yyyy-MM-dd") : null,
+                condition_upload_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+                condition_secondary_usage_period: secondaryUsagePeriod || "불가",
+                date_flexible: dateFlexible,
+                message: proposalMessage,
+                video_guide: videoGuide,
+                product_id: selectedProduct?.id || null,
+                product_url: productUrl || null,
             }
 
+            // Call Server Action
+            const { success, data, error } = await submitDirectProposal(proposalData)
 
-            // Send Notification to Influencer
-            if (event.influencerId) {
-                const notifMessage = `${user.name}님이 '${productName}' 협업을 제안했습니다.`
-                // We don't await this to keep UI responsive
-                sendNotification(event.influencerId, notifMessage, 'proposal_received', data.id)
+            if (!success || error) {
+                console.error('Error creating proposal (Server Action):', error)
+                throw new Error(error || "Unknown Server Error")
             }
+
+            // Trigger manual refresh to ensure UI is updated immediately
+            if (refreshData) await refreshData()
+
+
+            // data is the inserted proposal row
+
 
             // Success
             alert("제안서가 성공적으로 발송되었습니다!")

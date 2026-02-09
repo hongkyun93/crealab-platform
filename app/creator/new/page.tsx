@@ -39,6 +39,7 @@ export default function NewEventPage() {
     const [description, setDescription] = useState("")
     const [guide, setGuide] = useState("")
     const [isPrivate, setIsPrivate] = useState(false)
+    const [validationError, setValidationError] = useState<string | null>(null)
 
     // Schedule Template State
     const [showSchedule, setShowSchedule] = useState(false)
@@ -141,8 +142,22 @@ export default function NewEventPage() {
     }
 
     const handleSubmit = async () => {
-        if (!title || !eventMonth || !postingMonth || !description) {
-            alert("모든 필수 항목을 입력해주세요.")
+        setValidationError(null)
+
+        if (!title) {
+            setValidationError("모먼트 제목을 입력해주세요.")
+            return
+        }
+        if (!eventMonth) {
+            setValidationError("모먼트 일정을 선택해주세요.")
+            return
+        }
+        if (!postingMonth) {
+            setValidationError("업로드 시기를 선택해주세요.")
+            return
+        }
+        if (!description) {
+            setValidationError("상세 설명을 입력해주세요.")
             return
         }
 
@@ -475,6 +490,11 @@ export default function NewEventPage() {
                             <Button variant="outline" asChild type="button">
                                 <Link href="/creator">취소</Link>
                             </Button>
+                            {validationError && (
+                                <div className="absolute bottom-full mb-2 right-0 text-sm text-red-500 font-medium bg-red-50 px-3 py-1 rounded-md animate-in slide-in-from-bottom-1 fade-in">
+                                    ⚠️ {validationError}
+                                </div>
+                            )}
                             <Button
                                 size="lg"
                                 className="w-full md:w-auto cursor-pointer"

@@ -3,6 +3,17 @@
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Calendar, Save, Trash2, Package, Send } from "lucide-react"
@@ -29,6 +40,7 @@ export default function EditEventPage() {
     const params = useParams()
     const { events, updateEvent, deleteEvent, user } = usePlatform()
     const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
     // Form States
     const [title, setTitle] = useState("")
@@ -107,10 +119,14 @@ export default function EditEventPage() {
         )
     }
 
-    const handleDelete = async () => {
-        if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
-            const eventId = String(params.id)
-            await deleteEvent(eventId)
+    const handleDeleteClick = () => {
+        setIsDeleteDialogOpen(true)
+    }
+
+    const confirmDelete = async () => {
+        const eventId = String(params.id)
+        const success = await deleteEvent(eventId)
+        if (success) {
             router.push("/creator")
         }
     }
@@ -125,7 +141,7 @@ export default function EditEventPage() {
 
         const eventId = String(params.id)
 
-        await updateEvent(eventId, {
+        const success = await updateEvent(eventId, {
             category: selectedTags[0] || "기타",
             event: title,
             date: eventMonth, // Legacy support
@@ -137,8 +153,10 @@ export default function EditEventPage() {
             postingDate: `${postingYear}년 ${postingMonth}`
         })
 
-        alert("모먼트가 성공적으로 수정되었습니다!")
-        router.push("/creator")
+        if (success) {
+            alert("모먼트가 성공적으로 수정되었습니다!")
+            router.push("/creator")
+        }
     }
 
     return (
@@ -160,10 +178,27 @@ export default function EditEventPage() {
                                 </p>
                             </div>
                         </div>
-                        <Button variant="outline" size="sm" onClick={handleDelete} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                        <Button variant="outline" size="sm" onClick={handleDeleteClick} className="text-red-500 hover:text-red-600 hover:bg-red-50">
                             <Trash2 className="mr-2 h-4 w-4" /> 삭제
                         </Button>
                     </div>
+
+                    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>정말 삭제하시겠습니까?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    이 작업은 되돌릴 수 없습니다. 모먼트가 완전히 삭제됩니다.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>취소</AlertDialogCancel>
+                                <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
+                                    삭제
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
 
                     <div className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
 

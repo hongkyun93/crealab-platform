@@ -161,26 +161,29 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            {event.compensation_amount
-                                                ? `${Number(event.compensation_amount).toLocaleString()}원`
-                                                : event.cost
-                                                    ? `${Number(event.cost).toLocaleString()}원`
-                                                    : '-'
-                                            }
+                                            {event.type === 'upcoming' ? '-' : (
+                                                event.compensation_amount
+                                                    ? `${Number(event.compensation_amount).toLocaleString()}원`
+                                                    : event.cost
+                                                        ? `${Number(event.cost).toLocaleString()}원`
+                                                        : '-'
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-center text-xs">
-                                            {event.condition_draft_submission_date ? (
-                                                <div className="flex flex-col items-center">
-                                                    <span>{event.condition_draft_submission_date}</span>
-                                                    {/* D-Day Logic could go here */}
-                                                </div>
-                                            ) : '-'}
+                                            {event.type === 'upcoming' ? '-' : (
+                                                event.condition_draft_submission_date ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <span>{event.condition_draft_submission_date}</span>
+                                                        {/* D-Day Logic could go here */}
+                                                    </div>
+                                                ) : '-'
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-center text-xs">
-                                            {event.condition_final_submission_date || '-'}
+                                            {event.type === 'upcoming' ? '-' : (event.condition_final_submission_date || '-')}
                                         </TableCell>
                                         <TableCell className="text-center text-xs font-semibold text-slate-700">
-                                            {event.condition_upload_date || event.date || '-'}
+                                            {event.type === 'upcoming' ? '-' : (event.condition_upload_date || event.date || '-')}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {(() => {

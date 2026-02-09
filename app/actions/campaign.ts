@@ -22,6 +22,7 @@ export async function createCampaign(formData: FormData) {
     const eventDate = formData.get('eventDate') as string
     const postingDate = formData.get('postingDate') as string
     const tags = formData.get('tags') as string
+    const image = formData.get('image') as string
 
     // 3. Insert into DB
     const { error } = await supabase
@@ -34,6 +35,7 @@ export async function createCampaign(formData: FormData) {
             budget: budget,
             target: target,
             description: descriptionRaw,
+            image: image,
             status: 'active',
             event_date: eventDate,
             posting_date: postingDate,
@@ -68,6 +70,7 @@ export async function updateCampaign(id: string, formData: FormData) {
     const eventDate = formData.get('eventDate') as string
     const postingDate = formData.get('postingDate') as string
     const tags = formData.get('tags') as string
+    const image = formData.get('image') as string
 
     // 3. Update DB
     const { error } = await supabase
@@ -79,6 +82,7 @@ export async function updateCampaign(id: string, formData: FormData) {
             budget: budget,
             target: target,
             description: descriptionRaw,
+            image: image,
             event_date: eventDate,
             posting_date: postingDate,
             tags: tags.split(',').map(tag => tag.trim()).filter(Boolean)

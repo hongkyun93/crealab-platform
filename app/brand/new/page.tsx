@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Megaphone, Plus, Send, Package, Check } from "lucide-react"
+import { ArrowLeft, Megaphone, Plus, Send, Package, Check, Upload, Loader2, X } from "lucide-react"
 import Link from "next/link"
 import {
     Dialog,
@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/dialog"
 
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useRef } from "react"
 import { usePlatform } from "@/components/providers/platform-provider"
 import { createCampaign } from "@/app/actions/campaign"
+import { createClient } from "@/lib/supabase/client"
 
 export default function NewCampaignPage() {
     const router = useRouter()
@@ -32,6 +33,9 @@ export default function NewCampaignPage() {
     // Controlled inputs for Product Loading feature
     const [productTitle, setProductTitle] = useState("")
     const [description, setDescription] = useState("")
+    const [image, setImage] = useState("")
+    const [isUploading, setIsUploading] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Product Load Modal State
     const [isProductLoadModalOpen, setIsProductLoadModalOpen] = useState(false)
@@ -48,9 +52,17 @@ export default function NewCampaignPage() {
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
+        if (isUploading) {
+            alert("이미지 업로드 중입니다. 잠시만 기다려주세요.")
+            return
+        }
         setLoading(true)
 
         const formData = new FormData(e.currentTarget)
+        if (image) {
+            formData.append("image", image)
+        }
+
         const result = await createCampaign(formData)
 
         if (result?.error) {
@@ -60,6 +72,41 @@ export default function NewCampaignPage() {
             alert("캠페인이 성공적으로 등록되었습니다!")
             await refreshData()
             router.push("/brand?view=dashboard")
+        }
+    }
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert("파일 크기는 5MB 이하여야 합니다.")
+            return
+        }
+
+        setIsUploading(true)
+        try {
+            const supabase = createClient()
+            const fileExt = file.name.split('.').pop()
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+            const filePath = `campaign-images/${fileName}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('campaigns')
+                .upload(filePath, file)
+
+            if (uploadError) throw uploadError
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('campaigns')
+                .getPublicUrl(filePath)
+
+            setImage(publicUrl)
+        } catch (error: any) {
+            console.error("Image upload error:", error)
+            alert("이미지 업로드에 실패했습니다.")
+        } finally {
+            setIsUploading(false)
         }
     }
 
@@ -76,6 +123,12 @@ export default function NewCampaignPage() {
         if (product.shots) desc += `\n\n[필수 촬영 컷]\n${product.shots}`
 
         setDescription(desc)
+
+        // Helper to handle mixed image/image_url property
+        const prodImage = product.image || product.image_url || ""
+        if (prodImage && prodImage !== "📦") {
+            setImage(prodImage)
+        }
 
         // Try to match category
         if (product.category && POPULAR_TAGS.some(t => t.includes(product.category))) {
@@ -131,6 +184,57 @@ export default function NewCampaignPage() {
                                 placeholder="예: 2024년형 스마트 모니터램프"
                                 required
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>제품 이미지 (선택사항)</Label>
+                            <div className="flex items-start gap-4">
+                                <div
+                                    className="h-24 w-24 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden bg-muted/10 cursor-pointer hover:bg-muted/20 transition-colors relative group"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    {image ? (
+                                        <>
+                                            <img src={image} alt="Preview" className="h-full w-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Upload className="h-6 w-6 text-white" />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setImage("")
+                                                }}
+                                                className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        isUploading ? (
+                                            <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                                                <Upload className="h-6 w-6" />
+                                                <span className="text-[10px]">업로드</span>
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                                <div className="space-y-2 flex-1">
+                                    <Input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleImageUpload}
+                                    />
+                                    <p className="text-xs text-muted-foreground pt-2">
+                                        캠페인 대표 이미지를 등록하면 크리에이터에게 더 매력적으로 보입니다.<br />
+                                        (권장: 1:1 비율, 5MB 이하)
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="space-y-2">

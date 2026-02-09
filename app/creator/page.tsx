@@ -18,7 +18,7 @@ import {
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon } from "lucide-react"
+import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical } from "lucide-react"
 import Link from "next/link"
 import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign } from "@/components/providers/platform-provider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -79,7 +79,9 @@ function ApplyDialog({
     setDesiredCost,
     onSubmit,
     isApplying,
-    onClose
+    onClose,
+    onGenerateAIPlan,
+    isAIPlanning
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -91,6 +93,8 @@ function ApplyDialog({
     onSubmit: () => void;
     isApplying: boolean;
     onClose: () => void;
+    onGenerateAIPlan: (campaign: any) => void;
+    isAIPlanning: boolean;
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,7 +107,19 @@ function ApplyDialog({
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="message">어필 메시지</Label>
+                        <div className="flex justify-between items-center">
+                            <Label htmlFor="message">어필 메시지</Label>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                onClick={() => onGenerateAIPlan(selectedCampaign)}
+                                disabled={isAIPlanning}
+                            >
+                                {isAIPlanning ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
+                                AI 기획안 받기
+                            </Button>
+                        </div>
                         <Textarea
                             id="message"
                             value={appealMessage}
@@ -473,6 +489,33 @@ function ProductGuideDialog({
     );
 }
 
+function AIPlanModal({ isOpen, onOpenChange, planContent }: { isOpen: boolean; onOpenChange: (open: boolean) => void; planContent: string }) {
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-purple-500" /> AI 기획안
+                    </DialogTitle>
+                    <DialogDescription>
+                        AI가 제안하는 캠페인 콘텐츠 기획안입니다. 참고하여 어필 메시지를 작성해보세요.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 max-h-[60vh] overflow-y-auto">
+                    <Textarea
+                        value={planContent}
+                        readOnly
+                        className="min-h-[250px] bg-gray-50 border-gray-200 text-gray-800"
+                    />
+                </div>
+                <DialogFooter>
+                    <Button onClick={() => onOpenChange(false)}>닫기</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function InfluencerDashboardContent() {
     const {
         user, updateUser, campaigns, events, isLoading, notifications, resetData, refreshData,
@@ -520,6 +563,41 @@ function InfluencerDashboardContent() {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
     const [detailsType, setDetailsType] = useState<'moment' | 'campaign'>('moment')
     const [relatedProposals, setRelatedProposals] = useState<any[]>([])
+    const [workspaceTab, setWorkspaceTab] = useState("active")
+
+    // AI Planner State
+    const [isAIPlanning, setIsAIPlanning] = useState(false)
+    const [aiPlanResult, setAiPlanResult] = useState("")
+    const [isAIPlanModalOpen, setIsAIPlanModalOpen] = useState(false)
+
+    const handleGenerateAIPlan = async (campaign: any) => {
+        if (!campaign) return
+        setIsAIPlanning(true)
+        try {
+            const response = await fetch('/api/generate-content-plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    productName: campaign.product || campaign.productName,
+                    sellingPoints: campaign.description, // Using description as selling points proxy if not strictly defined
+                    category: campaign.category || "기타",
+                    requiredShots: "제품 사용하는 모습, 비포 애프터 비교" // Default shots
+                })
+            })
+            const data = await response.json()
+            if (data.result) {
+                setAiPlanResult(data.result)
+                setIsAIPlanModalOpen(true)
+            } else {
+                alert("AI 기획안 생성에 실패했습니다.")
+            }
+        } catch (e) {
+            console.error("AI Plan Error:", e)
+            alert("오류가 발생했습니다.")
+        } finally {
+            setIsAIPlanning(false)
+        }
+    }
 
     const handleViewProposal = (proposalId: string) => {
         // Find proposal in brandProposals (inbound) or proposals (outbound/active)
@@ -582,7 +660,7 @@ function InfluencerDashboardContent() {
 
 
 
-    const displayUser = user || MOCK_INFLUENCER_USER
+    const displayUser = user
 
     // Auto-scroll for Main Workspace Chat
     useEffect(() => {
@@ -652,10 +730,11 @@ function InfluencerDashboardContent() {
 
 
     // Filter events (Admins see all, users see theirs)
-    const displayEvents = displayUser.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser.id || e.handle === displayUser.handle)
+    // Filter events (Admins see all, users see theirs)
+    const displayEvents = displayUser?.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
     const pastMoments = displayEvents.filter((e: any) => e.status === 'completed')
     const upcomingMoments = displayEvents.filter((e: any) => e.status !== 'completed')
-    const myEvents = events.filter((e: any) => e.influencerId === displayUser.id || e.handle === displayUser.handle) // For personal stats
+    const myEvents = events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle) // For personal stats
 
     const filteredProposalsByMoment = selectedMomentId
         ? (brandProposals?.filter((p: any) => p.event_id === selectedMomentId) || [])
@@ -870,7 +949,7 @@ function InfluencerDashboardContent() {
     const [isSaving, setIsSaving] = useState(false)
 
     // Apply Modal States
-    const [applyModalOpen, setApplyModalOpen] = useState(false)
+    const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false)
     const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
     const [selectedBrandProduct, setSelectedBrandProduct] = useState<any>(null) // New state for Brand Detail View
     const [selectedCampaign, setSelectedCampaign] = useState<any>(null)
@@ -1192,6 +1271,28 @@ function InfluencerDashboardContent() {
         }
     }, [searchParams, currentView])
 
+    // Handle Deep Linking to Workspace/Proposals
+    useEffect(() => {
+        const view = searchParams.get('view')
+        const proposalId = searchParams.get('proposalId')
+
+        if (view === 'proposals' && proposalId) {
+            // Force tab to 'all' as requested ("Workspace Entire View")
+            setWorkspaceTab("all")
+
+            // Find and open the proposal
+            // We search in both brandProposals (offers) and proposals (applications)
+            const targetId = proposalId.toString()
+            const found = brandProposals.find((p: any) => p.id?.toString() === targetId)
+                || proposals.find((p: any) => p.id?.toString() === targetId)
+
+            if (found) {
+                setChatProposal(found)
+                setIsChatOpen(true)
+            }
+        }
+    }, [searchParams, brandProposals, proposals])
+
 
     useEffect(() => {
         if (!isLoading && !user) {
@@ -1263,14 +1364,10 @@ function InfluencerDashboardContent() {
                 setChatProposal((prev: any) => prev ? { ...prev, status } : prev)
             }
 
-            // Also update the local state from brandProposals list (if needed)
-            // But usually the context update will trigger a re-render soon.
-
             if (status === 'accepted' || status === 'pending') {
                 setIsChatOpen(true)
 
                 // Try to find the proposal to get brand_id for messaging
-                // We'll look in current brandProposals.
                 const proposal = brandProposals.find((p: any) => p.id === proposalId)
                     || (chatProposal?.id === proposalId ? chatProposal : null)
 
@@ -1281,8 +1378,11 @@ function InfluencerDashboardContent() {
 
                     // Send notification/message to brand
                     if (status === 'accepted') {
-                        // Pass proposal.id as 4th argument (brandProposalId) to link to chat thread
+                        // Pass proposal.id as 4th argument (brandProposalId)
                         await sendMessage(proposal.brand_id, `✅ [시스템 알림] 크리에이터가 협업 제안을 수락했습니다! 대화를 시작해보세요.`, undefined, proposal.id)
+
+                        // Force refresh so the list updates (moving from inbound to active)
+                        await refreshData()
 
                         // Auto-send Rate Card
                         if (user) {
@@ -1298,14 +1398,14 @@ function InfluencerDashboardContent() {
 
                             // Send rate card slightly after the system message
                             setTimeout(async () => {
-                                // 1. Send Greeting Message
                                 const brandName = proposal.brand_name || '브랜드';
                                 const greetingMsg = `안녕하세요 '${brandName}'님. 좋은 협업 제안 요청주셔서 감사합니다.\n아래에 저의 예상단가를 보내드립니다.`;
-                                await sendMessage(proposal.brand_id, greetingMsg, undefined, proposal.id);
-
-                                // 2. Send Rate Card
-                                await sendMessage(proposal.brand_id, rateCardMsg, undefined, proposal.id)
-
+                                try {
+                                    await sendMessage(proposal.brand_id, greetingMsg, undefined, proposal.id);
+                                    await sendMessage(proposal.brand_id, rateCardMsg, undefined, proposal.id)
+                                } catch (e) {
+                                    console.error("Failed to auto-send rate card:", e);
+                                }
                             }, 500)
                         }
 
@@ -1317,6 +1417,7 @@ function InfluencerDashboardContent() {
                 }
             } else if (status === 'rejected') {
                 alert("제안을 거절했습니다.")
+                await refreshData()
             }
         } catch (e) {
             console.error("Status update error:", e)
@@ -1338,6 +1439,9 @@ function InfluencerDashboardContent() {
 
             // Send polite rejection message
             await sendMessage(proposal.brand_id, `안녕하세요 ${proposal.brand_name}님, 제안 주셔서 감사합니다.\n아쉽게도 현재 제 일정 및 상황상 참여가 어려울 것 같습니다. 😢\n다음에 더 좋은 기회로 뵙기를 희망합니다!`, undefined, proposal.id)
+
+            // Force refresh so the list updates (moving to rejected)
+            await refreshData()
 
             alert('제안을 거절했습니다.')
             setIsChatOpen(false)
@@ -1367,7 +1471,7 @@ function InfluencerDashboardContent() {
                     <div className="flex gap-3 bg-white border border-slate-100 p-2 rounded-lg">
                         {/* Use product.image_url from DB relation */}
                         {proposal.product.image_url ? (
-                            <img src={proposal.product.image_url} alt={proposal.product.name} className="w-12 h-12 rounded object-cover border" />
+                            <img src={proposal.product.image_url} alt={proposal.product.name} className="w-full h-full object-cover" />
                         ) : (
                             <div className="w-12 h-12 rounded bg-slate-100 flex items-center justify-center text-slate-300">
                                 <Package className="h-5 w-5" />
@@ -1448,6 +1552,7 @@ function InfluencerDashboardContent() {
     }
 
     const filteredProposals = (status: string) => {
+        if (!displayUser) return []
         if (status === 'new') return brandProposals?.filter(p => (!p.status || p.status === 'offered') && p.influencer_id === displayUser.id)
         if (status === 'applied') return brandProposals?.filter(p => p.status === 'applied' && p.influencer_id === displayUser.id)
         return brandProposals?.filter(p => p.status === status && p.influencer_id === displayUser.id)
@@ -1678,7 +1783,7 @@ function InfluencerDashboardContent() {
                 return (
                     <div className="flex flex-col gap-6">
                         <div className="flex items-center justify-between">
-                            <h1 className="text-3xl font-bold tracking-tight">내 모먼트 관리</h1>
+                            <h1 className="text-3xl font-bold tracking-tight">내 모먼트 아카이브</h1>
                             <Button className="gap-2" asChild>
                                 <Link href="/creator/new">
                                     <Plus className="h-4 w-4" /> 새 모먼트 만들기
@@ -1883,43 +1988,160 @@ function InfluencerDashboardContent() {
                             </TabsList>
 
                             <TabsContent value="upcoming" className="mt-6 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {upcomingMoments.length > 0 ? (
-                                        upcomingMoments.map((moment: any) => (
-                                            <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500" onClick={() => handleOpenDetails(moment, 'moment')}>
-                                                <CardContent className="p-4 space-y-4">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700">
-                                                                <CalendarIcon className="h-5 w-5" />
+                                {selectedMomentId ? (
+                                    <div className="grid gap-6 md:grid-cols-[2fr_1fr] animate-in slide-in-from-bottom-4 duration-500">
+                                        {/* Left: Moment Details */}
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Button variant="ghost" size="sm" onClick={() => setSelectedMomentId(null)} className="h-8">
+                                                    <ChevronRight className="h-4 w-4 rotate-180 mr-1" /> 목록으로
+                                                </Button>
+                                            </div>
+                                            {/* Find the selected moment */}
+                                            {upcomingMoments.find(e => e.id === selectedMomentId) && (
+                                                <Card className="p-6 border-l-4 border-l-primary shadow-md">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <span className="text-xs font-semibold text-primary mb-1 block">
+                                                                {upcomingMoments.find(e => e.id === selectedMomentId)?.category}
+                                                            </span>
+                                                            <h2 className="text-2xl font-bold">
+                                                                {upcomingMoments.find(e => e.id === selectedMomentId)?.event}
+                                                            </h2>
+                                                        </div>
+                                                        <Button variant="outline" size="sm" asChild>
+                                                            <Link href={`/creator/edit/${selectedMomentId}`}>
+                                                                수정하기
+                                                            </Link>
+                                                        </Button>
+                                                    </div>
+                                                    <p className="text-muted-foreground mb-6 whitespace-pre-wrap leading-relaxed bg-muted/30 p-4 rounded-md">
+                                                        {upcomingMoments.find(e => e.id === selectedMomentId)?.description}
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                                        <div className="bg-muted/50 p-3 rounded-md">
+                                                            <span className="text-muted-foreground block mb-1">일정</span>
+                                                            <span className="font-semibold">{upcomingMoments.find(e => e.id === selectedMomentId)?.date}</span>
+                                                        </div>
+                                                        <div className="bg-muted/50 p-3 rounded-md">
+                                                            <span className="text-muted-foreground block mb-1">광고 가능 아이템</span>
+                                                            <span className="font-semibold">{upcomingMoments.find(e => e.id === selectedMomentId)?.targetProduct}</span>
+                                                        </div>
+                                                    </div>
+                                                </Card>
+                                            )}
+                                        </div>
+
+                                        {/* Right: Proposals List */}
+                                        <div className="space-y-4">
+                                            <h3 className="font-semibold text-lg flex items-center gap-2">
+                                                <Briefcase className="h-5 w-5 text-primary" />
+                                                도착한 제안
+                                            </h3>
+                                            <div className="space-y-3">
+                                                {filteredProposalsByMoment.length > 0 ? (
+                                                    filteredProposalsByMoment.map((proposal: any) => (
+                                                        <Card
+                                                            key={proposal.id}
+                                                            className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all group"
+                                                            onClick={() => {
+                                                                setChatProposal(proposal)
+                                                                setIsChatOpen(true)
+                                                            }}
+                                                        >
+                                                            <div className="flex items-start justify-between mb-2">
+                                                                <div className="font-bold text-sm truncate pr-2">
+                                                                    {proposal.brand_name || "익명 브랜드"}
+                                                                </div>
+                                                                <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground">
+                                                                    {new Date(proposal.created_at).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-sm font-medium text-emerald-600 mb-1">
+                                                                {proposal.product_name}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground line-clamp-2">
+                                                                "{proposal.message}"
+                                                            </p>
+                                                            <div className="mt-3 text-xs w-full text-right text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                                                                자세히 보기 →
+                                                            </div>
+                                                        </Card>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-center py-8 border border-dashed rounded-lg text-muted-foreground text-sm">
+                                                        아직 도착한 제안이 없습니다.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {upcomingMoments.length > 0 ? (
+                                                upcomingMoments.map((moment: any) => (
+                                                    <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500" onClick={() => setSelectedMomentId(moment.id)}>
+                                                        <CardContent className="p-4 space-y-4">
+                                                            <div className="flex justify-between items-start">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700">
+                                                                        <CalendarIcon className="h-5 w-5" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="font-bold">{moment.event}</div>
+                                                                        <div className="text-xs text-muted-foreground">{moment.date}</div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Badge variant="outline">{moment.category}</Badge>
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                                                                <MoreVertical className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent align="end">
+                                                                            <DropdownMenuItem onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                router.push(`/creator/edit/${moment.id}`)
+                                                                            }}>
+                                                                                <Pencil className="mr-2 h-4 w-4" /> 수정하기
+                                                                            </DropdownMenuItem>
+                                                                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
+                                                                                    deleteEvent(moment.id)
+                                                                                }
+                                                                            }}>
+                                                                                <Trash2 className="mr-2 h-4 w-4" /> 삭제하기
+                                                                            </DropdownMenuItem>
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
+                                                                </div>
                                                             </div>
                                                             <div>
-                                                                <div className="font-bold">{moment.event}</div>
-                                                                <div className="text-xs text-muted-foreground">{moment.date}</div>
+                                                                <p className="font-medium text-sm text-slate-600">{moment.targetProduct || "제품 미정"}</p>
+                                                                <div className="flex gap-1 mt-2 flex-wrap">
+                                                                    {moment.tags?.map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                        <Badge variant="outline">{moment.category}</Badge>
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-sm text-slate-600">{moment.targetProduct || "제품 미정"}</p>
-                                                        <div className="flex gap-1 mt-2 flex-wrap">
-                                                            {moment.tags?.map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))
-                                    ) : (
-                                        <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                            다가오는 모먼트가 없습니다.
+                                                        </CardContent>
+                                                    </Card>
+                                                ))
+                                            ) : (
+                                                <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
+                                                    다가오는 모먼트가 없습니다.
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                                <div className="flex justify-end">
-                                    <Button asChild>
-                                        <Link href="/creator/new"><Plus className="mr-2 h-4 w-4" />새 모먼트 만들기</Link>
-                                    </Button>
-                                </div>
+                                        <div className="flex justify-end">
+                                            <Button asChild>
+                                                <Link href="/creator/new"><Plus className="mr-2 h-4 w-4" />새 모먼트 만들기</Link>
+                                            </Button>
+                                        </div>
+                                    </>
+                                )}
                             </TabsContent>
 
                             <TabsContent value="past" className="mt-6 space-y-4">
@@ -1938,7 +2160,26 @@ function InfluencerDashboardContent() {
                                                                 <div className="text-xs text-muted-foreground">{moment.date}</div>
                                                             </div>
                                                         </div>
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-200">종료됨</Badge>
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge variant="outline" className="text-slate-400 border-slate-200">종료됨</Badge>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                                                        <MoreVertical className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        if (confirm("정말로 이 기록을 삭제하시겠습니까? (되돌릴 수 없습니다)")) {
+                                                                            deleteEvent(moment.id)
+                                                                        }
+                                                                    }}>
+                                                                        <Trash2 className="mr-2 h-4 w-4" /> 기록 삭제
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <p className="font-medium text-sm text-slate-500">{moment.targetProduct}</p>
@@ -2004,7 +2245,7 @@ function InfluencerDashboardContent() {
 
                         <div className="flex justify-end mt-4">
                             <Button asChild>
-                                <Link href="/creator/campaigns">
+                                <Link href="/creator/products">
                                     <Search className="mr-2 h-4 w-4" /> 새로운 캠페인 찾기
                                 </Link>
                             </Button>
@@ -2080,7 +2321,7 @@ function InfluencerDashboardContent() {
                             <p className="text-muted-foreground">브랜드와 진행 중인 모든 협업을 한곳에서 관리하세요.</p>
                         </div>
 
-                        <Tabs defaultValue="active" className="w-full">
+                        <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="w-full">
                             <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
                                 <TabsTrigger value="all" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-slate-700 font-medium transition-all">
                                     전체 보기 <span className="ml-2 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
@@ -2892,7 +3133,7 @@ function InfluencerDashboardContent() {
         setSelectedCampaign(campaign)
         setAppealMessage(`안녕하세요! ${campaign.brand}의 ${campaign.product} 캠페인에 제안하고 싶습니다.\n\n[제안 내용]\n`)
         setDesiredCost("")
-        setApplyModalOpen(true)
+        setIsApplyDialogOpen(true)
     }
 
     const handleProductApply = (product: any) => {
@@ -2968,7 +3209,7 @@ function InfluencerDashboardContent() {
                 alert(result.error)
             } else {
                 alert("지원서가 성공적으로 발송되었습니다!")
-                setApplyModalOpen(false)
+                setIsApplyDialogOpen(false)
             }
         } catch (error) {
             console.error("Application error:", error)
@@ -2978,6 +3219,14 @@ function InfluencerDashboardContent() {
         }
     }
 
+
+    if (!displayUser || isLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-muted/30">
@@ -3046,9 +3295,16 @@ function InfluencerDashboardContent() {
                     {renderContent()}
 
                     {/* Render the Dialog */}
+                    {/* AI Plan Modal */}
+                    <AIPlanModal
+                        isOpen={isAIPlanModalOpen}
+                        onOpenChange={setIsAIPlanModalOpen}
+                        planContent={aiPlanResult}
+                    />
+
                     <ApplyDialog
-                        open={applyModalOpen}
-                        onOpenChange={setApplyModalOpen}
+                        open={isApplyDialogOpen}
+                        onOpenChange={setIsApplyDialogOpen}
                         selectedCampaign={selectedCampaign}
                         appealMessage={appealMessage}
                         setAppealMessage={setAppealMessage}
@@ -3056,7 +3312,9 @@ function InfluencerDashboardContent() {
                         setDesiredCost={setDesiredCost}
                         onSubmit={handleSubmitApplication}
                         isApplying={isApplying}
-                        onClose={() => setApplyModalOpen(false)}
+                        onClose={() => setIsApplyDialogOpen(false)}
+                        onGenerateAIPlan={handleGenerateAIPlan}
+                        isAIPlanning={isAIPlanning}
                     />
 
                     {/* Chat Dialog ... existing code ... */}

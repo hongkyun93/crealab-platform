@@ -48,6 +48,7 @@ export type Campaign = {
     budget: string
     target: string
     description: string
+    image?: string
     matchScore?: number // Mock score
     date: string // Created date
     eventDate?: string
@@ -319,8 +320,8 @@ interface PlatformContextType {
     deleteCampaign: (id: string | number) => void
     events: InfluencerEvent[]
     addEvent: (event: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">) => Promise<boolean>
-    updateEvent: (id: string, data: Partial<InfluencerEvent>) => Promise<void>
-    deleteEvent: (id: string) => Promise<void>
+    updateEvent: (id: string, data: Partial<InfluencerEvent>) => Promise<boolean>
+    deleteEvent: (id: string) => Promise<boolean>
 
     products: Product[]
     addProduct: (product: Omit<Product, "id" | "brandId" | "brandName">) => void
@@ -1116,11 +1117,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             console.log('[updateUser] Sending profile update to Supabase...', profileUpdates)
 
-            // CRITICAL FIX: Use update instead of upsert for existing profiles to avoid RLS/Conflict issues
+            // CRITICAL FIX: Use upsert to ensure profile exists
             const { error: profileError } = await supabase
                 .from('profiles')
-                .update(profileUpdates)
-                .eq('id', user.id)
+                .upsert({
+                    id: user.id,
+                    ...profileUpdates
+                }, { onConflict: 'id' })
 
             if (profileError) {
                 console.error('[updateUser] Profile update DB error:', profileError)
@@ -1363,7 +1366,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         return false
     }
 
-    const updateEvent = async (id: string, updatedData: Partial<InfluencerEvent>) => {
+    const updateEvent = async (id: string, updatedData: Partial<InfluencerEvent>): Promise<boolean> => {
         const prevEvents = [...events]
         // Optimistic Update
         setEvents(prev => prev.map(event => event.id === id ? { ...event, ...updatedData } : event))
@@ -1380,7 +1383,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             if (!targetId) {
                 console.error("[updateEvent] No active session found.");
-                return;
+                setEvents(prevEvents) // Revert optimistic update
+                alert("이벤트 수정에 실패했습니다: 로그인 세션이 없습니다.")
+                return false;
             }
 
             // Map common fields to DB columns
@@ -1411,19 +1416,27 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 throw error
             }
 
+            if (!data || data.length === 0) {
+                console.error('[updateEvent] Update returned no data using id:', id)
+                // This implies RLS or ID mismatch
+                throw new Error("업데이트된 데이터가 없습니다. (권한 문제 가능성)")
+            }
+
             console.log('[updateEvent] Update success:', data)
 
-            // Force refresh to ensure sync, especially for derived fields
-            if (user?.id) fetchEvents(user.id)
+            // Force refresh to ensure sync
+            if (targetId) await fetchEvents(targetId)
+            return true
 
         } catch (e) {
             console.error("Failed to update event:", e)
             setEvents(prevEvents) // Revert
             alert("이벤트 수정에 실패했습니다.")
+            return false
         }
     }
 
-    const deleteEvent = async (id: string) => {
+    const deleteEvent = async (id: string): Promise<boolean> => {
         // Robust check: If user state is not ready, try explicit session check
         let targetId = user?.id;
         if (!targetId) {
@@ -1433,7 +1446,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
         if (!targetId) {
             console.error("[deleteEvent] No active session found.");
-            return;
+            return false;
         }
 
         const prevEvents = [...events]
@@ -1446,10 +1459,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .eq('id', id)
 
             if (error) throw error
+
+            if (targetId) await fetchEvents(targetId)
+            return true
         } catch (e) {
             console.error("Failed to delete event:", e)
             setEvents(prevEvents) // Revert
-            throw e
+            alert("이벤트 삭제에 실패했습니다.")
+            // throw e // Don't throw, return false
+            return false
         }
     }
 
@@ -1965,7 +1983,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .insert({
                     ...proposalData,
                     status: 'offered',
-                    is_mock: user.isMock || false
+                    is_mock: isMockUser
                 })
                 .select()
                 .single()
@@ -2007,7 +2025,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 .insert({
                     proposal_id: proposalId || null, // Ensure explicit null if undefined
                     brand_proposal_id: brandProposalId || null,
-                    sender_id: user.id,
+                    sender_id: senderId,
                     receiver_id: toUserId,
                     content
                 })
@@ -2018,15 +2036,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             const newMessage: Message = {
                 id: data.id,
-                senderId: user.id,
+                senderId: senderId,
                 receiverId: toUserId,
                 proposalId: proposalId,
                 brandProposalId: brandProposalId,
                 content,
                 timestamp: data.created_at,
                 read: false,
-                senderName: user.name,
-                senderAvatar: user.avatar,
+                senderName: senderName,
+                senderAvatar: senderAvatar,
                 isMock: false
             }
             setMessages(prev => [...prev, newMessage])

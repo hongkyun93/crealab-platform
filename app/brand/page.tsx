@@ -117,8 +117,7 @@ function BrandDashboardContent() {
         refreshData()
     }, []) // Stable refresh once on mount
 
-    const displayUser = user || MOCK_BRAND_USER
-
+    const displayUser = user
 
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -350,6 +349,9 @@ function BrandDashboardContent() {
                 "proposal_update",
                 pId
             );
+
+            // Force refresh to update dashboard lists (e.g., move to 'confirmed' status)
+            if (refreshData) await refreshData();
 
         } catch (error) {
             console.error("Condition Confirmation Error:", error);
@@ -706,14 +708,6 @@ function BrandDashboardContent() {
             setEditAddress(displayUser.address || "")
         }
     }, [displayUser])
-
-    useEffect(() => {
-        if (!isLoading && !user) {
-            // router.push('/login') // Guest browsing allowed
-        } else if (user && user.type === 'influencer' && user.id !== 'guest_influencer') {
-            router.push('/creator')
-        }
-    }, [user, router, isLoading])
 
     // Sync view with URL
     useEffect(() => {
@@ -1432,29 +1426,36 @@ function BrandDashboardContent() {
                                         >
                                             <div className="flex flex-col md:flex-row">
                                                 {/* Main Content */}
-                                                <div className="flex-1 p-6">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <Badge variant="outline" className="text-xs font-normal">{c.category}</Badge>
-                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status === 'active' ? 'text-emerald-600 bg-emerald-100' : 'text-gray-500 bg-gray-100'}`}>
-                                                            {c.status === 'active' ? '● 모집중' : '● 마감됨'}
-                                                        </span>
-                                                        <span className="text-xs text-muted-foreground ml-auto md:hidden">{new Date(c.date).toLocaleDateString()}</span>
-                                                    </div>
-
-                                                    <h3 className="text-xl font-bold mb-4 group-hover:text-primary transition-colors">{c.product}</h3>
-
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground bg-muted/20 p-4 rounded-lg">
-                                                        <div className="space-y-1">
-                                                            <div className="text-xs font-bold text-foreground">제공 혜택</div>
-                                                            <div className="text-emerald-600 font-bold">{c.budget || "협의"}</div>
+                                                <div className="flex-1 p-6 flex gap-6">
+                                                    {c.image && c.image !== "📦" && (
+                                                        <div className="h-24 w-24 rounded-lg bg-muted/20 border shrink-0 overflow-hidden hidden md:block">
+                                                            <img src={c.image} alt={c.product} className="h-full w-full object-cover" />
                                                         </div>
-                                                        <div className="space-y-1">
-                                                            <div className="text-xs font-bold text-foreground">모집 대상</div>
-                                                            <div>{c.target || "전체"}</div>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <Badge variant="outline" className="text-xs font-normal">{c.category}</Badge>
+                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status === 'active' ? 'text-emerald-600 bg-emerald-100' : 'text-gray-500 bg-gray-100'}`}>
+                                                                {c.status === 'active' ? '● 모집중' : '● 마감됨'}
+                                                            </span>
+                                                            <span className="text-xs text-muted-foreground ml-auto md:hidden">{new Date(c.date).toLocaleDateString()}</span>
                                                         </div>
-                                                        <div className="space-y-1">
-                                                            <div className="text-xs font-bold text-foreground">상세 내용</div>
-                                                            <div className="line-clamp-1 text-xs">{c.description}</div>
+
+                                                        <h3 className="text-xl font-bold mb-4 group-hover:text-primary transition-colors">{c.product}</h3>
+
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground bg-muted/20 p-4 rounded-lg">
+                                                            <div className="space-y-1">
+                                                                <div className="text-xs font-bold text-foreground">제공 혜택</div>
+                                                                <div className="text-emerald-600 font-bold">{c.budget || "협의"}</div>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <div className="text-xs font-bold text-foreground">모집 대상</div>
+                                                                <div>{c.target || "전체"}</div>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <div className="text-xs font-bold text-foreground">상세 내용</div>
+                                                                <div className="line-clamp-1 text-xs">{c.description}</div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
