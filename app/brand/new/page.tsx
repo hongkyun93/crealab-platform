@@ -173,15 +173,6 @@ export default function NewCampaignPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="tags">직접 입력 태그</Label>
-                            <Input
-                                id="tags"
-                                name="tags"
-                                placeholder="추가하고 싶은 태그가 있다면 입력해주세요 (예: #신제품 #런칭)"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
                             <Label htmlFor="target">원하는 크리에이터 스타일</Label>
                             <Input
                                 id="target"

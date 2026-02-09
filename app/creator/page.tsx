@@ -271,7 +271,7 @@ function DetailsModal({
                                         <span className="font-medium">{data.category}</span>
                                     </div>
                                     <div>
-                                        <span className="text-muted-foreground block mb-1">희망 제품</span>
+                                        <span className="text-muted-foreground block mb-1">광고 가능 아이템</span>
                                         <span className="font-medium">{data.targetProduct}</span>
                                     </div>
                                     <div className="col-span-2">
@@ -1723,7 +1723,7 @@ function InfluencerDashboardContent() {
                                                     <span className="font-semibold">{upcomingMoments.find(e => e.id === selectedMomentId)?.date}</span>
                                                 </div>
                                                 <div className="bg-muted/50 p-3 rounded-md">
-                                                    <span className="text-muted-foreground block mb-1">희망 제품</span>
+                                                    <span className="text-muted-foreground block mb-1">광고 가능 아이템</span>
                                                     <span className="font-semibold">{upcomingMoments.find(e => e.id === selectedMomentId)?.targetProduct}</span>
                                                 </div>
                                             </div>
@@ -2363,7 +2363,7 @@ function InfluencerDashboardContent() {
                                             )}
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                 <Gift className="h-3.5 w-3.5 text-primary" />
-                                                <span className="font-medium">희망 제품:</span> {event.targetProduct || "미정"}
+                                                <span className="font-medium">광고 가능 아이템:</span> {event.targetProduct || "미정"}
                                             </div>
                                         </div>
                                     </CardContent>

@@ -18,7 +18,7 @@ const MONTHS = [
 ]
 
 const POPULAR_TAGS = [
-    "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
+    "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
     "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
     "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
     "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
@@ -39,7 +39,6 @@ export default function EditEventPage() {
     const [targetProduct, setTargetProduct] = useState("")
     const [description, setDescription] = useState("")
     const [guide, setGuide] = useState("")
-    const [customTags, setCustomTags] = useState("")
 
     // Load Event Data
     useEffect(() => {
@@ -48,12 +47,25 @@ export default function EditEventPage() {
             const event = events.find(e => String(e.id) === eventId)
 
             if (event) {
-                // Check ownership (simple name check for prototype)
-                // Note: user.name comparison might be flaky if names change, but sticking to prototype logic
-                if (user && event.influencer !== user.name && event.influencerId !== user.id) {
-                    alert("수정 권한이 없습니다.")
-                    router.push("/creator")
-                    return
+                // Check ownership
+                // Relaxed check: Trust ID match primarily. 
+                // Also, if user is not yet loaded (null), we shouldn't redirect yet. 
+                // But this effect runs when [user] changes.
+
+                if (user) {
+                    // Strict ID check is best. Name check is flaky.
+                    // Also allow if user.type is admin (optional, but good for support)
+                    if (event.influencerId !== user.id && user.type !== 'admin') {
+                        console.warn("[EditEvent] Permission denied: ownerId", event.influencerId, "currentUserId", user.id)
+                        alert("수정 권한이 없습니다.")
+                        router.push("/creator")
+                        return
+                    }
+                } else {
+                    // User not loaded yet? 
+                    // ideally we show loading spinner and don't run this check until user is present.
+                    // But for now, let's just return and let the next effect cycle handle it.
+                    return;
                 }
 
                 setTitle(event.event)
@@ -110,12 +122,6 @@ export default function EditEventPage() {
         }
 
         const tags = [...selectedTags]
-        if (customTags) {
-            customTags.split(/[\s,]+/).forEach(t => {
-                const cleanTag = t.replace("#", "").trim()
-                if (cleanTag && !tags.includes(cleanTag)) tags.push(cleanTag)
-            })
-        }
 
         const eventId = String(params.id)
 
@@ -175,11 +181,11 @@ export default function EditEventPage() {
                         </div>
 
                         <div className="space-y-4">
-                            <Label>희망 협찬 제품</Label>
+                            <Label>광고 가능 아이템</Label>
                             <div className="relative">
                                 <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="협찬받고 싶은 제품을 입력하세요 (예: 로봇청소기, 립스틱)"
+                                    placeholder="광고 진행이 가능한 제품이나 브랜드를 입력해주세요 (예: 로봇청소기, 립스틱)"
                                     className="pl-9"
                                     value={targetProduct}
                                     onChange={(e) => setTargetProduct(e.target.value)}
@@ -279,16 +285,6 @@ export default function EditEventPage() {
                                     {selectedTags.length}개 선택됨: {selectedTags.join(", ")}
                                 </p>
                             )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="tags">직접 입력 태그</Label>
-                            <Input
-                                id="tags"
-                                placeholder="추가하고 싶은 태그가 있다면 입력해주세요 (예: #자취 #이사)"
-                                value={customTags}
-                                onChange={(e) => setCustomTags(e.target.value)}
-                            />
                         </div>
 
                         <div className="space-y-2">

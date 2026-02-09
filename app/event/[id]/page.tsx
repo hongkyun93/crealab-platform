@@ -364,7 +364,7 @@ ${u.name}의 담당자입니다.
 
                                 <div>
                                     <p className="text-sm font-semibold mb-2 flex items-center gap-2">
-                                        <Package className="h-4 w-4" /> 희망 제품
+                                        <Package className="h-4 w-4" /> 광고 가능 아이템
                                     </p>
                                     <p className="text-muted-foreground">{event.targetProduct}</p>
                                 </div>

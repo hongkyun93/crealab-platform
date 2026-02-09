@@ -106,7 +106,7 @@ export default function NewEventPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    prompt: title + (targetProduct ? ` (희망 협찬: ${targetProduct})` : ""),
+                    prompt: title + (targetProduct ? ` (광고 가능 아이템: ${targetProduct})` : ""),
                     category: selectedTags[0]
                 }),
             })
@@ -210,11 +210,11 @@ export default function NewEventPage() {
                             </div>
 
                             <div className="space-y-4">
-                                <Label>희망 제품</Label>
+                                <Label>광고 가능 아이템</Label>
                                 <div className="relative">
                                     <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="협찬받고 싶은 제품을 입력하세요 (예: 로봇청소기, 립스틱)"
+                                        placeholder="광고 진행이 가능한 제품이나 브랜드를 입력해주세요 (예: 로봇청소기, 립스틱)"
                                         className="pl-9"
                                         value={targetProduct}
                                         onChange={(e) => setTargetProduct(e.target.value)}
