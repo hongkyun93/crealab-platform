@@ -2286,34 +2286,38 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'submission_feedback' },
                 async (payload) => {
-                    console.log('[Realtime] Submission Feedback INSERT detected');
+                    console.log('[Realtime] Submission Feedback INSERT detected', payload.new);
                     const newFeedback = payload.new;
 
-                    // Fetch sender info and append
+                    // Fetch sender info 
                     const { data: senderData } = await supabase
                         .from('profiles')
                         .select('id, display_name, avatar_url')
                         .eq('id', newFeedback.sender_id)
                         .single();
 
-                    const feedbackWithSender: SubmissionFeedback = {
+                    const feedbackItem: SubmissionFeedback = {
                         id: newFeedback.id,
                         proposal_id: newFeedback.proposal_id,
                         brand_proposal_id: newFeedback.brand_proposal_id,
                         sender_id: newFeedback.sender_id,
                         content: newFeedback.content,
                         created_at: newFeedback.created_at,
-                        sender_name: senderData?.display_name,
+                        sender_name: senderData?.display_name || 'User',
                         sender_avatar: senderData?.avatar_url
                     };
 
                     setSubmissionFeedback(prev => {
-                        if (prev.some(f => f.id === feedbackWithSender.id)) return prev;
-                        return [...prev, feedbackWithSender];
+                        if (prev.some(f => f.id === feedbackItem.id)) return prev;
+                        return [...prev, feedbackItem].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
                     });
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('[Realtime] Connected to channels for user:', user.id)
+                }
+            })
 
         return () => {
             console.log('[Realtime] Cleanup subscriptions')
@@ -2347,7 +2351,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         deleteProposal, createBrandProposal, updateBrandProposal, deleteBrandProposal,
         sendNotification, markAsRead, sendMessage, fetchSubmissionFeedback,
         sendSubmissionFeedback, switchRole, resetData, refreshData, updateCampaignStatus,
-        supabase
+        favorites, toggleFavorite, supabase
     ])
 
     return (
