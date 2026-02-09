@@ -164,6 +164,11 @@ export default function NewEventPage() {
         const tags = [...selectedTags]
 
 
+        const formatToDate = (year: string, monthStr: string) => {
+            const month = monthStr.replace('월', '').padStart(2, '0')
+            return `${year}-${month}-01`
+        }
+
         const success = await addEvent({
             category: selectedTags[0] || "기타",
             event: title,
@@ -172,8 +177,8 @@ export default function NewEventPage() {
             guide: guide,
             tags: tags,
             targetProduct: targetProduct || "미정",
-            eventDate: `${eventYear}년 ${eventMonth}`,
-            postingDate: `${postingYear}년 ${postingMonth}`,
+            eventDate: formatToDate(eventYear, eventMonth),
+            postingDate: formatToDate(postingYear, postingMonth),
             isPrivate: isPrivate,
             schedule: schedule
         })

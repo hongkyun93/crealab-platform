@@ -178,6 +178,7 @@ export type BrandProposal = {
     id: string
     brand_id: string
     influencer_id: string
+    event_id?: string
 
     // Restoring fields that might be used
     product_name?: string
@@ -359,9 +360,8 @@ interface PlatformContextType {
     favorites: Favorite[]
     toggleFavorite: (targetId: string, targetType: 'product' | 'campaign' | 'profile' | 'event') => Promise<void>
 
-
-
     supabase: any
+    isInitialized: boolean
 }
 
 
@@ -2355,6 +2355,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         submissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
         switchRole,
         isLoading: !isInitialized || !isAuthChecked,
+        isInitialized,
         resetData,
         refreshData,
         updateCampaignStatus,

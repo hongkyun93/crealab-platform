@@ -1096,7 +1096,7 @@ function BrandDashboardContent() {
                                             size="sm"
                                             onClick={() => setStatusFilter("upcoming")}
                                         >
-                                            다가오는 모먼트
+                                            나의 모먼트
                                         </Button>
                                         <Button
                                             variant={statusFilter === "past" ? "secondary" : "ghost"}
@@ -1636,66 +1636,23 @@ function BrandDashboardContent() {
                             {/* 1. Active Tab */}
                             <TabsContent value="active" className="space-y-4">
                                 {allActive.map((p: any) => (
-                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-slate-200 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
+                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-green-500 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
                                         <div className="flex justify-between items-start">
                                             <div className="flex gap-6 w-full">
-                                                <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center overflow-hidden border-2 border-slate-100 shrink-0">
-                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : <span className="font-bold text-slate-400 text-lg">{p.influencer_name?.[0]}</span>}
-                                                </div>
-                                                <div className="flex-1 space-y-2">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <h3 className="font-bold text-xl">{p.influencer_name || p.influencerName}</h3>
-                                                                <Badge className="bg-slate-100 text-slate-600 border border-slate-200 font-medium">진행중</Badge>
-                                                            </div>
-                                                            <p className="text-sm text-muted-foreground">{p.campaignName || p.productName || p.product?.name} • {new Date(p.created_at || p.date).toLocaleDateString()}</p>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50" onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setChatProposal(p);
-                                                                setIsChatOpen(true);
-                                                            }}>워크스페이스 입장</Button>
-                                                        </div>
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground">{p.campaignName || p.productName || p.product?.name} • {new Date(p.created_at || p.date).toLocaleDateString()}</p>
-                                                    <div className="flex gap-2 mt-6">
-                                                        {/* 6-Stage Progress Tracker */}
-                                                        <div className="w-full max-w-xl">
-                                                            <WorkspaceProgressBar
-                                                                status={p.status}
-                                                                contract_status={p.contract_status}
-                                                                delivery_status={p.delivery_status}
-                                                                content_submission_status={p.content_submission_status}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <Button size="sm">대화하기</Button>
-                                        </div>
-                                    </Card>
-                                ))}
-                                {allActive.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg">진행 중인 협업이 없습니다.</div>}
-                            </TabsContent>
-
-                            {/* 2. Inbound Tab (Received Proposals) */}
-                            <TabsContent value="inbound" className="space-y-4">
-                                {inboundApplications.map((p: any) => (
-                                    <Card key={p.id} className="p-6 cursor-pointer hover:shadow-md transition-all">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-6">
-                                                <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-100 shrink-0">
-                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : <span className="font-bold text-slate-500 text-lg">{p.influencer_name?.[0]}</span>}
+                                                <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0 overflow-hidden">
+                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="font-bold text-xl">{p.influencer_name}</h3>
-                                                        <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">지원서 도착</Badge>
+                                                    <div className="flex justify-between">
+                                                        <div>
+                                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                                {p.influencer_name}
+                                                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-0">진행중</Badge>
+                                                            </h3>
+                                                            <p className="text-sm text-slate-500">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
+                                                        </div>
+                                                        <span className="text-xs text-slate-400">{new Date(p.created_at || p.date).toLocaleDateString()}</span>
                                                     </div>
-                                                    <p className="text-sm text-muted-foreground mt-1">{p.campaignName} • 희망비용: {p.cost?.toLocaleString()}원</p>
-                                                    <p className="text-sm mt-3 p-3 bg-slate-50 rounded-md text-slate-600 line-clamp-2 border border-slate-100">{p.message}</p>
                                                     <div className="mt-4">
                                                         <WorkspaceProgressBar
                                                             status={p.status}
@@ -1706,34 +1663,35 @@ function BrandDashboardContent() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col gap-2">
-                                                <Button size="sm" onClick={() => handleStatusUpdate(p.id, 'accepted')}>수락하기</Button>
-                                                <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(p.id, 'rejected')}>거절하기</Button>
-                                            </div>
                                         </div>
                                     </Card>
                                 ))}
-                                {inboundApplications.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg">도착한 지원서가 없습니다.</div>}
+                                {allActive.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">진행 중인 협업이 없습니다.</div>}
                             </TabsContent>
 
-                            {/* 3. Outbound Tab (Sent Offers) */}
-                            <TabsContent value="outbound" className="space-y-4">
-                                {outboundOffers.map((p: any) => (
-                                    <Card key={p.id} className="p-6 hover:bg-slate-50 transition-all border-l-4 border-l-slate-200">
+                            {/* 2. Inbound Tab (Received Proposals) */}
+                            <TabsContent value="inbound" className="space-y-4">
+                                {inboundApplications.map((p: any) => (
+                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-blue-500 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
                                         <div className="flex justify-between items-start">
-                                            <div className="flex gap-6">
-                                                <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-100 shrink-0">
-                                                    <span className="font-bold text-slate-500 text-lg">{p.influencer_name?.[0]}</span>
+                                            <div className="flex gap-6 w-full">
+                                                <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0 overflow-hidden">
+                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="font-bold text-xl">{p.influencer_name}</h3>
-                                                        <Badge variant="outline" className="text-muted-foreground">대기중</Badge>
+                                                    <div className="flex justify-between">
+                                                        <div>
+                                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                                {p.influencer_name}
+                                                                <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-200">지원서 도착</Badge>
+                                                            </h3>
+                                                            <p className="text-sm text-slate-500">{p.campaignName || p.productName || "제품 협찬"} • 희망비용: {p.cost?.toLocaleString()}원</p>
+                                                        </div>
+                                                        <span className="text-xs text-slate-400">{new Date(p.created_at).toLocaleDateString()}</span>
                                                     </div>
-                                                    <p className="text-sm text-muted-foreground mt-1">{p.product?.name || p.productName} • 제안일: {new Date(p.created_at).toLocaleDateString()}</p>
                                                     {p.message && (
-                                                        <div className="mt-3 text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 italic">
-                                                            <p className="line-clamp-1">"{p.message}"</p>
+                                                        <div className="mt-3 bg-slate-50 p-3 rounded text-sm text-slate-600 line-clamp-2 border border-slate-100">
+                                                            {p.message}
                                                         </div>
                                                     )}
                                                     <div className="mt-4">
@@ -1746,11 +1704,46 @@ function BrandDashboardContent() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="sm" disabled>응답 대기중</Button>
                                         </div>
                                     </Card>
                                 ))}
-                                {outboundOffers.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg">보낸 제안이 없습니다.</div>}
+                                {inboundApplications.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">도착한 지원서가 없습니다.</div>}
+                            </TabsContent>
+
+                            {/* 3. Outbound Tab (Sent Offers) */}
+                            <TabsContent value="outbound" className="space-y-4">
+                                {outboundOffers.map((p: any) => (
+                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-purple-500 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex gap-6 w-full">
+                                                <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0 overflow-hidden">
+                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between">
+                                                        <div>
+                                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                                {p.influencer_name}
+                                                                <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">제안함</Badge>
+                                                            </h3>
+                                                            <p className="text-sm text-slate-500">{p.product_name || p.productName || "제품 협찬"}</p>
+                                                        </div>
+                                                        <span className="text-xs text-slate-400">{new Date(p.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <WorkspaceProgressBar
+                                                            status={p.status}
+                                                            contract_status={p.contract_status}
+                                                            delivery_status={p.delivery_status}
+                                                            content_submission_status={p.content_submission_status}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                ))}
+                                {outboundOffers.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">보낸 제안이 없습니다.</div>}
                                 <div className="flex justify-end mt-4">
                                     <Button variant="outline" asChild>
                                         <Link href="/brand?view=discover">크리에이터 찾으러 가기</Link>
@@ -1761,19 +1754,24 @@ function BrandDashboardContent() {
                             {/* 4. Rejected Tab (Archive) */}
                             <TabsContent value="rejected" className="space-y-4">
                                 {allRejected.map((p: any) => (
-                                    <Card key={p.id} className="p-6 opacity-75 hover:opacity-100 transition-all bg-slate-50 border-l-4 border-l-slate-200">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex gap-6 items-center">
-                                                <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-200 shrink-0">
-                                                    <X className="h-6 w-6 text-slate-300" />
+                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-red-200 transition-all bg-slate-50 opacity-75 hover:opacity-100" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex gap-6 w-full">
+                                                <div className="h-14 w-14 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-xl shrink-0 overflow-hidden">
+                                                    <X className="h-6 w-6" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="font-bold text-xl text-slate-600 line-through decoration-slate-400">{p.influencer_name || p.influencerName}</h3>
-                                                        <Badge variant="secondary" className="bg-slate-200 text-slate-500">거절됨</Badge>
+                                                    <div className="flex justify-between">
+                                                        <div>
+                                                            <h3 className="font-bold text-lg flex items-center gap-2 text-slate-500 line-through decoration-slate-400">
+                                                                {p.influencer_name || p.influencerName}
+                                                                <Badge variant="secondary" className="bg-slate-200 text-slate-500">거절됨</Badge>
+                                                            </h3>
+                                                            <p className="text-sm text-slate-500">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
+                                                        </div>
+                                                        <span className="text-xs text-slate-400">{new Date(p.created_at || p.date).toLocaleDateString()}</span>
                                                     </div>
-                                                    <p className="text-sm text-slate-500 mt-1">{p.campaignName || p.productName || "상품명 미상"} • {new Date(p.created_at || p.date).toLocaleDateString()}</p>
-                                                    <div className="mt-4">
+                                                    <div className="mt-4 opacity-50">
                                                         <WorkspaceProgressBar
                                                             status={p.status}
                                                             contract_status={p.contract_status}
@@ -1783,35 +1781,32 @@ function BrandDashboardContent() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="sm" onClick={() => {
-                                                if (confirm("이 내역을 완전히 삭제하시겠습니까?")) {
-                                                    // TODO: Implement permanent delete if needed, or just hide
-                                                    alert("기능 준비중입니다.")
-                                                }
-                                            }}>
-                                                <Trash2 className="h-4 w-4 text-slate-400 hover:text-red-500" />
-                                            </Button>
                                         </div>
                                     </Card>
                                 ))}
-                                {allRejected.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg">거절된 내역이 없습니다.</div>}
+                                {allRejected.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">거절된 내역이 없습니다.</div>}
                             </TabsContent>
 
                             {/* 5. Completed Tab */}
                             <TabsContent value="completed" className="space-y-4">
                                 {allCompleted.map((p: any) => (
-                                    <Card key={p.id} className="p-6 opacity-90 hover:opacity-100 transition-all bg-white border-l-4 border-l-slate-200 cursor-pointer" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex gap-6 items-center">
-                                                <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 border-2 border-slate-100 shrink-0">
-                                                    <BadgeCheck className="h-8 w-8" />
+                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-slate-300 border-l-4 border-l-slate-500 transition-all bg-white" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex gap-6 w-full">
+                                                <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl shrink-0 overflow-hidden">
+                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="font-bold text-xl">{p.influencer_name || p.influencerName}</h3>
-                                                        <Badge className="bg-slate-100 text-slate-600 border border-slate-200 font-medium">협업 완료</Badge>
+                                                    <div className="flex justify-between">
+                                                        <div>
+                                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                                {p.influencer_name || p.influencerName}
+                                                                <Badge className="bg-slate-100 text-slate-600 border border-slate-200">완료됨</Badge>
+                                                            </h3>
+                                                            <p className="text-sm text-slate-500">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
+                                                        </div>
+                                                        <span className="text-xs text-slate-400">{new Date(p.completed_at || p.created_at).toLocaleDateString()}</span>
                                                     </div>
-                                                    <p className="text-sm text-slate-500 mt-1">{p.campaignName || p.productName} • {p.completed_at ? new Date(p.completed_at).toLocaleDateString() : '협업 완료'}</p>
                                                     <div className="mt-4">
                                                         <WorkspaceProgressBar
                                                             status={p.status}
@@ -1822,11 +1817,10 @@ function BrandDashboardContent() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50">협업 상세</Button>
                                         </div>
                                     </Card>
                                 ))}
-                                {allCompleted.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg">완료된 협업이 없습니다.</div>}
+                                {allCompleted.length === 0 && <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">완료된 협업이 없습니다.</div>}
                             </TabsContent>
                         </Tabs>
                     </div>
@@ -2892,6 +2886,35 @@ function BrandDashboardContent() {
                                 <div className="flex-1 overflow-hidden flex">
                                     {/* Left Panel: Conditions & Summary (Persistent) */}
                                     <div className="w-[400px] border-r border-slate-200 bg-white overflow-y-auto p-6 space-y-6">
+
+                                        {/* 0. Application Review (For Inbound Proposals) */}
+                                        {(chatProposal?.status === 'pending' || chatProposal?.status === 'viewed') && (
+                                            <div className="p-5 bg-blue-50/50 border border-blue-100 rounded-2xl space-y-4 shadow-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <BadgeCheck className="h-5 w-5 text-blue-600" />
+                                                    <h3 className="font-bold text-lg text-slate-900">지원서 검토</h3>
+                                                </div>
+                                                <p className="text-sm text-slate-600 leading-relaxed">
+                                                    크리에이터가 보낸 지원서입니다. 협업을 진행하시려면 <strong>수락하기</strong>를 눌러주세요.
+                                                </p>
+                                                <div className="flex gap-2 pt-2">
+                                                    <Button
+                                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md font-bold"
+                                                        onClick={() => handleStatusUpdate(chatProposal.id, 'accepted')}
+                                                    >
+                                                        수락하기
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="flex-1 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-100 font-bold text-slate-600"
+                                                        onClick={() => handleStatusUpdate(chatProposal.id, 'rejected')}
+                                                    >
+                                                        거절하기
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="flex items-center gap-2 mb-2">
                                             <BadgeCheck className="h-5 w-5 text-primary" />
                                             <h3 className="font-bold text-lg text-slate-900">협업 조건</h3>
@@ -3824,7 +3847,7 @@ function BrandDashboardContent() {
                 </AlertDialogContent>
             </AlertDialog>
 
-        </div >
+        </div>
     )
 }
 

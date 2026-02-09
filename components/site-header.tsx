@@ -241,17 +241,17 @@ export function SiteHeader() {
                             </DropdownMenu>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" asChild>
+                        <div className="flex items-center gap-2 animate-in fade-in duration-300">
+                            <Button variant="ghost" size="sm" asChild className="hidden md:flex">
                                 <Link href="/login">로그인</Link>
                             </Button>
                             <Button size="sm" asChild>
-                                <Link href="/signup">무료로 시작하기</Link>
+                                <Link href="/login">무료로 시작하기</Link>
                             </Button>
                         </div>
                     )}
-                </div>
-            </div>
-        </header>
+                </div >
+            </div >
+        </header >
     )
 }

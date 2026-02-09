@@ -18,7 +18,7 @@ import {
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical } from "lucide-react"
+import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign } from "@/components/providers/platform-provider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -26,6 +26,7 @@ import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
 import SignatureCanvas from 'react-signature-canvas'
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
     Dialog,
@@ -525,7 +526,7 @@ function InfluencerDashboardContent() {
         messages, sendMessage,
         deleteEvent, proposals, updateProposal,
         products, switchRole, updateEvent, supabase,
-        favorites, toggleFavorite
+        favorites, toggleFavorite, isInitialized
     } = usePlatform()
 
     const router = useRouter()
@@ -540,6 +541,7 @@ function InfluencerDashboardContent() {
     const [chatMessage, setChatMessage] = useState("")
     const [generatedContract, setGeneratedContract] = useState("")
     const [isGeneratingContract, setIsGeneratingContract] = useState(false)
+    const [isAddEventOpen, setIsAddEventOpen] = useState(false)
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
     const [favoritesOnly, setFavoritesOnly] = useState(false)
 
@@ -730,11 +732,42 @@ function InfluencerDashboardContent() {
 
 
     // Filter events (Admins see all, users see theirs)
-    // Filter events (Admins see all, users see theirs)
     const displayEvents = displayUser?.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
+
+    // Date-based filtering for refined UI
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Date-based filtering with robust parsing
+    const parseEventDate = (dateStr: string) => {
+        if (!dateStr) return new Date(0); // Return epoch if invalid
+        // Handle "YYYY년 M월" format
+        if (dateStr.includes('년') && dateStr.includes('월')) {
+            const parts = dateStr.match(/(\d+)년\s*(\d+)월/);
+            if (parts) {
+                return new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, 1);
+            }
+        }
+        return new Date(dateStr);
+    }
+
+    const activeMoments = displayEvents.filter((e: any) => {
+        const eventDate = parseEventDate(e.eventDate)
+        eventDate.setHours(0, 0, 0, 0)
+        return eventDate < today && e.status !== 'completed'
+    })
+
+    const myMoments = displayEvents.filter((e: any) => {
+        const eventDate = parseEventDate(e.eventDate)
+        eventDate.setHours(0, 0, 0, 0)
+        return eventDate >= today && e.status !== 'completed'
+    })
+
     const pastMoments = displayEvents.filter((e: any) => e.status === 'completed')
-    const upcomingMoments = displayEvents.filter((e: any) => e.status !== 'completed')
-    const myEvents = events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle) // For personal stats
+    const myEvents = events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
+
+    // Compatibility for upstream code using upcomingMoments
+    const upcomingMoments = [...activeMoments, ...myMoments];
 
     const filteredProposalsByMoment = selectedMomentId
         ? (brandProposals?.filter((p: any) => p.event_id === selectedMomentId) || [])
@@ -1228,14 +1261,111 @@ function InfluencerDashboardContent() {
 
     const discoverEvents = getFilteredAndSortedEvents()
 
-    // Initialize state when user loads or view changes
+
+    // ... existing state ...
+    const [selectedMoment, setSelectedMoment] = useState<InfluencerEvent | null>(null)
+
+    // ... existing useEffects ...
+
+    // Notification Navigation Logic
+    useEffect(() => {
+        const proposalId = searchParams.get('proposalId')
+        if (proposalId && !isLoading && isInitialized) {
+            // Check Inbound (Brand Proposals) first
+            const inbound = brandProposals.find(p => p.id === proposalId)
+            if (inbound) {
+                console.log('[NotificationNav] Found Inbound Proposal:', proposalId)
+                setCurrentView('inbound_list')
+                setChatProposal(inbound)
+                setIsChatOpen(true)
+                return
+            }
+
+            // Check Outbound (Campaign Applications)
+            const outbound = proposals.find(p => p.id === proposalId)
+            if (outbound) {
+                console.log('[NotificationNav] Found Outbound Proposal:', proposalId)
+                setCurrentView('campaigns_list')
+                // For campaign applications, we might need a different view state or just open chat if supported
+                // Currently campaigns_list opens details. Let's try to open the chat associated with it if possible.
+                // Or just highlight it. For now, swiching view is good.
+                // If we have a way to open chat for outbound:
+                // setChatProposal(outbound) // This depends on if chatProposal supports outbound types
+            }
+        }
+    }, [searchParams, isLoading, isInitialized, brandProposals, proposals])
+
+
+    // ... inside renderContent case 'moments_list' ...
+    {/* Combined/Upcoming Moments */ }
+    <TabsContent value="combined" className="mt-0 space-y-4">
+        {activeMoments.length === 0 && myMoments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-100">
+                <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                    <Calendar className="h-8 w-8 text-slate-300" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 mb-1">진행 중인 일정이 없어요</h3>
+                <p className="text-slate-400 text-sm mb-6">나의 모먼트를 등록하고 협업 제안을 받아보세요!</p>
+                <Button asChild>
+                    <Link href="/creator/new"><Plus className="mr-2 h-4 w-4" />첫 모먼트 등록하기</Link>
+                </Button>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...activeMoments, ...myMoments].map(moment => (
+                    <div
+                        key={moment.id}
+                        className="bg-white p-4 rounded-xl border hover:border-indigo-500 cursor-pointer transition-all hover:shadow-md group relative"
+                        onClick={() => setSelectedMoment(moment)}
+                    >
+                        <div className="flex items-start justify-between mb-3">
+                            <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                                {moment.category}
+                            </Badge>
+                            <div className="flex items-center gap-2">
+                                {moment.targetProduct && (
+                                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                                        {moment.targetProduct}
+                                        {moment.verified ? ' ✅' : ''}
+                                    </Badge>
+                                )}
+                                {moment.status === 'completed' && <Badge variant="secondary">완료됨</Badge>}
+                            </div>
+                        </div>
+
+                        <h3 className="font-bold text-lg text-slate-900 line-clamp-1 mb-2 group-hover:text-indigo-600 transition-colors">
+                            {moment.title}
+                        </h3>
+
+                        <p className="text-sm text-slate-500 line-clamp-2 mb-4 h-10">
+                            {moment.description}
+                        </p>
+
+                        <div className="flex items-center justify-between text-xs text-slate-500 border-t pt-3">
+                            <div className="flex items-center gap-1">
+                                <span>🗓️</span>
+                                <span>{moment.eventDate || '일정 미정'}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <span>📥</span>
+                                <span className="font-medium text-slate-700">
+                                    {brandProposals.filter(p => p.event_id === moment.id).length} 제안
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+    </TabsContent>
+
+    {/* Sync Profile Data to Edit Form */ }
     useEffect(() => {
         if (displayUser) {
             setEditName(displayUser.name || "")
             setEditBio(displayUser.bio || "")
             setEditHandle(displayUser.handle || "")
             setEditFollowers(displayUser.followers?.toString() || "")
-            setEditPhone(displayUser.phone || "")
             setEditPhone(displayUser.phone || "")
             setEditAddress(displayUser.address || "")
             setEditPriceVideo(displayUser.priceVideo?.toString() || "")
@@ -1802,37 +1932,39 @@ function InfluencerDashboardContent() {
                                         </Button>
                                     </div>
                                     {/* Find the selected moment */}
-                                    {upcomingMoments.find(e => e.id === selectedMomentId) && (
-                                        <Card className="p-6 border-l-4 border-l-primary shadow-md">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <span className="text-xs font-semibold text-primary mb-1 block">
-                                                        {upcomingMoments.find(e => e.id === selectedMomentId)?.category}
-                                                    </span>
-                                                    <h2 className="text-2xl font-bold">
-                                                        {upcomingMoments.find(e => e.id === selectedMomentId)?.event}
-                                                    </h2>
-                                                </div>
-                                                <Button variant="outline" size="sm" asChild>
-                                                    <Link href={`/creator/edit/${selectedMomentId}`}>
-                                                        수정하기
-                                                    </Link>
-                                                </Button>
-                                            </div>
-                                            <p className="text-muted-foreground mb-6 whitespace-pre-wrap leading-relaxed bg-muted/30 p-4 rounded-md">
-                                                {upcomingMoments.find(e => e.id === selectedMomentId)?.description}
-                                            </p>
-                                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                                <div className="bg-muted/50 p-3 rounded-md">
-                                                    <span className="text-muted-foreground block mb-1">일정</span>
-                                                    <span className="font-semibold">{upcomingMoments.find(e => e.id === selectedMomentId)?.date}</span>
-                                                </div>
-                                                <div className="bg-muted/50 p-3 rounded-md">
-                                                    <span className="text-muted-foreground block mb-1">광고 가능 아이템</span>
-                                                    <span className="font-semibold">{upcomingMoments.find(e => e.id === selectedMomentId)?.targetProduct}</span>
+                                    {myMoments.find(e => e.id === selectedMomentId) && (
+                                        <div className="space-y-6">
+                                            <div className="flex justify-between items-start">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="text-emerald-600 border-emerald-100 bg-emerald-50">
+                                                            {myMoments.find(e => e.id === selectedMomentId)?.category}
+                                                        </Badge>
+                                                    </div>
+                                                    <h3 className="text-xl font-bold">
+                                                        {myMoments.find(e => e.id === selectedMomentId)?.event}
+                                                    </h3>
                                                 </div>
                                             </div>
-                                        </Card>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="p-3 bg-slate-50 rounded-xl space-y-1 text-center">
+                                                    <div className="text-xs text-slate-400 flex items-center justify-center gap-1.5"><Calendar className="h-3 w-3" /> 일정</div>
+                                                    <span className="font-semibold">{myMoments.find(e => e.id === selectedMomentId)?.date}</span>
+                                                </div>
+                                                <div className="p-3 bg-slate-50 rounded-xl space-y-1 text-center">
+                                                    <div className="text-xs text-slate-400 flex items-center justify-center gap-1.5"><Package className="h-3 w-3" /> 희망 제품</div>
+                                                    <span className="font-semibold">{myMoments.find(e => e.id === selectedMomentId)?.targetProduct}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <h4 className="text-sm font-bold text-slate-800">모먼트 소개</h4>
+                                                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                                                    {myMoments.find(e => e.id === selectedMomentId)?.description}
+                                                </p>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
 
@@ -1884,7 +2016,7 @@ function InfluencerDashboardContent() {
                             <>
                                 {/* 1. Stats Overview Section */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                                    {/* Box 1: My Moment Archive (Was Moment Management) */}
+                                    {/* Box 1: My Moment Archive */}
                                     <div
                                         className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-emerald-100 rounded-xl shadow-sm hover:shadow-md hover:border-emerald-300 cursor-pointer transition-all group"
                                         onClick={() => setCurrentView('moments_list')}
@@ -1892,33 +2024,37 @@ function InfluencerDashboardContent() {
                                         <div className="p-4 rounded-full bg-emerald-100/50 text-emerald-600 mb-4 group-hover:scale-110 transition-transform">
                                             <Calendar className="h-8 w-8" />
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-lg font-bold text-slate-700">내 모먼트 아카이브</h3>
-                                            <Badge className="bg-emerald-600 text-white text-md px-2 py-0.5 hover:bg-emerald-700">
-                                                {upcomingMoments.length + pastMoments.length}건
-                                            </Badge>
+                                        <div className="flex flex-col items-center gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-lg font-bold text-slate-700">내 모먼트 아카이브</h3>
+                                                <Badge className="bg-emerald-600 text-white text-md px-2 py-0.5 hover:bg-emerald-700">
+                                                    {activeMoments.length + myMoments.length + pastMoments.length}건
+                                                </Badge>
+                                            </div>
+                                            <p className="text-xs text-slate-400">나의 모먼트 / 지난 모먼트</p>
                                         </div>
-                                        <p className="text-xs text-slate-400 mt-2">다가오는/지난 모먼트</p>
                                     </div>
 
-                                    {/* Box 2: My Campaign Archive (Was Campaign Management) */}
+                                    {/* Box 2: My Campaign Archive */}
                                     <div
-                                        className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all group"
+                                        className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all group"
                                         onClick={() => setCurrentView('campaigns_list')}
                                     >
                                         <div className="p-4 rounded-full bg-slate-100 text-slate-600 mb-4 group-hover:scale-110 transition-transform">
                                             <Megaphone className="h-8 w-8" />
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-lg font-bold text-slate-700">내 캠페인 아카이브</h3>
-                                            <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-md px-2 py-0.5">
-                                                {outboundApplications.length}건
-                                            </Badge>
+                                        <div className="flex flex-col items-center gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-lg font-bold text-slate-700">내 캠페인 아카이브</h3>
+                                                <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-md px-2 py-0.5">
+                                                    {outboundApplications.length}건
+                                                </Badge>
+                                            </div>
+                                            <p className="text-xs text-slate-400">나의 지원 현황</p>
                                         </div>
-                                        <p className="text-xs text-slate-400 mt-2">나의 지원 현황</p>
                                     </div>
 
-                                    {/* Box 3: Received Proposal Archive (Was Received Proposals) */}
+                                    {/* Box 3: Received Proposal Archive */}
                                     <div
                                         className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-slate-300 cursor-pointer transition-all group"
                                         onClick={() => setCurrentView('inbound_list')}
@@ -1926,13 +2062,15 @@ function InfluencerDashboardContent() {
                                         <div className="p-4 rounded-full bg-slate-100 text-slate-400 mb-4 group-hover:scale-110 transition-transform">
                                             <Bell className="h-8 w-8" />
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-lg font-bold text-slate-500">받은 제안 아카이브</h3>
-                                            <Badge variant="outline" className="text-slate-500 border-slate-300 text-md px-2 py-0.5">
-                                                {inboundProposals.length}건
-                                            </Badge>
+                                        <div className="flex flex-col items-center gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-lg font-bold text-slate-500">받은 제안 아카이브</h3>
+                                                <Badge variant="outline" className="text-slate-500 border-slate-300 text-md px-2 py-0.5">
+                                                    {inboundProposals.length}건
+                                                </Badge>
+                                            </div>
+                                            <p className="text-xs text-slate-400">브랜드 직접 제안</p>
                                         </div>
-                                        <p className="text-xs text-slate-400 mt-2">브랜드 직접 제안</p>
                                     </div>
                                 </div>
 
@@ -1952,7 +2090,7 @@ function InfluencerDashboardContent() {
                                     <div className="flex-1 p-6">
                                         <CalendarView
                                             activeMoments={allActive}
-                                            upcomingMoments={upcomingMoments}
+                                            myMoments={myMoments}
                                             pastMoments={allCompleted}
                                             onSelectEvent={(event) => {
                                                 if (event.type === 'upcoming') {
@@ -1983,166 +2121,44 @@ function InfluencerDashboardContent() {
 
                         <Tabs defaultValue="upcoming" className="w-full">
                             <TabsList className="w-full md:w-auto grid grid-cols-2">
-                                <TabsTrigger value="upcoming">다가오는 모먼트 ({upcomingMoments.length})</TabsTrigger>
+                                <TabsTrigger value="upcoming">나의 모먼트 ({activeMoments.length + myMoments.length})</TabsTrigger>
                                 <TabsTrigger value="past">지나간 모먼트 ({pastMoments.length})</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="upcoming" className="mt-6 space-y-4">
-                                {selectedMomentId ? (
-                                    <div className="grid gap-6 md:grid-cols-[2fr_1fr] animate-in slide-in-from-bottom-4 duration-500">
-                                        {/* Left: Moment Details */}
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Button variant="ghost" size="sm" onClick={() => setSelectedMomentId(null)} className="h-8">
-                                                    <ChevronRight className="h-4 w-4 rotate-180 mr-1" /> 목록으로
-                                                </Button>
-                                            </div>
-                                            {/* Find the selected moment */}
-                                            {upcomingMoments.find(e => e.id === selectedMomentId) && (
-                                                <Card className="p-6 border-l-4 border-l-primary shadow-md">
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <div>
-                                                            <span className="text-xs font-semibold text-primary mb-1 block">
-                                                                {upcomingMoments.find(e => e.id === selectedMomentId)?.category}
-                                                            </span>
-                                                            <h2 className="text-2xl font-bold">
-                                                                {upcomingMoments.find(e => e.id === selectedMomentId)?.event}
-                                                            </h2>
-                                                        </div>
-                                                        <Button variant="outline" size="sm" asChild>
-                                                            <Link href={`/creator/edit/${selectedMomentId}`}>
-                                                                수정하기
-                                                            </Link>
-                                                        </Button>
-                                                    </div>
-                                                    <p className="text-muted-foreground mb-6 whitespace-pre-wrap leading-relaxed bg-muted/30 p-4 rounded-md">
-                                                        {upcomingMoments.find(e => e.id === selectedMomentId)?.description}
-                                                    </p>
-                                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                                        <div className="bg-muted/50 p-3 rounded-md">
-                                                            <span className="text-muted-foreground block mb-1">일정</span>
-                                                            <span className="font-semibold">{upcomingMoments.find(e => e.id === selectedMomentId)?.date}</span>
-                                                        </div>
-                                                        <div className="bg-muted/50 p-3 rounded-md">
-                                                            <span className="text-muted-foreground block mb-1">광고 가능 아이템</span>
-                                                            <span className="font-semibold">{upcomingMoments.find(e => e.id === selectedMomentId)?.targetProduct}</span>
-                                                        </div>
-                                                    </div>
-                                                </Card>
-                                            )}
-                                        </div>
-
-                                        {/* Right: Proposals List */}
-                                        <div className="space-y-4">
-                                            <h3 className="font-semibold text-lg flex items-center gap-2">
-                                                <Briefcase className="h-5 w-5 text-primary" />
-                                                도착한 제안
-                                            </h3>
-                                            <div className="space-y-3">
-                                                {filteredProposalsByMoment.length > 0 ? (
-                                                    filteredProposalsByMoment.map((proposal: any) => (
-                                                        <Card
-                                                            key={proposal.id}
-                                                            className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all group"
-                                                            onClick={() => {
-                                                                setChatProposal(proposal)
-                                                                setIsChatOpen(true)
-                                                            }}
-                                                        >
-                                                            <div className="flex items-start justify-between mb-2">
-                                                                <div className="font-bold text-sm truncate pr-2">
-                                                                    {proposal.brand_name || "익명 브랜드"}
-                                                                </div>
-                                                                <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground">
-                                                                    {new Date(proposal.created_at).toLocaleDateString()}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-sm font-medium text-emerald-600 mb-1">
-                                                                {proposal.product_name}
-                                                            </p>
-                                                            <p className="text-xs text-muted-foreground line-clamp-2">
-                                                                "{proposal.message}"
-                                                            </p>
-                                                            <div className="mt-3 text-xs w-full text-right text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium">
-                                                                자세히 보기 →
-                                                            </div>
-                                                        </Card>
-                                                    ))
-                                                ) : (
-                                                    <div className="text-center py-8 border border-dashed rounded-lg text-muted-foreground text-sm">
-                                                        아직 도착한 제안이 없습니다.
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {upcomingMoments.length > 0 ? (
-                                                upcomingMoments.map((moment: any) => (
-                                                    <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500" onClick={() => setSelectedMomentId(moment.id)}>
-                                                        <CardContent className="p-4 space-y-4">
-                                                            <div className="flex justify-between items-start">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700">
-                                                                        <CalendarIcon className="h-5 w-5" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="font-bold">{moment.event}</div>
-                                                                        <div className="text-xs text-muted-foreground">{moment.date}</div>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <Badge variant="outline">{moment.category}</Badge>
-                                                                    <DropdownMenu>
-                                                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                                                                <MoreVertical className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </DropdownMenuTrigger>
-                                                                        <DropdownMenuContent align="end">
-                                                                            <DropdownMenuItem onClick={(e) => {
-                                                                                e.stopPropagation()
-                                                                                router.push(`/creator/edit/${moment.id}`)
-                                                                            }}>
-                                                                                <Pencil className="mr-2 h-4 w-4" /> 수정하기
-                                                                            </DropdownMenuItem>
-                                                                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
-                                                                                e.stopPropagation()
-                                                                                if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
-                                                                                    deleteEvent(moment.id)
-                                                                                }
-                                                                            }}>
-                                                                                <Trash2 className="mr-2 h-4 w-4" /> 삭제하기
-                                                                            </DropdownMenuItem>
-                                                                        </DropdownMenuContent>
-                                                                    </DropdownMenu>
-                                                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {upcomingMoments.length > 0 ? (
+                                        upcomingMoments.map((moment: any) => (
+                                            <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500" onClick={() => handleOpenDetails(moment, 'moment')}>
+                                                <CardContent className="p-4 space-y-4">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700">
+                                                                <CalendarIcon className="h-5 w-5" />
                                                             </div>
                                                             <div>
-                                                                <p className="font-medium text-sm text-slate-600">{moment.targetProduct || "제품 미정"}</p>
-                                                                <div className="flex gap-1 mt-2 flex-wrap">
-                                                                    {moment.tags?.map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
-                                                                </div>
+                                                                <div className="font-bold">{moment.event}</div>
+                                                                <div className="text-xs text-muted-foreground">{moment.date}</div>
                                                             </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                ))
-                                            ) : (
-                                                <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                                    다가오는 모먼트가 없습니다.
-                                                </div>
-                                            )}
+                                                        </div>
+                                                        <Badge variant="outline">{moment.category}</Badge>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-sm text-slate-600">{moment.targetProduct || "제품 미정"}</p>
+                                                        <div className="flex gap-1 mt-2 flex-wrap">
+                                                            {moment.tags?.map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))
+                                    ) : (
+                                        <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
+                                            나의 모먼트가 없습니다.
                                         </div>
-                                        <div className="flex justify-end">
-                                            <Button asChild>
-                                                <Link href="/creator/new"><Plus className="mr-2 h-4 w-4" />새 모먼트 만들기</Link>
-                                            </Button>
-                                        </div>
-                                    </>
-                                )}
-                            </TabsContent>
+                                    )}
+                                </div>
+                            </TabsContent >
 
                             <TabsContent value="past" className="mt-6 space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2194,8 +2210,8 @@ function InfluencerDashboardContent() {
                                     )}
                                 </div>
                             </TabsContent>
-                        </Tabs>
-                    </div>
+                        </Tabs >
+                    </div >
                 )
 
             case "campaigns_list":
@@ -3155,40 +3171,40 @@ function InfluencerDashboardContent() {
         const contractText = chatProposal.contract_content
         const win = window.open('', '', 'width=800,height=600')
         win?.document.write(`
-                        <html>
-                            <head>
-                                <title>표준 광고 협업 계약서</title>
-                                <style>
-                                    body {font - family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; }
-                                    h1 {text - align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-                                    pre {white - space: pre-wrap; font-family: inherit; }
-                                    .signature-section {margin - top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-                                    .sign-box {width: 45%; border-top: 1px solid #333; padding-top: 10px; }
-                                    .sign-img {max - height: 50px; margin-top: 10px; }
-                                </style>
-                            </head>
-                            <body>
-                                <h1>표준 광고 협업 계약서</h1>
-                                <pre>${contractText}</pre>
+                            <html>
+                                <head>
+                                    <title>표준 광고 협업 계약서</title>
+                                    <style>
+                                        body {font - family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; }
+                                        h1 {text - align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+                                        pre {white - space: pre-wrap; font-family: inherit; }
+                                        .signature-section {margin - top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+                                        .sign-box {width: 45%; border-top: 1px solid #333; padding-top: 10px; }
+                                        .sign-img {max - height: 50px; margin-top: 10px; }
+                                    </style>
+                                </head>
+                                <body>
+                                    <h1>표준 광고 협업 계약서</h1>
+                                    <pre>${contractText}</pre>
 
-                                <div class="signature-section">
-                                    <div class="sign-box">
-                                        <p><strong>갑 (브랜드):</strong> ${chatProposal?.brand_name || 'CreadyPick'}</p>
-                                        ${chatProposal?.brand_signature ? `<img src="${chatProposal.brand_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
-                                        <p><small>${chatProposal?.brand_signed_at ? new Date(chatProposal.brand_signed_at).toLocaleDateString() : ''}</small></p>
+                                    <div class="signature-section">
+                                        <div class="sign-box">
+                                            <p><strong>갑 (브랜드):</strong> ${chatProposal?.brand_name || 'CreadyPick'}</p>
+                                            ${chatProposal?.brand_signature ? `<img src="${chatProposal.brand_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                                            <p><small>${chatProposal?.brand_signed_at ? new Date(chatProposal.brand_signed_at).toLocaleDateString() : ''}</small></p>
+                                        </div>
+                                        <div class="sign-box">
+                                            <p><strong>을 (크리에이터):</strong> ${chatProposal?.influencer_name || user?.name || 'Creator'}</p>
+                                            ${chatProposal?.influencer_signature ? `<img src="${chatProposal.influencer_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                                            <p><small>${chatProposal?.influencer_signed_at ? new Date(chatProposal.influencer_signed_at).toLocaleDateString() : ''}</small></p>
+                                        </div>
                                     </div>
-                                    <div class="sign-box">
-                                        <p><strong>을 (크리에이터):</strong> ${chatProposal?.influencer_name || user?.name || 'Creator'}</p>
-                                        ${chatProposal?.influencer_signature ? `<img src="${chatProposal.influencer_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
-                                        <p><small>${chatProposal?.influencer_signed_at ? new Date(chatProposal.influencer_signed_at).toLocaleDateString() : ''}</small></p>
-                                    </div>
-                                </div>
-                                <script>
-                                    window.onload = function() {window.print(); window.close(); }
-                                </script>
-                            </body>
-                        </html>
-                        `)
+                                    <script>
+                                        window.onload = function() {window.print(); window.close(); }
+                                    </script>
+                                </body>
+                            </html>
+                            `)
         win?.document.close()
     }
     const handleSubmitApplication = async () => {
@@ -4521,7 +4537,135 @@ function InfluencerDashboardContent() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div >
+
+            {/* Moment Detail Dialog */}
+            <Dialog open={!!selectedMoment} onOpenChange={(open) => !open && setSelectedMoment(null)}>
+                <DialogContent className="max-w-md md:max-w-2xl overflow-y-auto max-h-[90vh]">
+                    <DialogHeader>
+                        <DialogTitle>모먼트 상세</DialogTitle>
+                        <DialogDescription>
+                            해당 모먼트의 상세 정보와 도착한 제안 목록입니다.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedMoment && (
+                        <div className="space-y-6">
+                            {/* Moment Info */}
+                            <div className="space-y-4">
+                                <div className="aspect-video bg-slate-100 rounded-lg flex items-center justify-center relative overflow-hidden">
+                                    {selectedMoment.targetProduct ? (
+                                        <div className="text-center p-4">
+                                            <div className="text-4xl mb-2">📸</div>
+                                            <p className="text-sm font-medium text-slate-900">{selectedMoment.title}</p>
+                                        </div>
+                                    ) : (
+                                        <span className="text-4xl">✨</span>
+                                    )}
+                                    {selectedMoment.status === 'completed' && (
+                                        <div className="absolute top-2 right-2 bg-slate-800/80 text-white text-xs px-2 py-1 rounded-full">
+                                            완료됨
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">{selectedMoment.title}</h3>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        <Badge variant="secondary">{selectedMoment.category}</Badge>
+                                        {selectedMoment.tags.map(tag => (
+                                            <Badge key={tag} variant="outline" className="text-[10px]">#{tag}</Badge>
+                                        ))}
+                                    </div>
+                                    <p className="text-sm text-slate-600 mt-3 whitespace-pre-wrap leading-relaxed">
+                                        {selectedMoment.description}
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-lg">
+                                    <div>
+                                        <span className="text-slate-500 block text-xs mb-1">희망 일정</span>
+                                        <span className="font-medium">{selectedMoment.eventDate || '미정'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-500 block text-xs mb-1">업로드 희망</span>
+                                        <span className="font-medium">{selectedMoment.postingDate || '미정'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Linked Proposals */}
+                            <div>
+                                <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center">
+                                    📥 도착한 제안 <Badge className="ml-2 bg-indigo-600 hover:bg-indigo-700">{brandProposals.filter(p => p.event_id === selectedMoment.id).length}건</Badge>
+                                </h4>
+
+                                <div className="space-y-3">
+                                    {brandProposals.filter(p => p.event_id === selectedMoment.id).length > 0 ? (
+                                        brandProposals.filter(p => p.event_id === selectedMoment.id).map(proposal => (
+                                            <div
+                                                key={proposal.id}
+                                                className="bg-white border hover:border-indigo-500 rounded-lg p-4 transition-all cursor-pointer shadow-sm hover:shadow-md group"
+                                                onClick={() => {
+                                                    setChatProposal(proposal)
+                                                    setIsChatOpen(true)
+                                                    setSelectedMoment(null)
+                                                }}
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar className="w-8 h-8">
+                                                            <AvatarImage src={proposal.brand_avatar} />
+                                                            <AvatarFallback>{proposal.brand_name?.substring(0, 2)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-900">{proposal.brand_name || '브랜드'}</p>
+                                                            <p className="text-[10px] text-slate-500">{new Date(proposal.created_at).toLocaleDateString()}</p>
+                                                        </div>
+                                                    </div>
+                                                    <Badge variant={proposal.status === 'accepted' ? 'default' : 'secondary'}>
+                                                        {proposal.status === 'offered' ? '제안옴' :
+                                                            proposal.status === 'accepted' ? '진행중' :
+                                                                proposal.status === 'rejected' ? '거절됨' : proposal.status}
+                                                    </Badge>
+                                                </div>
+
+                                                <div className="flex gap-3 mt-3">
+                                                    {proposal.product && (
+                                                        <div className="w-12 h-12 rounded bg-slate-50 flex-shrink-0 border flex items-center justify-center overflow-hidden">
+                                                            {proposal.product.image_url ? (
+                                                                <img src={proposal.product.image_url} alt="" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <Package className="w-5 h-5 text-slate-300" />
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-slate-900 truncate">{proposal.product_name}</p>
+                                                        <p className="text-xs text-slate-500 mt-1 line-clamp-1">{proposal.message}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-3 flex justify-end">
+                                                    <Button size="sm" variant="outline" className="text-xs h-7 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-200">
+                                                        제안 확인하기 <ArrowRight className="w-3 h-3 ml-1" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-8 bg-slate-50 rounded-lg border border-dashed">
+                                            <p className="text-slate-500 text-sm">아직 이 모먼트에 도착한 제안이 없습니다.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </div>
     )
 }
 
