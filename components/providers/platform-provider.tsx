@@ -1371,6 +1371,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
         try {
             console.log('[updateEvent] Updating event:', id, updatedData)
 
+            // Robust check
+            let targetId = user?.id;
+            if (!targetId) {
+                const { data } = await supabase.auth.getSession();
+                if (data.session?.user) targetId = data.session.user.id;
+            }
+
+            if (!targetId) {
+                console.error("[updateEvent] No active session found.");
+                return;
+            }
+
             // Map common fields to DB columns
             const dbUpdates: any = {
                 updated_at: new Date().toISOString()
@@ -1497,6 +1509,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const deleteProposal = async (id: string) => {
+        // Robust check
+        let targetId = user?.id;
+        if (!targetId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) targetId = data.session.user.id;
+        }
+
+        if (!targetId) {
+            console.error("[deleteProposal] No active session found.");
+            return;
+        }
+
         try {
             const { error } = await supabase.from('proposals').delete().eq('id', id)
             if (error) throw error
@@ -1707,6 +1731,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     const updateProposal = async (id: string | number, data: Partial<Proposal> | object): Promise<boolean> => {
         try {
+            // Robust check
+            let targetId = user?.id;
+            if (!targetId) {
+                const { data } = await supabase.auth.getSession();
+                if (data.session?.user) targetId = data.session.user.id;
+            }
+
+            if (!targetId) {
+                alert("로그인이 필요합니다.");
+                return false;
+            }
+
             // Determine payload
             const payload = data
 
@@ -1732,6 +1768,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     const updateBrandProposal = async (id: string, updates: string | object): Promise<boolean> => {
         try {
+            // Robust check
+            let targetId = user?.id;
+            if (!targetId) {
+                const { data } = await supabase.auth.getSession();
+                if (data.session?.user) targetId = data.session.user.id;
+            }
+
+            if (!targetId) {
+                alert("로그인이 필요합니다.");
+                return false;
+            }
+
             const payload = typeof updates === 'string' ? { status: updates } : updates
 
             const { error } = await supabase
@@ -1893,7 +1941,22 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const createBrandProposal = async (proposalData: any) => {
-        if (!user) return
+        // Robust check
+        let targetUserId = user?.id;
+        let isMockUser = user?.isMock || false;
+
+        if (!targetUserId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) {
+                targetUserId = data.session.user.id;
+                isMockUser = false;
+            }
+        }
+
+        if (!targetUserId) {
+            alert("로그인이 필요합니다.");
+            return;
+        }
 
         try {
             console.log("Creating proposal with:", proposalData)
@@ -1918,7 +1981,25 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const sendMessage = async (toUserId: string, content: string, proposalId?: string, brandProposalId?: string) => {
-        if (!user) return
+        // Robust check
+        let senderId = user?.id;
+        let senderName = user?.name || "Unknown";
+        let senderAvatar = user?.avatar;
+
+        if (!senderId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) {
+                senderId = data.session.user.id;
+                // Recover basic info if possible
+                senderName = data.session.user.user_metadata?.name || "User";
+                senderAvatar = data.session.user.user_metadata?.avatar_url;
+            }
+        }
+
+        if (!senderId) {
+            alert("로그인이 필요합니다.");
+            return;
+        }
 
         try {
             const { data, error } = await supabase
@@ -1993,7 +2074,17 @@ export function PlatformProvider({ children, initialSession }: { children: React
     }
 
     const toggleFavorite = async (targetId: string, targetType: 'product' | 'campaign' | 'profile' | 'event') => {
-        if (!user) {
+        // Robust check
+        let currentUserId = user?.id;
+
+        if (!currentUserId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) {
+                currentUserId = data.session.user.id;
+            }
+        }
+
+        if (!currentUserId) {
             alert("로그인이 필요합니다.")
             return
         }
@@ -2005,7 +2096,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         } else {
             const newFav: Favorite = {
                 id: `temp-${Date.now()}`,
-                user_id: user.id,
+                user_id: currentUserId,
                 target_id: targetId,
                 target_type: targetType,
                 created_at: new Date().toISOString()
@@ -2019,7 +2110,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 const { error } = await supabase
                     .from('favorites')
                     .delete()
-                    .eq('user_id', user.id)
+                    .eq('user_id', currentUserId)
                     .eq('target_id', targetId)
                     .eq('target_type', targetType)
 
@@ -2029,7 +2120,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 const { data, error } = await supabase
                     .from('favorites')
                     .insert({
-                        user_id: user.id,
+                        user_id: currentUserId,
                         target_id: targetId,
                         target_type: targetType
                     })
