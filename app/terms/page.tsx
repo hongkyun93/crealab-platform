@@ -8,7 +8,7 @@ export default function TermsPage() {
                 <section>
                     <h2 className="text-xl font-semibold text-foreground mb-3">제1조 (목적)</h2>
                     <p>
-                        본 약관은 주식회사 인비저블 컴퍼니(이하 "회사")이 운영하는 온라인 플랫폼 CreadyPick(이하 "서비스")을 이용함에 있어 회사와 이용자의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
+                        본 약관은 주식회사 인비저블 컴퍼니(대표이사 김수민, 이하 "회사")이 운영하는 온라인 플랫폼 CreadyPick(이하 "서비스")을 이용함에 있어 회사와 이용자의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
                     </p>
                 </section>
 

@@ -36,12 +36,13 @@ export function SiteFooter() {
                     <div className="md:col-span-1 space-y-4">
                         <h4 className="text-sm font-semibold">사업자 정보</h4>
                         <div className="text-xs text-muted-foreground space-y-1">
-                            <p>상호명: 주식회사 인비저블 컴퍼니 | 대표자: 김수민</p>
+                            <p>상호명: 주식회사 인비저블 컴퍼니</p>
+                            <p>대표자: 김수민</p>
                             <p>사업자등록번호: 457-88-02482</p>
                             <p>통신판매업신고: 제2025-서울마포-1566호</p>
                             <p>주소: 03911 서울 마포구 매봉산로 18 마포창업복지관 502호</p>
-                            <p>이메일: viob2024@gmail.com | 전화번호: 0507-1329-2537</p>
-                            <p>개인정보보호책임자: 김수민 (viob2024@gmail.com)</p>
+                            <p>이메일: hongkyun.kim@kaist.ac.kr | 전화번호: 0507-1329-2537</p>
+                            <p>개인정보보호책임자: 김홍균 (hongkyun.kim@kaist.ac.kr)</p>
                         </div>
                     </div>
                 </div>

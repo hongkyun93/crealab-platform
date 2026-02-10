@@ -8,7 +8,7 @@ export default function PrivacyPage() {
                 <section>
                     <h2 className="text-xl font-semibold text-foreground mb-3">1. 개인정보의 처리 목적</h2>
                     <p>
-                        주식회사 인비저블 컴퍼니(이하 "회사")은 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며 이용 목적이 변경되는 경우에는 「개인정보 보호법」 제18조에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.
+                        주식회사 인비저블 컴퍼니(대표이사 김수민, 이하 "회사")은 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며 이용 목적이 변경되는 경우에는 「개인정보 보호법」 제18조에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.
                     </p>
                     <ul className="list-disc pl-5 space-y-1 mt-2">
                         <li>회원 가입 의사 확인 및 회원 관리</li>
@@ -29,6 +29,18 @@ export default function PrivacyPage() {
                     <p>
                         정보주체는 회사에 대해 언제든지 개인정보 열람·정정·삭제·처리정지 요구 등의 권리를 행사할 수 있습니다.
                     </p>
+                </section>
+
+                <section>
+                    <h2 className="text-xl font-semibold text-foreground mb-3">4. 개인정보 보호책임자</h2>
+                    <p>
+                        회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 개인정보 처리와 관련한 정보주체의 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다.
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1 mt-2">
+                        <li>성명: 김홍균</li>
+                        <li>직책: 개인정보보호책임자</li>
+                        <li>연락처: hongkyun.kim@kaist.ac.kr</li>
+                    </ul>
                 </section>
 
                 {/* 추가 개인정보처리방침 내용 생략 (표준 템플릿 사용 권장) */}
