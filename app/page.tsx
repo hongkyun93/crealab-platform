@@ -52,7 +52,8 @@ export default function Home() {
             <p className="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7 break-keep">
               우리는 크리에이터와 브랜드의 연결의 방식을 바꿨습니다. <br />
               준비된 크리에이터를, Pick! <br />
-              브랜드의 광고를 할 준비가된 크리에이터를 찾아, 브랜드의 광고효과를 극대화하세요.
+              준비된 크리에이터가, Pick! <br />
+              준비된 크리에이터와 브랜드의 매칭을 통해, 브랜드의 광고효과를 극대화하세요.
             </p>
           </div>
           <div className="mx-auto grid justify-center gap-4 sm:grid-cols-2 md:max-w-[64rem] md:grid-cols-3">
