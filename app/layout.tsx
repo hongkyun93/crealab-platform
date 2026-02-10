@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { PlatformProvider } from "@/components/providers/platform-provider";
+import { SiteFooter } from "@/components/site-footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -61,6 +62,7 @@ export default async function RootLayout({
       >
         <PlatformProvider initialSession={session}>
           {children}
+          <SiteFooter />
         </PlatformProvider>
       </body>
     </html>
