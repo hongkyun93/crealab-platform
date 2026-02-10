@@ -326,6 +326,128 @@ function GuideDialog({
     )
 }
 
+function CampaignDetailDialog({
+    open,
+    onOpenChange,
+    campaign,
+    onApply
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    campaign: any;
+    onApply: (campaign: any) => void;
+}) {
+    if (!campaign) return null;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0 gap-0 bg-white border-0 shadow-2xl rounded-xl">
+                {/* Header Image Area */}
+                <div className="relative h-48 bg-slate-900 w-full shrink-0">
+                    {campaign.image ? (
+                        <img src={campaign.image} alt={campaign.product} className="w-full h-full object-cover opacity-80" />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                            <Megaphone className="h-16 w-16 text-white/20" />
+                        </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+
+                    <div className="absolute bottom-6 left-6 right-6 text-white">
+                        <Badge className="bg-emerald-500 hover:bg-emerald-600 border-none mb-2 text-white">
+                            {campaign.category || '카테고리 없음'}
+                        </Badge>
+                        <h2 className="text-2xl font-bold leading-tight">{campaign.product}</h2>
+                        <div className="flex items-center gap-2 mt-2 text-white/90">
+                            <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border border-white/30">
+                                {campaign.brandAvatar ? (
+                                    <img src={campaign.brandAvatar} alt={campaign.brand} className="h-full w-full object-cover" />
+                                ) : (
+                                    <span className="text-xs font-bold">{campaign.brand?.[0]}</span>
+                                )}
+                            </div>
+                            <span className="font-medium text-sm">{campaign.brand}</span>
+                        </div>
+                    </div>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-4 right-4 text-white/70 hover:text-white hover:bg-white/10 rounded-full"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        <X className="h-5 w-5" />
+                    </Button>
+                </div>
+
+                <div className="p-6 space-y-8">
+                    {/* Key Info Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                                <Gift className="h-4 w-4" /> 제공 혜택
+                            </div>
+                            <div className="font-bold text-lg text-emerald-600">{campaign.budget}</div>
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                                <User className="h-4 w-4" /> 모집 대상
+                            </div>
+                            <div className="font-semibold text-slate-900">{campaign.target || '제한 없음'}</div>
+                        </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-3">
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-slate-400" />
+                            캠페인 소개
+                        </h3>
+                        <div className="text-slate-600 leading-relaxed whitespace-pre-wrap bg-white">
+                            {campaign.description}
+                        </div>
+                    </div>
+
+                    {/* Campaign Details - Dates */}
+                    <div className="space-y-3">
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                            <Calendar className="h-5 w-5 text-slate-400" />
+                            진행 일정
+                        </h3>
+                        <div className="bg-slate-50 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">모집 마감</span>
+                                <span className="font-medium">{campaign.date ? new Date(campaign.date).toLocaleDateString() : '상시 모집'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">콘텐츠 업로드</span>
+                                <span className="font-medium">{campaign.postingDate ? new Date(campaign.postingDate).toLocaleDateString() : '협의'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter className="p-6 pt-2 border-t bg-slate-50/50">
+                    <Button variant="outline" onClick={() => onOpenChange(false)} className="h-12 px-6">
+                        닫기
+                    </Button>
+                    <Button
+                        onClick={() => {
+                            onOpenChange(false);
+                            onApply(campaign);
+                        }}
+                        className="h-12 px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold gap-2"
+                    >
+                        <Send className="h-4 w-4" />
+                        지원하기
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+
+}
+
 function DetailsModal({
     isOpen,
     onOpenChange,
@@ -1083,6 +1205,7 @@ function InfluencerDashboardContent() {
     const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
     const [selectedBrandProduct, setSelectedBrandProduct] = useState<any>(null) // New state for Brand Detail View
     const [selectedCampaign, setSelectedCampaign] = useState<any>(null)
+    const [isCampaignDetailOpen, setIsCampaignDetailOpen] = useState(false)
     const [appealMessage, setAppealMessage] = useState("")
     const [desiredCost, setDesiredCost] = useState("")
     const [isApplying, setIsApplying] = useState(false)
@@ -2239,32 +2362,59 @@ function InfluencerDashboardContent() {
                                         upcomingMoments.map((moment: any) => {
                                             const offerCount = brandProposals.filter((p: any) => p.event_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
                                             return (
-                                                <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500" onClick={() => handleOpenDetails(moment, 'moment')}>
-                                                    <CardContent className="p-4 space-y-4">
+                                                <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500 group" onClick={() => handleOpenDetails(moment, 'moment')}>
+                                                    <CardContent className="p-5 space-y-4">
                                                         <div className="flex justify-between items-start">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700">
-                                                                    <CalendarIcon className="h-5 w-5" />
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Badge variant="outline" className="text-emerald-600 border-emerald-100 bg-emerald-50">
+                                                                        {moment.category}
+                                                                    </Badge>
+                                                                    {offerCount > 0 && (
+                                                                        <Badge className="bg-indigo-600 hover:bg-indigo-700 animate-pulse">
+                                                                            📥 {offerCount}개의 제안 도착
+                                                                        </Badge>
+                                                                    )}
                                                                 </div>
-                                                                <div>
-                                                                    <div className="font-bold">{moment.event}</div>
-                                                                    <div className="text-xs text-muted-foreground">
-                                                                        {moment.date}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                {offerCount > 0 && (
-                                                                    <Badge className="bg-indigo-600 hover:bg-indigo-700">📥 {offerCount} 제안</Badge>
-                                                                )}
-                                                                <Badge variant="outline">{moment.category}</Badge>
+                                                                <h3 className="font-bold text-lg group-hover:text-emerald-600 transition-colors">
+                                                                    {moment.event || moment.title}
+                                                                </h3>
                                                             </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="font-medium text-sm text-slate-600">{moment.targetProduct || "제품 미정"}</p>
-                                                            <div className="flex gap-1 mt-2 flex-wrap">
-                                                                {moment.tags?.map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+
+                                                        {/* Key Info Grid */}
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                            <div className="col-span-full pb-2 border-b border-slate-200">
+                                                                <span className="text-xs text-muted-foreground block mb-0.5">광고 가능 아이템</span>
+                                                                <span className="font-medium text-slate-800 flex items-center gap-1.5">
+                                                                    <Gift className="h-3.5 w-3.5 text-purple-500" />
+                                                                    {moment.targetProduct || "미정"}
+                                                                </span>
                                                             </div>
+                                                            <div>
+                                                                <span className="text-xs text-muted-foreground block mb-0.5">모먼트 일정</span>
+                                                                <span className="font-medium text-slate-700 flex items-center gap-1.5">
+                                                                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                                                                    {moment.eventDate ? formatDateToMonth(moment.eventDate) : moment.date}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-xs text-muted-foreground block mb-0.5">콘텐츠 업로드</span>
+                                                                <span className="font-medium text-slate-700 flex items-center gap-1.5">
+                                                                    <Send className="h-3.5 w-3.5 text-slate-400" />
+                                                                    {moment.dateFlexible ? (
+                                                                        <span className="text-emerald-600">협의 가능</span>
+                                                                    ) : (
+                                                                        moment.postingDate ? formatDateToMonth(moment.postingDate) : "-"
+                                                                    )}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                                                                {moment.description || "상세 설명이 없습니다."}
+                                                            </p>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -2282,41 +2432,68 @@ function InfluencerDashboardContent() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {pastMoments.length > 0 ? (
                                         pastMoments.map((moment: any) => (
-                                            <Card key={moment.id} className="cursor-pointer opacity-75 hover:opacity-100 transition-all border-l-4 border-l-slate-300" onClick={() => handleOpenDetails(moment, 'moment')}>
-                                                <CardContent className="p-4 space-y-4">
+                                            <Card key={moment.id} className="cursor-pointer opacity-75 hover:opacity-100 transition-all border-l-4 border-l-slate-300 group" onClick={() => handleOpenDetails(moment, 'moment')}>
+                                                <CardContent className="p-5 space-y-4">
                                                     <div className="flex justify-between items-start">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-500">
-                                                                <Archive className="h-5 w-5" />
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge variant="outline" className="text-slate-500 border-slate-200">
+                                                                    {moment.category}
+                                                                </Badge>
+                                                                <Badge variant="secondary" className="text-slate-500">종료됨</Badge>
                                                             </div>
-                                                            <div>
-                                                                <div className="font-bold text-slate-600 line-through decoration-slate-400">{moment.event}</div>
-                                                                <div className="text-xs text-muted-foreground">{moment.date}</div>
-                                                            </div>
+                                                            <h3 className="font-bold text-lg text-slate-600 line-through decoration-slate-300 decoration-2">
+                                                                {moment.event || moment.title}
+                                                            </h3>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge variant="outline" className="text-slate-400 border-slate-200">종료됨</Badge>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                                                        <MoreVertical className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
-                                                                        e.stopPropagation()
-                                                                        if (confirm("정말로 이 기록을 삭제하시겠습니까? (되돌릴 수 없습니다)")) {
-                                                                            deleteEvent(moment.id)
-                                                                        }
-                                                                    }}>
-                                                                        <Trash2 className="mr-2 h-4 w-4" /> 기록 삭제
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                                                    <MoreVertical className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    if (confirm("정말로 이 기록을 삭제하시겠습니까? (되돌릴 수 없습니다)")) {
+                                                                        deleteEvent(moment.id)
+                                                                    }
+                                                                }}>
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> 기록 삭제
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+
+                                                    {/* Key Info Grid */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100 grayscale opacity-80">
+                                                        <div className="col-span-full pb-2 border-b border-slate-200">
+                                                            <span className="text-xs text-muted-foreground block mb-0.5">광고 가능 아이템</span>
+                                                            <span className="font-medium text-slate-700 flex items-center gap-1.5">
+                                                                <Gift className="h-3.5 w-3.5 text-slate-400" />
+                                                                {moment.targetProduct || "미정"}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-xs text-muted-foreground block mb-0.5">모먼트 일정</span>
+                                                            <span className="font-medium text-slate-600 flex items-center gap-1.5">
+                                                                <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                                                                {moment.eventDate ? formatDateToMonth(moment.eventDate) : moment.date}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-xs text-muted-foreground block mb-0.5">콘텐츠 업로드</span>
+                                                            <span className="font-medium text-slate-600 flex items-center gap-1.5">
+                                                                <Send className="h-3.5 w-3.5 text-slate-400" />
+                                                                {moment.postingDate ? formatDateToMonth(moment.postingDate) : "-"}
+                                                            </span>
                                                         </div>
                                                     </div>
+
                                                     <div>
-                                                        <p className="font-medium text-sm text-slate-500">{moment.targetProduct}</p>
+                                                        <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                                                            {moment.description || "상세 설명이 없습니다."}
+                                                        </p>
                                                     </div>
                                                 </CardContent>
                                             </Card>
@@ -3253,7 +3430,14 @@ function InfluencerDashboardContent() {
                         ) : (
                             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                                 {campaigns.filter(c => c.status !== 'closed').map((camp) => (
-                                    <Card key={camp.id} className="flex flex-col h-full hover:shadow-lg transition-all border-border/60 hover:border-primary/50 group cursor-pointer">
+                                    <Card
+                                        key={camp.id}
+                                        className="flex flex-col h-full hover:shadow-lg transition-all border-border/60 hover:border-primary/50 group cursor-pointer"
+                                        onClick={() => {
+                                            setSelectedCampaign(camp);
+                                            setIsCampaignDetailOpen(true);
+                                        }}
+                                    >
                                         <CardHeader>
                                             <div className="flex justify-between items-start mb-2">
                                                 <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-0">
@@ -3494,14 +3678,14 @@ function InfluencerDashboardContent() {
                                 className="w-full justify-start text-primary font-medium"
                                 onClick={() => setCurrentView("discover-campaigns")}
                             >
-                                <Megaphone className="mr-2 h-4 w-4" /> 캠페인 둘러보기
+                                <Megaphone className="mr-2 h-4 w-4" /> 브랜드 캠페인 둘러보기
                             </Button>
                             <Button
                                 variant={currentView === "discover-products" ? "secondary" : "ghost"}
                                 className="w-full justify-start text-primary font-medium"
                                 onClick={() => setCurrentView("discover-products")}
                             >
-                                <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드제품 둘러보기
+                                <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
                             </Button>
                             <Button
                                 variant={currentView === "notifications" ? "secondary" : "ghost"}
@@ -3530,6 +3714,14 @@ function InfluencerDashboardContent() {
                         isOpen={isAIPlanModalOpen}
                         onOpenChange={setIsAIPlanModalOpen}
                         planContent={aiPlanResult}
+                    />
+
+                    {/* Campaign Detail Dialog */}
+                    <CampaignDetailDialog
+                        open={isCampaignDetailOpen}
+                        onOpenChange={setIsCampaignDetailOpen}
+                        campaign={selectedCampaign}
+                        onApply={handleApplyClick}
                     />
 
                     <ApplyDialog

@@ -2160,7 +2160,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (data) {
                 setFavorites(data as Favorite[])
             }
-        } catch (e) {
+        } catch (e: any) {
+            if (e.name === 'AbortError' || e.message?.includes('AbortError')) {
+                // Ignore abort errors
+                return
+            }
             console.error('[fetchFavorites] Exception:', e)
         }
     }
