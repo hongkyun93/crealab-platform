@@ -246,7 +246,7 @@ export function SiteHeader() {
                                 <Link href="/login">로그인</Link>
                             </Button>
                             <Button size="sm" asChild>
-                                <Link href="/login">무료로 시작하기</Link>
+                                <Link href="/signup">무료로 시작하기</Link>
                             </Button>
                         </div>
                     )}

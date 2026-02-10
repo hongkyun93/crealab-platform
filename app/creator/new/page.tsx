@@ -96,10 +96,6 @@ export default function NewEventPage() {
             alert("먼저 모먼트 제목을 입력해주세요!")
             return
         }
-        if (selectedTags.length === 0) {
-            alert("카테고리를 최소 1개 선택해주세요!")
-            return
-        }
 
         setIsGenerating(true)
         try {
@@ -110,18 +106,17 @@ export default function NewEventPage() {
                 },
                 body: JSON.stringify({
                     prompt: title + (targetProduct ? ` (광고 가능 아이템: ${targetProduct})` : ""),
-                    category: selectedTags[0]
+                    category: selectedTags[0] || "일상"
                 }),
             })
 
             const data = await response.json()
 
             if (!response.ok) {
-                if (data.message && data.message.includes("GEMINI_API_KEY")) {
-                    alert("구글 API 키가 설정되지 않았습니다. Vercel 환경변수를 확인해주세요.")
+                if (data.error === "GEMINI_API_KEY not configured") {
+                    alert("서버에 GEMINI_API_KEY가 설정되지 않았습니다.")
                 } else {
-                    const errorMsg = data.details || data.error || "서버 통신 오류";
-                    throw new Error(errorMsg)
+                    throw new Error(data.details || "AI 생성 실패")
                 }
                 return
             }
@@ -129,7 +124,7 @@ export default function NewEventPage() {
             setDescription(data.result)
         } catch (error: any) {
             console.error("AI Error:", error)
-            alert(`AI 작문 실패: ${error.message || "일시적인 오류가 발생했습니다."}`)
+            alert(`AI 작문 실패: ${error.message}`)
         } finally {
             setIsGenerating(false)
         }
@@ -372,6 +367,9 @@ export default function NewEventPage() {
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                 />
+                                <p className="text-xs text-muted-foreground text-right mt-1">
+                                    * AI가 생성한 내용은 자유롭게 수정 가능합니다.
+                                </p>
                             </div>
 
                             <div className="space-y-2">
