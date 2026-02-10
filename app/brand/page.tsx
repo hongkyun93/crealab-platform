@@ -7,6 +7,7 @@ import { RateCardMessage } from "@/components/chat/rate-card-message"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cn, formatDateToMonth } from "@/lib/utils"
 import { AIPriceCalculator } from "@/components/ai-price-calculator"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -264,6 +265,27 @@ function BrandDashboardContent() {
             fetchSubmissionFeedback(chatProposal.id.toString(), !isCampaign)
         }
     }, [activeProposalTab, chatProposal, fetchSubmissionFeedback])
+    const handleStatusUpdate = async (id: string | number, status: 'accepted' | 'rejected' | 'hold') => {
+        if (confirm(`이 지원서를 ${status === 'accepted' ? '수락' : status === 'hold' ? '보류' : '거절'}하시겠습니까?`)) {
+            try {
+                const { updateApplicationStatus } = await import('@/app/actions/proposal')
+                const result = await updateApplicationStatus(id.toString(), status)
+                if (result.error) alert(result.error)
+                else {
+                    alert("상태가 변경되었습니다.")
+                    await refreshData()
+                    if (status === 'accepted') {
+                        // Switch to Active tab and open Chat (Workstation)
+                        setWorkspaceTab('active')
+                        setActiveProposalTab('chat')
+                    }
+                }
+            } catch (err) {
+                alert("상태 변경 중 오류가 발생했습니다.")
+            }
+        }
+    }
+
     const handleGenerateContract = async () => {
         if (!chatProposal || !user) return
 
@@ -1256,12 +1278,18 @@ function BrandDashboardContent() {
                                                     )}
                                                     <div className="flex items-center gap-2">
                                                         <Calendar className="h-3.5 w-3.5 text-primary/70 shrink-0" />
-                                                        <span className="font-medium">모먼트일:</span> {item.eventDate || "미정"}
+                                                        <span className="font-medium">모먼트일:</span>
+                                                        {formatDateToMonth(item.eventDate) || "미정"}
                                                     </div>
                                                     {item.postingDate && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Send className="h-3.5 w-3.5 text-primary/70 shrink-0" />
-                                                            <span className="font-medium">예상업로드:</span> {item.postingDate}
+                                                        <div className="flex items-center gap-1.5 text-slate-600">
+                                                            <Send className="h-3.5 w-3.5 text-muted-foreground" />
+                                                            <span className="font-medium">예상업로드:</span>
+                                                            {item.dateFlexible ? (
+                                                                <Badge variant="secondary" className="text-[10px] px-1 py-0 mr-1 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
+                                                            ) : (
+                                                                formatDateToMonth(item.postingDate)
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -1323,21 +1351,22 @@ function BrandDashboardContent() {
                                                 <span className="text-xs font-bold text-muted-foreground">일정</span>
                                                 <p className="font-medium text-sm">{selectedCampaign.eventDate || "미정"}</p>
                                             </div>
-
-                                            <div className="space-y-1">
-                                                <span className="text-xs font-bold text-muted-foreground">모집 대상</span>
-                                                <p className="font-medium text-sm">{selectedCampaign.target || "전체"}</p>
+                                            <span className="text-xs font-bold text-muted-foreground">모집 대상</span>
+                                            <p className="font-medium text-sm">{selectedCampaign.target || "전체"}</p>
+                                        </div>
+                                        <div className="bg-slate-50 p-3 rounded-lg">
+                                            <p className="text-xs text-muted-foreground mb-1">모먼트 일정</p>
+                                            <p className="font-medium text-sm">{formatDateToMonth(selectedCampaign.eventDate) || "미정"}</p>
+                                        </div>
+                                        {selectedCampaign.postingDate && (
+                                            <div className="bg-slate-50 p-3 rounded-lg">
+                                                <p className="text-xs text-muted-foreground mb-1">예상 업로드</p>
+                                                <p className="font-medium text-sm">{formatDateToMonth(selectedCampaign.postingDate)}</p>
                                             </div>
-                                            <div className="space-y-1">
-                                                <span className="text-xs font-bold text-muted-foreground">제공 혜택</span>
-                                                <p className="font-bold text-emerald-600 text-sm">{selectedCampaign.budget || "협의"}</p>
-                                            </div>
-                                            {selectedCampaign.postingDate && (
-                                                <div className="space-y-1 md:col-span-2">
-                                                    <span className="text-xs font-bold text-muted-foreground">업로드 일정</span>
-                                                    <p className="font-medium text-sm">{selectedCampaign.postingDate}</p>
-                                                </div>
-                                            )}
+                                        )}
+                                        <div className="space-y-1">
+                                            <span className="text-xs font-bold text-muted-foreground">제공 혜택</span>
+                                            <p className="font-bold text-emerald-600 text-sm">{selectedCampaign.budget || "협의"}</p>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -1413,7 +1442,7 @@ function BrandDashboardContent() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div >
                     )
                 }
 
@@ -1564,26 +1593,7 @@ function BrandDashboardContent() {
                     ...rejectedOutbound
                 ].sort((a: any, b: any) => new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime())
 
-                const handleStatusUpdate = async (id: string | number, status: 'accepted' | 'rejected' | 'hold') => {
-                    if (confirm(`이 지원서를 ${status === 'accepted' ? '수락' : status === 'hold' ? '보류' : '거절'}하시겠습니까?`)) {
-                        try {
-                            const { updateApplicationStatus } = await import('@/app/actions/proposal')
-                            const result = await updateApplicationStatus(id.toString(), status)
-                            if (result.error) alert(result.error)
-                            else {
-                                alert("상태가 변경되었습니다.")
-                                await refreshData()
-                                if (status === 'accepted') {
-                                    // Switch to Active tab and open Chat (Workstation)
-                                    setWorkspaceTab('active')
-                                    setActiveProposalTab('chat')
-                                }
-                            }
-                        } catch (err) {
-                            alert("상태 변경 중 오류가 발생했습니다.")
-                        }
-                    }
-                }
+
 
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">

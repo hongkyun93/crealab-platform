@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header"
 import { RateCardMessage } from "@/components/chat/rate-card-message"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { cn, formatDateToMonth } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -1440,7 +1441,7 @@ function InfluencerDashboardContent() {
                         <div className="flex items-center justify-between text-xs text-slate-500 border-t pt-3">
                             <div className="flex items-center gap-1">
                                 <span>🗓️</span>
-                                <span>{moment.eventDate || '일정 미정'}</span>
+                                <span>{formatDateToMonth(moment.eventDate) || '일정 미정'}</span>
                             </div>
                             <div className="flex items-center gap-1">
                                 <span>📥</span>
@@ -1983,12 +1984,17 @@ function InfluencerDashboardContent() {
                                             <div className="space-y-1 py-1">
                                                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                                     <Calendar className="h-3 w-3 shrink-0" />
-                                                    <span className="font-medium text-foreground/80">일정:</span> {item.eventDate}
+                                                    <span className="font-medium text-foreground/80">일정:</span> {formatDateToMonth(item.eventDate)}
                                                 </div>
                                                 {item.postingDate && (
                                                     <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                                         <Send className="h-3 w-3 shrink-0" />
-                                                        <span className="font-medium text-foreground/80">업로드:</span> {item.postingDate}
+                                                        <span className="font-medium text-foreground/80">업로드:</span>
+                                                        {item.dateFlexible ? (
+                                                            <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
+                                                        ) : (
+                                                            formatDateToMonth(item.postingDate)
+                                                        )}
                                                     </div>
                                                 )}
                                                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -2050,7 +2056,9 @@ function InfluencerDashboardContent() {
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="p-3 bg-slate-50 rounded-xl space-y-1 text-center">
                                                     <div className="text-xs text-slate-400 flex items-center justify-center gap-1.5"><Calendar className="h-3 w-3" /> 일정</div>
-                                                    <span className="font-semibold">{myMoments.find(e => e.id === selectedMomentId)?.date}</span>
+                                                    <span className="font-semibold">
+                                                        {myMoments.find(e => e.id === selectedMomentId)?.date}
+                                                    </span>
                                                 </div>
                                                 <div className="p-3 bg-slate-50 rounded-xl space-y-1 text-center">
                                                     <div className="text-xs text-slate-400 flex items-center justify-center gap-1.5"><Package className="h-3 w-3" /> 희망 제품</div>
@@ -2240,7 +2248,9 @@ function InfluencerDashboardContent() {
                                                                 </div>
                                                                 <div>
                                                                     <div className="font-bold">{moment.event}</div>
-                                                                    <div className="text-xs text-muted-foreground">{moment.date}</div>
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        {moment.date}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                             <div className="flex gap-2">
@@ -2735,7 +2745,12 @@ function InfluencerDashboardContent() {
                                             {event.postingDate && (
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                     <Send className="h-3.5 w-3.5 text-primary" />
-                                                    <span className="font-medium">업로드:</span> {event.postingDate}
+                                                    <span className="font-medium">업로드:</span>
+                                                    {event.dateFlexible ? (
+                                                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
+                                                    ) : (
+                                                        event.postingDate
+                                                    )}
                                                 </div>
                                             )}
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -4797,7 +4812,13 @@ function InfluencerDashboardContent() {
                                     </div>
                                     <div>
                                         <span className="text-slate-500 block text-xs mb-1">업로드 희망</span>
-                                        <span className="font-medium">{selectedMoment.postingDate || '미정'}</span>
+                                        <span className="font-medium">
+                                            {selectedMoment.dateFlexible ? (
+                                                <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
+                                            ) : (
+                                                selectedMoment.postingDate || '미정'
+                                            )}
+                                        </span>
                                     </div>
                                 </div>
                             </div>

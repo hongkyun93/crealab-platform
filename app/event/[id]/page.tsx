@@ -28,7 +28,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { ko } from "date-fns/locale"
-import { cn } from "@/lib/utils"
+import { cn, formatDateToMonth } from "@/lib/utils"
 import { submitDirectProposal } from "@/app/actions/proposal"
 
 export default function EventDetailPage() {
@@ -109,6 +109,7 @@ export default function EventDetailPage() {
                             guide: e.guide || "",
                             status: e.status || ((e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'recruiting'),
                             isPrivate: e.is_private,
+                            dateFlexible: e.date_flexible || false,
                             schedule: e.schedule
                         }
                     }
@@ -339,11 +340,17 @@ ${u.name}의 담당자입니다.
                                 <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
                                     <div>
                                         <p className="text-xs text-muted-foreground mb-1">모먼트 일정</p>
-                                        <p className="font-semibold">{event.eventDate}</p>
+                                        <p className="font-semibold">{formatDateToMonth(event.eventDate) || "미정"}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-muted-foreground mb-1">콘텐츠 업로드</p>
-                                        <p className="font-semibold">{event.postingDate}</p>
+                                        <p className="font-semibold">
+                                            {event.dateFlexible ? (
+                                                <span className="flex items-center gap-1">
+                                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
+                                                </span>
+                                            ) : (formatDateToMonth(event.postingDate) || "미정")}
+                                        </p>
                                     </div>
                                 </div>
 

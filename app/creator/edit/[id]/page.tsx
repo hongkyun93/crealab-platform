@@ -3,6 +3,7 @@
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -41,6 +42,7 @@ export default function EditEventPage() {
     const { events, updateEvent, deleteEvent, user } = usePlatform()
     const [selectedTags, setSelectedTags] = useState<string[]>([])
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [isDateFlexible, setIsDateFlexible] = useState(false)
 
     // Form States
     const [title, setTitle] = useState("")
@@ -95,10 +97,14 @@ export default function EditEventPage() {
 
                 // Parse Posting Date
                 if (event.postingDate) {
-                    const yearMatch = event.postingDate.match(/(\d{4})년/)
-                    const monthMatch = event.postingDate.match(/(\d+월)/)
-                    if (yearMatch) setPostingYear(yearMatch[1])
-                    if (monthMatch) setPostingMonth(monthMatch[1])
+                    if (event.postingDate === '1993-01-06' || event.dateFlexible) {
+                        setIsDateFlexible(true)
+                    } else {
+                        const yearMatch = event.postingDate.match(/(\d{4})년/)
+                        const monthMatch = event.postingDate.match(/(\d+월)/)
+                        if (yearMatch) setPostingYear(yearMatch[1])
+                        if (monthMatch) setPostingMonth(monthMatch[1])
+                    }
                 }
 
                 setSelectedTags(event.tags || [])
@@ -132,8 +138,12 @@ export default function EditEventPage() {
     }
 
     const handleSubmit = async () => {
-        if (!title || !eventMonth || !postingMonth || !description) {
+        if (!title || !eventMonth || !description) {
             alert("모든 필수 항목을 입력해주세요.")
+            return
+        }
+        if (!postingMonth && !isDateFlexible) {
+            alert("업로드 시기를 선택해주세요.")
             return
         }
 
@@ -150,7 +160,8 @@ export default function EditEventPage() {
             tags: tags,
             targetProduct: targetProduct || "미정",
             eventDate: `${eventYear}년 ${eventMonth}`,
-            postingDate: `${postingYear}년 ${postingMonth}`
+            postingDate: isDateFlexible ? "" : `${postingYear}년 ${postingMonth}`,
+            dateFlexible: isDateFlexible
         })
 
         if (success) {
@@ -262,7 +273,6 @@ export default function EditEventPage() {
                                 </div>
                             </div>
 
-                            {/* Posting Date Picker */}
                             <div className="space-y-4">
                                 <Label className="flex items-center gap-2">
                                     <Send className="h-4 w-4" />
@@ -277,7 +287,7 @@ export default function EditEventPage() {
                                         {postingYear}년 🔄
                                     </Button>
                                 </Label>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className={`grid grid-cols-3 gap-2 ${isDateFlexible ? 'opacity-50 pointer-events-none' : ''}`}>
                                     {MONTHS.map((m) => {
                                         const isSelected = postingMonth === m
                                         return (
@@ -292,6 +302,19 @@ export default function EditEventPage() {
                                             </Button>
                                         )
                                     })}
+                                </div>
+                                <div className="flex items-center space-x-2 pt-2">
+                                    <Checkbox
+                                        id="date-flexible"
+                                        checked={isDateFlexible}
+                                        onCheckedChange={(checked) => setIsDateFlexible(checked as boolean)}
+                                    />
+                                    <label
+                                        htmlFor="date-flexible"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-muted-foreground"
+                                    >
+                                        업로드 일정 협의 가능
+                                    </label>
                                 </div>
                             </div>
                         </div>

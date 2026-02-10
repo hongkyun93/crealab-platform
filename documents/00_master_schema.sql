@@ -849,6 +849,9 @@ NOTIFY pgrst, 'reload schema';
 -- 14. INFLUENCER EVENTS MISSING COLUMNS (Added via Agent)
 -- ==========================================
 
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS schedule JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS date_flexible BOOLEAN DEFAULT FALSE;
+
 ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS guide text;
 ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.influencer_events ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;

@@ -87,6 +87,7 @@ export type InfluencerEvent = {
     status?: string // 'active' | 'completed' - 모먼트 상태
     isMock?: boolean
     isPrivate?: boolean
+    dateFlexible?: boolean
     schedule?: {
         product_delivery?: string
         draft_submission?: string
@@ -739,6 +740,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         eventDate: e.event_date || "",
                         postingDate: e.posting_date || "",
                         guide: e.guide || "",
+                        dateFlexible: e.posting_date === '1993-01-06' || e.date_flexible || false, // Sentinel check + legacy support
                         status: e.status || ((e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'recruiting')
                     }
                 })
@@ -1387,12 +1389,13 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     description: newEvent.description,
                     target_product: newEvent.targetProduct,
                     event_date: newEvent.eventDate,
-                    posting_date: newEvent.postingDate,
+                    posting_date: newEvent.dateFlexible ? '1993-01-06' : newEvent.postingDate,
                     category: newEvent.category,
                     guide: newEvent.guide,
                     tags: newEvent.tags,
                     status: 'recruiting',
                     is_private: newEvent.isPrivate || false,
+                    // date_flexible: newEvent.dateFlexible || false, // Deprecated in favor of sentinel
                     schedule: newEvent.schedule || {},
                     is_mock: user?.isMock || false
                 })

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Calendar, Plus, Package, Send, Sparkles, Loader2, Lock, Globe } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
@@ -31,6 +32,7 @@ export default function NewEventPage() {
 
     // Form States
     const [title, setTitle] = useState("")
+    const [isDateFlexible, setIsDateFlexible] = useState(false)
     const [eventYear, setEventYear] = useState("2026")
     const [eventMonth, setEventMonth] = useState("")
     const [postingYear, setPostingYear] = useState("2026")
@@ -152,7 +154,7 @@ export default function NewEventPage() {
             setValidationError("모먼트 일정을 선택해주세요.")
             return
         }
-        if (!postingMonth) {
+        if (!postingMonth && !isDateFlexible) {
             setValidationError("업로드 시기를 선택해주세요.")
             return
         }
@@ -178,8 +180,9 @@ export default function NewEventPage() {
             tags: tags,
             targetProduct: targetProduct || "미정",
             eventDate: formatToDate(eventYear, eventMonth),
-            postingDate: formatToDate(postingYear, postingMonth),
+            postingDate: isDateFlexible ? "" : formatToDate(postingYear, postingMonth),
             isPrivate: isPrivate,
+            dateFlexible: isDateFlexible,
             schedule: schedule
         })
 
@@ -248,15 +251,6 @@ export default function NewEventPage() {
                                     <Label className="flex items-center gap-2">
                                         <Calendar className="h-4 w-4" />
                                         모먼트 일정
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setEventYear(prev => prev === "2026" ? "2027" : "2026")}
-                                            className="h-6 px-2 text-xs ml-1 bg-background"
-                                        >
-                                            {eventYear}년 🔄
-                                        </Button>
                                     </Label>
                                     <div className="grid grid-cols-3 gap-2">
                                         {MONTHS.map((m) => {
@@ -291,7 +285,7 @@ export default function NewEventPage() {
                                             {postingYear}년 🔄
                                         </Button>
                                     </Label>
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className={`grid grid-cols-3 gap-2 ${isDateFlexible ? 'opacity-50 pointer-events-none' : ''}`}>
                                         {MONTHS.map((m) => {
                                             const isSelected = postingMonth === m
                                             return (
@@ -306,6 +300,19 @@ export default function NewEventPage() {
                                                 </Button>
                                             )
                                         })}
+                                    </div>
+                                    <div className="flex items-center space-x-2 pt-2">
+                                        <Checkbox
+                                            id="date-flexible"
+                                            checked={isDateFlexible}
+                                            onCheckedChange={(checked) => setIsDateFlexible(checked as boolean)}
+                                        />
+                                        <label
+                                            htmlFor="date-flexible"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-muted-foreground"
+                                        >
+                                            업로드 일정 협의 가능
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -512,7 +519,7 @@ export default function NewEventPage() {
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     )
 }
