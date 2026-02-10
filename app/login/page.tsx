@@ -123,7 +123,7 @@ export default function LoginPage() {
                                         <Label htmlFor="creator-id">아이디</Label>
                                         <Input
                                             id="creator-id"
-                                            placeholder="creator1"
+                                            placeholder="아이디를 입력해주세요"
                                             value={id}
                                             onChange={(e) => setId(e.target.value)}
                                         />
@@ -190,11 +190,7 @@ export default function LoginPage() {
                                     </div>
                                 </form>
                             </CardContent>
-                            <CardFooter>
-                                <div className="text-xs text-muted-foreground text-center w-full">
-                                    <span className="font-semibold">테스트 계정:</span> creator1 / 12341234
-                                </div>
-                            </CardFooter>
+
                         </Card>
                     </TabsContent>
 
@@ -215,7 +211,7 @@ export default function LoginPage() {
                                         <Label htmlFor="brand-id">아이디</Label>
                                         <Input
                                             id="brand-id"
-                                            placeholder="brand1"
+                                            placeholder="아이디를 입력해주세요"
                                             value={id}
                                             onChange={(e) => setId(e.target.value)}
                                         />
@@ -282,11 +278,7 @@ export default function LoginPage() {
                                     </div>
                                 </form>
                             </CardContent>
-                            <CardFooter>
-                                <div className="text-xs text-muted-foreground text-center w-full">
-                                    <span className="font-semibold">테스트 계정:</span> brand1 / 12341234
-                                </div>
-                            </CardFooter>
+
                         </Card>
                     </TabsContent>
                 </Tabs>

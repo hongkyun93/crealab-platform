@@ -49,8 +49,8 @@
 1.  **Supabase 대시보드 > Authentication > URL Configuration** 메뉴로 이동.
 2.  **Redirect URLs** 섹션에서 **"Add URL"** 클릭.
 3.  아래 주소를 입력하고 **Save**:
-    *   `https://crealab-platform.vercel.app/auth/callback`
-    *   *(선택사항)* `https://crealab-platform.vercel.app/**` (전체 허용)
+    *   `https://creadypick.vercel.app/auth/callback`
+    *   *(선택사항)* `https://creadypick.vercel.app/**` (전체 허용)
 
 ---
 

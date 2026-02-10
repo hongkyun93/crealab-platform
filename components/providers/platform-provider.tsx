@@ -1139,6 +1139,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
             localStorage.removeItem("creadypick_notifications")
             localStorage.removeItem("creadypick_messages")
 
+            // HARD REFESH to clear all state and go to login
+            window.location.href = '/login'
+
         } catch (error: any) {
             if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
                 console.log('[Logout] Request aborted (benign)')
@@ -1156,6 +1159,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
             localStorage.removeItem("creadypick_proposals")
             localStorage.removeItem("creadypick_notifications")
             localStorage.removeItem("creadypick_messages")
+
+            window.location.href = '/login'
         }
     }
 
