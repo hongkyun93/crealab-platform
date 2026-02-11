@@ -97,6 +97,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { AvatarUpload } from "@/components/ui/avatar-upload"
 
+// Brand View Components
+import { BrandProfileView } from "@/components/brand/views/BrandProfileView"
+import { MyProductsView } from "@/components/brand/views/MyProductsView"
+
 const POPULAR_TAGS = [
     "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
     "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
@@ -1911,106 +1915,13 @@ function BrandDashboardContent() {
 
             case "my-products":
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h1 className="text-3xl font-bold tracking-tight">내 브랜드 제품</h1>
-                                <p className="text-muted-foreground mt-1">크리에이터들이 제안하거나 살펴볼 수 있는 우리 브랜드의 제품군입니다.</p>
-                            </div>
-                            <Button className="gap-2" onClick={() => setProductModalOpen(true)}>
-                                <Plus className="h-4 w-4" /> 제품 등록하기
-                            </Button>
-                        </div>
-
-                        {myProducts.length === 0 ? (
-                            <Card className="p-12 text-center border-dashed">
-                                <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
-                                    <ShoppingBag className="h-6 w-6 text-muted-foreground" />
-                                </div>
-                                <h3 className="text-lg font-bold">등록된 제품이 없습니다.</h3>
-                                <p className="text-muted-foreground mb-6">제품을 등록하면 크리에이터들이 협업 제안 시 참고할 수 있습니다.</p>
-                                <Button onClick={() => setProductModalOpen(true)}>제품 등록하기</Button>
-                            </Card>
-                        ) : (
-                            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                                {myProducts.map((p) => (
-                                    <Card key={p.id} className="overflow-hidden flex flex-col h-full border-border/60 hover:shadow-md transition-all">
-                                        <div className="aspect-square bg-muted flex items-center justify-center text-4xl relative group">
-                                            {p.image.startsWith('http') ? (
-                                                <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span>{p.image}</span>
-                                            )}
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                <Button size="icon" variant="secondary" className="rounded-full h-10 w-10">
-                                                    <ImageIcon className="h-5 w-5" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div>
-                                                    <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{p.category}</span>
-                                                    <CardTitle className="text-lg font-bold mt-0.5 line-clamp-1">{p.name}</CardTitle>
-                                                </div>
-                                                <span className="text-sm font-bold text-foreground shrink-0">{p.price > 0 ? `${p.price.toLocaleString()}원` : "가격 미정"}</span>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="flex-1 pb-4">
-                                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4 h-10">
-                                                {p.description || "등록된 상세 설명이 없습니다."}
-                                            </p>
-                                            <div className="space-y-2">
-                                                <div className="flex gap-2">
-                                                    <span className="text-[10px] font-bold text-muted-foreground w-16 shrink-0 uppercase">Key Points</span>
-                                                    <span className="text-xs text-foreground line-clamp-1">{p.points || "-"}</span>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <span className="text-[10px] font-bold text-muted-foreground w-16 shrink-0 uppercase">Required</span>
-                                                    <span className="text-xs text-foreground line-clamp-1">{p.shots || "-"}</span>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                        <CardFooter className="border-t pt-4 bg-muted/10 flex gap-2">
-                                            <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs gap-1" asChild>
-                                                <a href={p.link} target="_blank" rel="noopener noreferrer">
-                                                    <ExternalLink className="h-3 w-3" /> 웹사이트
-                                                </a>
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 px-2 text-xs gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                                                onClick={() => handleViewGuide(p)}
-                                            >
-                                                <FileText className="h-3 w-3" /> 가이드
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                onClick={() => handleEditProduct(p)}
-                                            >
-                                                <Pencil className="h-3 w-3" /> 수정
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 px-2 text-xs gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                onClick={() => {
-                                                    if (confirm("정말로 이 제품을 삭제하시겠습니까?")) {
-                                                        deleteProduct(p.id).catch(() => alert("삭제에 실패했습니다."));
-                                                    }
-                                                }}
-                                            >
-                                                <Trash2 className="h-3 w-3" /> 삭제
-                                            </Button>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    <MyProductsView
+                        myProducts={myProducts}
+                        setProductModalOpen={setProductModalOpen}
+                        handleViewGuide={handleViewGuide}
+                        handleEditProduct={handleEditProduct}
+                        deleteProduct={deleteProduct}
+                    />
                 )
             case "product-detail":
                 return (
@@ -2158,82 +2069,23 @@ function BrandDashboardContent() {
                 )
             case "settings":
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        <h1 className="text-3xl font-bold tracking-tight">브랜드 설정</h1>
-                        <Card className="max-w-2xl">
-                            <CardHeader>
-                                <CardTitle>브랜드 프로필</CardTitle>
-                                <CardDescription>크리에이터에게 보여질 브랜드 정보를 관리합니다.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="flex flex-col items-center justify-center mb-6">
-                                    <Label className="mb-2">프로필 이미지</Label>
-                                    <AvatarUpload
-                                        uid={user?.id || "brand"}
-                                        url={user?.avatar}
-                                        onUpload={async (url) => {
-                                            await updateUser({ avatar: url })
-                                        }}
-                                        size={120}
-                                    />
-                                    <p className="text-xs text-muted-foreground mt-2">클릭하여 이미지 변경</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="b-name">브랜드명</Label>
-                                    <Input id="b-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="b-web">공식 웹사이트</Label>
-                                    <Input id="b-web" className="pl-9" value={editWebsite} onChange={(e) => setEditWebsite(e.target.value)} placeholder="https://" />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="b-phone">대표 연락처</Label>
-                                    <Input id="b-phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="02-0000-0000" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="b-address">브랜드 주소</Label>
-                                    <Input id="b-address" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder="서울시 강남구..." />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="b-bio">브랜드 소개</Label>
-                                    <Textarea id="b-bio" value={editBio} onChange={(e) => setEditBio(e.target.value)} placeholder="브랜드의 비전과 가치를 설명해주세요." className="min-h-[120px]" />
-                                </div>
-                            </CardContent>
-                            <CardFooter>
-                                <Button onClick={handleSaveProfile} disabled={isSaving}>
-                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "저장하기"}
-                                </Button>
-                            </CardFooter>
-                        </Card>
-
-                        <Card className="max-w-2xl border-red-100 bg-red-50/10 mt-6">
-                            <CardHeader>
-                                <CardTitle className="text-red-600 flex items-center gap-2">
-                                    계정 유형 전환
-                                </CardTitle>
-                                <CardDescription>
-                                    크리에이터 계정으로 전환하시겠습니까? 계정 유형을 변경하면 크리에이터 전용 대시보드를 사용하게 됩니다.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-xs text-muted-foreground mb-4">
-                                    * 전환 후에도 브랜드 정보는 유지되지만, 대시보드 인터페이스가 크리에이터용으로 변경됩니다.
-                                </p>
-                                <Button
-                                    variant="outline"
-                                    className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
-                                    onClick={async () => {
-                                        if (confirm("정말로 크리에이터 계정으로 전환하시겠습니까?")) {
-                                            await switchRole('influencer');
-                                        }
-                                    }}
-                                >
-                                    크리에이터 계정으로 전환하기
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </div >
+                    <BrandProfileView
+                        user={user}
+                        isSaving={isSaving}
+                        editName={editName}
+                        setEditName={setEditName}
+                        editWebsite={editWebsite}
+                        setEditWebsite={setEditWebsite}
+                        editPhone={editPhone}
+                        setEditPhone={setEditPhone}
+                        editAddress={editAddress}
+                        setEditAddress={setEditAddress}
+                        editBio={editBio}
+                        setEditBio={setEditBio}
+                        handleSaveProfile={handleSaveProfile}
+                        updateUser={updateUser}
+                        switchRole={switchRole}
+                    />
                 )
             default:
                 return null
