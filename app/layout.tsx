@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-import { PlatformProvider } from "@/components/providers/platform-provider";
+import { UnifiedProvider } from "@/components/providers/unified-provider";
 import { SiteFooter } from "@/components/site-footer";
 
 const geistSans = Geist({
@@ -60,10 +60,10 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <PlatformProvider initialSession={session}>
+        <UnifiedProvider>
           {children}
           <SiteFooter />
-        </PlatformProvider>
+        </UnifiedProvider>
       </body>
     </html>
   );
