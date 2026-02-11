@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { ArrowLeft, Calendar, Plus, Package, Send, Sparkles, Loader2, Lock, Glob
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform } from "@/components/providers/legacy-platform-hook"
 
 const MONTHS = [
     "1월", "2월", "3월", "4월",

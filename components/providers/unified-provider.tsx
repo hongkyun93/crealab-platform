@@ -1,14 +1,13 @@
 "use client"
 
 import React from "react"
-import { AuthProvider } from "./auth-provider"
-import { CampaignProvider } from "./campaign-provider"
-import { EventProvider } from "./event-provider"
-import { ProductProvider } from "./product-provider"
-import { ProposalProvider } from "./proposal-provider"
-import { MessageProvider } from "./message-provider"
-import { FavoriteProvider } from "./favorite-provider"
-import { useAuth } from "./auth-provider"
+import { AuthProvider, useAuth } from "./auth-provider"
+import { CampaignProvider, useCampaigns } from "./campaign-provider"
+import { EventProvider, useEvents } from "./event-provider"
+import { ProductProvider, useProducts } from "./product-provider"
+import { ProposalProvider, useProposals } from "./proposal-provider"
+import { MessageProvider, useMessages } from "./message-provider"
+import { FavoriteProvider, useFavorites } from "./favorite-provider"
 
 // Unified Provider that combines all domain providers
 export function UnifiedProvider({ children }: { children: React.ReactNode }) {
@@ -43,13 +42,7 @@ function UnifiedProviderInner({ children }: { children: React.ReactNode }) {
 }
 
 // Re-export all hooks for convenience
-export { useAuth } from "./auth-provider"
-export { useCampaigns } from "./campaign-provider"
-export { useEvents } from "./event-provider"
-export { useProducts } from "./product-provider"
-export { useProposals } from "./proposal-provider"
-export { useMessages } from "./message-provider"
-export { useFavorites } from "./favorite-provider"
+export { useAuth, useCampaigns, useEvents, useProducts, useProposals, useMessages, useFavorites }
 
 // Legacy compatibility: Export a hook that provides all providers at once
 // This helps with gradual migration from old usePlatform hook

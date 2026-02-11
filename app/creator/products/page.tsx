@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, ShoppingBag, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform } from "@/components/providers/legacy-platform-hook"
 import { useState } from "react"
 
 export default function ProductListPage() {

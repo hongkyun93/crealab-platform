@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform } from "@/components/providers/legacy-platform-hook"
 import { AlertCircle, ArrowRight, Briefcase, UserCircle2 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"

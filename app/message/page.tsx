@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { MoreVertical, Paperclip, Search, Send, Phone, Video, BadgeCheck } from "lucide-react"
 import { useState, useRef, useEffect, useMemo } from "react"
-import { usePlatform, MOCK_INFLUENCER_USER } from "@/components/providers/platform-provider"
+import { usePlatform, MOCK_INFLUENCER_USER } from "@/components/providers/legacy-platform-hook"
 
 export default function MessagePage() {
     const { user, messages: allMessages, sendMessage, brandProposals } = usePlatform()

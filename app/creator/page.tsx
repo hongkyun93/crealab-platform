@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight } from "lucide-react"
 import Link from "next/link"
-import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign } from "@/components/providers/platform-provider"
+import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign } from "@/components/providers/legacy-platform-hook"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"

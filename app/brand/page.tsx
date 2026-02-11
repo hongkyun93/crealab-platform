@@ -73,7 +73,7 @@ import SignatureCanvas from 'react-signature-canvas'
 import Link from "next/link"
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
 import { useEffect, useState, Suspense, useRef } from "react"
-import { usePlatform, MOCK_BRAND_USER } from "@/components/providers/platform-provider"
+import { usePlatform, MOCK_BRAND_USER } from "@/components/providers/legacy-platform-hook"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"

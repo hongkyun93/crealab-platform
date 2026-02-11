@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ import {
 
 import { useRouter } from "next/navigation"
 import { useState, useRef } from "react"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform } from "@/components/providers/legacy-platform-hook"
 import { createCampaign } from "@/app/actions/campaign"
 import { createClient } from "@/lib/supabase/client"
 

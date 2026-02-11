@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { ArrowLeft, Package, Plus } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform } from "@/components/providers/legacy-platform-hook"
 import {
     Select,
     SelectContent,

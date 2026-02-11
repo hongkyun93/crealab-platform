@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ArrowLeft, Calendar, DollarSign, Target, User, CheckCircle2, Building2 } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform } from "@/components/providers/legacy-platform-hook"
 import { useEffect, useState } from "react"
-import { Campaign } from "@/components/providers/platform-provider"
+import type { Campaign } from "@/lib/types"
 
 export default function CampaignDetailPage() {
     const params = useParams()

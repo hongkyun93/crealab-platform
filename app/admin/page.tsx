@@ -1,10 +1,10 @@
-"use client"
+﻿"use client"
 
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { usePlatform } from "@/components/providers/legacy-platform-hook"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Trash2, Shield, Users, ShoppingBag, Send, Briefcase, ExternalLink } from "lucide-react"
