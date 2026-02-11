@@ -62,6 +62,12 @@ import { CampaignDetailDialog } from "@/components/dialogs/CampaignDetailDialog"
 import { DetailsModal } from "@/components/dialogs/DetailsModal"
 import { ProductGuideDialog } from "@/components/dialogs/ProductGuideDialog"
 
+// View Components
+import { DashboardView } from "@/components/creator/views/DashboardView"
+import { MomentsView } from "@/components/creator/views/MomentsView"
+import { ApplicationsView } from "@/components/creator/views/ApplicationsView"
+import { InboundProposalsView } from "@/components/creator/views/InboundProposalsView"
+
 const POPULAR_TAGS = [
     "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
     "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
@@ -1621,374 +1627,53 @@ function InfluencerDashboardContent() {
                                 </div>
                             </div>
                         ) : (
-                            <>
-                                {/* 1. Stats Overview Section */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                                    {/* Box 1: My Moment Archive */}
-                                    <div
-                                        className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-emerald-100 rounded-xl shadow-sm hover:shadow-md hover:border-emerald-300 cursor-pointer transition-all group"
-                                        onClick={() => setCurrentView('moments_list')}
-                                    >
-                                        <div className="p-4 rounded-full bg-emerald-100/50 text-emerald-600 mb-4 group-hover:scale-110 transition-transform">
-                                            <Calendar className="h-8 w-8" />
-                                        </div>
-                                        <div className="flex flex-col items-center gap-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="text-lg font-bold text-slate-700">내 모먼트 아카이브</h3>
-                                                <Badge className="bg-emerald-600 text-white text-md px-2 py-0.5 hover:bg-emerald-700">
-                                                    {activeMoments.length + myMoments.length + pastMoments.length}건
-                                                </Badge>
-                                            </div>
-                                            <p className="text-xs text-slate-400">나의 모먼트 / 지난 모먼트</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Box 2: My Campaign Archive */}
-                                    <div
-                                        className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all group"
-                                        onClick={() => setCurrentView('campaigns_list')}
-                                    >
-                                        <div className="p-4 rounded-full bg-slate-100 text-slate-600 mb-4 group-hover:scale-110 transition-transform">
-                                            <Megaphone className="h-8 w-8" />
-                                        </div>
-                                        <div className="flex flex-col items-center gap-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="text-lg font-bold text-slate-700">내 캠페인 아카이브</h3>
-                                                <Badge variant="secondary" className="bg-slate-200 text-slate-700 text-md px-2 py-0.5">
-                                                    {outboundApplications.length}건
-                                                </Badge>
-                                            </div>
-                                            <p className="text-xs text-slate-400">나의 지원 현황</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Box 3: Received Proposal Archive */}
-                                    <div
-                                        className="h-[180px] flex flex-col justify-center items-center bg-white border-2 border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-slate-300 cursor-pointer transition-all group"
-                                        onClick={() => setCurrentView('inbound_list')}
-                                    >
-                                        <div className="p-4 rounded-full bg-slate-100 text-slate-400 mb-4 group-hover:scale-110 transition-transform">
-                                            <Bell className="h-8 w-8" />
-                                        </div>
-                                        <div className="flex flex-col items-center gap-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="text-lg font-bold text-slate-500">받은 제안 아카이브</h3>
-                                                <Badge variant="outline" className="text-slate-500 border-slate-300 text-md px-2 py-0.5">
-                                                    {inboundProposals.length}건
-                                                </Badge>
-                                            </div>
-                                            <p className="text-xs text-slate-400">브랜드 직접 제안</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-
-
-                                {/* 2. Calendar Section */}
-                                <div className="border-2 border-slate-200 rounded-xl overflow-hidden h-auto min-h-[400px] flex flex-col shadow-sm bg-white">
-                                    <div className="p-4 border-b border-slate-200 flex items-center gap-4 bg-slate-50/50">
-                                        <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800 shrink-0">
-                                            <Calendar className="h-5 w-5 text-primary" />
-                                            내 캘린더
-                                        </h3>
-                                        <p className="text-xs text-slate-500 mt-1 mb-1">
-                                            진행 중인 모든 프로젝트의 일정을 한눈에 관리하세요.
-                                        </p>
-                                    </div>
-                                    <div className="flex-1 p-6">
-                                        <CalendarView
-                                            activeMoments={allActive}
-                                            myMoments={myMoments}
-                                            pastMoments={allCompleted}
-                                            onSelectEvent={(event) => {
-                                                if (event.type === 'upcoming') {
-                                                    setSelectedMomentId(event.id)
-                                                } else if (event.type === 'active' || event.type === 'completed') {
-                                                    // For active/completed, open workspace chat/proposal
-                                                    setChatProposal(event)
-                                                    setIsChatOpen(true)
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </>
+                            <DashboardView
+                                activeMoments={activeMoments}
+                                myMoments={myMoments}
+                                pastMoments={pastMoments}
+                                outboundApplications={outboundApplications}
+                                inboundProposals={inboundProposals}
+                                allActive={allActive}
+                                allCompleted={allCompleted}
+                                setCurrentView={setCurrentView}
+                                setSelectedMomentId={setSelectedMomentId}
+                                setChatProposal={setChatProposal}
+                                setIsChatOpen={setIsChatOpen}
+                            />
                         )}
                     </div>
                 )
             case "moments_list":
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-right-2">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" onClick={() => setCurrentView('dashboard')} className="gap-2">
-                                <ChevronRight className="h-4 w-4 rotate-180" />
-                                돌아가기
-                            </Button>
-                            <h1 className="text-2xl font-bold">내 모먼트 아카이브</h1>
-                        </div>
-
-                        <Tabs defaultValue="upcoming" className="w-full">
-                            <TabsList className="w-full md:w-auto grid grid-cols-2">
-                                <TabsTrigger value="upcoming">나의 모먼트 ({activeMoments.length + myMoments.length})</TabsTrigger>
-                                <TabsTrigger value="past">지나간 모먼트 ({pastMoments.length})</TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="upcoming" className="mt-6 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {upcomingMoments.length > 0 ? (
-                                        upcomingMoments.map((moment: any) => {
-                                            const offerCount = brandProposals.filter((p: any) => p.event_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
-                                            return (
-                                                <Card key={moment.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-emerald-500 group" onClick={() => handleOpenDetails(moment, 'moment')}>
-                                                    <CardContent className="p-5 space-y-4">
-                                                        <div className="flex justify-between items-start">
-                                                            <div className="space-y-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Badge variant="outline" className="text-emerald-600 border-emerald-100 bg-emerald-50">
-                                                                        {moment.category}
-                                                                    </Badge>
-                                                                    {offerCount > 0 && (
-                                                                        <Badge className="bg-indigo-600 hover:bg-indigo-700 animate-pulse">
-                                                                            📥 {offerCount}개의 제안 도착
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
-                                                                <h3 className="font-bold text-lg group-hover:text-emerald-600 transition-colors">
-                                                                    {moment.event || moment.title}
-                                                                </h3>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Key Info Grid */}
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                            <div className="col-span-full pb-2 border-b border-slate-200">
-                                                                <span className="text-xs text-muted-foreground block mb-0.5">광고 가능 아이템</span>
-                                                                <span className="font-medium text-slate-800 flex items-center gap-1.5">
-                                                                    <Gift className="h-3.5 w-3.5 text-purple-500" />
-                                                                    {moment.targetProduct || "미정"}
-                                                                </span>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-xs text-muted-foreground block mb-0.5">모먼트 일정</span>
-                                                                <span className="font-medium text-slate-700 flex items-center gap-1.5">
-                                                                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                                                                    {moment.eventDate ? formatDateToMonth(moment.eventDate) : moment.date}
-                                                                </span>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-xs text-muted-foreground block mb-0.5">콘텐츠 업로드</span>
-                                                                <span className="font-medium text-slate-700 flex items-center gap-1.5">
-                                                                    <Send className="h-3.5 w-3.5 text-slate-400" />
-                                                                    {moment.dateFlexible ? (
-                                                                        <span className="text-emerald-600">협의 가능</span>
-                                                                    ) : (
-                                                                        moment.postingDate ? formatDateToMonth(moment.postingDate) : "-"
-                                                                    )}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
-                                                                {moment.description || "상세 설명이 없습니다."}
-                                                            </p>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            )
-                                        })
-                                    ) : (
-                                        <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                            나의 모먼트가 없습니다.
-                                        </div>
-                                    )}
-                                </div>
-                            </TabsContent >
-
-                            <TabsContent value="past" className="mt-6 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {pastMoments.length > 0 ? (
-                                        pastMoments.map((moment: any) => (
-                                            <Card key={moment.id} className="cursor-pointer opacity-75 hover:opacity-100 transition-all border-l-4 border-l-slate-300 group" onClick={() => handleOpenDetails(moment, 'moment')}>
-                                                <CardContent className="p-5 space-y-4">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="space-y-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <Badge variant="outline" className="text-slate-500 border-slate-200">
-                                                                    {moment.category}
-                                                                </Badge>
-                                                                <Badge variant="secondary" className="text-slate-500">종료됨</Badge>
-                                                            </div>
-                                                            <h3 className="font-bold text-lg text-slate-600 line-through decoration-slate-300 decoration-2">
-                                                                {moment.event || moment.title}
-                                                            </h3>
-                                                        </div>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                                                    <MoreVertical className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    if (confirm("정말로 이 기록을 삭제하시겠습니까? (되돌릴 수 없습니다)")) {
-                                                                        deleteEvent(moment.id)
-                                                                    }
-                                                                }}>
-                                                                    <Trash2 className="mr-2 h-4 w-4" /> 기록 삭제
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-
-                                                    {/* Key Info Grid */}
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100 grayscale opacity-80">
-                                                        <div className="col-span-full pb-2 border-b border-slate-200">
-                                                            <span className="text-xs text-muted-foreground block mb-0.5">광고 가능 아이템</span>
-                                                            <span className="font-medium text-slate-700 flex items-center gap-1.5">
-                                                                <Gift className="h-3.5 w-3.5 text-slate-400" />
-                                                                {moment.targetProduct || "미정"}
-                                                            </span>
-                                                        </div>
-                                                        <div>
-                                                            <span className="text-xs text-muted-foreground block mb-0.5">모먼트 일정</span>
-                                                            <span className="font-medium text-slate-600 flex items-center gap-1.5">
-                                                                <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                                                                {moment.eventDate ? formatDateToMonth(moment.eventDate) : moment.date}
-                                                            </span>
-                                                        </div>
-                                                        <div>
-                                                            <span className="text-xs text-muted-foreground block mb-0.5">콘텐츠 업로드</span>
-                                                            <span className="font-medium text-slate-600 flex items-center gap-1.5">
-                                                                <Send className="h-3.5 w-3.5 text-slate-400" />
-                                                                {moment.postingDate ? formatDateToMonth(moment.postingDate) : "-"}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div>
-                                                        <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
-                                                            {moment.description || "상세 설명이 없습니다."}
-                                                        </p>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))
-                                    ) : (
-                                        <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                            완료된 모먼트가 없습니다.
-                                        </div>
-                                    )}
-                                </div>
-                            </TabsContent>
-                        </Tabs >
-                    </div >
+                    <MomentsView
+                        activeMoments={activeMoments}
+                        myMoments={myMoments}
+                        pastMoments={pastMoments}
+                        upcomingMoments={upcomingMoments}
+                        brandProposals={brandProposals}
+                        setCurrentView={setCurrentView}
+                        handleOpenDetails={handleOpenDetails}
+                        deleteEvent={deleteEvent}
+                    />
                 )
 
             case "campaigns_list":
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-right-2">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" onClick={() => setCurrentView('dashboard')} className="gap-2">
-                                <ChevronRight className="h-4 w-4 rotate-180" />
-                                돌아가기
-                            </Button>
-                            <h1 className="text-2xl font-bold">내 캠페인 아카이브</h1>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {outboundApplications.length > 0 ? (
-                                outboundApplications.map((app: any) => (
-                                    <Card key={app.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-blue-500" onClick={() => handleOpenDetails(app, 'campaign')}>
-                                        <CardContent className="p-4 space-y-4">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700">
-                                                        <Megaphone className="h-5 w-5" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold">{app.campaignName || app.brand_name || "캠페인"}</div>
-                                                        <div className="text-xs text-muted-foreground">{new Date(app.created_at).toLocaleDateString()} 지원</div>
-                                                    </div>
-                                                </div>
-                                                <Badge className="bg-blue-600">지원완료</Badge>
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-sm">{app.productName || "제품 정보 없음"}</p>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    희망비용: {app.cost ? `${app.cost.toLocaleString()}원` : '미입력'}
-                                                </p>
-                                            </div>
-                                            <Button className="w-full h-8 text-xs" variant="outline">지원서 확인</Button>
-                                        </CardContent>
-                                    </Card>
-                                ))
-                            ) : (
-                                <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                    지원한 캠페인이 없습니다.
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex justify-end mt-4">
-                            <Button asChild>
-                                <Link href="/creator/products">
-                                    <Search className="mr-2 h-4 w-4" /> 새로운 캠페인 찾기
-                                </Link>
-                            </Button>
-                        </div>
-                    </div>
+                    <ApplicationsView
+                        outboundApplications={outboundApplications}
+                        setCurrentView={setCurrentView}
+                        handleOpenDetails={handleOpenDetails}
+                    />
                 )
 
             case "inbound_list":
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-right-2">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" onClick={() => setCurrentView('dashboard')} className="gap-2">
-                                <ChevronRight className="h-4 w-4 rotate-180" />
-                                돌아가기
-                            </Button>
-                            <h1 className="text-2xl font-bold">받은 제안 아카이브 (Brand Offers)</h1>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {inboundProposals.length > 0 ? (
-                                inboundProposals.map((proposal: any) => (
-                                    <Card key={proposal.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-purple-500" onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
-                                        <CardContent className="p-4 space-y-4">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-sm font-bold text-purple-700">
-                                                        <Briefcase className="h-5 w-5" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold">{proposal.brand_name}</div>
-                                                        <div className="text-xs text-muted-foreground">{new Date(proposal.created_at).toLocaleDateString()} 도착</div>
-                                                    </div>
-                                                </div>
-                                                <Badge className="bg-purple-600">제안도착</Badge>
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-sm">{proposal.product_name || "제품 제안"}</p>
-                                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                                    "{proposal.message || "제안 내용이 있습니다."}"
-                                                </p>
-                                                <p className="font-bold text-sm text-purple-700 mt-2">
-                                                    {proposal.compensation_amount ? `${proposal.compensation_amount} 제안` : '원고료 협의'}
-                                                </p>
-                                            </div>
-                                            <Button className="w-full h-8 text-xs" variant="secondary">제안 확인하기</Button>
-                                        </CardContent>
-                                    </Card>
-                                ))
-                            ) : (
-                                <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                    도착한 제안이 없습니다.
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <InboundProposalsView
+                        inboundProposals={inboundProposals}
+                        setCurrentView={setCurrentView}
+                        setChatProposal={setChatProposal}
+                        setIsChatOpen={setIsChatOpen}
+                    />
                 )
 
             case "product-detail":
