@@ -37,8 +37,7 @@ export function ProposalProvider({ children, userId }: { children: React.ReactNo
                 .select(`
                     *,
                     campaigns(id, product_name, category, budget, brand_id, profiles(display_name, avatar_url)),
-                    profiles!influencer_id(display_name, avatar_url),
-                    influencer_details(instagram_handle, followers_count, tags)
+                    profiles!influencer_id(display_name, avatar_url)
                 `)
                 .eq('influencer_id', id)
                 .order('created_at', { ascending: false })
@@ -50,10 +49,6 @@ export function ProposalProvider({ children, userId }: { children: React.ReactNo
 
             if (data) {
                 const mapped: Proposal[] = data.map((p: any) => {
-                    const details = Array.isArray(p.influencer_details)
-                        ? p.influencer_details[0]
-                        : p.influencer_details
-
                     return {
                         id: p.id,
                         type: 'creator_apply' as const,
@@ -73,9 +68,9 @@ export function ProposalProvider({ children, userId }: { children: React.ReactNo
                         motivation: p.motivation,
                         content_plan: p.content_plan,
                         portfolioLinks: p.portfolio_links,
-                        followers: details?.followers_count,
-                        tags: details?.tags || [],
-                        instagramHandle: p.instagram_handle || details?.instagram_handle,
+                        followers: 0,
+                        tags: [],
+                        instagramHandle: p.instagram_handle,
                         insightScreenshot: p.insight_screenshot,
                         contract_content: p.contract_content,
                         contract_status: p.contract_status,

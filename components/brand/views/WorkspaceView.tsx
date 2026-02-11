@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 import Link from "next/link"
 import { CheckCircle2, X } from "lucide-react"
 import { Card } from "@/components/ui/card"
@@ -19,7 +19,7 @@ interface WorkspaceViewProps {
     handleStatusUpdate: (id: string, status: string) => void
 }
 
-export function WorkspaceView({
+export const WorkspaceView = React.memo(function WorkspaceView({
     proposals,
     brandProposals,
     workspaceTab,
@@ -28,40 +28,89 @@ export function WorkspaceView({
     setIsChatOpen,
     handleStatusUpdate
 }: WorkspaceViewProps) {
+    // Memoize filtering logic to prevent recalculation on every render
     // 1. Inbound (Received Applications from Creators) - Waiting
-    // Source: 'proposals' table (Creator applied to My Campaign)
-    const inboundApplications = proposals?.filter((p: any) => p.status === 'applied' || p.status === 'pending' || p.status === 'viewed') || []
+    const inboundApplications = useMemo(
+        () => proposals?.filter((p: any) => p.status === 'applied' || p.status === 'pending' || p.status === 'viewed') || [],
+        [proposals]
+    )
 
     // 2. Outbound (Sent Offers to Creators) - Waiting
-    // Source: 'brand_proposals' table (I offered to Creator)
-    const outboundOffers = brandProposals?.filter(p => !p.status || p.status === 'offered' || p.status === 'negotiating') || []
+    const outboundOffers = useMemo(
+        () => brandProposals?.filter(p => !p.status || p.status === 'offered' || p.status === 'negotiating') || [],
+        [brandProposals]
+    )
 
     // 3. Active (In Progress) - Both sources
-    const activeInbound = proposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') || []
-    const activeOutbound = brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') || []
-    const allActive = [...activeInbound, ...activeOutbound].sort((a: any, b: any) => new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime())
+    const activeInbound = useMemo(
+        () => proposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') || [],
+        [proposals]
+    )
+
+    const activeOutbound = useMemo(
+        () => brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') || [],
+        [brandProposals]
+    )
+
+    const allActive = useMemo(
+        () => [...activeInbound, ...activeOutbound].sort((a: any, b: any) =>
+            new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime()
+        ),
+        [activeInbound, activeOutbound]
+    )
 
     // 4. Completed - Both sources
-    const completedInbound = proposals?.filter((p: any) => p.status === 'completed') || []
-    const completedOutbound = brandProposals?.filter((p: any) => p.status === 'completed') || []
-    const allCompleted = [...completedInbound, ...completedOutbound].sort((a: any, b: any) => new Date(b.completed_at || b.created_at || b.date).getTime() - new Date(a.completed_at || a.created_at || a.date).getTime())
+    const completedInbound = useMemo(
+        () => proposals?.filter((p: any) => p.status === 'completed') || [],
+        [proposals]
+    )
+
+    const completedOutbound = useMemo(
+        () => brandProposals?.filter((p: any) => p.status === 'completed') || [],
+        [brandProposals]
+    )
+
+    const allCompleted = useMemo(
+        () => [...completedInbound, ...completedOutbound].sort((a: any, b: any) =>
+            new Date(b.completed_at || b.created_at || b.date).getTime() - new Date(a.completed_at || a.created_at || a.date).getTime()
+        ),
+        [completedInbound, completedOutbound]
+    )
 
     // 5. Rejected - Both sources
-    const rejectedInbound = proposals?.filter((p: any) => p.status === 'rejected') || []
-    const rejectedOutbound = brandProposals?.filter((p: any) => p.status === 'rejected') || []
-    const allRejected = [...rejectedInbound, ...rejectedOutbound].sort((a: any, b: any) => new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime())
+    const rejectedInbound = useMemo(
+        () => proposals?.filter((p: any) => p.status === 'rejected') || [],
+        [proposals]
+    )
+
+    const rejectedOutbound = useMemo(
+        () => brandProposals?.filter((p: any) => p.status === 'rejected') || [],
+        [brandProposals]
+    )
+
+    const allRejected = useMemo(
+        () => [...rejectedInbound, ...rejectedOutbound].sort((a: any, b: any) =>
+            new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime()
+        ),
+        [rejectedInbound, rejectedOutbound]
+    )
 
     // 6. All Items
-    const allWorkspaceItems = [
-        ...inboundApplications,
-        ...outboundOffers,
-        ...activeInbound,
-        ...activeOutbound,
-        ...completedInbound,
-        ...completedOutbound,
-        ...rejectedInbound,
-        ...rejectedOutbound
-    ].sort((a: any, b: any) => new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime())
+    const allWorkspaceItems = useMemo(
+        () => [
+            ...inboundApplications,
+            ...outboundOffers,
+            ...activeInbound,
+            ...activeOutbound,
+            ...completedInbound,
+            ...completedOutbound,
+            ...rejectedInbound,
+            ...rejectedOutbound
+        ].sort((a: any, b: any) =>
+            new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime()
+        ),
+        [inboundApplications, outboundOffers, activeInbound, activeOutbound, completedInbound, completedOutbound, rejectedInbound, rejectedOutbound]
+    )
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -376,4 +425,4 @@ export function WorkspaceView({
             </Tabs >
         </div >
     )
-}
+})

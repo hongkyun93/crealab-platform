@@ -6,7 +6,6 @@ export interface InfluencerEvent {
     handle: string
     avatar: string
     priceVideo?: number
-    category: string
     event: string // Title in DB
     date: string
     description: string
@@ -33,7 +32,6 @@ export interface EventSchedule {
 }
 
 export interface EventFormData {
-    category: string
     event: string
     description: string
     targetProduct: string

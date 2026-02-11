@@ -72,7 +72,7 @@ export default function EventDetailPage() {
                 setIsLoadingEvent(true)
                 try {
                     const { data: e, error } = await supabase
-                        .from('influencer_events')
+                        .from('life_moments')
                         .select(`
                             *,
                             profiles:influencer_id(
@@ -95,8 +95,8 @@ export default function EventDetailPage() {
                             influencerId: e.influencer_id,
                             handle: details?.instagram_handle || "",
                             avatar: profile?.avatar_url || "",
-                            category: e.category,
-                            event: e.title,
+                            category: e.category || "Life Moment", // Default category
+                            event: e.title, // map 'title' to 'event'
                             date: new Date(e.created_at).toISOString().split('T')[0],
                             description: e.description,
                             tags: e.tags || [],

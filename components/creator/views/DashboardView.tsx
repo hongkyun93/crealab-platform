@@ -1,3 +1,4 @@
+import React from "react"
 import { Calendar, Megaphone, Bell } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { CalendarView } from "@/components/dashboard/calendar-view"
@@ -16,7 +17,7 @@ interface DashboardViewProps {
     setIsChatOpen: (open: boolean) => void
 }
 
-export function DashboardView({
+export const DashboardView = React.memo(function DashboardView({
     activeMoments,
     myMoments,
     pastMoments,
@@ -121,4 +122,4 @@ export function DashboardView({
             </div>
         </>
     )
-}
+})

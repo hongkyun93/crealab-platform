@@ -75,11 +75,46 @@ ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS auto_dm_price int
 -- 2.3 LIFE MOMENTS
 CREATE TABLE IF NOT EXISTS public.life_moments (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-  name text NOT NULL,
+  name text,
   icon text,
   description text,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+  influencer_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title text,
+  target_product text,
+  event_date text,
+  posting_date text,
+  category text,
+  tags text[],
+  is_verified boolean DEFAULT false,
+  status text DEFAULT 'recruiting',
+  is_mock BOOLEAN DEFAULT FALSE,
+  is_private BOOLEAN DEFAULT FALSE,
+  schedule JSONB DEFAULT '{}'::jsonb,
+  guide text,
+  price_video integer,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Force add columns if table exists but columns are missing (Migration safety)
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS icon text;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS description text;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS influencer_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS target_product text;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS event_date text;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS posting_date text;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS category text;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS tags text[];
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS is_verified boolean DEFAULT false;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS status text DEFAULT 'recruiting';
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS schedule JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS guide text;
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS price_video integer;
+
 -- Seed Life Moments (Idempotent)
 INSERT INTO life_moments (name, icon, description) VALUES
   ('이사/자취', '🏠', '자취 시작, 이사 준비, 인테리어'),
@@ -199,7 +234,7 @@ CREATE TABLE IF NOT EXISTS public.brand_proposals (
   influencer_signed_at timestamp with time zone,
   product_id uuid REFERENCES public.brand_products(id),
   product_url text,
-  event_id uuid REFERENCES public.influencer_events(id) ON DELETE SET NULL,
+  event_id uuid REFERENCES public.life_moments(id) ON DELETE SET NULL,
   shipping_name text,
   shipping_phone text,
   shipping_address text,
@@ -361,7 +396,7 @@ CREATE POLICY "Brands can insert their own products" ON brand_products FOR INSER
 CREATE POLICY "Brands can update their own products" ON brand_products FOR UPDATE USING ( auth.uid() = brand_id );
 CREATE POLICY "Brands can delete their own products" ON brand_products FOR DELETE USING ( auth.uid() = brand_id );
 
--- 4.4 Influencer Events
+-- 4.4 Influencer Events (Legacy)
 DROP POLICY IF EXISTS "Influencer events are viewable by everyone" ON influencer_events;
 DROP POLICY IF EXISTS "Influencers can insert their own events" ON influencer_events;
 DROP POLICY IF EXISTS "Influencers can update their own events" ON influencer_events;
@@ -370,6 +405,20 @@ CREATE POLICY "Influencer events are viewable by everyone" ON influencer_events 
 CREATE POLICY "Influencers can insert their own events" ON influencer_events FOR INSERT WITH CHECK ( auth.uid() = influencer_id );
 CREATE POLICY "Influencers can update their own events" ON influencer_events FOR UPDATE USING ( auth.uid() = influencer_id );
 CREATE POLICY "Influencers can delete their own events" ON influencer_events FOR DELETE USING ( auth.uid() = influencer_id );
+
+-- 4.4.1 Life Moments (New)
+ALTER TABLE public.life_moments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Life moments are viewable by everyone" ON life_moments;
+DROP POLICY IF EXISTS "Influencers can insert their own moments" ON life_moments;
+DROP POLICY IF EXISTS "Influencers can update their own moments" ON life_moments;
+DROP POLICY IF EXISTS "Influencers can delete their own moments" ON life_moments;
+
+-- Public view (filter private ones if needed, currently allowing all for simplicity or use is_private check)
+CREATE POLICY "Life moments are viewable by everyone" ON life_moments FOR SELECT USING ( is_private = false OR auth.uid() = influencer_id );
+
+CREATE POLICY "Influencers can insert their own moments" ON life_moments FOR INSERT WITH CHECK ( auth.uid() = influencer_id );
+CREATE POLICY "Influencers can update their own moments" ON life_moments FOR UPDATE USING ( auth.uid() = influencer_id );
+CREATE POLICY "Influencers can delete their own moments" ON life_moments FOR DELETE USING ( auth.uid() = influencer_id );
 
 -- 4.5 Campaigns
 DROP POLICY IF EXISTS "Campaigns viewable by everyone" ON campaigns;
@@ -583,6 +632,24 @@ ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submissio
 ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_status_2 text DEFAULT 'pending';
 ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_date_2 TIMESTAMP WITH TIME ZONE;
 ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9;
+
+-- Condition Fields for Brand Proposals
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_product_receipt_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_plan_sharing_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_draft_submission_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_final_submission_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_upload_date text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_maintenance_period text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS condition_secondary_usage_period text;
+
+-- Condition Fields for Campaign Proposals
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS condition_product_receipt_date text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS condition_plan_sharing_date text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS condition_draft_submission_date text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS condition_final_submission_date text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS condition_upload_date text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS condition_maintenance_period text;
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS condition_secondary_usage_period text;
 
 -- 7.4 Mutual Condition Confirmation Fields (Added via Agent)
 -- For Direct Offers

@@ -49,18 +49,19 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { CalendarView } from "@/components/dashboard/calendar-view"
+import dynamic from 'next/dynamic'
 
-// Dialog Components
-import { ApplyDialog } from "@/components/dialogs/ApplyDialog"
-import { GuideDialog } from "@/components/dialogs/GuideDialog"
-import { CampaignDetailDialog } from "@/components/dialogs/CampaignDetailDialog"
-import { DetailsModal } from "@/components/dialogs/DetailsModal"
-import { ProductGuideDialog } from "@/components/dialogs/ProductGuideDialog"
+// Dialog Components - Dynamically loaded for code splitting
+const ApplyDialog = dynamic(() => import("@/components/dialogs/ApplyDialog").then(m => ({ default: m.ApplyDialog })))
+const GuideDialog = dynamic(() => import("@/components/dialogs/GuideDialog").then(m => ({ default: m.GuideDialog })))
+const CampaignDetailDialog = dynamic(() => import("@/components/dialogs/CampaignDetailDialog").then(m => ({ default: m.CampaignDetailDialog })))
+const DetailsModal = dynamic(() => import("@/components/dialogs/DetailsModal").then(m => ({ default: m.DetailsModal })))
+const ProductGuideDialog = dynamic(() => import("@/components/dialogs/ProductGuideDialog").then(m => ({ default: m.ProductGuideDialog })))
 
 // View Components
 import { DashboardView } from "@/components/creator/views/DashboardView"
@@ -298,7 +299,7 @@ function InfluencerDashboardContent() {
         }
     }
 
-    const handleOpenDetails = (item: any, type: 'moment' | 'campaign') => {
+    const handleOpenDetails = useCallback((item: any, type: 'moment' | 'campaign') => {
         setSelectedItemDetails(item)
         setDetailsType(type)
 
@@ -329,7 +330,7 @@ function InfluencerDashboardContent() {
 
         setRelatedProposals(related)
         setIsDetailsModalOpen(true)
-    }
+    }, [brandProposals])
 
 
 

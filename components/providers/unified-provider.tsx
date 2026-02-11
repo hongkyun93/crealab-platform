@@ -75,9 +75,11 @@ export function useUnifiedProvider() {
 
         // Events
         events: events.events,
+        allEvents: events.allEvents, // New: Public events
         addEvent: events.addEvent,
         updateEvent: events.updateEvent,
         deleteEvent: events.deleteEvent,
+        fetchAllEvents: events.fetchAllEvents, // New: Function to fetch all events
 
         // Products
         products: products.products,
@@ -111,8 +113,20 @@ export function useUnifiedProvider() {
         supabase: supabase,
 
         // Loading states
-        isLoading: campaigns.isLoading || events.isLoading || products.isLoading ||
-            proposals.isLoading || messages.isLoading || favorites.isLoading,
+        isLoading: (() => {
+            const loadingState = {
+                campaigns: campaigns.isLoading,
+                events: events.isLoading,
+                products: products.isLoading,
+                proposals: proposals.isLoading,
+                messages: messages.isLoading,
+                favorites: favorites.isLoading
+            }
+            if (Object.values(loadingState).some(Boolean)) {
+                console.log('[UnifiedProvider] Loading Status:', loadingState)
+            }
+            return Object.values(loadingState).some(Boolean)
+        })(),
 
         // Refresh functions
         refreshData: async () => {

@@ -27,7 +27,7 @@ interface BrandProfileViewProps {
     switchRole: (role: string) => Promise<void>
 }
 
-export function BrandProfileView({
+export const BrandProfileView = React.memo(function BrandProfileView({
     user,
     isSaving,
     editName,
@@ -122,4 +122,4 @@ export function BrandProfileView({
             </Card>
         </div>
     )
-}
+})

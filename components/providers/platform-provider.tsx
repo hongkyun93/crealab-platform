@@ -701,7 +701,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             console.log('[PlatformProvider] Fetching events & data for:', targetId)
             // 1. Fetch Events
             const { data: eventsData, error: eventsError } = await supabase
-                .from('influencer_events')
+                .from('life_moments')
                 .select('*, profiles(*, influencer_details(*))')
                 .order('created_at', { ascending: false })
 
@@ -728,8 +728,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         influencerId: e.influencer_id,
                         handle: details?.instagram_handle || "",
                         avatar: profile?.avatar_url || "",
-                        category: e.category,
-                        event: e.title,
+                        category: e.category || "기타", // category removed from DB, fallback or remove
+                        event: e.title, // Mapped title -> event
                         date: new Date(e.created_at).toISOString().split('T')[0],
                         description: e.description,
                         tags: e.tags || [],
@@ -737,11 +737,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         followers: details?.followers_count || 0,
                         priceVideo: details?.price_video || 0, // Mapped new field
                         targetProduct: e.target_product || "",
-                        eventDate: e.event_date || "",
+                        eventDate: e.created_at, // No event_date, use created_at or schedule
                         postingDate: e.posting_date || "",
-                        guide: e.guide || "",
-                        dateFlexible: e.posting_date === '1993-01-06' || e.date_flexible || false, // Sentinel check + legacy support
-                        status: e.status || ((e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'recruiting')
+                        guide: "", // guide removed from DB
+                        status: e.status || 'recruiting'
                     }
                 })
                 // 로그인 한 유저(targetId 존재)는 실제 DB 데이터만 표시
@@ -1387,22 +1386,21 @@ export function PlatformProvider({ children, initialSession }: { children: React
         try {
             // 2. Insert into DB
             const { data, error } = await supabase
-                .from('influencer_events')
+                .from('life_moments') // Updated table name
                 .insert({
                     influencer_id: targetUserId,
-                    title: newEvent.event,
+                    title: newEvent.event, // Mapped event -> title
                     description: newEvent.description,
                     target_product: newEvent.targetProduct,
-                    event_date: newEvent.eventDate,
-                    posting_date: newEvent.dateFlexible ? '1993-01-06' : newEvent.postingDate,
-                    category: newEvent.category,
-                    guide: newEvent.guide,
+                    // event_date: newEvent.eventDate, // Removed
+                    posting_date: newEvent.dateFlexible ? '협의 가능' : newEvent.postingDate,
+                    // category: newEvent.category, // Removed
+                    // guide: newEvent.guide, // Removed
                     tags: newEvent.tags,
                     status: 'recruiting',
                     is_private: newEvent.isPrivate || false,
-                    // date_flexible: newEvent.dateFlexible || false, // Deprecated in favor of sentinel
                     schedule: newEvent.schedule || {},
-                    is_mock: user?.isMock || false
+                    // is_mock: user?.isMock || false // Not in schema yet, optional
                 })
                 .select()
                 .single()
@@ -1468,16 +1466,16 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // although most fields have validation
             if (updatedData.event !== undefined) dbUpdates.title = updatedData.event
             if (updatedData.description !== undefined) dbUpdates.description = updatedData.description
-            if (updatedData.guide !== undefined) dbUpdates.guide = updatedData.guide
-            if (updatedData.category !== undefined) dbUpdates.category = updatedData.category
+            // if (updatedData.guide !== undefined) dbUpdates.guide = updatedData.guide // Removed
+            // if (updatedData.category !== undefined) dbUpdates.category = updatedData.category // Removed
             if (updatedData.tags !== undefined) dbUpdates.tags = updatedData.tags
             if (updatedData.targetProduct !== undefined) dbUpdates.target_product = updatedData.targetProduct
-            if (updatedData.eventDate !== undefined) dbUpdates.event_date = updatedData.eventDate
+            // if (updatedData.eventDate !== undefined) dbUpdates.event_date = updatedData.eventDate // Removed
             if (updatedData.postingDate !== undefined) dbUpdates.posting_date = updatedData.postingDate
             if (updatedData.status !== undefined) dbUpdates.status = updatedData.status
 
             const { data, error } = await supabase
-                .from('influencer_events')
+                .from('life_moments') // Updated table name
                 .update(dbUpdates)
                 .eq('id', id)
                 .select()
@@ -1525,7 +1523,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
         try {
             const { error } = await supabase
-                .from('influencer_events')
+                .from('life_moments') // Updated table name
                 .delete()
                 .eq('id', id)
 
@@ -2319,7 +2317,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             .channel(`realtime-data-${user.id}`)
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'influencer_events' },
+                { event: '*', schema: 'public', table: 'life_moments' },
                 () => { console.log('[Realtime] Event change detected'); refreshData(); }
             )
             .on(

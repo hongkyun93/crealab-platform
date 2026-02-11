@@ -13,7 +13,7 @@ interface MyProductsViewProps {
     deleteProduct: (id: string) => Promise<void>
 }
 
-export function MyProductsView({
+export const MyProductsView = React.memo(function MyProductsView({
     myProducts,
     setProductModalOpen,
     handleViewGuide,
@@ -122,4 +122,4 @@ export function MyProductsView({
             )}
         </div>
     )
-}
+})

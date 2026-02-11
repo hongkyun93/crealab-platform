@@ -1,3 +1,4 @@
+import React, { useMemo } from "react"
 import { ChevronRight, Calendar, Gift, Send, Trash2, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -22,7 +23,7 @@ interface MomentsViewProps {
     deleteEvent: (id: string) => void
 }
 
-export function MomentsView({
+export const MomentsView = React.memo(function MomentsView({
     activeMoments,
     myMoments,
     pastMoments,
@@ -200,4 +201,4 @@ export function MomentsView({
             </Tabs>
         </div>
     )
-}
+})

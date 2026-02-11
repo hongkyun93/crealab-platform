@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 import Link from "next/link"
 import { Plus, Package, Bell, Pencil, Trash2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ interface MyCampaignsViewProps {
     updateCampaignStatus: (id: string, status: string) => void
 }
 
-export function MyCampaignsView({
+export const MyCampaignsView = React.memo(function MyCampaignsView({
     myCampaigns,
     proposals,
     selectedCampaignId,
@@ -25,8 +25,17 @@ export function MyCampaignsView({
     deleteCampaign,
     updateCampaignStatus
 }: MyCampaignsViewProps) {
-    const selectedCampaign = myCampaigns.find(c => c.id === selectedCampaignId)
-    const campaignProposals = proposals.filter(p => p.campaignId === selectedCampaign?.id && p.type === 'creator_apply')
+    // Memoize selected campaign lookup
+    const selectedCampaign = useMemo(
+        () => myCampaigns.find(c => c.id === selectedCampaignId),
+        [myCampaigns, selectedCampaignId]
+    )
+
+    // Memoize campaign proposals filtering
+    const campaignProposals = useMemo(
+        () => proposals.filter(p => p.campaignId === selectedCampaign?.id && p.type === 'creator_apply'),
+        [proposals, selectedCampaign?.id]
+    )
 
     // Detail View
     if (selectedCampaignId && selectedCampaign) {
@@ -272,4 +281,4 @@ export function MyCampaignsView({
             )}
         </div>
     )
-}
+})

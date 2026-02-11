@@ -72,7 +72,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import SignatureCanvas from 'react-signature-canvas'
 import Link from "next/link"
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
-import { useEffect, useState, Suspense, useRef } from "react"
+import { useEffect, useState, Suspense, useRef, useCallback } from "react"
 import { usePlatform, MOCK_BRAND_USER } from "@/components/providers/legacy-platform-hook"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Label } from "@/components/ui/label"
@@ -119,7 +119,8 @@ function BrandDashboardContent() {
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
         updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
         switchRole, proposals, updateCampaignStatus, updateProposal, notifications, sendNotification, refreshData,
-        favorites, toggleFavorite
+        favorites, toggleFavorite,
+        allEvents, fetchAllEvents // New: Public events
     } = usePlatform()
 
     // AI Calculator State
@@ -128,6 +129,7 @@ function BrandDashboardContent() {
     // Force data refresh on mount to avoid stale data from navigation
     useEffect(() => {
         refreshData()
+        fetchAllEvents() // New: Fetch public events for discovery
     }, []) // Stable refresh once on mount
 
     const displayUser = user
@@ -272,7 +274,7 @@ function BrandDashboardContent() {
             fetchSubmissionFeedback(chatProposal.id.toString(), !isCampaign)
         }
     }, [activeProposalTab, chatProposal, fetchSubmissionFeedback])
-    const handleStatusUpdate = async (id: string | number, status: 'accepted' | 'rejected' | 'hold') => {
+    const handleStatusUpdate = useCallback(async (id: string | number, status: 'accepted' | 'rejected' | 'hold') => {
         if (confirm(`이 지원서를 ${status === 'accepted' ? '수락' : status === 'hold' ? '보류' : '거절'}하시겠습니까?`)) {
             try {
                 const { updateApplicationStatus } = await import('@/app/actions/proposal')
@@ -291,7 +293,7 @@ function BrandDashboardContent() {
                 alert("상태 변경 중 오류가 발생했습니다.")
             }
         }
-    }
+    }, [refreshData])
 
     const handleGenerateContract = async () => {
         if (!chatProposal || !user) return
@@ -749,13 +751,16 @@ function BrandDashboardContent() {
         const view = searchParams.get('view')
         if (view) {
             const mappedView = view === "dashboard" ? "my-campaigns" : view
+            // Only update if the view from URL is different and it's a fresh navigation (not just a re-render)
+            // Ideally, we should just let the initial state handle it, or update ONLY when searchParams change.
+            // Removing 'currentView' from dependency array to avoid the loop.
             if (mappedView !== currentView) {
                 setCurrentView(mappedView)
             }
         }
-    }, [searchParams, currentView])
+    }, [searchParams]) // Remove currentView from dependency array
 
-    const handlePresetClick = (key: string) => {
+    const handlePresetClick = useCallback((key: string) => {
         setFollowerFilter(key)
         if (key === "all") {
             setMinFollowers("")
@@ -779,16 +784,17 @@ function BrandDashboardContent() {
             setMinFollowers("1000000")
             setMaxFollowers("")
         }
-    }
+    }, [])
 
-    const handleManualChange = (type: 'min' | 'max', value: string) => {
+    const handleManualChange = useCallback((type: 'min' | 'max', value: string) => {
         if (type === 'min') setMinFollowers(value)
         else setMaxFollowers(value)
         setFollowerFilter("custom")
-    }
+    }, [])
 
     const getFilteredAndSortedEvents = () => {
-        let result = [...events]
+        // Use allEvents for discovery, default empty array if undefined
+        let result = [...(allEvents || [])]
         if (selectedTag) {
             result = result.filter(e =>
                 e.category === selectedTag ||
@@ -924,7 +930,7 @@ function BrandDashboardContent() {
         }
     }
 
-    const handleViewGuide = (product: any) => {
+    const handleViewGuide = useCallback((product: any) => {
         setEditingProductId(null) // Ensure we are not in "edit mode" for submission
         setNewProductName(product.name)
         setNewProductPrice(product.price?.toString() || "")
@@ -939,9 +945,9 @@ function BrandDashboardContent() {
         setNewProductHashtags(product.tags ? product.tags.join(" ") : "")
         // Do NOT open productModal (form), ONLY previewModal
         setPreviewModalOpen(true)
-    }
+    }, [])
 
-    const handleEditProduct = (product: any) => {
+    const handleEditProduct = useCallback((product: any) => {
         setEditingProductId(product.id)
         setNewProductName(product.name)
         setNewProductPrice(product.price?.toString() || "")
@@ -956,7 +962,7 @@ function BrandDashboardContent() {
         setNewProductAccountTag(product.accountTag || "")
         setNewProductHashtags(product.tags ? product.tags.join(" ") : "")
         setProductModalOpen(true)
-    }
+    }, [])
 
 
     const handlePreview = () => {
@@ -1065,16 +1071,8 @@ function BrandDashboardContent() {
     const mySentProposals = user?.type === 'admin' ? brandProposals : brandProposals.filter(p => p.brand_id === user?.id)
     const myProducts = user?.type === 'admin' ? products : products.filter(p => p.brandId === user?.id)
 
-    if (isLoading) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center bg-slate-50">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-                    <p className="text-sm font-medium text-slate-600 animate-pulse">데이터를 불러오는 중입니다...</p>
-                </div>
-            </div>
-        )
-    }
+    // Non-blocking loading state (optional: show a small spinner elsewhere if needed)
+    // if (isLoading) { return <Loader...> } - REMOVED to prevent infinite lock
 
     const renderContent = () => {
         switch (currentView) {

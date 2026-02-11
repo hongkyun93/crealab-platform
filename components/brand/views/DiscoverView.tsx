@@ -37,7 +37,7 @@ interface DiscoverViewProps {
     deleteEvent: (id: string) => Promise<void>
 }
 
-export function DiscoverView({
+export const DiscoverView = React.memo(function DiscoverView({
     filteredEvents,
     sortOrder,
     setSortOrder,
@@ -292,4 +292,4 @@ export function DiscoverView({
             </div>
         </div>
     )
-}
+})
