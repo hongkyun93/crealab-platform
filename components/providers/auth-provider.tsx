@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     console.log(`[AuthProvider] Session found on attempt ${i + 1}`)
                     break
                 }
-                if (i < 4) await new Promise(resolve => setTimeout(resolve, 100))
+                if (i < 4) await new Promise(resolve => setTimeout(resolve, 50))
             }
 
             if (session?.user && mounted) {
@@ -170,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.warn("[AuthProvider] Auth check timed out, forcing render")
                 setIsAuthChecked(true)
             }
-        }, 5000)
+        }, 10000)
 
         return () => {
             mounted = false

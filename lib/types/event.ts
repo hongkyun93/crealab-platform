@@ -12,6 +12,7 @@ export interface InfluencerEvent {
     tags: string[]
     verified: boolean
     followers: number
+    category?: string
     targetProduct: string
     eventDate: string
     postingDate?: string
@@ -21,6 +22,7 @@ export interface InfluencerEvent {
     isPrivate?: boolean
     dateFlexible?: boolean
     schedule?: EventSchedule
+    createdAt?: string
 }
 
 export interface EventSchedule {

@@ -10,7 +10,9 @@ export function formatDateToMonth(dateStr: string | Date | undefined | null): st
   try {
     const date = new Date(dateStr)
     if (isNaN(date.getTime())) return String(dateStr) // Return original if invalid
-    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 중`
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    return `${year}.${month}`
   } catch (e) {
     return String(dateStr)
   }

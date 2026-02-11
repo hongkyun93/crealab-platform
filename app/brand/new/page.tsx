@@ -111,7 +111,7 @@ export default function NewCampaignPage() {
     }
 
     const handleSelectProduct = (product: any) => {
-        if (!confirm(`'${product.name}' 정보를 불러오시겠습니까?\n기존에 입력된 내용은 덮어씌워집니다.`)) return
+        console.log('[handleSelectProduct] Called with product:', product.name)
 
         setProductTitle(product.name)
 
@@ -397,9 +397,9 @@ export default function NewCampaignPage() {
                                                     <h4 className="font-medium truncate group-hover:text-primary transition-colors">{product.name}</h4>
                                                     <p className="text-xs text-muted-foreground truncate">{product.category}</p>
                                                 </div>
-                                                <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 shrink-0">
-                                                    선택 <Check className="ml-1 h-3 w-3" />
-                                                </Button>
+                                                <div className="opacity-0 group-hover:opacity-100 shrink-0 text-sm text-primary font-medium flex items-center gap-1">
+                                                    선택 <Check className="h-3 w-3" />
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

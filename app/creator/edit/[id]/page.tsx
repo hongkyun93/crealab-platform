@@ -21,7 +21,8 @@ import { ArrowLeft, Calendar, Save, Trash2, Package, Send } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { usePlatform } from "@/components/providers/platform-provider"
+import { useEvents } from "@/components/providers/event-provider"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const MONTHS = [
     "1월", "2월", "3월", "4월",
@@ -39,8 +40,10 @@ const POPULAR_TAGS = [
 export default function EditEventPage() {
     const router = useRouter()
     const params = useParams()
-    const { events, updateEvent, deleteEvent, user } = usePlatform()
+    const { events, updateEvent, deleteEvent } = useEvents()
+    const { user } = useAuth()
     const [selectedTags, setSelectedTags] = useState<string[]>([])
+
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isDateFlexible, setIsDateFlexible] = useState(false)
 

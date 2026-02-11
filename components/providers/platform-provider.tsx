@@ -404,7 +404,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 console.warn("[PlatformProvider] Auth check timed out, forcing render.")
                 setIsAuthChecked(true)
             }
-        }, 5000)
+        }, 10000)
 
         return () => {
             console.log('[PlatformProvider] COMPONENT UNMOUNTED')
@@ -699,10 +699,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
         isFetchingEvents.current = true
         try {
             console.log('[PlatformProvider] Fetching events & data for:', targetId)
-            // 1. Fetch Events
+            // 1. Fetch Events with profiles only
             const { data: eventsData, error: eventsError } = await supabase
                 .from('life_moments')
-                .select('*, profiles(*, influencer_details(*))')
+                .select('*, profiles(*)')
                 .order('created_at', { ascending: false })
 
             if (eventsError) {
@@ -717,10 +717,34 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             if (eventsData) {
                 console.log('[fetchEvents] Fetched events from DB:', eventsData.length, 'events')
+
+                // 2. Get unique influencer IDs
+                const influencerIds = [...new Set(eventsData.map((e: any) => e.influencer_id).filter(Boolean))]
+                console.log('[fetchEvents] Fetching details for', influencerIds.length, 'influencers')
+
+                // 3. Fetch influencer_details separately
+                const { data: detailsData, error: detailsError } = await supabase
+                    .from('influencer_details')
+                    .select('*')
+                    .in('id', influencerIds)
+
+                if (detailsError) {
+                    console.error('[fetchEvents] Error fetching influencer_details:', detailsError)
+                }
+
+                // 4. Create a map of influencer details
+                const detailsMap = new Map()
+                if (detailsData) {
+                    detailsData.forEach((detail: any) => {
+                        detailsMap.set(detail.id, detail)
+                    })
+                    console.log('[fetchEvents] Loaded details for', detailsMap.size, 'influencers')
+                }
+
+                // 5. Map events with merged data
                 const mappedEvents: InfluencerEvent[] = eventsData.map((e: any) => {
-                    const profile = e.profiles;
-                    // Supabase returns array for 1:M or if configured, but here it's likely single object or array
-                    const details = profile?.influencer_details ? (Array.isArray(profile.influencer_details) ? profile.influencer_details[0] : profile.influencer_details) : null;
+                    const profile = e.profiles
+                    const details = detailsMap.get(e.influencer_id)
 
                     return {
                         id: e.id,
@@ -728,18 +752,18 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         influencerId: e.influencer_id,
                         handle: details?.instagram_handle || "",
                         avatar: profile?.avatar_url || "",
-                        category: e.category || "기타", // category removed from DB, fallback or remove
-                        event: e.title, // Mapped title -> event
+                        category: e.category || "기타",
+                        event: e.title,
                         date: new Date(e.created_at).toISOString().split('T')[0],
                         description: e.description,
                         tags: e.tags || [],
                         verified: e.is_verified || false,
                         followers: details?.followers_count || 0,
-                        priceVideo: details?.price_video || 0, // Mapped new field
+                        priceVideo: details?.price_video || 0,
                         targetProduct: e.target_product || "",
-                        eventDate: e.created_at, // No event_date, use created_at or schedule
+                        eventDate: e.created_at,
                         postingDate: e.posting_date || "",
-                        guide: "", // guide removed from DB
+                        guide: "",
                         status: e.status || 'recruiting'
                     }
                 })

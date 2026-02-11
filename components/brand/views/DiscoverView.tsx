@@ -133,7 +133,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                 size="sm"
                                 onClick={() => setStatusFilter("past")}
                             >
-                                지나간 모먼트
+                                완료된 모먼트
                             </Button>
                             <Button
                                 variant={statusFilter === "favorites" ? "secondary" : "ghost"}
@@ -246,7 +246,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                     {item.status === 'completed' && (
                                         <div className="absolute top-[-26px] right-4 z-10">
                                             <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
-                                                지나간 모먼트
+                                                완료된 모먼트
                                             </span>
                                         </div>
                                     )}

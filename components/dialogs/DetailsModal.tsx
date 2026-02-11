@@ -48,12 +48,9 @@ export function DetailsModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6 py-4">
-                    {/* Details Section */}
-                    <div className="rounded-lg border bg-slate-50 p-4 space-y-3">
-                        <h4 className="font-semibold flex items-center gap-2">
-                            <FileText className="h-4 w-4" />상세 내용
-                        </h4>
+                <div className="space-y-4 py-4">
+                    <div className="rounded-lg border bg-slate-50 p-4 space-y-4">
+                        {/* Category and Product Grid */}
                         <div className="grid grid-cols-2 gap-4 text-sm">
                             {type === 'moment' ? (
                                 <>
@@ -65,15 +62,31 @@ export function DetailsModal({
                                         <span className="text-muted-foreground block mb-1">광고 가능 아이템</span>
                                         <span className="font-medium">{data.targetProduct}</span>
                                     </div>
-                                    <div className="col-span-2">
-                                        <span className="text-muted-foreground block mb-1">설명</span>
-                                        <p className="whitespace-pre-wrap text-slate-700">{data.description}</p>
-                                    </div>
-                                    {data.tags && (
-                                        <div className="col-span-2 flex flex-wrap gap-2 mt-2">
+
+                                    {/* Tags - same grid, col-span-2 */}
+                                    {data.tags && data.tags.length > 0 && (
+                                        <div className="col-span-2 flex flex-wrap gap-2">
                                             {data.tags.map((tag: string, i: number) => (
                                                 <Badge key={i} variant="secondary">#{tag}</Badge>
                                             ))}
+                                        </div>
+                                    )}
+
+                                    {/* Description */}
+                                    {data.description && (
+                                        <div className="col-span-2 pt-3 border-t border-slate-200">
+                                            <p className="whitespace-pre-wrap text-slate-700 leading-relaxed text-sm">{data.description}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Production Guide */}
+                                    {data.guide && (
+                                        <div className="col-span-2 bg-amber-50 border border-amber-200 rounded-md p-3">
+                                            <span className="text-amber-800 font-medium block mb-2">📝 제작 가이드</span>
+                                            <p className="whitespace-pre-wrap text-amber-900 text-sm leading-relaxed">{data.guide}</p>
+                                            <p className="text-xs text-amber-700 mt-2 pt-2 border-t border-amber-200">
+                                                💡 크리에이터가 예시로 제시한 제작가이드입니다. 언제든지 협의 가능합니다.
+                                            </p>
                                         </div>
                                     )}
                                 </>

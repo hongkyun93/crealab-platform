@@ -470,6 +470,25 @@ ${u.name}의 담당자입니다.
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Production Guide */}
+                        {event.guide && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">제작 가이드</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                        {event.guide}
+                                    </p>
+                                    <div className="p-3 bg-muted/50 rounded-md border border-dashed">
+                                        <p className="text-xs text-muted-foreground">
+                                            💡 크리에이터가 예시로 제시한 제작가이드입니다. 언제든지 협의 가능합니다.
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 </div>
             </main>

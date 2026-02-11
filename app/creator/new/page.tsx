@@ -313,7 +313,9 @@ export default function NewEventPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <Label>관심 카테고리 (복수 선택 가능)</Label>
+                                <Label>
+                                    관심 태그 (복수 선택 가능) <span className="text-xs text-muted-foreground ml-1 font-normal">*첫번째로 선택하는 태그는 카테고리로 저장됩니다</span>
+                                </Label>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                     {POPULAR_TAGS.map((tag) => (
                                         <button

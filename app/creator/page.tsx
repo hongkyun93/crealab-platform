@@ -1655,6 +1655,7 @@ function InfluencerDashboardContent() {
                         setCurrentView={setCurrentView}
                         handleOpenDetails={handleOpenDetails}
                         deleteEvent={deleteEvent}
+                        updateEvent={updateEvent}
                     />
                 )
 
@@ -1964,7 +1965,7 @@ function InfluencerDashboardContent() {
                             <Button variant="ghost" size="sm" onClick={() => setCurrentView('dashboard')}>
                                 <ChevronRight className="h-4 w-4 rotate-180" /> 돌아가기
                             </Button>
-                            <h1 className="text-3xl font-bold tracking-tight">지나간 모먼트</h1>
+                            <h1 className="text-3xl font-bold tracking-tight">완료된 모먼트</h1>
                         </div>
                         <div className="grid gap-4">
                             {pastMoments.length === 0 ? (
