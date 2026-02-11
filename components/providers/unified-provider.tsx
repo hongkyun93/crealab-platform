@@ -8,6 +8,7 @@ import { ProductProvider, useProducts } from "./product-provider"
 import { ProposalProvider, useProposals } from "./proposal-provider"
 import { MessageProvider, useMessages } from "./message-provider"
 import { FavoriteProvider, useFavorites } from "./favorite-provider"
+import { createClient } from "@/lib/supabase/client"
 
 // Unified Provider that combines all domain providers
 export function UnifiedProvider({ children }: { children: React.ReactNode }) {
@@ -54,6 +55,7 @@ export function useUnifiedProvider() {
     const proposals = useProposals()
     const messages = useMessages()
     const favorites = useFavorites()
+    const supabase = createClient()
 
     return {
         // Auth
@@ -89,7 +91,6 @@ export function useUnifiedProvider() {
         addProposal: proposals.addProposal,
         updateProposal: proposals.updateProposal,
         updateBrandProposal: proposals.updateBrandProposal,
-        deleteBrandProposal: proposals.deleteBrandProposal,
 
         // Messages
         messages: messages.messages,
@@ -105,6 +106,9 @@ export function useUnifiedProvider() {
         favorites: favorites.favorites,
         toggleFavorite: favorites.toggleFavorite,
         isFavorited: favorites.isFavorited,
+
+        // Supabase client for direct database access
+        supabase: supabase,
 
         // Loading states
         isLoading: campaigns.isLoading || events.isLoading || products.isLoading ||
@@ -124,9 +128,7 @@ export function useUnifiedProvider() {
         },
 
         resetData: () => {
-            // For now, this is a no-op as each provider manages its own state
-            // In the future, we might want to add reset methods to each provider
-            console.log('[UnifiedProvider] resetData called')
+            console.log('[UnifiedProvider] resetData called (no-op in modular providers)')
         }
     }
 }

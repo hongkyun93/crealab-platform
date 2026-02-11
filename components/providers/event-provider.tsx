@@ -34,7 +34,7 @@ export function EventProvider({ children, userId }: { children: React.ReactNode,
             console.log('[EventProvider] Fetching events for user:', id)
 
             const { data, error } = await supabase
-                .from('moments')
+                .from('life_moments')
                 .select(`
                     *,
                     profiles(display_name, avatar_url, role),
@@ -108,7 +108,7 @@ export function EventProvider({ children, userId }: { children: React.ReactNode,
             console.log('[EventProvider] Creating event:', newEvent)
 
             const { data, error } = await supabase
-                .from('moments')
+                .from('life_moments')
                 .insert({
                     influencer_id: userId,
                     category: newEvent.category,
@@ -160,7 +160,7 @@ export function EventProvider({ children, userId }: { children: React.ReactNode,
             if (updates.schedule) dbUpdates.schedule = updates.schedule
 
             const { error } = await supabase
-                .from('moments')
+                .from('life_moments')
                 .update(dbUpdates)
                 .eq('id', id)
 
@@ -186,7 +186,7 @@ export function EventProvider({ children, userId }: { children: React.ReactNode,
             console.log('[EventProvider] Deleting event:', id)
 
             const { error } = await supabase
-                .from('moments')
+                .from('life_moments')
                 .delete()
                 .eq('id', id)
 
