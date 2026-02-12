@@ -118,7 +118,7 @@ function InfluencerDashboardContent() {
         messages, sendMessage,
         deleteEvent, proposals, updateProposal,
         products, switchRole, updateEvent, supabase,
-        favorites, toggleFavorite, isInitialized
+        favorites, toggleFavorite, isInitialized, isAuthLoading
     } = usePlatform()
 
     const router = useRouter()
@@ -299,7 +299,7 @@ function InfluencerDashboardContent() {
         }
     }
 
-    const handleOpenDetails = useCallback((item: any, type: 'moment' | 'campaign') => {
+    const handleOpenDetails = useCallback((item: any, type: string) => {
         setSelectedItemDetails(item)
         setDetailsType(type)
 
@@ -1027,21 +1027,22 @@ function InfluencerDashboardContent() {
         }
     }, [searchParams, brandProposals, proposals])
 
-
+    // Auth Check & Redirect
     useEffect(() => {
-        if (!isLoading && !user) {
-            // router.push("/login") // Guest browsing allowed
+        if (!isAuthLoading && !user) {
+            router.push('/')
         } else if (user && user.type === 'brand' && user.id !== 'guest_influencer') {
             router.push('/brand')
         }
-    }, [isLoading, user, router])
+    }, [isAuthLoading, user, router])
 
-    if (isLoading) {
+    // Loading State
+    if (isAuthLoading) {
         return (
-            <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-                    <p className="text-sm font-medium text-slate-600 animate-pulse">데이터를 불러오는 중입니다...</p>
+                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                    <p className="text-slate-500 font-medium animate-pulse">데이터를 불러오는 중입니다...</p>
                 </div>
             </div>
         )

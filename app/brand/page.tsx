@@ -120,7 +120,7 @@ function BrandDashboardContent() {
         updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
         switchRole, proposals, updateCampaignStatus, updateProposal, notifications, sendNotification, refreshData,
         favorites, toggleFavorite,
-        allEvents, fetchAllEvents // New: Public events
+        allEvents, fetchAllEvents, isAuthLoading // New: Public events
     } = usePlatform()
 
     // AI Calculator State
@@ -196,8 +196,9 @@ function BrandDashboardContent() {
     useEffect(() => {
         const proposalId = searchParams.get('proposalId')
 
-        // Wait for data to load
-        if (isLoading) return;
+        // IMPORTANT: Wait for auth loading to finish only. 
+        // Background data (isLoading) might still be fetching.
+        if (isAuthLoading) return;
 
         if (proposalId && !chatProposal) {
             console.log("[Brand] Checking URL proposalId:", proposalId)
@@ -226,7 +227,7 @@ function BrandDashboardContent() {
                 setIsChatOpen(true)
             }
         }
-    }, [searchParams, brandProposals, campaigns, isLoading, chatProposal])
+    }, [searchParams, brandProposals, campaigns, isAuthLoading, chatProposal])
 
     // Fetch Messages when Chat Opens, workspaceTab])
 
@@ -1303,7 +1304,7 @@ function BrandDashboardContent() {
         }
     }
 
-    if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>
+    if (isAuthLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>
 
     return (
         <div className="min-h-screen bg-muted/30">

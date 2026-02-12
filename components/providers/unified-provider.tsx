@@ -113,6 +113,7 @@ export function useUnifiedProvider() {
         supabase: supabase,
 
         // Loading states
+        isAuthLoading: !auth.isAuthChecked,
         isLoading: (() => {
             const loadingState = {
                 campaigns: campaigns.isLoading,

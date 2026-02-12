@@ -11,6 +11,7 @@ import {
     Camera, Video, Instagram, Youtube, Hash, ExternalLink,
     Briefcase, Layout, List, Grid, Monitor, Phone, Filter
 } from "lucide-react"
+import Link from "next/link"
 
 // --- Real Mock Data (Plan/Proposal Context) ---
 const MOMENT_PLAN_DATA = [
@@ -121,6 +122,13 @@ export default function MomentSearchPage() {
             <div className="flex flex-col gap-4">
                 <h1 className="text-3xl font-bold tracking-tight">모먼트 검색 (Proposals)</h1>
                 <p className="text-muted-foreground">크리에이터들의 향후 계획과 협업 제안(Moment)을 보여주는 20가지 카드 디자인.</p>
+                <div className="flex gap-2 pt-2">
+                    <Link href="/design-lab/brand/moment-search/dialog">
+                        <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-0 hover:opacity-90 shadow-md">
+                            View 20 Detailed Dialog Variations <ChevronRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {/* Filters */}
