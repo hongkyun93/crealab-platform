@@ -66,6 +66,7 @@ const ProductGuideDialog = dynamic(() => import("@/components/dialogs/ProductGui
 // View Components
 import { DashboardView } from "@/components/creator/views/DashboardView"
 import { MomentsView } from "@/components/creator/views/MomentsView"
+import { MomentCard } from "@/components/creator/MomentCard"
 import { ApplicationsView } from "@/components/creator/views/ApplicationsView"
 import { InboundProposalsView } from "@/components/creator/views/InboundProposalsView"
 
@@ -915,51 +916,16 @@ function InfluencerDashboardContent() {
                 </Button>
             </div>
         ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...activeMoments, ...myMoments].map(moment => (
-                    <div
-                        key={moment.id}
-                        className="bg-white p-4 rounded-xl border hover:border-indigo-500 cursor-pointer transition-all hover:shadow-md group relative"
-                        onClick={() => setSelectedMoment(moment)}
-                    >
-                        <div className="flex items-start justify-between mb-3">
-                            <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
-                                {moment.category}
-                            </Badge>
-                            <div className="flex items-center gap-2">
-                                {moment.targetProduct && (
-                                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
-                                        {moment.targetProduct}
-                                        {moment.verified ? ' ✅' : ''}
-                                    </Badge>
-                                )}
-                                {moment.status === 'completed' && <Badge variant="secondary">완료됨</Badge>}
-                            </div>
-                        </div>
-
-                        <h3 className="font-bold text-lg text-slate-900 line-clamp-1 mb-2 group-hover:text-indigo-600 transition-colors">
-                            {moment.title}
-                        </h3>
-
-                        <p className="text-sm text-slate-500 line-clamp-2 mb-4 h-10">
-                            {moment.description}
-                        </p>
-
-                        <div className="flex items-center justify-between text-xs text-slate-500 border-t pt-3">
-                            <div className="flex items-center gap-1">
-                                <span>🗓️</span>
-                                <span>{formatDateToMonth(moment.eventDate) || '일정 미정'}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <span>📥</span>
-                                <span className="font-medium text-slate-700">
-                                    {brandProposals.filter(p => p.event_id === moment.id).length} 제안
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {[...activeMoments, ...myMoments].map(moment => (
+        <MomentCard
+            key={moment.id}
+            moment={moment}
+            brandProposals={brandProposals}
+            onClick={setSelectedMoment}
+        />
+    ))}
+</div>
         )}
     </TabsContent>
 
@@ -1527,7 +1493,7 @@ function InfluencerDashboardContent() {
                 return (
                     <div className="flex flex-col gap-6">
                         <div className="flex items-center justify-between">
-                            <h1 className="text-3xl font-bold tracking-tight">내 모먼트 아카이브</h1>
+                            <h1 className="text-3xl font-bold tracking-tight">내 일정 관리</h1>
                             <Button className="gap-2" asChild>
                                 <Link href="/creator/new">
                                     <Plus className="h-4 w-4" /> 새 모먼트 만들기
@@ -2761,7 +2727,7 @@ function InfluencerDashboardContent() {
                                 className="w-full justify-start"
                                 onClick={() => setCurrentView("dashboard")}
                             >
-                                <Calendar className="mr-2 h-4 w-4" /> 내 모먼트 관리
+                                <Calendar className="mr-2 h-4 w-4" /> 내 일정 관리
                             </Button>
                             <Button
                                 variant={currentView === "proposals" ? "secondary" : "ghost"}

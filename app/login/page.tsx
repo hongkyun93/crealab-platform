@@ -73,12 +73,14 @@ export default function LoginPage() {
             const user = await login(id, password)
 
             // Redirect based on user type
+            // Redirect based on user type using window.location.href to force a hard reload
+            // This prevents "stuck" loading states caused by client-side router waiting for heavy dashboard data
             if (user.type === "brand") {
-                router.push("/brand")
+                window.location.href = "/brand"
             } else if (user.type === "influencer") {
-                router.push("/creator")
+                window.location.href = "/creator"
             } else if (user.type === "admin") {
-                router.push("/admin")
+                window.location.href = "/admin"
             }
         } catch (err: any) {
             setError(err.message || "로그인에 실패했습니다.")

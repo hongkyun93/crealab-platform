@@ -32,143 +32,130 @@ export function MomentCard({
 
     return (
         <Card
-            className={`cursor-pointer transition-all border-l-4 group ${isPast
-                    ? 'opacity-75 hover:opacity-100 border-l-slate-300'
-                    : 'hover:shadow-lg border-l-emerald-500'
-                }`}
+            className={`cursor-pointer transition-all hover:shadow-lg border-border/60 bg-background flex flex-col h-full relative group duration-200 overflow-visible ${isPast ? 'opacity-75 grayscale' : ''}`}
             onClick={() => onClick(moment)}
         >
-            <CardContent className="p-5 space-y-3">
-                <div className="flex justify-between items-start">
-                    <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2">
-                            {isPast && <Badge variant="secondary" className="text-slate-500">종료됨</Badge>}
-                            {!isPast && offerCount > 0 && (
-                                <Badge className="bg-indigo-600 hover:bg-indigo-700 animate-pulse">
-                                    📥 {offerCount}개의 제안 도착
-                                </Badge>
-                            )}
-                        </div>
-                        <h3 className={`font-bold text-lg line-clamp-2 h-14 ${isPast
-                                ? 'text-slate-600 line-through decoration-slate-300 decoration-2'
-                                : 'group-hover:text-emerald-600 transition-colors'
-                            }`}>
-                            {moment.event || moment.title}
-                        </h3>
-
-                        {/* Tags */}
-                        {moment.tags && moment.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5">
-                                {moment.tags.slice(0, 3).map((tag: string, idx: number) => (
-                                    <Badge key={idx} variant="secondary" className={`text-xs px-2 py-0.5 ${isPast ? 'opacity-60' : ''}`}>
-                                        {tag}
-                                    </Badge>
-                                ))}
-                                {moment.tags.length > 3 && (
-                                    <Badge variant="secondary" className={`text-xs px-2 py-0.5 text-muted-foreground ${isPast ? 'opacity-60' : ''}`}>
-                                        +{moment.tags.length - 3}
-                                    </Badge>
-                                )}
-                            </div>
-                        )}
+            {/* Post-it Style Proposal Count */}
+            {!isPast && offerCount > 0 && (
+                <div className="absolute -top-3 -right-3 z-20 transform rotate-6 transition-transform group-hover:rotate-12 duration-300">
+                    <div className="bg-[#fff740] hover:bg-[#fffa70] text-slate-900 shadow-[2px_3px_5px_rgba(0,0,0,0.15)] border border-yellow-200/50 p-1 w-[68px] h-[68px] flex flex-col items-center justify-center rounded-sm mask-image-paper">
+                        <div className="w-full h-2 bg-black/5 absolute top-0 left-0"></div>
+                        <span className="text-[9px] font-bold text-slate-500 tracking-wider mb-0.5">PROPOSAL</span>
+                        <span className="text-3xl font-black leading-none font-sans">{offerCount}</span>
                     </div>
+                </div>
+            )}
 
+            <CardContent className="p-5 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-3">
+                    <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-100">
+                        {moment.category || "카테고리"}
+                    </Badge>
+
+                    {isPast && (
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-500">
+                            종료됨
+                        </Badge>
+                    )}
+
+                    {/* Action Menu for Past Items */}
                     {isPast && onDelete && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                    <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (confirm("정말로 이 기록을 삭제하시겠습니까? (되돌릴 수 없습니다)")) {
-                                        onDelete(moment.id)
-                                    }
-                                }}>
-                                    <Trash2 className="mr-2 h-4 w-4" /> 기록 삭제
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 text-muted-foreground hover:text-foreground">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => {
+                                        if (confirm("정말로 이 기록을 삭제하시겠습니까? (되돌릴 수 없습니다)")) {
+                                            onDelete(moment.id)
+                                        }
+                                    }}>
+                                        <Trash2 className="mr-2 h-4 w-4" /> 기록 삭제
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     )}
                 </div>
 
-                {/* Key Info Grid */}
-                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100 ${isPast ? 'grayscale opacity-80' : ''}`}>
-                    <div className="col-span-full pb-2 border-b border-slate-200 flex justify-between items-start">
+                <div className="mb-4">
+                    <h3 className={`font-bold text-lg line-clamp-2 leading-tight ${isPast ? 'text-slate-500 line-through' : 'text-slate-900 group-hover:text-primary transition-colors'}`}>
+                        {moment.title || moment.event}
+                    </h3>
+                </div>
+
+                <div className="flex flex-col gap-2 text-xs mb-4 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    <div className="pb-2 border-b border-slate-200/60">
+                        <span className="text-[10px] text-muted-foreground block mb-1">희망 제품</span>
+                        <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                            <Gift className={`h-3.5 w-3.5 ${isPast ? 'text-slate-400' : 'text-purple-500'} shrink-0`} />
+                            <span className="truncate">{moment.targetProduct || "미정"}</span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-0.5">
                         <div>
-                            <span className="text-xs text-muted-foreground block mb-0.5">광고 가능 아이템</span>
-                            <span className="font-medium text-slate-800 flex items-center gap-1.5">
-                                <Gift className={`h-3.5 w-3.5 ${isPast ? 'text-slate-400' : 'text-purple-500'}`} />
-                                {moment.targetProduct || "미정"}
-                            </span>
+                            <span className="text-[10px] text-muted-foreground block mb-1">일정</span>
+                            <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                                <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                <span>{formatDateToMonth(moment.eventDate) || "미정"}</span>
+                            </div>
                         </div>
-                        <div className="text-right">
-                            <span className="text-xs text-muted-foreground block mb-0.5">등록일</span>
-                            <span className="text-xs font-medium text-slate-500">
-                                {moment.createdAt ? new Date(moment.createdAt).toLocaleDateString() : "-"}
-                            </span>
+                        <div>
+                            <span className="text-[10px] text-muted-foreground block mb-1">업로드</span>
+                            <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                                <Send className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                <span>
+                                    {moment.dateFlexible ? (
+                                        <span className="text-emerald-600">협의가능</span>
+                                    ) : (
+                                        moment.postingDate ? formatDateToMonth(moment.postingDate) : "미정"
+                                    )}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                    <div>
-                        <span className="text-xs text-muted-foreground block mb-0.5">모먼트 일정</span>
-                        <span className="font-medium text-slate-700 flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                            {moment.eventDate ? formatDateToMonth(moment.eventDate) : "-"}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="text-xs text-muted-foreground block mb-0.5">콘텐츠 업로드</span>
-                        <span className="font-medium text-slate-700 flex items-center gap-1.5">
-                            <Send className="h-3.5 w-3.5 text-slate-400" />
-                            {moment.dateFlexible ? (
-                                <span className="text-emerald-600">협의 가능</span>
-                            ) : (
-                                moment.postingDate ? formatDateToMonth(moment.postingDate) : "-"
-                            )}
-                        </span>
                     </div>
                 </div>
 
-                {/* Description */}
-                <div>
-                    <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed h-12">
+                <div className="flex-1">
+                    <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3">
                         {moment.description || "상세 설명이 없습니다."}
                     </p>
                 </div>
 
-                {/* Guide Preview */}
-                {moment.guide && (
-                    <div className={`border rounded-md p-2.5 ${isPast
-                            ? 'bg-slate-100 border-slate-200 opacity-60'
-                            : 'bg-amber-50 border-amber-100'
-                        }`}>
-                        <p className={`text-xs font-medium mb-1 ${isPast ? 'text-slate-700' : 'text-amber-800'}`}>📝 제작 가이드</p>
-                        <p className={`text-xs line-clamp-2 leading-relaxed ${isPast ? 'text-slate-600' : 'text-amber-700'}`}>
-                            {moment.guide}
-                        </p>
+                <div className="flex flex-wrap gap-1 mt-auto pt-2 border-t border-slate-50/50">
+                    {moment.tags?.slice(0, 3).map((tag: string, idx: number) => (
+                        <span key={idx} className="text-[10px] bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full text-slate-500">
+                            #{tag}
+                        </span>
+                    ))}
+                    {(moment.tags?.length || 0) > 3 && (
+                        <span className="text-[10px] bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full text-slate-400">
+                            +{moment.tags.length - 3}
+                        </span>
+                    )}
+                </div>
+
+                {!isPast && onComplete && (
+                    <div className="mt-4 pt-0 flex justify-end">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 hover:bg-emerald-50 hover:text-emerald-600"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("이 모먼트를 완료 처리하시겠습니까?")) {
+                                    onComplete(moment.id);
+                                }
+                            }}
+                        >
+                            <span className="mr-1">🎉</span> 완료하기
+                        </Button>
                     </div>
                 )}
             </CardContent>
-
-            {!isPast && onComplete && (
-                <div className="px-5 pb-5 flex justify-end">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-8"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm("이 모먼트를 완료 처리하시겠습니까?\n완료된 모먼트는 '완료된 모먼트' 탭으로 이동합니다.")) {
-                                onComplete(moment.id);
-                            }
-                        }}
-                    >
-                        완료하기
-                    </Button>
-                </div>
-            )}
         </Card>
     )
 }

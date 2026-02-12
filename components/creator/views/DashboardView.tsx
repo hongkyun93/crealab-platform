@@ -44,7 +44,7 @@ export const DashboardView = React.memo(function DashboardView({
                     </div>
                     <div className="flex flex-col items-center gap-1">
                         <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-bold text-slate-700">내 모먼트 아카이브</h3>
+                            <h3 className="text-lg font-bold text-slate-700">내 일정 관리</h3>
                             <Badge className="bg-emerald-600 text-white text-md px-2 py-0.5 hover:bg-emerald-700">
                                 {activeMoments.length + myMoments.length + pastMoments.length}건
                             </Badge>
