@@ -119,7 +119,7 @@ export default function NewCampaignPage() {
             setImage(publicUrl)
         } catch (error: any) {
             console.error("Image upload error:", error)
-            alert("이미지 업로드에 실패했습니다.")
+            alert(`이미지 업로드 실패: ${error.message || "알 수 없는 오류"}`)
         } finally {
             setIsUploading(false)
         }

@@ -534,13 +534,16 @@ EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 -- Policies for Campaigns
 DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public Access Campaigns') THEN
-        CREATE POLICY "Public Access Campaigns" ON storage.objects FOR SELECT USING (bucket_id = 'campaigns');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated Users can Upload Campaigns') THEN
-        CREATE POLICY "Authenticated Users can Upload Campaigns" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'campaigns' AND auth.role() = 'authenticated');
-    END IF;
-END $$;
+    DROP POLICY IF EXISTS "Public Access Campaigns" ON storage.objects;
+    DROP POLICY IF EXISTS "Authenticated Users can Upload Campaigns" ON storage.objects;
+    DROP POLICY IF EXISTS "Authenticated Users can Update Campaigns" ON storage.objects;
+    DROP POLICY IF EXISTS "Authenticated Users can Delete Campaigns" ON storage.objects;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+CREATE POLICY "Public Access Campaigns" ON storage.objects FOR SELECT USING (bucket_id = 'campaigns');
+CREATE POLICY "Authenticated Users can Upload Campaigns" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'campaigns' AND auth.role() = 'authenticated');
+CREATE POLICY "Authenticated Users can Update Campaigns" ON storage.objects FOR UPDATE USING (bucket_id = 'campaigns' AND auth.role() = 'authenticated');
+CREATE POLICY "Authenticated Users can Delete Campaigns" ON storage.objects FOR DELETE USING (bucket_id = 'campaigns' AND auth.role() = 'authenticated');
 
 -- ==========================================
 -- 7. GRANT PERMISSIONS

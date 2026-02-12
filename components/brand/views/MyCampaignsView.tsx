@@ -2,11 +2,14 @@
 
 import React, { useMemo } from "react"
 import Link from "next/link"
-import { Plus, Package, Bell, Pencil, Trash2, ArrowRight } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
+import { Plus, Package, Bell, Pencil, Trash2, ArrowRight, Calendar, FileText, Gift, Megaphone, Send, User, X, CheckCircle2, Instagram, Youtube, MessageCircle, Hash, Link as LinkIcon, Users, Loader2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatDateToMonth } from "@/lib/utils"
+import { CampaignDetailContent } from "@/components/campaign/campaign-detail-content"
 
 interface MyCampaignsViewProps {
     myCampaigns: any[]
@@ -15,6 +18,7 @@ interface MyCampaignsViewProps {
     setSelectedCampaignId: (id: string | null) => void
     deleteCampaign: (id: string) => Promise<void>
     updateCampaignStatus: (id: string, status: string) => void
+    refreshData?: () => Promise<void>
 }
 
 export const MyCampaignsView = React.memo(function MyCampaignsView({
@@ -23,13 +27,80 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
     selectedCampaignId,
     setSelectedCampaignId,
     deleteCampaign,
-    updateCampaignStatus
+    updateCampaignStatus,
+    refreshData
 }: MyCampaignsViewProps) {
+    const router = useRouter()
+    const [isImageUploading, setIsImageUploading] = React.useState(false)
+    const [optimisticImage, setOptimisticImage] = React.useState<string | null>(null)
+    const supabase = createClient()
+
+    // Reset optimistic image when selection changes
+    React.useEffect(() => {
+        setOptimisticImage(null)
+    }, [selectedCampaignId])
+
+    const handleImageUpload = async (file: File) => {
+        if (!file || !selectedCampaign) return
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert("파일 크기는 5MB 이하여야 합니다.")
+            return
+        }
+
+        setIsImageUploading(true)
+        try {
+            const fileExt = file.name.split('.').pop()
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+            const filePath = `campaign-images/${fileName}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('campaigns')
+                .upload(filePath, file)
+
+            if (uploadError) throw uploadError
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('campaigns')
+                .getPublicUrl(filePath)
+
+            // Optimistic Update
+            setOptimisticImage(publicUrl)
+
+            // Update campaign image in DB
+            const { error: updateError } = await supabase
+                .from('campaigns')
+                .update({ image: publicUrl })
+                .eq('id', selectedCampaign.id)
+
+            if (updateError) throw updateError
+
+            // Refresh data
+            if (refreshData) await refreshData()
+            else router.refresh()
+
+            alert("캠페인 이미지가 변경되었습니다.")
+        } catch (error: any) {
+            console.error("Image upload error:", error)
+            alert(`이미지 업로드 실패: ${error.message || "알 수 없는 오류"}`)
+        } finally {
+            setIsImageUploading(false)
+        }
+    }
     // Memoize selected campaign lookup
     const selectedCampaign = useMemo(
         () => myCampaigns.find(c => c.id === selectedCampaignId),
         [myCampaigns, selectedCampaignId]
     )
+
+    // Merge optimistic image if exists
+    const displayCampaign = React.useMemo(() => {
+        if (!selectedCampaign) return null
+        if (optimisticImage) {
+            return { ...selectedCampaign, image: optimisticImage }
+        }
+        return selectedCampaign
+    }, [selectedCampaign, optimisticImage])
 
     // Memoize campaign proposals filtering
     const campaignProposals = useMemo(
@@ -50,62 +121,49 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
 
     // Detail View
     if (selectedCampaignId && selectedCampaign) {
+        const today = new Date()
+        const dDay = selectedCampaign.recruitment_deadline
+            ? Math.ceil((new Date(selectedCampaign.recruitment_deadline).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+            : null
+
+        const CHANNELS = [
+            { id: "instagram", label: "인스타그램", icon: "📸" },
+            { id: "youtube", label: "유튜브", icon: "▶️" },
+            { id: "tiktok", label: "틱톡", icon: "🎵" },
+            { id: "blog", label: "블로그", icon: "📝" },
+            { id: "shorts", label: "유튜브 숏츠", icon: "⚡" },
+            { id: "reels", label: "인스타 릴스", icon: "🎞️" }
+        ]
+        const getChannelLabel = (id: string) => CHANNELS.find(c => c.id === id)?.label || id
+        const getChannelIcon = (id: string) => CHANNELS.find(c => c.id === id)?.icon || ""
+
         return (
-            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+            <div className="w-full space-y-6 animate-in slide-in-from-right-4 duration-300">
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={() => setSelectedCampaignId(null)} className="gap-1 pl-0 hover:bg-transparent hover:text-primary">
                         <ArrowRight className="h-4 w-4 rotate-180" /> 목록으로 돌아가기
                     </Button>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-[1fr_350px] xl:grid-cols-[1fr_400px]">
-                    {/* Left: Campaign Detail Card */}
-                    <Card className="h-fit">
-                        <CardHeader className="pb-4">
-                            <div className="flex justify-between items-start">
-                                <div className="space-y-2">
-                                    <Badge variant="outline" className="w-fit">{selectedCampaign.category}</Badge>
-                                    <CardTitle className="text-2xl font-bold">{selectedCampaign.product}</CardTitle>
-                                </div>
-                                <Button variant="outline" size="sm" asChild>
-                                    <Link href={`/brand/edit/${selectedCampaign.id}`}>수정하기</Link>
+                <div className="grid gap-6 lg:grid-cols-[1fr_350px]">
+                    {/* Left: Campaign Detail Card (Refactored to match Dialog UI) */}
+                    {/* Left: Campaign Detail Card (Refactored to match Dialog UI) */}
+                    <div className="h-[calc(100vh-200px)] min-h-[600px] border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white">
+                        <CampaignDetailContent
+                            campaign={displayCampaign}
+                            onImageUpload={handleImageUpload}
+                            isUploading={isImageUploading}
+                            className="" // Let it use default grid behavior
+                            renderHeaderSideAction={() => (
+                                <Button variant="secondary" size="sm" asChild className="h-9 px-4 text-xs font-semibold shadow-lg hover:bg-white shrink-0">
+                                    <Link href={`/brand/edit/${displayCampaign.id}`}>
+                                        <Pencil className="h-3.5 w-3.5 mr-1.5" /> 캠페인 수정
+                                    </Link>
                                 </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {/* Description Box */}
-                            <div className="bg-muted/30 p-6 rounded-xl border border-border/50">
-                                <h4 className="text-sm font-bold text-muted-foreground mb-3">상세 내용</h4>
-                                <p className="whitespace-pre-wrap leading-relaxed text-sm">
-                                    {selectedCampaign.description}
-                                </p>
-                            </div>
-
-                            {/* Info Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl">
-                                <div className="space-y-1">
-                                    <span className="text-xs font-bold text-muted-foreground">일정</span>
-                                    <p className="font-medium text-sm">{selectedCampaign.eventDate || "미정"}</p>
-                                </div>
-                                <span className="text-xs font-bold text-muted-foreground">모집 대상</span>
-                                <p className="font-medium text-sm">{selectedCampaign.target || "전체"}</p>
-                            </div>
-                            <div className="bg-slate-50 p-3 rounded-lg">
-                                <p className="text-xs text-muted-foreground mb-1">모먼트 일정</p>
-                                <p className="font-medium text-sm">{formatDateToMonth(selectedCampaign.eventDate) || "미정"}</p>
-                            </div>
-                            {selectedCampaign.postingDate && (
-                                <div className="bg-slate-50 p-3 rounded-lg">
-                                    <p className="text-xs text-muted-foreground mb-1">예상 업로드</p>
-                                    <p className="font-medium text-sm">{formatDateToMonth(selectedCampaign.postingDate)}</p>
-                                </div>
                             )}
-                            <div className="space-y-1">
-                                <span className="text-xs font-bold text-muted-foreground">제공 혜택</span>
-                                <p className="font-bold text-emerald-600 text-sm">{selectedCampaign.budget || "협의"}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        />
+
+                    </div>
 
                     {/* Right: Proposals */}
                     <div className="space-y-4">
@@ -177,7 +235,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                             )}
                         </div>
                     </div>
-                </div>
+                </div >
             </div >
         )
     }
@@ -240,15 +298,20 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                             >
                                 <div className="flex flex-col md:flex-row h-full">
                                     {/* Image Section */}
-                                    {c.image && c.image !== "📦" && (
+                                    {(c.image && c.image !== "📦") || c.product_image_url ? (
                                         <div className="w-full md:w-48 h-32 md:h-auto bg-muted/20 shrink-0 relative">
-                                            <img src={c.image} alt={c.product} className={`w-full h-full object-cover ${c.status === 'closed' ? 'grayscale' : ''}`} />
+                                            <img src={c.image && c.image !== "📦" ? c.image : c.product_image_url} alt={c.product} className={`w-full h-full object-cover ${c.status === 'closed' ? 'grayscale' : ''}`} />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent md:hidden" />
                                             <div className="absolute bottom-2 left-2 md:hidden">
                                                 <Badge variant="secondary" className="bg-white/90 text-black backdrop-blur-sm shadow-sm">
                                                     {c.category}
                                                 </Badge>
                                             </div>
+                                        </div>
+                                    ) : (
+                                        // Placeholder if no image at all
+                                        <div className="w-full md:w-48 h-32 md:h-auto bg-slate-100 flex items-center justify-center shrink-0">
+                                            <Package className="h-8 w-8 text-slate-300" />
                                         </div>
                                     )}
 

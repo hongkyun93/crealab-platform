@@ -85,7 +85,7 @@ export default function EditCampaignPage() {
                 setBudget(campaign.budget)
                 setTarget(campaign.target)
                 setDescription(campaign.description)
-                setImage(campaign.image || "")
+                setImage(campaign.image && campaign.image !== "📦" ? campaign.image : (campaign.product_image_url || ""))
 
                 // Categories
                 if (campaign.category) {

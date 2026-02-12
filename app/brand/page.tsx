@@ -1107,6 +1107,7 @@ function BrandDashboardContent() {
                         setSelectedCampaignId={setSelectedCampaignId}
                         deleteCampaign={deleteCampaign}
                         updateCampaignStatus={updateCampaignStatus}
+                        refreshData={refreshData}
                     />
                 )
 
