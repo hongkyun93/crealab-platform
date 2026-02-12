@@ -600,7 +600,7 @@ function MatrixDigitalStyle() {
                 <div key={i} className="border border-green-500/30 bg-black/90 p-3 rounded text-green-500 font-mono text-xs relative overflow-hidden group">
                     <div className="absolute inset-0 bg-green-500/5 group-hover:bg-green-500/10 transition-colors"></div>
                     <div className="flex justify-between mb-1 relative z-10">
-                        <span className="font-bold">>> INCOMING_MSG_{i + 1}</span>
+                        <span className="font-bold">&gt;&gt; INCOMING_MSG_{i + 1}</span>
                         <span>{n.time.toUpperCase()}</span>
                     </div>
                     <p className="opacity-80 relative z-10">{n.message}</p>
