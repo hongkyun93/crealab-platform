@@ -221,8 +221,8 @@ export default function CampaignCardsDesignLab() {
 function StandardDashboardStyle() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {MOCK_CAMPAIGNS.map((campaign) => (
-                <Card key={campaign.id} className="flex flex-col">
+            {MOCK_CAMPAIGNS.map((campaign, i) => (
+                <Card key={i} className="flex flex-col">
                     <CardHeader>
                         <div className="flex justify-between items-start">
                             <Badge variant={campaign.status === 'active' ? 'default' : campaign.status === 'recruiting' ? 'secondary' : 'outline'}>
@@ -268,8 +268,8 @@ function StandardDashboardStyle() {
 function ImageFocusStyle() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {MOCK_CAMPAIGNS.map((campaign) => (
-                <div key={campaign.id} className="group relative rounded-xl overflow-hidden h-64 bg-black">
+            {MOCK_CAMPAIGNS.map((campaign, i) => (
+                <div key={i} className="group relative rounded-xl overflow-hidden h-64 bg-black">
                     <img src={campaign.image} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
                     <div className="absolute inset-0 p-6 flex flex-col justify-end text-white">
                         <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform">
@@ -290,8 +290,8 @@ function ImageFocusStyle() {
 function MinimalListStyle() {
     return (
         <div className="space-y-2">
-            {MOCK_CAMPAIGNS.map((campaign) => (
-                <div key={campaign.id} className="flex items-center p-3 bg-white border rounded-lg hover:bg-gray-50 transition-colors">
+            {MOCK_CAMPAIGNS.map((campaign, i) => (
+                <div key={i} className="flex items-center p-3 bg-white border rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="w-12 h-12 rounded bg-gray-100 mr-4 overflow-hidden shrink-0">
                         <img src={campaign.image} className="w-full h-full object-cover" />
                     </div>
@@ -322,8 +322,8 @@ function MinimalListStyle() {
 function KanbanStyle() {
     return (
         <div className="flex gap-4 overflow-x-auto pb-4">
-            {MOCK_CAMPAIGNS.map((campaign) => (
-                <div key={campaign.id} className="w-72 bg-white border rounded-lg shadow-sm shrink-0 flex flex-col p-4 border-l-4 border-l-primary">
+            {MOCK_CAMPAIGNS.map((campaign, i) => (
+                <div key={i} className="w-72 bg-white border rounded-lg shadow-sm shrink-0 flex flex-col p-4 border-l-4 border-l-primary">
                     <div className="flex justify-between mb-2">
                         <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{campaign.status}</span>
                         <MoreHorizontal className="h-4 w-4 text-gray-400" />
@@ -360,8 +360,8 @@ function KanbanStyle() {
 function NeumorphismStyle() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 p-4 bg-gray-100 rounded-xl">
-            {MOCK_CAMPAIGNS.map((campaign) => (
-                <div key={campaign.id} className="rounded-2xl bg-[#f0f0f3] p-6 shadow-[9px_9px_16px_rgb(163,177,198,0.6),-9px_-9px_16px_rgba(255,255,255,0.5)]">
+            {MOCK_CAMPAIGNS.map((campaign, i) => (
+                <div key={i} className="rounded-2xl bg-[#f0f0f3] p-6 shadow-[9px_9px_16px_rgb(163,177,198,0.6),-9px_-9px_16px_rgba(255,255,255,0.5)]">
                     <div className="flex items-center justify-between mb-4">
                         <div className="h-10 w-10 rounded-full bg-[#f0f0f3] shadow-[5px_5px_10px_rgb(163,177,198,0.6),-5px_-5px_10px_rgba(255,255,255,0.5)] flex items-center justify-center text-primary">
                             <Briefcase className="h-5 w-5" />
@@ -384,7 +384,7 @@ function GlassmorphismStyle() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {MOCK_CAMPAIGNS.slice(0, 2).map((campaign, i) => (
-                <div key={campaign.id} className={`relative overflow-hidden rounded-2xl p-6 h-48 flex flex-col justify-between ${i % 2 === 0 ? 'bg-gradient-to-br from-purple-500 to-indigo-600' : 'bg-gradient-to-br from-pink-500 to-rose-500'}`}>
+                <div key={i} className={`relative overflow-hidden rounded-2xl p-6 h-48 flex flex-col justify-between ${i % 2 === 0 ? 'bg-gradient-to-br from-purple-500 to-indigo-600' : 'bg-gradient-to-br from-pink-500 to-rose-500'}`}>
                     <div className="absolute top-0 left-0 w-full h-full bg-white/10 backdrop-blur-sm" />
                     <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-2xl" />
 
