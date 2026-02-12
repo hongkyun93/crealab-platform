@@ -37,6 +37,17 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
         [proposals, selectedCampaign?.id]
     )
 
+    // List View State (Moved up for Hook Rules)
+    const [activeTab, setActiveTab] = React.useState<"active" | "closed">("active")
+
+    const filteredCampaigns = useMemo(() => {
+        const now = new Date()
+        return myCampaigns.filter(c => {
+            const isClosed = c.status === 'closed' || (c.recruitment_deadline && new Date(c.recruitment_deadline) < now)
+            return activeTab === 'active' ? !isClosed : isClosed
+        })
+    }, [myCampaigns, activeTab])
+
     // Detail View
     if (selectedCampaignId && selectedCampaign) {
         return (
@@ -171,7 +182,6 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
         )
     }
 
-    // List View
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between">
@@ -184,92 +194,149 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                 </Button>
             </div>
 
-            {myCampaigns.length === 0 ? (
+            {/* Campaign Status Tabs */}
+            <div className="flex items-center gap-2 border-b border-border/50 pb-1">
+                <button
+                    onClick={() => setActiveTab("active")}
+                    className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${activeTab === "active"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                >
+                    진행중인 캠페인 ({myCampaigns.filter(c => !(c.status === 'closed' || (c.recruitment_deadline && new Date(c.recruitment_deadline) < new Date()))).length})
+                </button>
+                <button
+                    onClick={() => setActiveTab("closed")}
+                    className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${activeTab === "closed"
+                        ? "border-slate-500 text-slate-700"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                >
+                    마감/종료된 캠페인 ({myCampaigns.filter(c => c.status === 'closed' || (c.recruitment_deadline && new Date(c.recruitment_deadline) < new Date())).length})
+                </button>
+            </div>
+
+            {filteredCampaigns.length === 0 ? (
                 <Card className="p-12 text-center border-dashed">
                     <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
                         <Package className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <h3 className="text-lg font-bold">등록된 캠페인이 없습니다.</h3>
-                    <Button asChild className="mt-4"><Link href="/brand/new">캠페인 등록하기</Link></Button>
+                    <h3 className="text-lg font-bold">
+                        {activeTab === 'active' ? "진행중인 캠페인이 없습니다." : "마감된 캠페인이 없습니다."}
+                    </h3>
+                    {activeTab === 'active' && (
+                        <Button asChild className="mt-4"><Link href="/brand/new">캠페인 등록하기</Link></Button>
+                    )}
                 </Card>
             ) : (
                 <div className="space-y-4">
-                    {myCampaigns.map((c) => {
+                    {filteredCampaigns.map((c) => {
                         const appCount = proposals.filter(p => p.campaignId === c.id && p.type === 'creator_apply').length
                         return (
                             <Card
                                 key={c.id}
-                                className="group hover:shadow-md transition-all cursor-pointer border-border/60"
+                                className={`group hover:shadow-md transition-all cursor-pointer border-border/60 overflow-hidden ${c.status === 'closed' ? 'opacity-75 bg-slate-50' : ''}`}
                                 onClick={() => setSelectedCampaignId(c.id)}
                             >
-                                <div className="flex flex-col md:flex-row">
+                                <div className="flex flex-col md:flex-row h-full">
+                                    {/* Image Section */}
+                                    {c.image && c.image !== "📦" && (
+                                        <div className="w-full md:w-48 h-32 md:h-auto bg-muted/20 shrink-0 relative">
+                                            <img src={c.image} alt={c.product} className={`w-full h-full object-cover ${c.status === 'closed' ? 'grayscale' : ''}`} />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent md:hidden" />
+                                            <div className="absolute bottom-2 left-2 md:hidden">
+                                                <Badge variant="secondary" className="bg-white/90 text-black backdrop-blur-sm shadow-sm">
+                                                    {c.category}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Main Content */}
-                                    <div className="flex-1 p-6 flex gap-6">
-                                        {c.image && c.image !== "📦" && (
-                                            <div className="h-24 w-24 rounded-lg bg-muted/20 border shrink-0 overflow-hidden hidden md:block">
-                                                <img src={c.image} alt={c.product} className="h-full w-full object-cover" />
-                                            </div>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Badge variant="outline" className="text-xs font-normal">{c.category}</Badge>
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status === 'active' ? 'text-emerald-600 bg-emerald-100' : 'text-gray-500 bg-gray-100'}`}>
-                                                    {c.status === 'active' ? '● 모집중' : '● 마감됨'}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground ml-auto md:hidden">{new Date(c.date).toLocaleDateString()}</span>
+                                    <div className="flex-1 p-4 md:p-5 flex flex-col justify-between">
+                                        <div>
+                                            {/* Header Row */}
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <Badge variant="outline" className="hidden md:inline-flex text-xs font-normal bg-slate-50">{c.category}</Badge>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.status === 'active' ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-slate-500 bg-slate-100 border-slate-200'}`}>
+                                                        {c.status === 'active' ? '● 모집중' : '● 마감됨'}
+                                                    </span>
+                                                    {(() => {
+                                                        if (!c.recruitment_deadline) return null;
+                                                        const today = new Date();
+                                                        const dDay = Math.ceil((new Date(c.recruitment_deadline).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                                        return (
+                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${dDay < 0 ? 'bg-slate-200 text-slate-500' : dDay <= 3 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-blue-50 text-blue-600'}`}>
+                                                                {dDay < 0 ? '마감' : `D-${dDay}`}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </div>
+                                                {/* Channels */}
+                                                <div className="flex gap-1">
+                                                    {c.channels?.map((channel: string) => (
+                                                        <div key={channel} className="text-sm bg-slate-100 p-1 rounded-md" title={channel}>
+                                                            {channel === 'instagram' && '📸'}
+                                                            {channel === 'youtube' && '▶️'}
+                                                            {channel === 'tiktok' && '🎵'}
+                                                            {channel === 'blog' && '📝'}
+                                                            {channel === 'shorts' && '⚡'}
+                                                            {channel === 'reels' && '🎞️'}
+                                                            {!['instagram', 'youtube', 'tiktok', 'blog', 'shorts', 'reels'].includes(channel) && channel}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
 
-                                            <h3 className="text-xl font-bold mb-4 group-hover:text-primary transition-colors">{c.product}</h3>
+                                            <h3 className="text-lg md:text-xl font-bold mb-3 group-hover:text-primary transition-colors line-clamp-1">{c.product}</h3>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground bg-muted/20 p-4 rounded-lg">
-                                                <div className="space-y-1">
-                                                    <div className="text-xs font-bold text-foreground">제공 혜택</div>
-                                                    <div className="text-emerald-600 font-bold">{c.budget || "협의"}</div>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-4 text-sm text-slate-600">
+                                                <div className="space-y-0.5">
+                                                    <div className="text-[10px] font-bold text-slate-400">제공 혜택</div>
+                                                    <div className={c.status === 'active' ? "text-emerald-600 font-bold text-xs" : "text-slate-600 font-bold text-xs"}>{c.budget || "협의"}</div>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <div className="text-xs font-bold text-foreground">모집 대상</div>
-                                                    <div>{c.target || "전체"}</div>
+                                                <div className="space-y-0.5">
+                                                    <div className="text-[10px] font-bold text-slate-400">모집 인원</div>
+                                                    <div className="font-medium text-xs text-slate-900">{c.recruitment_count ? `${c.recruitment_count}명` : '-'}</div>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <div className="text-xs font-bold text-foreground">상세 내용</div>
-                                                    <div className="line-clamp-1 text-xs">{c.description}</div>
+                                                <div className="space-y-0.5 col-span-2 md:col-span-1">
+                                                    <div className="text-[10px] font-bold text-slate-400">모집 대상</div>
+                                                    <div className="truncate text-xs text-slate-900">{c.target || "전체"}</div>
+                                                </div>
+                                                <div className="space-y-0.5 hidden md:block">
+                                                    <div className="text-[10px] font-bold text-slate-400">예상 업로드</div>
+                                                    <div className="text-xs text-slate-900">{formatDateToMonth(c.postingDate) || '협의'}</div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Right Action Area */}
-                                    <div className="border-t md:border-t-0 md:border-l p-4 md:w-48 bg-muted/5 flex flex-row md:flex-col items-center justify-between md:justify-center gap-2">
-                                        <div className="text-center">
-                                            <div className="text-xs text-muted-foreground mb-1">도착한 제안</div>
-                                            <div className={`text-xl font-bold ${appCount > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                                                {appCount}개
+                                    <div className="border-t md:border-t-0 md:border-l p-4 md:w-40 bg-slate-50/50 flex flex-row md:flex-col items-center justify-between md:justify-center gap-3 shrink-0">
+                                        <div className="text-center flex items-center md:block gap-2 md:gap-0">
+                                            <div className="text-[10px] text-muted-foreground md:mb-1">도착한 제안</div>
+                                            <div className={`text-lg font-bold ${appCount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                {appCount}
                                             </div>
                                         </div>
 
-                                        <Button variant="ghost" size="sm" className="h-8 text-primary font-bold gap-1" asChild>
-                                            <Link href="/brand?view=proposals">워크스페이스로 이동 <ArrowRight className="h-3 w-3" /></Link>
-                                        </Button>
-
-                                        <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" asChild>
-                                                <Link href={`/brand/edit/${c.id}`}><Pencil className="h-3.5 w-3.5" /></Link>
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-500" onClick={() => deleteCampaign(c.id)}>
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                        <div className="flex gap-1 md:flex-col md:w-full" onClick={e => e.stopPropagation()}>
+                                            <Button variant="outline" size="sm" className="h-8 md:w-full text-xs" asChild>
+                                                <Link href={`/brand/edit/${c.id}`}>수정</Link>
                                             </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className={`h-7 px-2 text-xs ${c.status === 'active' ? 'text-red-500 hover:text-red-700' : 'text-emerald-600 hover:text-emerald-700'}`}
+                                                className={`h-8 px-2 text-xs md:w-full ${c.status === 'active' ? 'text-slate-500 hover:text-red-500 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation()
-                                                    if (confirm(c.status === 'active' ? "캠페인을 마감하시겠습니까? 더 이상 지원을 받을 수 없습니다." : "캠페인을 다시 진행하시겠습니까?")) {
+                                                    if (confirm(c.status === 'active' ? "캠페인을 마감하시겠습니까?" : "캠페인을 다시 진행하시겠습니까?")) {
                                                         updateCampaignStatus(c.id.toString(), c.status === 'active' ? 'closed' : 'active')
                                                     }
                                                 }}
                                             >
-                                                {c.status === 'active' ? '마감하기' : '진행하기'}
+                                                {c.status === 'active' ? '마감하기' : '재진행'}
                                             </Button>
                                         </div>
                                     </div>

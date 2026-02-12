@@ -39,7 +39,16 @@ export async function createCampaign(formData: FormData) {
             status: 'active',
             event_date: eventDate,
             posting_date: postingDate,
-            tags: (tags || "").split(',').map(tag => tag.trim()).filter(Boolean)
+            tags: (tags || "").split(',').map(tag => tag.trim()).filter(Boolean),
+            // New Fields
+            recruitment_count: formData.get('recruitmentCount') ? parseInt(formData.get('recruitmentCount') as string) : null,
+            recruitment_deadline: formData.get('recruitmentDeadline') as string,
+            channels: (formData.get('channels') as string || "").split(',').filter(Boolean),
+            reference_link: formData.get('referenceLink') as string,
+            hashtags: (formData.get('hashtags') as string || "").split(',').map(tag => tag.trim()).filter(Boolean),
+            selection_announcement_date: formData.get('selectionDate') as string,
+            min_followers: formData.get('minFollowers') ? parseInt(formData.get('minFollowers') as string) : null,
+            max_followers: formData.get('maxFollowers') ? parseInt(formData.get('maxFollowers') as string) : null
         })
 
     if (error) {
@@ -85,7 +94,16 @@ export async function updateCampaign(id: string, formData: FormData) {
             image: image,
             event_date: eventDate,
             posting_date: postingDate,
-            tags: (tags || "").split(',').map(tag => tag.trim()).filter(Boolean)
+            tags: (tags || "").split(',').map(tag => tag.trim()).filter(Boolean),
+            // New Fields
+            recruitment_count: formData.get('recruitmentCount') ? parseInt(formData.get('recruitmentCount') as string) : null,
+            recruitment_deadline: formData.get('recruitmentDeadline') as string,
+            channels: (formData.get('channels') as string || "").split(',').filter(Boolean),
+            reference_link: formData.get('referenceLink') as string,
+            hashtags: (formData.get('hashtags') as string || "").split(',').map(tag => tag.trim()).filter(Boolean),
+            selection_announcement_date: formData.get('selectionDate') as string,
+            min_followers: formData.get('minFollowers') ? parseInt(formData.get('minFollowers') as string) : null,
+            max_followers: formData.get('maxFollowers') ? parseInt(formData.get('maxFollowers') as string) : null
         })
         .eq('id', id)
         .eq('brand_id', user.id) // Ensure ownership

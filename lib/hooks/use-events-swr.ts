@@ -57,6 +57,12 @@ async function fetchUserEvents(userId: string): Promise<InfluencerEvent[]> {
 
     if (error) {
         console.error('[useEvents] Fetch error:', error)
+        console.error('[useEvents] Fetch error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+        })
         throw error
     }
 
@@ -82,6 +88,12 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
 
     if (error) {
         console.error('[useEvents] Fetch All error:', error)
+        console.error('[useEvents] Fetch All error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+        })
         throw error
     }
 

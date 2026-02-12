@@ -250,34 +250,45 @@ export const DiscoverView = React.memo(function DiscoverView({
                                             </span>
                                         </div>
                                     )}
-                                    <h3 className="font-bold text-base line-clamp-2 mb-2">{item.event}</h3>
+                                    <h3 className="font-bold text-base line-clamp-2 h-14 mb-2">{item.event}</h3>
 
-                                    <div className="flex flex-col gap-1.5 text-xs text-muted-foreground mb-3 bg-muted/30 p-2 rounded-lg">
-                                        {item.targetProduct && (
-                                            <div className="flex items-center gap-2">
-                                                <Gift className="h-3.5 w-3.5 text-primary/70 shrink-0" />
-                                                <span className="font-medium">희망제품:</span>
-                                                <span className="truncate flex-1">{item.targetProduct}</span>
+                                    <div className="flex flex-col gap-2 text-xs mb-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                        <div className="pb-2 border-b border-slate-200">
+                                            <span className="text-[10px] text-muted-foreground block mb-0.5">희망제품</span>
+                                            <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                                                <Gift className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                                                <span className="truncate">{item.targetProduct || "미정"}</span>
                                             </div>
-                                        )}
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="h-3.5 w-3.5 text-primary/70 shrink-0" />
-                                            <span className="font-medium">모먼트일:</span>
-                                            {formatDateToMonth(item.eventDate) || "미정"}
                                         </div>
-                                        {item.postingDate && (
-                                            <div className="flex items-center gap-1.5 text-slate-600">
-                                                <Send className="h-3.5 w-3.5 text-muted-foreground" />
-                                                <span className="font-medium">예상업로드:</span>
-                                                {item.dateFlexible ? (
-                                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 mr-1 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
-                                                ) : (
-                                                    formatDateToMonth(item.postingDate)
-                                                )}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="text-[10px] text-muted-foreground block mb-0.5">모먼트 일정</span>
+                                                <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                                                    <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                                    <span>{formatDateToMonth(item.eventDate) || "미정"}</span>
+                                                </div>
                                             </div>
-                                        )}
+                                            <div>
+                                                <span className="text-[10px] text-muted-foreground block mb-0.5">업로드 일정</span>
+                                                <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                                                    <Send className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                                    {item.dateFlexible ? (
+                                                        <span className="text-emerald-600">협의 가능</span>
+                                                    ) : (
+                                                        <span>{formatDateToMonth(item.postingDate)}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <p className="text-sm text-foreground/70 line-clamp-3">{item.description}</p>
+                                    <p className="text-sm text-foreground/70 line-clamp-2 h-12 leading-relaxed mb-3">{item.description}</p>
+
+                                    <div className="bg-amber-50 border border-amber-100 rounded-md p-2.5 mb-3">
+                                        <p className="text-xs text-amber-800 font-medium mb-1">📝 제작 가이드</p>
+                                        <p className="text-xs text-amber-900/80 line-clamp-2 leading-relaxed h-8">
+                                            {item.guide || "브랜드 가이드를 따르겠습니다."}
+                                        </p>
+                                    </div>
                                     <div className="flex flex-wrap gap-1">
                                         {item.tags.slice(0, 3).map(t => (
                                             <span key={t} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">#{t}</span>

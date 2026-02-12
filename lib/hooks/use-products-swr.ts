@@ -21,6 +21,12 @@ async function fetchProducts(): Promise<Product[]> {
 
     if (error) {
         console.error('[useProducts] Fetch error:', error)
+        console.error('[useProducts] Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+        })
         if (error.code === '42P01') {
             console.warn('[useProducts] The "brand_products" table is missing - returning empty array')
             return []

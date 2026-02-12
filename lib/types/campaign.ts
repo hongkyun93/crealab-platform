@@ -18,6 +18,15 @@ export interface Campaign {
     status?: 'active' | 'completed' | 'paused' | 'closed'
     isMock?: boolean
     tags?: string[]
+    // New Fields (snake_case as returned by Supabase for now)
+    recruitment_count?: number
+    recruitment_deadline?: string
+    channels?: string[]
+    reference_link?: string
+    hashtags?: string[]
+    selection_announcement_date?: string
+    min_followers?: number
+    max_followers?: number
 }
 
 export interface CampaignFormData {

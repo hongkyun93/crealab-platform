@@ -16,7 +16,7 @@ interface CampaignContextType {
 
 const CampaignContext = createContext<CampaignContextType | undefined>(undefined)
 
-export function CampaignProvider({ children, userId }: { children: React.ReactNode, userId?: string }) {
+export function CampaignProvider({ children, userId, userType }: { children: React.ReactNode, userId?: string, userType?: string }) {
     const [supabase] = useState(() => createClient())
     const [campaigns, setCampaigns] = useState<Campaign[]>([])
     const [isLoading, setIsLoading] = useState(false)
@@ -25,23 +25,39 @@ export function CampaignProvider({ children, userId }: { children: React.ReactNo
     // Fetch campaigns from database
     const fetchCampaigns = async (targetUserId?: string) => {
         if (isFetching.current) return
-        if (!targetUserId && !userId) return
+        // If influencer, we don't strictly need a userId to fetch *all* campaigns, but we usually have one.
+        // If brand, we need userId.
+        if (!targetUserId && !userId && userType === 'brand') return
 
         isFetching.current = true
         setIsLoading(true)
 
         try {
             const id = targetUserId || userId
-            console.log('[CampaignProvider] Fetching campaigns for user:', id)
+            console.log(`[CampaignProvider] Fetching campaigns. User: ${id}, Type: ${userType}`)
 
-            const { data, error } = await supabase
+            let query = supabase
                 .from('campaigns')
                 .select(`
                     *,
                     profiles(display_name, avatar_url)
                 `)
-                .eq('brand_id', id)
                 .order('created_at', { ascending: false })
+
+            // Only filter by brand_id if the user is a Brand
+            // Influencers and Admins see all campaigns
+            if (userType === 'brand') {
+                query = query.eq('brand_id', id)
+            } else {
+                // For influencers/others, maybe filter out 'closed' ones if desired, 
+                // but the UI does some filtering too. Let's fetch all for now and let UI filter.
+                // Or maybe explicitly fetch only active? 
+                // The prompt implies "Discover", so usually active. 
+                // However, the existing UI filters by `c.status !== 'closed'`.
+                // We'll fetch all matching the base query.
+            }
+
+            const { data, error } = await query
 
             if (error) {
                 console.error('[CampaignProvider] Fetch error:', error)
@@ -66,7 +82,16 @@ export function CampaignProvider({ children, userId }: { children: React.ReactNo
                     targetProduct: c.target_product,
                     status: c.status || 'active',
                     tags: c.tags || [],
-                    isMock: false
+                    isMock: false,
+                    // New Fields
+                    recruitment_count: c.recruitment_count,
+                    recruitment_deadline: c.recruitment_deadline,
+                    channels: c.channels || [],
+                    reference_link: c.reference_link,
+                    hashtags: c.hashtags || [],
+                    selection_announcement_date: c.selection_announcement_date,
+                    min_followers: c.min_followers,
+                    max_followers: c.max_followers
                 }))
 
                 setCampaigns(mapped)
@@ -84,6 +109,9 @@ export function CampaignProvider({ children, userId }: { children: React.ReactNo
     useEffect(() => {
         if (userId) {
             fetchCampaigns(userId)
+        } else {
+            // Clear data if no user (logout)
+            setCampaigns([])
         }
     }, [userId])
 
@@ -96,20 +124,30 @@ export function CampaignProvider({ children, userId }: { children: React.ReactNo
         try {
             console.log('[CampaignProvider] Creating campaign:', newCampaign)
 
-            const result = await createCampaignAction({
-                brand_id: userId,
-                product_name: newCampaign.product,
-                category: newCampaign.category,
-                budget: parseInt(newCampaign.budget) || 0,
-                target_audience: newCampaign.target,
-                description: newCampaign.description,
-                image_url: newCampaign.image,
-                event_date: newCampaign.eventDate,
-                posting_date: newCampaign.postingDate,
-                target_product: newCampaign.targetProduct,
-                status: newCampaign.status || 'active',
-                tags: newCampaign.tags || []
-            })
+            const formData = new FormData()
+            formData.append('product', newCampaign.product)
+            formData.append('category', newCampaign.category)
+            formData.append('budget', newCampaign.budget)
+            formData.append('target', newCampaign.target)
+            formData.append('description', newCampaign.description)
+            if (newCampaign.image) formData.append('image', newCampaign.image)
+            if (newCampaign.eventDate) formData.append('eventDate', newCampaign.eventDate)
+            if (newCampaign.postingDate) formData.append('postingDate', newCampaign.postingDate)
+            if (newCampaign.targetProduct) formData.append('targetProduct', newCampaign.targetProduct)
+            if (newCampaign.status) formData.append('status', newCampaign.status)
+            if (newCampaign.tags) formData.append('tags', newCampaign.tags.join(','))
+
+            // New Fields
+            if (newCampaign.recruitment_count) formData.append('recruitmentCount', newCampaign.recruitment_count.toString())
+            if (newCampaign.recruitment_deadline) formData.append('recruitmentDeadline', newCampaign.recruitment_deadline)
+            if (newCampaign.channels) formData.append('channels', newCampaign.channels.join(','))
+            if (newCampaign.reference_link) formData.append('referenceLink', newCampaign.reference_link)
+            if (newCampaign.hashtags) formData.append('hashtags', newCampaign.hashtags.join(','))
+            if (newCampaign.selection_announcement_date) formData.append('selectionDate', newCampaign.selection_announcement_date)
+            if (newCampaign.min_followers) formData.append('minFollowers', newCampaign.min_followers.toString())
+            if (newCampaign.max_followers) formData.append('maxFollowers', newCampaign.max_followers.toString())
+
+            const result = await createCampaignAction(formData)
 
             if (result.success) {
                 await fetchCampaigns(userId)
@@ -128,12 +166,12 @@ export function CampaignProvider({ children, userId }: { children: React.ReactNo
         try {
             console.log('[CampaignProvider] Updating campaign:', id, status)
 
-            const result = await updateCampaignStatus(id.toString(), status)
+            const result = await updateCampaignStatus(id.toString(), status as 'active' | 'closed')
 
             if (result.success) {
                 // Update local state
                 setCampaigns(prev => prev.map(c =>
-                    c.id === id ? { ...c, status } : c
+                    c.id === id ? { ...c, status: status as any } : c
                 ))
                 console.log('[CampaignProvider] Campaign updated')
             } else {

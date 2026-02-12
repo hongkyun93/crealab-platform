@@ -212,11 +212,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const { error } = await supabase.auth.signOut()
             if (error) {
                 console.error('[AuthProvider] Logout error:', error)
-                throw error
+                // Continue with local cleanup even if server signout implies error
             }
 
+            // 1. Clear state
             setUser(null)
+
+            // 2. Clear all local storage to be safe (or specific keys)
             localStorage.removeItem("creadypick_user")
+            // Also might want to clear supabase session if it persists
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('sb-')) localStorage.removeItem(key)
+            })
+
+            // 3. Navigate
             window.location.href = '/login'
         } catch (error: any) {
             console.error('[AuthProvider] Logout failed:', error)

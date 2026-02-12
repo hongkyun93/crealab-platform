@@ -171,6 +171,9 @@ export function ProposalProvider({ children, userId }: { children: React.ReactNo
                 fetchCreatorProposals(userId),
                 fetchBrandProposals(userId)
             ])
+        } else {
+            setProposals([])
+            setBrandProposals([])
         }
     }, [userId])
 

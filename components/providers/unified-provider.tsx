@@ -26,7 +26,7 @@ function UnifiedProviderInner({ children }: { children: React.ReactNode }) {
     const { user } = useAuth()
 
     return (
-        <CampaignProvider userId={user?.id}>
+        <CampaignProvider userId={user?.id} userType={user?.type}>
             <EventProvider userId={user?.id}>
                 <ProductProvider userId={user?.id}>
                     <ProposalProvider userId={user?.id}>
@@ -141,8 +141,27 @@ export function useUnifiedProvider() {
             ])
         },
 
-        resetData: () => {
-            console.log('[UnifiedProvider] resetData called (no-op in modular providers)')
+        resetData: async () => {
+            console.log('[UnifiedProvider] Resetting all data...')
+
+            // Clear all SWR cache
+            // We can import useSWRConfig to get mutate, but we need it inside the component
+            // For now, let's just trigger refreshes with empty data if possible, or reload page.
+            // Actually, the best way to clear SWR is to use the cache provider, but a hard reload 
+            // is often done in logout. 
+            // However, the user says "internal cache remains".
+
+            // Let's at least clear the states we control
+            // Modular providers don't expose a 'reset' method yet.
+            // We should add reset methods to them or rely on them clearing when userId becomes null.
+
+            // Current implementation of modular providers:
+            // They watch `userId`. If `userId` becomes null, do they clear data?
+            // Let's check CampaignProvider.tsx again.
+            // It says: useEffect(() => { if (userId) fetchCampaigns(userId) }, [userId])
+            // It does NOT clear data if userId is null. THIS IS THE BUG.
+
+            // We need to update all providers to clear data when userId is undefined.
         }
     }
 }

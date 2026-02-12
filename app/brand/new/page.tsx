@@ -29,6 +29,12 @@ export default function NewCampaignPage() {
     const [selectedCategory, setSelectedCategory] = useState<string[]>([])
     const [postingYear, setPostingYear] = useState("2026")
     const [postingMonth, setPostingMonth] = useState("3")
+    // New fields
+    const [selectedChannels, setSelectedChannels] = useState<string[]>([])
+    const [deadline, setDeadline] = useState("")
+    const [selectionDate, setSelectionDate] = useState("")
+    const [minFollowers, setMinFollowers] = useState("")
+    const [maxFollowers, setMaxFollowers] = useState("")
 
     // Controlled inputs for Product Loading feature
     const [productTitle, setProductTitle] = useState("")
@@ -48,6 +54,15 @@ export default function NewCampaignPage() {
         "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
         "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
         "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
+    ]
+
+    const CHANNELS = [
+        { id: "instagram", label: "인스타그램", icon: "📸" },
+        { id: "youtube", label: "유튜브", icon: "▶️" },
+        { id: "tiktok", label: "틱톡", icon: "🎵" },
+        { id: "blog", label: "블로그", icon: "📝" },
+        { id: "shorts", label: "유튜브 숏츠", icon: "⚡" },
+        { id: "reels", label: "인스타 릴스", icon: "🎞️" }
     ]
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -147,7 +162,7 @@ export default function NewCampaignPage() {
             <SiteHeader />
             <main className="container py-8 max-w-[1920px] px-6 md:px-8">
                 <div className="mx-auto max-w-2xl">
-                    <div className="mb-8 flex items-center gap-4">
+                    <div className="mb-4 flex items-center gap-4">
                         <Button variant="ghost" size="icon" asChild>
                             <Link href="/brand?view=dashboard">
                                 <ArrowLeft className="h-4 w-4" />
@@ -161,7 +176,7 @@ export default function NewCampaignPage() {
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
+                    <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border bg-card p-6 shadow-sm md:p-8">
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="product">제품/서비스명</Label>
@@ -247,7 +262,118 @@ export default function NewCampaignPage() {
                             />
                         </div>
 
-                        <div className="space-y-3">
+                        {/* New Fields Group 1: Recruitment Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label htmlFor="recruitmentCount">모집 인원 (명)</Label>
+                                <Input
+                                    id="recruitmentCount"
+                                    name="recruitmentCount"
+                                    type="number"
+                                    placeholder="예: 5"
+                                    min={1}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="recruitmentDeadline">모집 마감일</Label>
+                                <Input
+                                    id="recruitmentDeadline"
+                                    name="recruitmentDeadline"
+                                    type="date"
+                                    value={deadline}
+                                    onChange={(e) => setDeadline(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* New Fields Group 1-2: Selection Date & Follower Range */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label htmlFor="selectionDate">선정 발표일</Label>
+                                <Input
+                                    id="selectionDate"
+                                    name="selectionDate"
+                                    type="date"
+                                    value={selectionDate}
+                                    onChange={(e) => setSelectionDate(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>모집 조건 (팔로워 수)</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        name="minFollowers"
+                                        type="number"
+                                        placeholder="최소 (명)"
+                                        value={minFollowers}
+                                        onChange={(e) => setMinFollowers(e.target.value)}
+                                    />
+                                    <span className="text-muted-foreground">~</span>
+                                    <Input
+                                        name="maxFollowers"
+                                        type="number"
+                                        placeholder="최대 (명)"
+                                        value={maxFollowers}
+                                        onChange={(e) => setMaxFollowers(e.target.value)}
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground">비워두시면 제한 없음으로 설정됩니다.</p>
+                            </div>
+                        </div>
+
+                        {/* New Fields Group 2: Channels */}
+                        <div className="space-y-2">
+                            <Label>희망 채널 (복수 선택 가능)</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {CHANNELS.map((channel) => (
+                                    <button
+                                        key={channel.id}
+                                        type="button"
+                                        onClick={() => {
+                                            if (selectedChannels.includes(channel.id)) {
+                                                setSelectedChannels(selectedChannels.filter(c => c !== channel.id))
+                                            } else {
+                                                setSelectedChannels([...selectedChannels, channel.id])
+                                            }
+                                        }}
+                                        className={`
+                                            flex items-center gap-2 px-4 py-2 rounded-full border text-sm transition-all
+                                            ${selectedChannels.includes(channel.id)
+                                                ? "bg-slate-900 text-white border-slate-900 font-medium"
+                                                : "bg-white text-slate-600 hover:bg-slate-50"
+                                            }
+                                        `}
+                                    >
+                                        <span>{channel.icon}</span>
+                                        {channel.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <input type="hidden" name="channels" value={selectedChannels.join(",")} />
+                        </div>
+
+                        {/* New Fields Group 3: Reference & Hashtags */}
+                        <div className="space-y-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="referenceLink">참고 링크 (선택사항)</Label>
+                                <Input
+                                    id="referenceLink"
+                                    name="referenceLink"
+                                    placeholder="예: https://example.com/product (레퍼런스 게시물 또는 자사몰 링크)"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="hashtags">필수 해시태그 가이드</Label>
+                                <Input
+                                    id="hashtags"
+                                    name="hashtags"
+                                    placeholder="예: #크레디픽, #제품명, #광고 (쉼표로 구분)"
+                                />
+                                <p className="text-xs text-muted-foreground">크리에이터가 콘텐츠 업로드 시 포함해야 할 해시태그를 입력해주세요.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
                             <Label>카테고리 (복수 선택 가능)</Label>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                 {POPULAR_TAGS.map((tag) => (
@@ -285,7 +411,7 @@ export default function NewCampaignPage() {
                             />
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-2">
                             <Label className="flex items-center gap-2">
                                 <Send className="h-4 w-4" />
                                 콘텐츠 업로드 시기 (예정)

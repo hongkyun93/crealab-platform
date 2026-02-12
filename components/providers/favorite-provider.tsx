@@ -58,6 +58,8 @@ export function FavoriteProvider({ children, userId }: { children: React.ReactNo
     useEffect(() => {
         if (userId) {
             fetchFavorites(userId)
+        } else {
+            setFavorites([])
         }
     }, [userId])
 

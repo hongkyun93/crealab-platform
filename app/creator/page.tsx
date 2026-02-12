@@ -2508,9 +2508,15 @@ function InfluencerDashboardContent() {
                                                     {/* Split by comma if multiple categories */}
                                                     {camp.category ? camp.category.split(',')[0] : '카테고리 없음'}
                                                 </Badge>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {camp.date ? new Date(camp.date).toLocaleDateString() : new Date().toLocaleDateString()}
-                                                </span>
+                                                {camp.recruitment_deadline ? (
+                                                    <Badge variant="outline" className="border-red-200 text-red-600 bg-red-50">
+                                                        D-{Math.ceil((new Date(camp.recruitment_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {camp.date ? new Date(camp.date).toLocaleDateString() : new Date().toLocaleDateString()}
+                                                    </span>
+                                                )}
                                             </div>
                                             <CardTitle className="text-lg font-bold line-clamp-1">{camp.product}</CardTitle>
                                             <div className="flex items-center gap-2 mt-2">
@@ -2530,10 +2536,36 @@ function InfluencerDashboardContent() {
                                                     <span className="text-muted-foreground">제공 혜택</span>
                                                     <span className="font-bold text-emerald-600">{camp.budget}</span>
                                                 </div>
-                                                {camp.target && (
+                                                {camp.recruitment_count && (
                                                     <div className="flex justify-between">
-                                                        <span className="text-muted-foreground">모집 대상</span>
-                                                        <span className="font-medium truncate max-w-[150px]">{camp.target}</span>
+                                                        <span className="text-muted-foreground">모집 인원</span>
+                                                        <span className="font-medium">{camp.recruitment_count}명</span>
+                                                    </div>
+                                                )}
+                                                {camp.channels && camp.channels.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-200/50 mt-1">
+                                                        {camp.channels.slice(0, 4).map((ch: string) => (
+                                                            <span key={ch} className="text-[10px] bg-white border px-1.5 py-0.5 rounded text-slate-500">
+                                                                {ch === 'instagram' && '📸'}
+                                                                {ch === 'youtube' && '▶️'}
+                                                                {ch === 'tiktok' && '🎵'}
+                                                                {ch === 'blog' && '📝'}
+                                                                {ch === 'shorts' && '⚡'}
+                                                                {ch === 'reels' && '🎞️'}
+                                                                {!['instagram', 'youtube', 'tiktok', 'blog', 'shorts', 'reels'].includes(ch) && ch}
+                                                            </span>
+                                                        ))}
+                                                        {camp.channels.length > 4 && <span className="text-[10px] text-muted-foreground flex items-center">+{camp.channels.length - 4}</span>}
+                                                    </div>
+                                                )}
+                                                {(camp.min_followers || camp.max_followers) && (
+                                                    <div className="flex justify-between pt-1 border-t border-slate-200/50 mt-1">
+                                                        <span className="text-muted-foreground text-xs">지원 조건</span>
+                                                        <span className="font-medium text-xs text-slate-700">
+                                                            {camp.min_followers ? `${(camp.min_followers / 10000 >= 1) ? (camp.min_followers / 10000) + '만' : camp.min_followers.toLocaleString()}↑` : ''}
+                                                            {camp.min_followers && camp.max_followers ? ' ~ ' : ''}
+                                                            {camp.max_followers ? `${(camp.max_followers / 10000 >= 1) ? (camp.max_followers / 10000) + '만' : camp.max_followers.toLocaleString()}↓` : ''}
+                                                        </span>
                                                     </div>
                                                 )}
                                             </div>

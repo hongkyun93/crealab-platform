@@ -51,6 +51,12 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
 
             if (error) {
                 console.error('[MessageProvider] Fetch error:', error)
+                console.error('[MessageProvider] Fetch error details:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                })
                 return
             }
 
@@ -99,6 +105,12 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
 
             if (error) {
                 console.error('[MessageProvider] Notifications error:', error)
+                console.error('[MessageProvider] Notifications error details:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                })
                 return
             }
 
@@ -115,7 +127,12 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
 
     // Polling for new messages
     useEffect(() => {
-        if (!userId) return
+        if (!userId) {
+            setMessages([])
+            setNotifications([])
+            setSubmissionFeedback([])
+            return
+        }
 
         fetchMessages(userId)
         fetchNotifications(userId)
