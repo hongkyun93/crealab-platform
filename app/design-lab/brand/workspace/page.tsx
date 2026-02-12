@@ -107,9 +107,7 @@ const PROJECT_DATA_POOL = [
 ]
 
 // Helper to get 3-4 random items
-const getRandomProjects = () => {
-    return [...PROJECT_DATA_POOL].sort(() => 0.5 - Math.random()).slice(0, 3)
-}
+const getRandomProjects = () => [...PROJECT_DATA_POOL].slice(0, 3)
 
 export default function WorkspaceArchivePage() {
     const [selectedDesign, setSelectedDesign] = useState<number | null>(null)

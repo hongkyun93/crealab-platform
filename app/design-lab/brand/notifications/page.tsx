@@ -82,9 +82,7 @@ const NOTIFICATION_DATA_POOL = [
 ]
 
 // Helper to get 3-4 random notifications
-const getRandomNotifications = () => {
-    return [...NOTIFICATION_DATA_POOL].sort(() => 0.5 - Math.random()).slice(0, 3)
-}
+const getRandomNotifications = () => [...NOTIFICATION_DATA_POOL].slice(0, 3)
 
 export default function NotificationCenterPage() {
     const [selectedDesign, setSelectedDesign] = useState<number | null>(null)

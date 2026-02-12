@@ -97,9 +97,7 @@ const CAMPAIGN_DATA_POOL = [
     }
 ]
 
-const getRandomCampaigns = () => {
-    return [...CAMPAIGN_DATA_POOL].sort(() => 0.5 - Math.random()).slice(0, 3)
-}
+const getRandomCampaigns = () => [...CAMPAIGN_DATA_POOL].slice(0, 3)
 
 export default function CreatorCampaignSearchPage() {
     const [selectedDesign, setSelectedDesign] = useState<number | null>(null)

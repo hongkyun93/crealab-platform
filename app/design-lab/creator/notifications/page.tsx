@@ -24,7 +24,8 @@ const NOTIFICATION_DATA_POOL = [
         brand: "Grand Josun",
         brandLogo: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=150&q=80",
         isRead: false,
-        action: "View Offer"
+        action: "View Offer",
+        isUrgent: false
     },
     {
         id: "nt2",
@@ -35,7 +36,8 @@ const NOTIFICATION_DATA_POOL = [
         brand: "Logitech",
         brandLogo: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=150&q=80",
         isRead: true,
-        action: "View History"
+        action: "View History",
+        isUrgent: false
     },
     {
         id: "nt3",
@@ -46,7 +48,8 @@ const NOTIFICATION_DATA_POOL = [
         brand: "Aromatica",
         brandLogo: "https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=150&q=80",
         isRead: false,
-        action: "Submit Draft"
+        action: "Submit Draft",
+        isUrgent: true
     },
     {
         id: "nt4",
@@ -57,7 +60,8 @@ const NOTIFICATION_DATA_POOL = [
         brand: "System",
         brandLogo: "",
         isRead: true,
-        action: "View Stats"
+        action: "View Stats",
+        isUrgent: false
     },
     {
         id: "nt5",
@@ -68,13 +72,12 @@ const NOTIFICATION_DATA_POOL = [
         brand: "Xexymix",
         brandLogo: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=150&q=80",
         isRead: false,
-        action: "Sign Now"
+        action: "Sign Now",
+        isUrgent: false
     }
 ]
 
-const getRandomNotifications = () => {
-    return [...NOTIFICATION_DATA_POOL].sort(() => 0.5 - Math.random()).slice(0, 3)
-}
+const getRandomNotifications = () => [...NOTIFICATION_DATA_POOL].slice(0, 3)
 
 export default function CreatorNotificationsPage() {
     const [selectedDesign, setSelectedDesign] = useState<number | null>(null)

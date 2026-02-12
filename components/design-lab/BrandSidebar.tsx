@@ -30,7 +30,7 @@ export function DesignLabBrandSidebar({ className, user }: BrandSidebarProps) {
     // Matching the logic: /design-lab/brand/moment-search -> 'moment-search'
     const currentPath = pathname?.split('/').pop() || ''
 
-    const displayUser = user || { name: '브랜드', email: '브랜드 계정' }
+    const displayUser = user || { name: 'Voib', email: 'brand@voib.com' }
 
     return (
         <div className={cn("w-64 border-r bg-card hidden md:block h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto", className)}>

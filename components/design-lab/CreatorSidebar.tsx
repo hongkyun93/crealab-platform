@@ -29,7 +29,7 @@ export function DesignLabCreatorSidebar({ className, user }: CreatorSidebarProps
     const router = useRouter()
     const pathname = usePathname()
 
-    const displayUser = user || { name: '크리에이터', email: 'creator@example.com', handle: '@creator', image: '' }
+    const displayUser = user || { name: 'Kim Soomin', email: 'soomin@crealab.com', handle: '@soomin_kim', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&q=80' }
 
     const isActive = (path: string) => pathname.includes(path)
 

@@ -83,9 +83,7 @@ const WORKSPACE_DATA_POOL = [
     }
 ]
 
-const getRandomProjects = () => {
-    return [...WORKSPACE_DATA_POOL].sort(() => 0.5 - Math.random()).slice(0, 3)
-}
+const getRandomProjects = () => [...WORKSPACE_DATA_POOL].slice(0, 3)
 
 export default function CreatorWorkspacePage() {
     const [selectedDesign, setSelectedDesign] = useState<number | null>(null)

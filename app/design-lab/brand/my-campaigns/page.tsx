@@ -128,15 +128,36 @@ export default function MyCampaignsDesignLab() {
     return (
         <div className="space-y-6 pb-20 max-w-7xl mx-auto">
             {/* Header Section */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">내 캠페인 관리</h1>
-                    <p className="text-muted-foreground mt-2">
-                        진행 중인 캠페인의 현황을 파악하고 관리하세요.
-                    </p>
+            <div className="flex flex-col gap-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">내 캠페인 관리</h1>
+                        <p className="text-muted-foreground mt-1">
+                            진행 중인 캠페인의 현황을 파악하고 관리하세요.
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button className="bg-black text-white hover:bg-gray-800 rounded-full px-6"><PlusCircle className="w-4 h-4 mr-2" /> 새 캠페인 만들기</Button>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button className="bg-black text-white hover:bg-gray-800"><PlusCircle className="w-4 h-4 mr-2" /> 새 캠페인 만들기</Button>
+
+                {/* Tabs */}
+                <div className="flex items-center gap-1 border-b overflow-x-auto hide-scrollbar">
+                    <button className="px-4 py-2 text-sm font-bold border-b-2 border-black text-black whitespace-nowrap">
+                        전체 (4)
+                    </button>
+                    <button className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-black hover:border-b-2 hover:border-gray-200 whitespace-nowrap transition-colors">
+                        모집중 (1)
+                    </button>
+                    <button className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-black hover:border-b-2 hover:border-gray-200 whitespace-nowrap transition-colors">
+                        진행중 (1)
+                    </button>
+                    <button className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-black hover:border-b-2 hover:border-gray-200 whitespace-nowrap transition-colors">
+                        검수중 (1)
+                    </button>
+                    <button className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-black hover:border-b-2 hover:border-gray-200 whitespace-nowrap transition-colors">
+                        완료됨 (1)
+                    </button>
                 </div>
             </div>
 

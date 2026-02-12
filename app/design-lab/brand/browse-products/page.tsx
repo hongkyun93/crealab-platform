@@ -108,9 +108,7 @@ const MARKETPLACE_DATA_POOL = [
 ]
 
 // Helper to get 3-4 random items
-const getRandomProducts = () => {
-    return [...MARKETPLACE_DATA_POOL].sort(() => 0.5 - Math.random()).slice(0, 3)
-}
+const getRandomProducts = () => [...MARKETPLACE_DATA_POOL].slice(0, 4)
 
 export default function BrowseProductsPage() {
     const [selectedDesign, setSelectedDesign] = useState<number | null>(null)
