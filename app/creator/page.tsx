@@ -338,21 +338,53 @@ function InfluencerDashboardContent() {
         setConfirmDialog({
             open: true,
             title: '제안 거절',
-            description: '이 제안을 거절하시겠습니까?',
-            variant: 'destructive',
+            description: '이 제안을 거절하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
             onConfirm: async () => {
-                const { error } = await supabase
-                    .from('moment_proposals')
-                    .update({ status: 'rejected' })
-                    .eq('id', proposalId)
+                try {
+                    // Find the proposal to determine its type
+                    const proposal = brandProposals.find((p: any) => p.id === proposalId)
 
-                if (error) {
-                    toast.error('거절 실패: ' + error.message)
-                    throw error
+                    if (!proposal) {
+                        toast.error('제안을 찾을 수 없습니다.')
+                        return
+                    }
+
+                    let error = null
+
+                    // Update the correct table based on proposal type
+                    if (proposal.moment_id) {
+                        // Moment proposal
+                        const result = await supabase
+                            .from('moment_proposals')
+                            .update({ status: 'rejected' })
+                            .eq('id', proposalId)
+                        error = result.error
+                    } else if (proposal.campaign_id) {
+                        // Campaign application
+                        const result = await supabase
+                            .from('campaign_applications')
+                            .update({ status: 'rejected' })
+                            .eq('id', proposalId)
+                        error = result.error
+                    } else {
+                        // Brand proposal (default)
+                        const result = await supabase
+                            .from('brand_proposals')
+                            .update({ status: 'rejected' })
+                            .eq('id', proposalId)
+                        error = result.error
+                    }
+
+                    if (error) {
+                        toast.error('거절 실패: ' + error.message)
+                        throw error
+                    }
+
+                    await refreshData()
+                    toast.success('제안을 거절했습니다.')
+                } catch (error: any) {
+                    console.error('Reject error:', error)
                 }
-
-                await refreshData()
-                toast.success('제안을 거절했습니다.')
             }
         })
     }
