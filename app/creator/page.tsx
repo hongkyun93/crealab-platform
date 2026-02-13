@@ -2169,19 +2169,19 @@ function InfluencerDashboardContent() {
                                 <TabsTrigger value="all" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
                                     전체 보기 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="active" className="min-w-[120px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
+                                <TabsTrigger value="active" className="min-w-[120px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white border border-emerald-500/30 bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all hover:border-emerald-500/50">
                                     진행중 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="inbound" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
+                                <TabsTrigger value="inbound" className="min-w-[130px] data-[state=active]:bg-blue-500 data-[state=active]:text-white border border-blue-500/30 bg-background px-4 py-2 rounded-full transition-all hover:border-blue-500/50">
                                     받은 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{inboundProposals.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="outbound" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
+                                <TabsTrigger value="outbound" className="min-w-[130px] data-[state=active]:bg-purple-500 data-[state=active]:text-white border border-purple-500/30 bg-background px-4 py-2 rounded-full transition-all hover:border-purple-500/50">
                                     보낸 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundApplications.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="rejected" className="min-w-[120px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
+                                <TabsTrigger value="rejected" className="min-w-[120px] data-[state=active]:bg-red-500 data-[state=active]:text-white border border-red-500/30 bg-background px-4 py-2 rounded-full transition-all hover:border-red-500/50">
                                     거절됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{rejectedProposals.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="completed" className="min-w-[120px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
+                                <TabsTrigger value="completed" className="min-w-[120px] data-[state=active]:bg-slate-400 data-[state=active]:text-white border border-slate-400/30 bg-background px-4 py-2 rounded-full transition-all hover:border-slate-400/50">
                                     완료됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
                                 </TabsTrigger>
                             </TabsList>
