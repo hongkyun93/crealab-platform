@@ -7,21 +7,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { AlertCircle, Briefcase, UserCircle2 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 
 export default function SignupPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
     const [successMessage, setSuccessMessage] = useState("")
+    const [activeTab, setActiveTab] = useState("creator")
 
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [name, setName] = useState("")
+
+    // Handle role parameter from URL
+    useEffect(() => {
+        const role = searchParams.get('role')
+        if (role === 'brand') {
+            setActiveTab('brand')
+        } else if (role === 'creator') {
+            setActiveTab('creator')
+        }
+    }, [searchParams])
 
     const handleSocialLogin = async (provider: 'google' | 'kakao', role: 'brand' | 'influencer') => {
         setIsLoading(true)
@@ -100,7 +112,7 @@ export default function SignupPage() {
         <div className="min-h-screen bg-muted/30">
             <SiteHeader />
             <main className="container flex items-center justify-center py-20 min-h-[80vh]">
-                <Tabs defaultValue="creator" className="w-full max-w-md">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
                     <TabsList className="grid w-full grid-cols-2 mb-8">
                         <TabsTrigger value="creator">크리에이터</TabsTrigger>
                         <TabsTrigger value="brand">브랜드</TabsTrigger>

@@ -1,7 +1,7 @@
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 /** Version 1.1 - Added Moment Details & Fixed Image Load Loop */
-import { ArrowRight, Sparkles, Target, Zap } from "lucide-react"
+import { Sparkles, Target, Zap } from "lucide-react"
 import Link from "next/link"
 
 export default function Home() {
@@ -30,13 +30,13 @@ export default function Home() {
             </p>
             <div className="flex gap-4">
               <Button size="lg" asChild className="h-12 px-8 text-lg">
-                <Link href="/brand">
-                  브랜드 시작하기 <ArrowRight className="ml-2 h-4 w-4" />
+                <Link href="/signup?role=brand">
+                  브랜드로 시작하기
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild className="h-12 px-8 text-lg">
-                <Link href="/creator">
-                  크리에이터 시작하기
+                <Link href="/signup?role=creator">
+                  크리에이터로 시작하기
                 </Link>
               </Button>
             </div>
