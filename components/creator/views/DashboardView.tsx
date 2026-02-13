@@ -36,10 +36,10 @@ export const DashboardView = React.memo(function DashboardView({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                 {/* Box 1: My Moment Archive */}
                 <div
-                    className="h-[180px] flex flex-col justify-center items-center bg-card border-2 border-emerald-100/50 dark:border-emerald-500/20 rounded-xl shadow-sm hover:shadow-md hover:border-emerald-500/50 cursor-pointer transition-all group"
+                    className="h-[180px] flex flex-col justify-center items-center bg-card border-2 border-indigo-400/50 dark:border-indigo-500/40 rounded-xl shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] hover:border-indigo-500/70 cursor-pointer transition-all group"
                     onClick={() => setCurrentView('moments_list')}
                 >
-                    <div className="p-4 rounded-full bg-emerald-100/50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
+                    <div className="p-4 rounded-full bg-indigo-100/50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 mb-4 group-hover:scale-110 transition-transform">
                         <Calendar className="h-8 w-8" />
                     </div>
                     <div className="flex flex-col items-center gap-1">
@@ -50,17 +50,17 @@ export const DashboardView = React.memo(function DashboardView({
                             </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            나의 모먼트 <span className="text-emerald-600 font-bold">{activeMoments.length + myMoments.length}건</span> / 지난 모먼트 {pastMoments.length}건
+                            나의 모먼트 <span className="text-indigo-600 font-bold">{activeMoments.length + myMoments.length}건</span> / 지난 모먼트 {pastMoments.length}건
                         </p>
                     </div>
                 </div>
 
                 {/* Box 2: My Campaign Archive */}
                 <div
-                    className="h-[180px] flex flex-col justify-center items-center bg-card border-2 border-border/50 rounded-xl shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all group"
+                    className="h-[180px] flex flex-col justify-center items-center bg-card border-2 border-emerald-400/50 dark:border-emerald-500/40 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] hover:border-emerald-500/70 cursor-pointer transition-all group"
                     onClick={() => setCurrentView('campaigns_list')}
                 >
-                    <div className="p-4 rounded-full bg-muted text-muted-foreground mb-4 group-hover:scale-110 transition-transform">
+                    <div className="p-4 rounded-full bg-emerald-100/50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
                         <Megaphone className="h-8 w-8" />
                     </div>
                     <div className="flex flex-col items-center gap-1">
@@ -76,15 +76,15 @@ export const DashboardView = React.memo(function DashboardView({
 
                 {/* Box 3: Received Proposal Archive */}
                 <div
-                    className="h-[180px] flex flex-col justify-center items-center bg-card border-2 border-border/50 rounded-xl shadow-sm hover:shadow-md hover:border-border cursor-pointer transition-all group"
+                    className="h-[180px] flex flex-col justify-center items-center bg-card border-2 border-pink-400/50 dark:border-pink-500/40 rounded-xl shadow-[0_0_15px_rgba(244,114,182,0.3)] hover:shadow-[0_0_25px_rgba(244,114,182,0.5)] hover:border-pink-500/70 cursor-pointer transition-all group"
                     onClick={() => setCurrentView('inbound_list')}
                 >
-                    <div className="p-4 rounded-full bg-muted text-muted-foreground mb-4 group-hover:scale-110 transition-transform">
+                    <div className="p-4 rounded-full bg-pink-100/50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 mb-4 group-hover:scale-110 transition-transform">
                         <Bell className="h-8 w-8" />
                     </div>
                     <div className="flex flex-col items-center gap-1">
                         <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-bold text-muted-foreground">받은 제안 아카이브</h3>
+                            <h3 className="text-lg font-bold text-foreground">받은 제안 아카이브</h3>
                             <Badge variant="outline" className="text-muted-foreground border-border text-md px-2 py-0.5">
                                 {inboundProposals.length}건
                             </Badge>
