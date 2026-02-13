@@ -702,7 +702,29 @@ function InfluencerDashboardContent() {
             return (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {items.map((item) => (
-                        <Card key={item.id} className="cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 bg-card border-border overflow-hidden group" onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
+                        <Card key={item.id} className={`cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 bg-card border-2 overflow-hidden group
+                            ${type === 'all'
+                                ? (item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed'
+                                    ? 'border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)] hover:shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                                    : item.status === 'completed'
+                                        ? 'border-slate-400/50 shadow-[0_0_8px_rgba(148,163,184,0.25)] hover:shadow-[0_0_12px_rgba(148,163,184,0.35)]'
+                                        : item.status === 'rejected'
+                                            ? 'border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.25)] hover:shadow-[0_0_12px_rgba(239,68,68,0.35)]'
+                                            : item.type === 'brand_offer'
+                                                ? 'border-blue-500/50 shadow-[0_0_8px_rgba(59,130,246,0.25)] hover:shadow-[0_0_12px_rgba(59,130,246,0.35)]'
+                                                : 'border-purple-500/50 shadow-[0_0_8px_rgba(168,85,247,0.25)] hover:shadow-[0_0_12px_rgba(168,85,247,0.35)]')
+                                : type === 'active'
+                                    ? 'border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)] hover:shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                                    : type === 'inbound'
+                                        ? 'border-blue-500/50 shadow-[0_0_8px_rgba(59,130,246,0.25)] hover:shadow-[0_0_12px_rgba(59,130,246,0.35)]'
+                                        : type === 'outbound'
+                                            ? 'border-purple-500/50 shadow-[0_0_8px_rgba(168,85,247,0.25)] hover:shadow-[0_0_12px_rgba(168,85,247,0.35)]'
+                                            : type === 'rejected'
+                                                ? 'border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.25)] hover:shadow-[0_0_12px_rgba(239,68,68,0.35)]'
+                                                : type === 'completed'
+                                                    ? 'border-slate-400/50 shadow-[0_0_8px_rgba(148,163,184,0.25)] hover:shadow-[0_0_12px_rgba(148,163,184,0.35)]'
+                                                    : 'border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)] hover:shadow-[0_0_12px_rgba(16,185,129,0.35)]'}
+                        `} onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
                             <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
                                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border overflow-hidden
                                     ${item.status === 'accepted' || item.status === 'signed' ? 'bg-blue-50 border-blue-100 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800' :
