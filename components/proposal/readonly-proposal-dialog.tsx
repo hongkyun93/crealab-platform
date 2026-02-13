@@ -54,78 +54,77 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal }: Readonl
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
-                <DialogHeader>
-                    <DialogTitle>제안서 상세</DialogTitle>
-                    <DialogDescription>
-                        제안 내용을 확인하고 협업 여부를 결정하세요.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="flex gap-6 overflow-hidden h-[calc(90vh-8rem)]">
-                    {/* 1. Brand & Status Info */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                                {data.brand_avatar ? (
-                                    <img src={data.brand_avatar} alt="Brand" className="h-full w-full object-cover" />
-                                ) : (
-                                    <span className="text-xs font-bold">{data.brand_name?.substring(0, 1) || 'B'}</span>
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold">{data.brand_name}</p>
-                                <p className="text-xs text-muted-foreground">{new Date(data.created_at).toLocaleDateString()} 제안</p>
-                            </div>
-                        </div>
-                        <Badge variant={data.status === 'accepted' ? 'default' : 'outline'}>
-                            {data.status === 'offered' ? '대기중' :
-                                data.status === 'accepted' ? '수락됨' :
-                                    data.status === 'rejected' ? '거절됨' : data.status}
-                        </Badge>
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden p-0">
+                <div className="flex gap-0 h-[90vh]">
+                    {/* LEFT HALF: Large Product Image */}
+                    <div className="w-1/2 bg-muted flex items-center justify-center overflow-hidden">
+                        {data.product_image ? (
+                            <img
+                                src={data.product_image}
+                                alt="Product"
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <Package className="h-48 w-48 text-muted-foreground/20" />
+                        )}
                     </div>
 
-                    {/* 2. Message */}
-                    <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-                        <p className="text-sm font-medium">제안 메시지</p>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {data.message || "메시지 없음"}
-                        </p>
-                    </div>
+                    {/* RIGHT HALF: All Details (Scrollable) */}
+                    <div className="w-1/2 flex flex-col">
+                        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                            <DialogTitle>제안서 상세</DialogTitle>
+                            <DialogDescription>
+                                제안 내용을 확인하고 협업 여부를 결정하세요.
+                            </DialogDescription>
+                        </DialogHeader>
 
-                    {/* 3. Product Info */}
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-semibold flex items-center gap-2">
-                            <Package className="h-4 w-4" /> 제안 제품
-                        </h4>
-                        <div className="bg-card border rounded-lg p-4">
-                            <div className="flex flex-col lg:flex-row gap-4">
-                                {/* Large Product Image - Full Width on Mobile, Left on Desktop */}
-                                <div className="w-full lg:w-[640px] lg:max-w-[640px] bg-muted rounded-lg flex items-center justify-center overflow-hidden shrink-0">
-                                    {data.product_image ? (
-                                        <img src={data.product_image} alt="Product" className="w-full h-auto object-contain max-h-[640px]" />
-                                    ) : (
-                                        <div className="w-full aspect-square flex items-center justify-center">
-                                            <Package className="h-32 w-32 text-muted-foreground/30" />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Product Details - Right */}
-                                <div className="flex-1 space-y-3 min-w-0">
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-start">
-                                            <span className="text-xs text-muted-foreground">제품명</span>
-                                            <span className="text-sm font-semibold text-right flex-1 ml-2">{data.product_name}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs text-muted-foreground">제공 방식</span>
-                                            <Badge variant="secondary" className="text-[10px] h-5">
-                                                {data.product_type === 'gift' ? '제품 증정' : '제품 대여'}
-                                            </Badge>
-                                        </div>
+                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+                            {/* 1. Brand & Status Info */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                                        {data.brand_avatar ? (
+                                            <img src={data.brand_avatar} alt="Brand" className="h-full w-full object-cover" />
+                                        ) : (
+                                            <span className="text-sm font-bold">{data.brand_name?.substring(0, 1) || 'B'}</span>
+                                        )}
                                     </div>
+                                    <div>
+                                        <p className="font-bold">{data.brand_name}</p>
+                                        <p className="text-xs text-muted-foreground">{new Date(data.created_at).toLocaleDateString()} 제안</p>
+                                    </div>
+                                </div>
+                                <Badge variant={data.status === 'accepted' ? 'default' : 'outline'}>
+                                    {data.status === 'offered' ? '대기중' :
+                                        data.status === 'accepted' ? '수락됨' :
+                                            data.status === 'rejected' ? '거절됨' : data.status}
+                                </Badge>
+                            </div>
 
+                            {/* 2. Message */}
+                            <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+                                <p className="text-sm font-medium">제안 메시지</p>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                    {data.message || "메시지 없음"}
+                                </p>
+                            </div>
+
+                            {/* 3. Product Info */}
+                            <div className="space-y-3">
+                                <h4 className="text-sm font-semibold flex items-center gap-2">
+                                    <Package className="h-4 w-4" /> 제안 제품
+                                </h4>
+                                <div className="bg-card border rounded-lg p-4 space-y-2">
+                                    <div className="flex justify-between items-start">
+                                        <span className="text-xs text-muted-foreground">제품명</span>
+                                        <span className="text-sm font-semibold text-right flex-1 ml-2">{data.product_name}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-muted-foreground">제공 방식</span>
+                                        <Badge variant="secondary" className="text-[10px] h-5">
+                                            {data.product_type === 'gift' ? '제품 증정' : '제품 대여'}
+                                        </Badge>
+                                    </div>
                                     {(data.product_url) && (
                                         <div className="pt-2 border-t border-border">
                                             <a
@@ -140,77 +139,77 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal }: Readonl
                                     )}
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    {/* 4. Compensation */}
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-semibold flex items-center gap-2">
-                            <Banknote className="h-4 w-4" /> 제안 고료
-                        </h4>
-                        <div className="bg-card border rounded-lg p-3 space-y-2">
-                            <div className="flex justify-between">
-                                <span className="text-sm text-muted-foreground">고정 고료</span>
-                                <span className="text-sm font-bold">
-                                    {data.compensation_amount ? parseInt(data.compensation_amount).toLocaleString() : 0}원
-                                </span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-sm text-muted-foreground">인센티브</span>
-                                <span className="text-sm">
-                                    {data.has_incentive ? (
-                                        <span className="text-green-600 font-medium">있음</span>
-                                    ) : (
-                                        <span className="text-muted-foreground">없음</span>
+                            {/* 4. Compensation */}
+                            <div className="space-y-3">
+                                <h4 className="text-sm font-semibold flex items-center gap-2">
+                                    <Banknote className="h-4 w-4" /> 제안 고료
+                                </h4>
+                                <div className="bg-card border rounded-lg p-3 space-y-2">
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">고정 고료</span>
+                                        <span className="text-sm font-bold">
+                                            {data.compensation_amount ? parseInt(data.compensation_amount).toLocaleString() : 0}원
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">인센티브</span>
+                                        <span className="text-sm">
+                                            {data.has_incentive ? (
+                                                <span className="text-green-600 font-medium">있음</span>
+                                            ) : (
+                                                <span className="text-muted-foreground">없음</span>
+                                            )}
+                                        </span>
+                                    </div>
+                                    {data.has_incentive && data.incentive_detail && (
+                                        <div className="mt-2 text-xs bg-muted p-2 rounded text-muted-foreground">
+                                            {data.incentive_detail}
+                                        </div>
                                     )}
-                                </span>
-                            </div>
-                            {data.has_incentive && data.incentive_detail && (
-                                <div className="mt-2 text-xs bg-muted p-2 rounded text-muted-foreground">
-                                    {data.incentive_detail}
                                 </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 5. Schedule & Conditions */}
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-semibold flex items-center gap-2">
-                            <Calendar className="h-4 w-4" /> 일정 및 조건
-                        </h4>
-                        <div className="bg-card border rounded-lg p-3 space-y-1">
-                            {/* Content Type */}
-                            <div className="flex justify-between py-1 border-b border-border/50">
-                                <span className="text-sm text-muted-foreground">콘텐츠 타입</span>
-                                <span className="text-sm font-medium">{data.content_type}</span>
                             </div>
 
-                            {/* Dates */}
-                            <div className="flex justify-between py-1">
-                                <span className="text-sm text-muted-foreground">초안 제출 희망일</span>
-                                <span className="text-sm">{data.draft_date}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-sm text-muted-foreground">최종 제출 희망일</span>
-                                <span className="text-sm">{data.final_date}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-sm text-muted-foreground">업로드 희망일</span>
-                                <span className="text-sm">{data.upload_date}</span>
-                            </div>
-                            {data.secondary_usage && (
-                                <div className="flex justify-between py-1 border-t border-border/50 mt-1 pt-2">
-                                    <span className="text-sm text-muted-foreground">2차 활용 기간</span>
-                                    <span className="text-sm font-medium">{data.secondary_usage}</span>
+                            {/* 5. Schedule & Conditions */}
+                            <div className="space-y-3">
+                                <h4 className="text-sm font-semibold flex items-center gap-2">
+                                    <Calendar className="h-4 w-4" /> 일정 및 조건
+                                </h4>
+                                <div className="bg-card border rounded-lg p-3 space-y-1">
+                                    {/* Content Type */}
+                                    <div className="flex justify-between py-1 border-b border-border/50">
+                                        <span className="text-sm text-muted-foreground">콘텐츠 타입</span>
+                                        <span className="text-sm font-medium">{data.content_type}</span>
+                                    </div>
+
+                                    {/* Dates */}
+                                    <div className="flex justify-between py-1">
+                                        <span className="text-sm text-muted-foreground">초안 제출 희망일</span>
+                                        <span className="text-sm">{data.draft_date}</span>
+                                    </div>
+                                    <div className="flex justify-between py-1">
+                                        <span className="text-sm text-muted-foreground">최종 제출 희망일</span>
+                                        <span className="text-sm">{data.final_date}</span>
+                                    </div>
+                                    <div className="flex justify-between py-1">
+                                        <span className="text-sm text-muted-foreground">업로드 희망일</span>
+                                        <span className="text-sm">{data.upload_date}</span>
+                                    </div>
+                                    {data.secondary_usage && (
+                                        <div className="flex justify-between py-1 border-t border-border/50 mt-1 pt-2">
+                                            <span className="text-sm text-muted-foreground">2차 활용 기간</span>
+                                            <span className="text-sm font-medium">{data.secondary_usage}</span>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </div>
+
+                        <DialogFooter className="px-6 py-4 border-t">
+                            <Button onClick={() => onOpenChange(false)}>닫기</Button>
+                        </DialogFooter>
                     </div>
                 </div>
-
-                <DialogFooter>
-                    <Button onClick={() => onOpenChange(false)}>닫기</Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     )
