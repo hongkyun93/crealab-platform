@@ -4,15 +4,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Package, Banknote } from "lucide-react"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 
 interface ReadonlyProposalDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     proposal: any // Using any to support both MomentProposal and BrandProposal
+    onAccept?: (proposalId: string) => void | Promise<void>
+    onReject?: (proposalId: string) => void | Promise<void>
+    currentUserId?: string // To determine if user can accept/reject
 }
 
-export function ReadonlyProposalDialog({ open, onOpenChange, proposal }: ReadonlyProposalDialogProps) {
+export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept, onReject, currentUserId }: ReadonlyProposalDialogProps) {
+    const [isAccepting, setIsAccepting] = useState(false)
+    const [isRejecting, setIsRejecting] = useState(false)
+
     // Data Normalization (정규화)
     // MomentProposal has details in 'conditions' object
     // BrandProposal has details in top-level fields
@@ -205,8 +211,52 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal }: Readonl
                             </div>
                         </div>
 
-                        <DialogFooter className="px-6 py-4 border-t">
-                            <Button onClick={() => onOpenChange(false)}>닫기</Button>
+                        <DialogFooter className="px-6 py-4 border-t flex gap-2">
+                            {/* Show Accept/Reject buttons if proposal status is 'offered' and user is the influencer */}
+                            {(proposal?.status === 'offered' || proposal?.status === 'pending' || !proposal?.status) &&
+                                currentUserId && proposal?.influencer_id === currentUserId ? (
+                                <>
+                                    <Button
+                                        onClick={async () => {
+                                            if (!onAccept) return
+                                            setIsAccepting(true)
+                                            try {
+                                                await onAccept(proposal.id)
+                                                onOpenChange(false)
+                                            } catch (e) {
+                                                console.error('Accept error:', e)
+                                            } finally {
+                                                setIsAccepting(false)
+                                            }
+                                        }}
+                                        disabled={isAccepting || isRejecting}
+                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                                    >
+                                        {isAccepting ? '수락 중...' : '수락하기'}
+                                    </Button>
+                                    <Button
+                                        onClick={async () => {
+                                            if (!onReject) return
+                                            setIsRejecting(true)
+                                            try {
+                                                await onReject(proposal.id)
+                                                onOpenChange(false)
+                                            } catch (e) {
+                                                console.error('Reject error:', e)
+                                            } finally {
+                                                setIsRejecting(false)
+                                            }
+                                        }}
+                                        disabled={isAccepting || isRejecting}
+                                        variant="destructive"
+                                        className="flex-1"
+                                    >
+                                        {isRejecting ? '거절 중...' : '거절하기'}
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button onClick={() => onOpenChange(false)} className="flex-1">닫기</Button>
+                            )}
                         </DialogFooter>
                     </div>
                 </div>
