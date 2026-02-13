@@ -67,6 +67,7 @@ import {
     Megaphone,
     Download,
     ChevronRight,
+    Menu,
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import SignatureCanvas from 'react-signature-canvas'
@@ -85,6 +86,13 @@ import {
     DialogFooter,
     DialogDescription,
 } from "@/components/ui/dialog"
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet"
 import {
     Select,
     SelectContent,

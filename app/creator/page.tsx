@@ -28,7 +28,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight, LayoutGrid, List, Banknote, Table as TableIcon } from "lucide-react"
+import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight, LayoutGrid, List, Banknote, Table as TableIcon, Menu } from "lucide-react"
 import Link from "next/link"
 import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -47,6 +47,13 @@ import {
     DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog"
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -158,6 +165,7 @@ function InfluencerDashboardContent() {
     const [isAddEventOpen, setIsAddEventOpen] = useState(false)
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
     const [favoritesOnly, setFavoritesOnly] = useState(false)
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
     // Design Option State
     const [designOption, setDesignOption] = useState<'A' | 'B' | 'C' | 'D' | 'E'>('C')
@@ -2979,6 +2987,97 @@ function InfluencerDashboardContent() {
             <SiteHeader />
             <main className="container py-8 max-w-[1920px] px-6 md:px-8">
                 <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
+                    {/* Mobile Menu Button - Show only on mobile */}
+                    <div className="lg:hidden flex items-center justify-between mb-4">
+                        <h1 className="text-xl font-bold">크리에이터 대시보드</h1>
+                        <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+                            <SheetTrigger asChild>
+                                <Button variant="outline" size="icon">
+                                    <Menu className="h-5 w-5" />
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="left" className="w-[280px] p-0">
+                                <div className="flex flex-col h-full">
+                                    <SheetHeader className="p-4 border-b">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-12 w-12">
+                                                <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
+                                                <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <h2 className="font-bold">{user?.name || "사용자"}</h2>
+                                                <p className="text-xs text-muted-foreground">{user?.handle || "핸들 없음"}</p>
+                                            </div>
+                                        </div>
+                                    </SheetHeader>
+                                    <nav className="space-y-2 p-4">
+                                        <Button
+                                            variant={currentView === "dashboard" ? "secondary" : "ghost"}
+                                            className="w-full justify-start"
+                                            onClick={() => {
+                                                setCurrentView("dashboard")
+                                                setIsMobileSidebarOpen(false)
+                                            }}
+                                        >
+                                            <Calendar className="mr-2 h-4 w-4" /> 내 일정 관리
+                                        </Button>
+                                        <Button
+                                            variant={currentView === "proposals" ? "secondary" : "ghost"}
+                                            className="w-full justify-start"
+                                            onClick={() => {
+                                                setCurrentView("proposals")
+                                                setIsMobileSidebarOpen(false)
+                                            }}
+                                        >
+                                            <Briefcase className="mr-2 h-4 w-4" /> 워크스페이스 아카이브
+                                        </Button>
+                                        <Button
+                                            variant={currentView === "discover-campaigns" ? "secondary" : "ghost"}
+                                            className="w-full justify-start text-primary font-medium"
+                                            onClick={() => {
+                                                setCurrentView("discover-campaigns")
+                                                setIsMobileSidebarOpen(false)
+                                            }}
+                                        >
+                                            <Megaphone className="mr-2 h-4 w-4" /> 브랜드 캠페인 둘러보기
+                                        </Button>
+                                        <Button
+                                            variant={currentView === "discover-products" ? "secondary" : "ghost"}
+                                            className="w-full justify-start text-primary font-medium"
+                                            onClick={() => {
+                                                setCurrentView("discover-products")
+                                                setIsMobileSidebarOpen(false)
+                                            }}
+                                        >
+                                            <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
+                                        </Button>
+                                        <Button
+                                            variant={currentView === "notifications" ? "secondary" : "ghost"}
+                                            className="w-full justify-start"
+                                            onClick={() => {
+                                                setCurrentView("notifications")
+                                                setIsMobileSidebarOpen(false)
+                                            }}
+                                        >
+                                            <Bell className="mr-2 h-4 w-4" /> 알림
+                                        </Button>
+                                        <div className="my-2 border-t" />
+                                        <Button
+                                            variant={currentView === "settings" ? "secondary" : "ghost"}
+                                            className="w-full justify-start"
+                                            onClick={() => {
+                                                setCurrentView("settings")
+                                                setIsMobileSidebarOpen(false)
+                                            }}
+                                        >
+                                            <Settings className="mr-2 h-4 w-4" /> 프로필 관리
+                                        </Button>
+                                    </nav>
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+
                     {/* Sidebar ... */}
 
                     {/* ... skipping sidebar code ... */}
