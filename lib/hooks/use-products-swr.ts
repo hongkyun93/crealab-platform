@@ -20,6 +20,11 @@ async function fetchProducts(): Promise<Product[]> {
         .order('created_at', { ascending: false })
 
     if (error) {
+        // Ignore AbortError (happens when component unmounts during fetch)
+        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+            return []
+        }
+
         console.error('[useProducts] Fetch error:', error)
         console.error('[useProducts] Error details:', {
             message: error.message,
