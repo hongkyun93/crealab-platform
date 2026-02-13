@@ -1235,14 +1235,14 @@ function BrandDashboardContent() {
             case "discover-products":
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-col gap-4">
                             <div>
-                                <h1 className="text-3xl font-bold tracking-tight">브랜드 제품 둘러보기</h1>
+                                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">브랜드 제품 둘러보기</h1>
                                 <p className="text-muted-foreground mt-1 text-sm">
                                     다른 브랜드의 제품을 둘러보고 협업 아이디어를 얻어보세요.
                                 </p>
                             </div>
-                            <div className="flex w-full max-w-sm items-center space-x-2">
+                            <div className="flex w-full sm:max-w-sm items-center space-x-2">
                                 <div className="relative w-full">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -1307,12 +1307,12 @@ function BrandDashboardContent() {
                 const sortedNotifications = [...(notifications || [])].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div>
-                                <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                                    <Bell className="h-8 w-8 text-primary" /> 알림 센터
+                                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2 sm:gap-3">
+                                    <Bell className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> 알림 센터
                                 </h1>
-                                <p className="text-muted-foreground mt-1">캠페인 지원 및 협업 진행 상황을 실시간으로 확인하세요.</p>
+                                <p className="text-sm text-muted-foreground mt-1">캠페인 지원 및 협업 진행 상황을 실시간으로 확인하세요.</p>
                             </div>
                         </div>
 
