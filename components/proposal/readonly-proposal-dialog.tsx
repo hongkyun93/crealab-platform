@@ -98,30 +98,41 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal }: Readonl
                         <h4 className="text-sm font-semibold flex items-center gap-2">
                             <Package className="h-4 w-4" /> 제안 제품
                         </h4>
-                        <div className="bg-card border rounded-lg p-3 space-y-2">
-                            <div className="flex gap-3">
-                                <div className="h-16 w-16 bg-muted rounded-md flex items-center justify-center shrink-0 overflow-hidden">
+                        <div className="bg-card border rounded-lg p-4">
+                            <div className="flex gap-4">
+                                {/* Large Product Image - Left */}
+                                <div className="h-32 w-32 bg-muted rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
                                     {data.product_image ? (
                                         <img src={data.product_image} alt="Product" className="h-full w-full object-cover" />
                                     ) : (
-                                        <Package className="h-8 w-8 text-muted-foreground/50" />
+                                        <Package className="h-16 w-16 text-muted-foreground/30" />
                                     )}
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                    <div className="flex justify-between pt-1">
-                                        <span className="text-sm text-muted-foreground">제품명</span>
-                                        <span className="text-sm font-medium">{data.product_name}</span>
+
+                                {/* Product Details - Right */}
+                                <div className="flex-1 space-y-3">
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-start">
+                                            <span className="text-xs text-muted-foreground">제품명</span>
+                                            <span className="text-sm font-semibold text-right flex-1 ml-2">{data.product_name}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-muted-foreground">제공 방식</span>
+                                            <Badge variant="secondary" className="text-[10px] h-5">
+                                                {data.product_type === 'gift' ? '제품 증정' : '제품 대여'}
+                                            </Badge>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-muted-foreground">제공 방식</span>
-                                        <Badge variant="secondary" className="text-[10px] h-5">
-                                            {data.product_type === 'gift' ? '제품 증정' : '제품 대여'}
-                                        </Badge>
-                                    </div>
+
                                     {(data.product_url) && (
-                                        <div className="truncate w-full max-w-[200px]">
-                                            <a href={data.product_url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline truncate block">
-                                                제품 링크 확인하기
+                                        <div className="pt-2 border-t border-border">
+                                            <a
+                                                href={data.product_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-xs text-blue-500 hover:text-blue-600 hover:underline inline-flex items-center gap-1"
+                                            >
+                                                <span>🔗</span> 제품 링크 확인하기
                                             </a>
                                         </div>
                                     )}
