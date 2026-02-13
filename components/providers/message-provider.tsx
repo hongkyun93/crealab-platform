@@ -50,6 +50,11 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 .order('created_at', { ascending: true })
 
             if (error) {
+                // Ignore AbortError (happens when component unmounts during fetch)
+                if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+                    return
+                }
+
                 console.error('[MessageProvider] Fetch error:', error.message)
 
                 // Handle known error codes gracefully
@@ -111,6 +116,11 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 .limit(50)
 
             if (error) {
+                // Ignore AbortError (happens when component unmounts during fetch)
+                if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+                    return
+                }
+
                 console.error('[MessageProvider] Notifications error:', error.message)
 
                 // Handle known error codes gracefully
