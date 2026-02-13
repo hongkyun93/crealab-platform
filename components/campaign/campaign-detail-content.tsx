@@ -60,7 +60,7 @@ export function CampaignDetailContent({
     const getChannelIcon = (id: string) => CHANNELS.find(c => c.id === id)?.icon || ""
 
     return (
-        <div className={cn("flex flex-col md:grid md:grid-cols-12 h-full bg-white", className)}>
+        <div className={cn("flex flex-col md:grid md:grid-cols-12 h-full bg-background md:bg-card", className)}>
             {/* Left Column (Image) - Span 5 */}
             <div className="md:col-span-5 bg-slate-900 relative flex flex-col shrink-0 md:h-full overflow-hidden min-h-[300px] md:min-h-0">
                 <div className="relative w-full h-full group overflow-hidden">
@@ -138,93 +138,99 @@ export function CampaignDetailContent({
             </div>
 
             {/* Right Column (Content) - Span 7 */}
-            <div className="md:col-span-7 bg-white relative flex flex-col h-full overflow-hidden">
+            <div className="md:col-span-7 bg-card relative flex flex-col h-full overflow-hidden">
                 {/* Scrollable Content Container */}
                 <div className="flex-1 overflow-y-auto p-5 md:p-8 space-y-8">
 
                     {/* Header Section (Title & Brand) */}
                     <div>
                         <div className="flex items-center gap-2 mb-3">
-                            <Badge variant="outline" className="text-xs font-normal text-slate-500 border-slate-200">
+                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground border-border">
                                 {campaign.category || '카테고리 없음'}
                             </Badge>
-                            <span className="text-xs text-slate-400">|</span>
-                            <span className="text-xs text-slate-400">
+                            <span className="text-xs text-muted-foreground/50">|</span>
+                            <span className="text-xs text-muted-foreground/70">
                                 등록일: {new Date(campaign.created_at || Date.now()).toLocaleDateString()}
                             </span>
                         </div>
-                        <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-4 text-slate-900 break-keep">
-                            {campaign.product}
+                        <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-2 text-foreground break-keep">
+                            {campaign.title || campaign.product}
                         </h2>
-                        <div className="flex items-center gap-3 text-slate-600">
-                            <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 shrink-0">
+                        {campaign.title && campaign.product && (
+                            <div className="text-sm text-muted-foreground mb-4 font-medium flex items-center gap-2">
+                                <span className="bg-muted px-2 py-0.5 rounded text-xs">제품명</span>
+                                {campaign.product}
+                            </div>
+                        )}
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden border border-border shrink-0">
                                 {campaign.brandAvatar ? (
                                     <img src={campaign.brandAvatar} alt={campaign.brand} className="h-full w-full object-cover" />
                                 ) : (
-                                    <span className="text-xs font-bold text-slate-500">{campaign.brand?.[0] || 'B'}</span>
+                                    <span className="text-xs font-bold text-muted-foreground">{campaign.brand?.[0] || 'B'}</span>
                                 )}
                             </div>
                             <div>
-                                <div className="font-bold text-slate-900 text-base">{campaign.brand || campaign.brand_name || '브랜드명 없음'}</div>
-                                <div className="text-xs text-slate-500">@{campaign.brand_id ? campaign.brand_id.split('-')[0] : 'brand'}</div>
-                            </div>
+                                <div className="font-bold text-foreground text-base">{campaign.brand || campaign.brand_name || '브랜드명 없음'}</div>
+                                <div className="text-xs text-muted-foreground/70">@{campaign.brand_id ? campaign.brand_id.split('-')[0] : 'brand'}</div>
 
-                            {/* Reference & Hashtags */}
-                            {(campaign.reference_link || (campaign.hashtags && campaign.hashtags.length > 0)) && (
-                                <>
-                                    <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
-                                    <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 flex-1">
-                                        {campaign.reference_link && (
-                                            <a
-                                                href={campaign.reference_link}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="text-xs text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-full hover:bg-blue-100 hover:underline flex items-center gap-1.5 transition-colors max-w-[200px] truncate"
-                                            >
-                                                <LinkIcon className="h-3 w-3 shrink-0" />
-                                                <span className="truncate">참고 레퍼런스</span>
-                                            </a>
-                                        )}
-                                        {campaign.hashtags && campaign.hashtags.length > 0 && (
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {campaign.hashtags.slice(0, 3).map((tag: string) => (
-                                                    <span key={tag} className="text-[10px] md:text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full border border-slate-200">
-                                                        {tag.startsWith('#') ? tag : `#${tag}`}
-                                                    </span>
-                                                ))}
-                                                {campaign.hashtags.length > 3 && (
-                                                    <span className="text-[10px] text-slate-400 self-center">+{campaign.hashtags.length - 3}</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
+                                {/* Reference & Hashtags */}
+                                {(campaign.reference_link || (campaign.hashtags && campaign.hashtags.length > 0)) && (
+                                    <>
+                                        <div className="h-8 w-px bg-border mx-2 hidden md:block"></div>
+                                        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 flex-1">
+                                            {campaign.reference_link && (
+                                                <a
+                                                    href={campaign.reference_link}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:underline flex items-center gap-1.5 transition-colors max-w-[200px] truncate"
+                                                >
+                                                    <LinkIcon className="h-3 w-3 shrink-0" />
+                                                    <span className="truncate">참고 레퍼런스</span>
+                                                </a>
+                                            )}
+                                            {campaign.hashtags && campaign.hashtags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {campaign.hashtags.slice(0, 3).map((tag: string) => (
+                                                        <span key={tag} className="text-[10px] md:text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full border border-border">
+                                                            {tag.startsWith('#') ? tag : `#${tag}`}
+                                                        </span>
+                                                    ))}
+                                                    {campaign.hashtags.length > 3 && (
+                                                        <span className="text-[10px] text-muted-foreground/50 self-center">+{campaign.hashtags.length - 3}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     {/* Compact Info Grid (2-3-3 Layout in 8 Cols) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-8 gap-4">
                         {/* Col 1: Recruitment Info (25%) */}
-                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 lg:col-span-2">
-                            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 pb-2 border-b border-slate-200/50">
-                                <Users className="h-4 w-4 text-slate-500" />
+                        <div className="bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3 lg:col-span-2">
+                            <div className="flex items-center gap-2 text-sm font-bold text-foreground pb-2 border-b border-border/50">
+                                <Users className="h-4 w-4 text-muted-foreground" />
                                 모집 정보
                             </div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">모집 인원</span>
-                                    <span className="font-bold text-slate-900">{campaign.recruitment_count || 0}명</span>
+                                    <span className="text-muted-foreground">모집 인원</span>
+                                    <span className="font-bold text-foreground">{campaign.recruitment_count || 0}명</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">팔로워</span>
-                                    <span className="font-medium text-slate-900">
+                                    <span className="text-muted-foreground">팔로워</span>
+                                    <span className="font-medium text-foreground">
                                         {campaign.min_followers ? `${Number(campaign.min_followers).toLocaleString()}~` : '제한없음'}
                                     </span>
                                 </div>
                                 <div className="flex flex-col gap-1 pt-1">
-                                    <span className="text-xs text-slate-400">원하는 스타일</span>
-                                    <span className="text-xs bg-white p-1.5 rounded border text-slate-700 line-clamp-2">
+                                    <span className="text-xs text-muted-foreground/70">원하는 스타일</span>
+                                    <span className="text-xs bg-background p-1.5 rounded border border-border text-foreground line-clamp-2">
                                         {campaign.target || '특별한 제한 없음'}
                                     </span>
                                 </div>
@@ -232,25 +238,25 @@ export function CampaignDetailContent({
                         </div>
 
                         {/* Col 2: Timeline (37.5%) */}
-                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 lg:col-span-3">
-                            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 pb-2 border-b border-slate-200/50">
-                                <Calendar className="h-4 w-4 text-slate-500" />
+                        <div className="bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3 lg:col-span-3">
+                            <div className="flex items-center gap-2 text-sm font-bold text-foreground pb-2 border-b border-border/50">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
                                 진행 일정
                             </div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-slate-500">모집 마감</span>
-                                    <span className="font-bold text-slate-900">
+                                    <span className="text-muted-foreground">모집 마감</span>
+                                    <span className="font-bold text-foreground">
                                         {campaign.recruitment_deadline ? new Date(campaign.recruitment_deadline).toLocaleDateString() : '미정'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">선정 발표</span>
-                                    <span className="font-medium text-slate-900">{campaign.selection_announcement_date || '-'}</span>
+                                    <span className="text-muted-foreground">선정 발표</span>
+                                    <span className="font-medium text-foreground">{campaign.selection_announcement_date || '-'}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">콘텐츠 업로드</span>
-                                    <span className="font-medium text-slate-900">
+                                    <span className="text-muted-foreground">콘텐츠 업로드</span>
+                                    <span className="font-medium text-foreground">
                                         {campaign.posting_date || campaign.postingDate || '협의'}
                                     </span>
                                 </div>
@@ -258,28 +264,28 @@ export function CampaignDetailContent({
                         </div>
 
                         {/* Col 3: Benefit & Channels (37.5%) */}
-                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 md:col-span-2 lg:col-span-3">
-                            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 pb-2 border-b border-slate-200/50">
-                                <Gift className="h-4 w-4 text-slate-500" />
+                        <div className="bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3 md:col-span-2 lg:col-span-3">
+                            <div className="flex items-center gap-2 text-sm font-bold text-foreground pb-2 border-b border-border/50">
+                                <Gift className="h-4 w-4 text-muted-foreground" />
                                 혜택 및 채널
                             </div>
                             <div className="space-y-3 text-sm">
                                 <div>
-                                    <span className="text-xs text-slate-500 block mb-1">제공 혜택</span>
-                                    <div className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded inline-block">
+                                    <span className="text-xs text-muted-foreground block mb-1">제공 혜택</span>
+                                    <div className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded inline-block">
                                         {campaign.budget || '협의'}
                                     </div>
                                 </div>
                                 <div>
-                                    <span className="text-xs text-slate-500 block mb-1">진행 채널</span>
+                                    <span className="text-xs text-muted-foreground block mb-1">진행 채널</span>
                                     <div className="flex flex-wrap gap-1">
                                         {campaign.channels && campaign.channels.length > 0 ? (
                                             campaign.channels.map((ch: string) => (
-                                                <Badge key={ch} variant="secondary" className="px-1.5 py-0.5 h-6 text-xs bg-white border font-normal">
+                                                <Badge key={ch} variant="secondary" className="px-1.5 py-0.5 h-6 text-xs bg-background border border-border font-normal text-foreground">
                                                     {getChannelIcon(ch)} {getChannelLabel(ch)}
                                                 </Badge>
                                             ))
-                                        ) : <span className="text-xs text-slate-400">무관</span>}
+                                        ) : <span className="text-xs text-muted-foreground">무관</span>}
                                     </div>
                                 </div>
                             </div>
@@ -287,15 +293,15 @@ export function CampaignDetailContent({
                     </div>
 
                     {/* Divider */}
-                    <div className="h-px bg-slate-100 w-full" />
+                    <div className="h-px bg-border w-full" />
 
                     {/* Description Section (Bottom) */}
                     <section className="space-y-4">
-                        <h3 className="font-bold text-lg flex items-center gap-2 text-slate-900">
-                            <FileText className="h-5 w-5 text-slate-400" />
+                        <h3 className="font-bold text-lg flex items-center gap-2 text-foreground">
+                            <FileText className="h-5 w-5 text-muted-foreground" />
                             모집 상세 내용
                         </h3>
-                        <div className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+                        <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                             {campaign.description}
                         </div>
                     </section>
@@ -306,7 +312,7 @@ export function CampaignDetailContent({
 
                 {/* Sticky Action Bar */}
                 {renderAction && (
-                    <div className="p-5 border-t border-slate-100 bg-white md:bg-slate-50/50 sticky bottom-0 z-10 safe-area-bottom backdrop-blur-sm md:backdrop-blur-none bg-white/90 md:bg-white">
+                    <div className="p-5 border-t border-border bg-background md:bg-muted/50 sticky bottom-0 z-10 safe-area-bottom backdrop-blur-sm md:backdrop-blur-none bg-background/90 md:bg-background">
                         {renderAction()}
                     </div>
                 )}

@@ -10,6 +10,7 @@ export interface Campaign {
     target: string
     description: string
     image?: string
+    product_image_url?: string // Legacy/Fallback image field
     matchScore?: number
     date: string
     eventDate?: string
@@ -19,6 +20,7 @@ export interface Campaign {
     isMock?: boolean
     tags?: string[]
     // New Fields (snake_case as returned by Supabase for now)
+    title?: string // New title field
     recruitment_count?: number
     recruitment_deadline?: string
     channels?: string[]
@@ -30,6 +32,7 @@ export interface Campaign {
 }
 
 export interface CampaignFormData {
+    title: string // New title field
     product: string
     category: string
     budget: string

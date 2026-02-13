@@ -31,6 +31,7 @@ export default function EditCampaignPage() {
     const [initializing, setInitializing] = useState(true)
 
     // Form States
+    const [title, setTitle] = useState("")
     const [productTitle, setProductTitle] = useState("")
     const [budget, setBudget] = useState("")
     const [target, setTarget] = useState("")
@@ -81,6 +82,7 @@ export default function EditCampaignPage() {
 
             if (campaign) {
                 // Populate Basic Fields
+                setTitle(campaign.title || "")
                 setProductTitle(campaign.product)
                 setBudget(campaign.budget)
                 setTarget(campaign.target)
@@ -231,6 +233,19 @@ export default function EditCampaignPage() {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border bg-card p-6 shadow-sm md:p-8">
+                        <div className="space-y-2">
+                            <Label htmlFor="title">캠페인 제목</Label>
+                            <Input
+                                id="title"
+                                name="title"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="예: [제품명] 신제품 런칭 캠페인 모집"
+                                required
+                            />
+                            <p className="text-xs text-muted-foreground">크리에이터들에게 노출될 매력적인 제목을 입력해주세요.</p>
+                        </div>
+
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="product">제품/서비스명</Label>

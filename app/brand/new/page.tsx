@@ -178,6 +178,17 @@ export default function NewCampaignPage() {
 
                     <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border bg-card p-6 shadow-sm md:p-8">
                         <div className="space-y-2">
+                            <Label htmlFor="title">캠페인 제목</Label>
+                            <Input
+                                id="title"
+                                name="title"
+                                placeholder="예: [제품명] 신제품 런칭 캠페인 모집"
+                                required
+                            />
+                            <p className="text-xs text-muted-foreground">크리에이터들에게 노출될 매력적인 제목을 입력해주세요.</p>
+                        </div>
+
+                        <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="product">제품/서비스명</Label>
                                 <Button

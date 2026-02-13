@@ -46,7 +46,7 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
         <div className="flex flex-col md:flex-row gap-6 h-full">
             {/* Left: Calendar Picker */}
             <div className="md:w-auto flex-shrink-0">
-                <div className="border rounded-xl p-4 bg-white shadow-sm">
+                <div className="border border-border rounded-xl p-4 bg-card shadow-sm">
                     <Calendar
                         mode="single"
                         selected={date}
@@ -65,16 +65,16 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                             <span>진행중 (협업)</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
-                            <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                            <span>다가오는 일정</span>
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/30"></span>
+                            <span>모집중인 일정</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Right: Schedule List / Table */}
-            <div className="flex-1 min-w-0 bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col">
-                <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
+            <div className="flex-1 min-w-0 bg-card rounded-xl border border-border overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                             <h3 className="font-bold flex items-center gap-2">
@@ -89,34 +89,34 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                         <div className="flex items-center gap-1">
                             <button
                                 onClick={() => setStatusFilter('all')}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'all' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-slate-100'}`}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'all' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
                             >
                                 전체보기
                             </button>
                             <button
                                 onClick={() => setStatusFilter('active')}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'active' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-slate-100'}`}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'active' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
                             >
                                 진행중
                             </button>
                             <button
                                 onClick={() => setStatusFilter('upcoming')}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'upcoming' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-slate-100'}`}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'upcoming' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
                             >
-                                다가오는
+                                모집중
                             </button>
                             <button
                                 onClick={() => setStatusFilter('completed')}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'completed' ? 'bg-slate-100 text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-slate-100'}`}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'completed' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
                             >
-                                지난
+                                완료된
                             </button>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <Select value={filterCategory} onValueChange={setFilterCategory}>
-                            <SelectTrigger className="w-[120px] h-8 text-xs border-slate-200">
+                            <SelectTrigger className="w-[120px] h-8 text-xs border-border">
                                 <SelectValue placeholder="카테고리" />
                             </SelectTrigger>
                             <SelectContent>
@@ -136,11 +136,11 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                             <TableRow>
                                 <TableHead className="w-[120px]">브랜드</TableHead>
                                 <TableHead className="w-[180px]">제품/캠페인</TableHead>
-                                <TableHead className="w-[100px]">원고료</TableHead>
+                                <TableHead className="text-center w-[100px]">원고료</TableHead>
                                 <TableHead className="text-center w-[120px]">초안 제출</TableHead>
                                 <TableHead className="text-center w-[120px]">최종본 제출</TableHead>
                                 <TableHead className="text-center w-[120px]">업로드</TableHead>
-                                <TableHead className="text-right w-[100px]">상태</TableHead>
+                                <TableHead className="text-center w-[120px]">상태</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -160,7 +160,7 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                                 {event.type === 'upcoming' && <span className="text-[10px] text-muted-foreground">내 모먼트</span>}
                                             </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             {event.type === 'upcoming' ? '-' : (
                                                 event.compensation_amount
                                                     ? `${Number(event.compensation_amount).toLocaleString()}원`
@@ -182,13 +182,13 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                         <TableCell className="text-center text-xs">
                                             {event.type === 'upcoming' ? '-' : (event.condition_final_submission_date || '-')}
                                         </TableCell>
-                                        <TableCell className="text-center text-xs font-semibold text-slate-700">
+                                        <TableCell className="text-center text-xs font-semibold text-foreground">
                                             {event.type === 'upcoming' ? '-' : (event.condition_upload_date || event.date || '-')}
                                         </TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className="text-center">
                                             {(() => {
-                                                if (event.type === 'upcoming') return <Badge variant="outline" className="text-slate-500">모집중</Badge>
-                                                if (event.status === 'completed') return <Badge className="bg-slate-100 text-slate-600 border-0">완료됨</Badge>
+                                                if (event.type === 'upcoming') return <Badge variant="outline" className="text-muted-foreground">모집중</Badge>
+                                                if (event.status === 'completed') return <Badge className="bg-muted text-muted-foreground border-0">완료됨</Badge>
 
                                                 // Active Status Logic
                                                 if (event.status === 'confirmed') return <Badge className="bg-indigo-100 text-indigo-700 border-0">확정됨</Badge>

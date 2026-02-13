@@ -148,7 +148,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                 <div className="grid gap-6 lg:grid-cols-[1fr_350px]">
                     {/* Left: Campaign Detail Card (Refactored to match Dialog UI) */}
                     {/* Left: Campaign Detail Card (Refactored to match Dialog UI) */}
-                    <div className="h-[calc(100vh-200px)] min-h-[600px] border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white">
+                    <div className="h-[calc(100vh-200px)] min-h-[600px] border rounded-xl overflow-hidden shadow-sm flex flex-col bg-card">
                         <CampaignDetailContent
                             campaign={displayCampaign}
                             onImageUpload={handleImageUpload}
@@ -244,7 +244,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">내 캠페인 관리</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">캠페인 관리</h1>
                     <p className="text-muted-foreground mt-1">등록하신 캠페인 공고를 관리하고 지원자를 확인하세요.</p>
                 </div>
                 <Button asChild className="gap-2">
@@ -266,7 +266,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                 <button
                     onClick={() => setActiveTab("closed")}
                     className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${activeTab === "closed"
-                        ? "border-slate-500 text-slate-700"
+                        ? "border-muted-foreground text-foreground"
                         : "border-transparent text-muted-foreground hover:text-foreground"
                         }`}
                 >
@@ -293,36 +293,37 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                         return (
                             <Card
                                 key={c.id}
-                                className={`group hover:shadow-md transition-all cursor-pointer border-border/60 overflow-hidden ${c.status === 'closed' ? 'opacity-75 bg-slate-50' : ''}`}
+                                className={`group hover:shadow-md transition-all cursor-pointer border-border/60 overflow-hidden bg-card ${c.status === 'closed' ? 'opacity-75 bg-muted/30' : ''}`}
                                 onClick={() => setSelectedCampaignId(c.id)}
                             >
                                 <div className="flex flex-col md:flex-row h-full">
                                     {/* Image Section */}
                                     {(c.image && c.image !== "📦") || c.product_image_url ? (
-                                        <div className="w-full md:w-48 h-32 md:h-auto bg-muted/20 shrink-0 relative">
-                                            <img src={c.image && c.image !== "📦" ? c.image : c.product_image_url} alt={c.product} className={`w-full h-full object-cover ${c.status === 'closed' ? 'grayscale' : ''}`} />
+                                        <div className="w-full md:w-48 h-32 md:h-auto bg-muted/20 shrink-0 relative flex items-center justify-center overflow-hidden">
+                                            <img src={c.image && c.image !== "📦" ? c.image : c.product_image_url} alt={c.product} className={`w-full h-full object-cover transition-transform hover:scale-105 duration-500 ${c.status === 'closed' ? 'grayscale' : ''}`} />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent md:hidden" />
                                             <div className="absolute bottom-2 left-2 md:hidden">
-                                                <Badge variant="secondary" className="bg-white/90 text-black backdrop-blur-sm shadow-sm">
+                                                <Badge variant="secondary" className="bg-background/90 text-foreground backdrop-blur-sm shadow-sm">
                                                     {c.category}
                                                 </Badge>
                                             </div>
                                         </div>
                                     ) : (
                                         // Placeholder if no image at all
-                                        <div className="w-full md:w-48 h-32 md:h-auto bg-slate-100 flex items-center justify-center shrink-0">
-                                            <Package className="h-8 w-8 text-slate-300" />
+                                        <div className="w-full md:w-48 h-32 md:h-auto bg-muted flex items-center justify-center shrink-0">
+                                            <Package className="h-8 w-8 text-muted-foreground/50" />
                                         </div>
                                     )}
 
+                                    {/* Main Content */}
                                     {/* Main Content */}
                                     <div className="flex-1 p-4 md:p-5 flex flex-col justify-between">
                                         <div>
                                             {/* Header Row */}
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <Badge variant="outline" className="hidden md:inline-flex text-xs font-normal bg-slate-50">{c.category}</Badge>
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.status === 'active' ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-slate-500 bg-slate-100 border-slate-200'}`}>
+                                                    <Badge variant="outline" className="hidden md:inline-flex text-xs font-normal bg-muted/50">{c.category}</Badge>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.status === 'active' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'text-muted-foreground bg-muted border-border'}`}>
                                                         {c.status === 'active' ? '● 모집중' : '● 마감됨'}
                                                     </span>
                                                     {(() => {
@@ -330,16 +331,27 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                         const today = new Date();
                                                         const dDay = Math.ceil((new Date(c.recruitment_deadline).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                                                         return (
-                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${dDay < 0 ? 'bg-slate-200 text-slate-500' : dDay <= 3 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-blue-50 text-blue-600'}`}>
+                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${dDay < 0 ? 'bg-muted text-muted-foreground' : dDay <= 3 ? 'bg-red-100 text-red-600 animate-pulse dark:bg-red-900/20 dark:text-red-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'}`}>
                                                                 {dDay < 0 ? '마감' : `D-${dDay}`}
                                                             </span>
                                                         );
                                                     })()}
+
+                                                    {/* Top Row Extra Info (To save space) */}
+                                                    <div className="hidden xl:flex items-center gap-2 text-[10px] text-muted-foreground border-l pl-2 ml-1">
+                                                        {c.selection_announcement_date && <span>선정발표 : {c.selection_announcement_date}</span>}
+                                                        {(c.min_followers || c.max_followers) && <span>| 지원조건 : 팔로워 {c.min_followers ? c.min_followers.toLocaleString() : '0'} ~ {c.max_followers ? c.max_followers.toLocaleString() : '제한없음'}</span>}
+                                                    </div>
+                                                    {c.reference_link && (
+                                                        <a href={c.reference_link} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                            <LinkIcon className="h-3.5 w-3.5" />
+                                                        </a>
+                                                    )}
                                                 </div>
                                                 {/* Channels */}
                                                 <div className="flex gap-1">
                                                     {c.channels?.map((channel: string) => (
-                                                        <div key={channel} className="text-sm bg-slate-100 p-1 rounded-md" title={channel}>
+                                                        <div key={channel} className="text-sm bg-muted p-1 rounded-md" title={channel}>
                                                             {channel === 'instagram' && '📸'}
                                                             {channel === 'youtube' && '▶️'}
                                                             {channel === 'tiktok' && '🎵'}
@@ -352,34 +364,48 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                 </div>
                                             </div>
 
-                                            <h3 className="text-lg md:text-xl font-bold mb-3 group-hover:text-primary transition-colors line-clamp-1">{c.product}</h3>
+                                            {/* Title & Hashtags */}
+                                            <div className="mb-3">
+                                                <h3 className="text-lg md:text-xl font-bold group-hover:text-primary transition-colors line-clamp-1">{c.title || c.product}</h3>
+                                                {c.title && c.product && (
+                                                    <div className="text-xs text-muted-foreground mb-1">{c.product}</div>
+                                                )}
+                                                {c.hashtags && c.hashtags.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {c.hashtags.slice(0, 4).map((tag: string, i: number) => (
+                                                            <span key={i} className="text-[10px] text-muted-foreground/80">#{tag}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-4 text-sm text-slate-600">
+                                            {/* Grid - Restored to 4 Cols (Single Row on PC) */}
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-4 text-sm text-muted-foreground">
                                                 <div className="space-y-0.5">
-                                                    <div className="text-[10px] font-bold text-slate-400">제공 혜택</div>
-                                                    <div className={c.status === 'active' ? "text-emerald-600 font-bold text-xs" : "text-slate-600 font-bold text-xs"}>{c.budget || "협의"}</div>
+                                                    <div className="text-[10px] font-bold text-muted-foreground/70">제공 혜택</div>
+                                                    <div className={c.status === 'active' ? "text-emerald-600 font-bold text-xs" : "text-muted-foreground font-bold text-xs"}>{c.budget || "협의"}</div>
                                                 </div>
                                                 <div className="space-y-0.5">
-                                                    <div className="text-[10px] font-bold text-slate-400">모집 인원</div>
-                                                    <div className="font-medium text-xs text-slate-900">{c.recruitment_count ? `${c.recruitment_count}명` : '-'}</div>
+                                                    <div className="text-[10px] font-bold text-muted-foreground/70">모집 인원</div>
+                                                    <div className="font-medium text-xs text-foreground">{c.recruitment_count ? `${c.recruitment_count}명` : '-'}</div>
                                                 </div>
-                                                <div className="space-y-0.5 col-span-2 md:col-span-1">
-                                                    <div className="text-[10px] font-bold text-slate-400">모집 대상</div>
-                                                    <div className="truncate text-xs text-slate-900">{c.target || "전체"}</div>
+                                                <div className="space-y-0.5">
+                                                    <div className="text-[10px] font-bold text-muted-foreground/70">모집 대상</div>
+                                                    <div className="truncate text-xs text-foreground">{c.target || "전체"}</div>
                                                 </div>
                                                 <div className="space-y-0.5 hidden md:block">
-                                                    <div className="text-[10px] font-bold text-slate-400">예상 업로드</div>
-                                                    <div className="text-xs text-slate-900">{formatDateToMonth(c.postingDate) || '협의'}</div>
+                                                    <div className="text-[10px] font-bold text-muted-foreground/70">예상 업로드</div>
+                                                    <div className="text-xs text-foreground">{formatDateToMonth(c.postingDate) || '협의'}</div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Right Action Area */}
-                                    <div className="border-t md:border-t-0 md:border-l p-4 md:w-40 bg-slate-50/50 flex flex-row md:flex-col items-center justify-between md:justify-center gap-3 shrink-0">
+                                    <div className="border-t md:border-t-0 md:border-l p-4 md:w-40 bg-muted/20 flex flex-row md:flex-col items-center justify-between md:justify-center gap-3 shrink-0">
                                         <div className="text-center flex items-center md:block gap-2 md:gap-0">
                                             <div className="text-[10px] text-muted-foreground md:mb-1">도착한 제안</div>
-                                            <div className={`text-lg font-bold ${appCount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                            <div className={`text-lg font-bold ${appCount > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
                                                 {appCount}
                                             </div>
                                         </div>
@@ -391,7 +417,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className={`h-8 px-2 text-xs md:w-full ${c.status === 'active' ? 'text-slate-500 hover:text-red-500 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                                                className={`h-8 px-2 text-xs md:w-full ${c.status === 'active' ? 'text-muted-foreground hover:text-destructive hover:bg-destructive/10' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation()
                                                     if (confirm(c.status === 'active' ? "캠페인을 마감하시겠습니까?" : "캠페인을 다시 진행하시겠습니까?")) {

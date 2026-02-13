@@ -18,7 +18,7 @@ const mapEvents = (data: any[], detailsMap?: Map<string, any>): InfluencerEvent[
             influencerId: e.influencer_id,
             handle: details?.instagram_handle || '@creator',
             avatar: e.profiles?.avatar_url || '',
-            priceVideo: e.price_video,
+            priceVideo: details?.price_video || 0,
             event: e.title,
             date: e.event_date || new Date(e.created_at).toISOString().split('T')[0],
             description: e.description || '',

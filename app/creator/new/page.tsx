@@ -43,8 +43,7 @@ export default function NewEventPage() {
     const [isPrivate, setIsPrivate] = useState(false)
     const [validationError, setValidationError] = useState<string | null>(null)
 
-    // Schedule Template State
-    const [showSchedule, setShowSchedule] = useState(false)
+    // Schedule Template State (Hidden but kept for type compatibility)
     const [schedule, setSchedule] = useState({
         product_delivery: "",
         draft_submission: "",
@@ -52,42 +51,6 @@ export default function NewEventPage() {
         feedback: "",
         upload: ""
     })
-
-    const applyTemplate = () => {
-        if (!eventMonth) {
-            alert("먼저 모먼트 일정을 선택해주세요!")
-            return
-        }
-
-        const year = parseInt(eventYear)
-        const monthIndex = MONTHS.indexOf(eventMonth)
-        // Default to current year if parsing fails, though it shouldn't with select
-
-        // Base date: 1st of selected month
-        const baseDate = new Date(year, monthIndex, 1)
-
-        const formatDate = (date: Date) => {
-            const y = date.getFullYear()
-            const m = String(date.getMonth() + 1).padStart(2, '0')
-            const d = String(date.getDate()).padStart(2, '0')
-            return `${y}-${m}-${d}`
-        }
-
-        const addDays = (d: Date, days: number) => {
-            const newDate = new Date(d)
-            newDate.setDate(d.getDate() + days)
-            return newDate
-        }
-
-        setSchedule({
-            product_delivery: formatDate(addDays(baseDate, 5)),
-            draft_submission: formatDate(addDays(baseDate, 12)),
-            shooting: formatDate(addDays(baseDate, 15)),
-            feedback: formatDate(addDays(baseDate, 18)),
-            upload: formatDate(addDays(baseDate, 25))
-        })
-        setShowSchedule(true)
-    }
 
     const [isGenerating, setIsGenerating] = useState(false)
 
@@ -426,77 +389,8 @@ export default function NewEventPage() {
 
                         </div>
 
-                        {/* Schedule Template Section */}
-                        <div className="space-y-4 border-t pt-6 mt-6">
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-1">
-                                    <Label className="text-base">상세 일정 관리</Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        브랜드와의 원활한 협업을 위해 주요 마일스톤을 미리 계획해보세요.
-                                    </p>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={applyTemplate}
-                                    className="gap-2 text-primary border-primary/20 hover:bg-primary/5"
-                                >
-                                    <Sparkles className="h-3 w-3" />
-                                    일정 템플릿 자동 적용
-                                </Button>
-                            </div>
 
-                            {(showSchedule || schedule.product_delivery) && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 bg-slate-50 p-4 rounded-lg border">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">📦 제품 배송/수령</Label>
-                                        <Input
-                                            type="date"
-                                            value={schedule.product_delivery}
-                                            onChange={(e) => setSchedule({ ...schedule, product_delivery: e.target.value })}
-                                            className="bg-white"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">📝 기획안(초안) 제출</Label>
-                                        <Input
-                                            type="date"
-                                            value={schedule.draft_submission}
-                                            onChange={(e) => setSchedule({ ...schedule, draft_submission: e.target.value })}
-                                            className="bg-white"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">📸 촬영 진행</Label>
-                                        <Input
-                                            type="date"
-                                            value={schedule.shooting}
-                                            onChange={(e) => setSchedule({ ...schedule, shooting: e.target.value })}
-                                            className="bg-white"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">📢 피드백 반영</Label>
-                                        <Input
-                                            type="date"
-                                            value={schedule.feedback}
-                                            onChange={(e) => setSchedule({ ...schedule, feedback: e.target.value })}
-                                            className="bg-white"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground font-bold text-primary">🚀 최종 업로드</Label>
-                                        <Input
-                                            type="date"
-                                            value={schedule.upload}
-                                            onChange={(e) => setSchedule({ ...schedule, upload: e.target.value })}
-                                            className="bg-white border-primary/50 ring-primary/20"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        {/* Schedule Template Section Removed */}
 
                         <div className="flex justify-end gap-4 pt-4 mt-6 relative z-50 pb-20">
                             <Button variant="outline" asChild type="button">

@@ -766,8 +766,11 @@ function BrandDashboardContent() {
         if (key === "all") {
             setMinFollowers("")
             setMaxFollowers("")
-        } else if (key === "nano") {
+        } else if (key === "starter") {
             setMinFollowers("0")
+            setMaxFollowers("1000")
+        } else if (key === "nano") {
+            setMinFollowers("1000")
             setMaxFollowers("10000")
         } else if (key === "micro") {
             setMinFollowers("10000")
@@ -1221,18 +1224,18 @@ function BrandDashboardContent() {
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+                                <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
                                     <Bell className="h-8 w-8 text-primary" /> 알림 센터
                                 </h1>
-                                <p className="text-slate-500 mt-1">캠페인 지원 및 협업 진행 상황을 실시간으로 확인하세요.</p>
+                                <p className="text-muted-foreground mt-1">캠페인 지원 및 협업 진행 상황을 실시간으로 확인하세요.</p>
                             </div>
                         </div>
 
                         {sortedNotifications.length === 0 ? (
-                            <Card className="p-20 text-center border-dashed bg-slate-50/50 rounded-[40px] border-2">
+                            <Card className="p-20 text-center border-dashed bg-muted/30/50 rounded-[40px] border-2">
                                 <Bell className="mx-auto h-16 w-16 text-slate-200 mb-6" />
-                                <h3 className="text-xl font-bold text-slate-900">새로운 알림이 없습니다.</h3>
-                                <p className="text-sm text-slate-400 mt-2">중요한 협업 업데이트가 발생하면 여기에 실시간으로 표시됩니다.</p>
+                                <h3 className="text-xl font-bold text-foreground">새로운 알림이 없습니다.</h3>
+                                <p className="text-sm text-muted-foreground/70 mt-2">중요한 협업 업데이트가 발생하면 여기에 실시간으로 표시됩니다.</p>
                             </Card>
                         ) : (
                             <div className="space-y-4">
@@ -1249,7 +1252,7 @@ function BrandDashboardContent() {
                                         }}
                                     >
                                         <CardContent className="p-6 flex items-start gap-5">
-                                            <div className={`mt-1 h-14 w-14 shrink-0 rounded-[22px] flex items-center justify-center transition-all group-hover:scale-110 shadow-sm ${n.is_read ? 'bg-slate-100 text-slate-400' : 'bg-primary/10 text-primary'}`}>
+                                            <div className={`mt-1 h-14 w-14 shrink-0 rounded-[22px] flex items-center justify-center transition-all group-hover:scale-110 shadow-sm ${n.is_read ? 'bg-muted text-muted-foreground/70' : 'bg-primary/10 text-primary'}`}>
                                                 {(n.content || "").includes('지원') || (n.content || "").includes('제안') ? <Briefcase className="h-7 w-7" /> :
                                                     (n.content || "").includes('계약') || (n.content || "").includes('서명') ? <FileText className="h-7 w-7" /> :
                                                         (n.content || "").includes('배송') || (n.content || "").includes('운송장') ? <Package className="h-7 w-7" /> : <Bell className="h-7 w-7" />}
@@ -1257,18 +1260,18 @@ function BrandDashboardContent() {
                                             <div className="flex-1 min-w-0 py-1">
                                                 <div className="flex justify-between items-center mb-1.5">
                                                     <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Notification</span>
-                                                    <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1 rounded-full">{new Date(n.created_at).toLocaleDateString()}</span>
+                                                    <span className="text-[10px] font-bold text-muted-foreground/70 bg-muted/30 border border-border/50 px-3 py-1 rounded-full">{new Date(n.created_at).toLocaleDateString()}</span>
                                                 </div>
-                                                <p className="text-[15px] font-bold text-slate-800 leading-snug mb-2 group-hover:text-primary transition-colors">{n.content}</p>
+                                                <p className="text-[15px] font-bold text-foreground leading-snug mb-2 group-hover:text-primary transition-colors">{n.content}</p>
                                                 <div className="flex items-center gap-2">
                                                     {!n.is_read && (
                                                         <Badge className="text-[9px] h-5 px-2 font-black bg-primary rounded-lg shadow-md border-0 uppercase">New Update</Badge>
                                                     )}
-                                                    <span className="text-[11px] text-slate-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">워크스페이스로 이동하여 확인하기 →</span>
+                                                    <span className="text-[11px] text-muted-foreground/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">워크스페이스로 이동하여 확인하기 →</span>
                                                 </div>
                                             </div>
                                             <div className="self-center">
-                                                <div className="h-10 w-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
+                                                <div className="h-10 w-10 rounded-full bg-muted/30 border border-border/50 flex items-center justify-center text-slate-300 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
                                                     <ArrowRight className="h-5 w-5" />
                                                 </div>
                                             </div>
@@ -1377,7 +1380,7 @@ function BrandDashboardContent() {
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'completed' ? 'bg-slate-100 text-slate-700 font-medium' : 'text-muted-foreground'}`}
+                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'completed' ? 'bg-muted text-foreground/90 font-medium' : 'text-muted-foreground'}`}
                                         onClick={() => setWorkspaceTab("completed")}
                                     >
                                         완료됨
@@ -1514,26 +1517,26 @@ function BrandDashboardContent() {
 
                         {/* Condition Pre-fill Section */}
                         <div className="space-y-4 border-t pt-4 mt-2">
-                            <h4 className="text-xs font-bold text-slate-900 mb-2">📅 예상 일정 및 조건 (제안 시 입력)</h4>
+                            <h4 className="text-xs font-bold text-foreground mb-2">📅 예상 일정 및 조건 (제안 시 입력)</h4>
                             <div className="grid grid-cols-2 gap-4">
 
                                 <div className="space-y-1">
-                                    <Label className="text-[10px] text-slate-500">초안 제출일</Label>
+                                    <Label className="text-[10px] text-muted-foreground">초안 제출일</Label>
                                     <Input type="date" className="h-8 text-xs" value={conditionDraftDate} onChange={(e) => setConditionDraftDate(e.target.value)} />
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-[10px] text-slate-500">최종본 제출일</Label>
+                                    <Label className="text-[10px] text-muted-foreground">최종본 제출일</Label>
                                     <Input type="date" className="h-8 text-xs" value={conditionFinalDate} onChange={(e) => setConditionFinalDate(e.target.value)} />
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-[10px] text-slate-500">업로드일</Label>
+                                    <Label className="text-[10px] text-muted-foreground">업로드일</Label>
                                     <Input type="date" className="h-8 text-xs" value={conditionUploadDate} onChange={(e) => setConditionUploadDate(e.target.value)} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4 mt-2">
 
                                 <div className="space-y-1">
-                                    <Label className="text-[10px] text-slate-500">2차 활용 기간</Label>
+                                    <Label className="text-[10px] text-muted-foreground">2차 활용 기간</Label>
                                     <Select value={conditionSecondary} onValueChange={setConditionSecondary}>
                                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
@@ -1560,10 +1563,10 @@ function BrandDashboardContent() {
                     {isSubmitting && (
                         <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-lg">
                             <div className="w-[80%] max-w-sm space-y-4 text-center">
-                                <h3 className="text-lg font-bold text-slate-800 animate-pulse">
+                                <h3 className="text-lg font-bold text-foreground animate-pulse">
                                     {submitProgress === 100 ? "발송 완료되었습니다!" : "제안서를 발송하고 있습니다..."}
                                 </h3>
-                                <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-primary transition-all duration-300 ease-out"
                                         style={{ width: `${submitProgress}%` }}
@@ -1608,8 +1611,8 @@ function BrandDashboardContent() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
                         {/* Left Column: Basic Info & Social */}
                         <div className="space-y-6">
-                            <div className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                                <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                            <div className="space-y-4 p-5 bg-muted/30 rounded-2xl border border-border/50">
+                                <h4 className="font-bold text-sm text-foreground/90 flex items-center gap-2">
                                     <Package className="h-4 w-4" /> 기본 정보
                                 </h4>
                                 <div className="space-y-2">
@@ -1697,8 +1700,8 @@ function BrandDashboardContent() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                                <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                            <div className="space-y-4 p-5 bg-muted/30 rounded-2xl border border-border/50">
+                                <h4 className="font-bold text-sm text-foreground/90 flex items-center gap-2">
                                     <AtSign className="h-4 w-4" /> 태그 및 필수 표기
                                 </h4>
                                 <div className="space-y-2">
@@ -1741,7 +1744,7 @@ function BrandDashboardContent() {
                                         className="bg-white"
                                     />
                                 </div>
-                                <div className="bg-white p-3 rounded-lg text-xs text-muted-foreground flex items-start gap-2 border border-slate-200">
+                                <div className="bg-white p-3 rounded-lg text-xs text-muted-foreground flex items-start gap-2 border border-border">
                                     <Info className="h-4 w-4 shrink-0 text-primary mt-0.5" />
                                     <span>
                                         <span className="font-bold text-red-500">*[광고] 또는 [협찬] 문구</span>를 상단에 필수로 기재해달라는 안내가 자동으로 포함됩니다.
@@ -1752,8 +1755,8 @@ function BrandDashboardContent() {
 
                         {/* Right Column: Detailed Guide */}
                         <div className="space-y-6">
-                            <div className="space-y-4 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm h-full">
-                                <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                            <div className="space-y-4 p-5 bg-white rounded-2xl border border-border shadow-sm h-full">
+                                <h4 className="font-bold text-sm text-foreground/90 flex items-center gap-2">
                                     <FileText className="h-4 w-4" /> 상세 가이드라인
                                 </h4>
 
@@ -1791,17 +1794,17 @@ function BrandDashboardContent() {
 
             {/* Product Guide Preview Modal */}
             <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
-                <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto bg-slate-50">
+                <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto bg-muted/30">
                     <DialogHeader>
-                        <DialogTitle className="text-center text-xl font-bold text-slate-900">제작 가이드 미리보기</DialogTitle>
+                        <DialogTitle className="text-center text-xl font-bold text-foreground">제작 가이드 미리보기</DialogTitle>
                         <DialogDescription className="text-center">
                             크리에이터에게 보여질 가이드 화면입니다.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden my-2">
+                    <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden my-2">
                         {/* Header Image */}
-                        <div className="h-40 bg-slate-100 relative group">
+                        <div className="h-40 bg-muted relative group">
                             {newProductImage && newProductImage !== "📦" ? (
                                 <img src={newProductImage} alt="Preview" className="w-full h-full object-cover" />
                             ) : (
@@ -1814,12 +1817,12 @@ function BrandDashboardContent() {
 
                         {/* Body */}
                         <div className="p-6 space-y-6">
-                            <div className="text-center space-y-2 border-b border-slate-100 pb-6">
-                                <h3 className="text-xl font-black text-slate-900">{newProductName || "제품명 없음"}</h3>
+                            <div className="text-center space-y-2 border-b border-border/50 pb-6">
+                                <h3 className="text-xl font-black text-foreground">{newProductName || "제품명 없음"}</h3>
                                 <p className="text-lg font-bold text-primary">
                                     {newProductPrice ? `${parseInt(newProductPrice).toLocaleString()}원` : "가격 미정"}
                                 </p>
-                                <p className="text-sm text-slate-500 leading-relaxed px-4">
+                                <p className="text-sm text-muted-foreground leading-relaxed px-4">
                                     {newProductDescription || "제품 설명이 없습니다."}
                                 </p>
                             </div>
@@ -1827,7 +1830,7 @@ function BrandDashboardContent() {
                             <div className="space-y-6">
                                 {/* Points */}
                                 <div className="space-y-2">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                    <h4 className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1">
                                         <CheckCircle2 className="h-3 w-3" /> 소구 포인트
                                     </h4>
                                     <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100/50 text-sm text-emerald-900 leading-relaxed whitespace-pre-wrap">
@@ -1837,7 +1840,7 @@ function BrandDashboardContent() {
 
                                 {/* Required Shots */}
                                 <div className="space-y-2">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                    <h4 className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1">
                                         <Camera className="h-3 w-3" /> 필수 촬영 컷
                                     </h4>
                                     <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50 text-sm text-indigo-900 leading-relaxed whitespace-pre-wrap">
@@ -1847,38 +1850,38 @@ function BrandDashboardContent() {
 
                                 {/* Guide */}
                                 <div className="space-y-2">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                    <h4 className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1">
                                         <FileText className="h-3 w-3" /> 필수 가이드
                                     </h4>
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm space-y-4">
+                                    <div className="bg-muted/30 p-4 rounded-xl border border-border/50 text-sm space-y-4">
                                         {newProductContentGuide && (
                                             <div>
-                                                <strong className="block text-slate-900 mb-1 font-bold">필수 포함 내용</strong>
-                                                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{newProductContentGuide}</p>
+                                                <strong className="block text-foreground mb-1 font-bold">필수 포함 내용</strong>
+                                                <p className="text-foreground/90 whitespace-pre-wrap leading-relaxed">{newProductContentGuide}</p>
                                             </div>
                                         )}
                                         {newProductFormatGuide && (
                                             <div>
-                                                <strong className="block text-slate-900 mb-1 font-bold">필수 형식</strong>
-                                                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{newProductFormatGuide}</p>
+                                                <strong className="block text-foreground mb-1 font-bold">필수 형식</strong>
+                                                <p className="text-foreground/90 whitespace-pre-wrap leading-relaxed">{newProductFormatGuide}</p>
                                             </div>
                                         )}
-                                        {!newProductContentGuide && !newProductFormatGuide && <p className="text-slate-400">등록된 필수 가이드가 없습니다.</p>}
+                                        {!newProductContentGuide && !newProductFormatGuide && <p className="text-muted-foreground/70">등록된 필수 가이드가 없습니다.</p>}
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                    <h4 className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1">
                                         <AtSign className="h-3 w-3" /> 태그 및 계정
                                     </h4>
                                     <div className="flex flex-wrap gap-2">
                                         {newProductAccountTag && (
-                                            <span className="px-2 py-1 bg-white border border-slate-200 rounded-md text-xs font-bold text-slate-700 shadow-sm">
+                                            <span className="px-2 py-1 bg-white border border-border rounded-md text-xs font-bold text-foreground/90 shadow-sm">
                                                 {newProductAccountTag}
                                             </span>
                                         )}
                                         {newProductHashtags.split(/[\s,]+/).filter(t => t).map((tag, i) => (
-                                            <span key={i} className="px-2 py-1 bg-slate-100 border border-slate-200 rounded-md text-xs text-slate-600">
+                                            <span key={i} className="px-2 py-1 bg-muted border border-border rounded-md text-xs text-muted-foreground">
                                                 {tag.startsWith('#') ? tag : `#${tag}`}
                                             </span>
                                         ))}
@@ -1918,7 +1921,7 @@ function BrandDashboardContent() {
                 <DialogContent className="max-w-[1100px] p-0 overflow-hidden flex h-[85vh] bg-white border-0 shadow-2xl rounded-2xl">
                     <div className="flex h-full w-full">
                         {/* Left Sidebar: Deal Info & Workflow */}
-                        <div className="w-80 bg-slate-50 border-r border-slate-200 flex flex-col shrink-0 animate-in slide-in-from-left duration-300">
+                        <div className="w-80 bg-muted/30 border-r border-border flex flex-col shrink-0 animate-in slide-in-from-left duration-300">
                             <div className="p-6 border-b border-white bg-gradient-to-br from-slate-50 to-slate-100">
                                 <div className="flex items-center gap-4 mb-6">
                                     <div className="h-14 w-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-white flex items-center justify-center font-bold text-xl text-primary">
@@ -1933,8 +1936,8 @@ function BrandDashboardContent() {
                                         )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="font-bold text-lg text-slate-900 truncate">{chatProposal?.influencer_name || chatProposal?.influencerName}</h3>
-                                        <p className="text-xs text-slate-500 truncate">{chatProposal?.product_name || "제품 협력"}</p>
+                                        <h3 className="font-bold text-lg text-foreground truncate">{chatProposal?.influencer_name || chatProposal?.influencerName}</h3>
+                                        <p className="text-xs text-muted-foreground truncate">{chatProposal?.product_name || "제품 협력"}</p>
                                         <div className="flex items-center gap-2 mt-2">
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm ${chatProposal?.status === 'accepted' ? 'bg-emerald-500 text-white' :
                                                 chatProposal?.status === 'rejected' ? 'bg-red-500 text-white' : 'bg-indigo-600 text-white'
@@ -1953,7 +1956,7 @@ function BrandDashboardContent() {
                                 {/* Workflow Steps */}
                                 <div className="space-y-6 overflow-y-auto">
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">진행 단계</h4>
+                                        <h4 className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider mb-4 px-2">진행 단계</h4>
                                         <ul className="space-y-1">
                                             {(() => {
                                                 // Determine current step index
@@ -1997,7 +2000,7 @@ function BrandDashboardContent() {
                                                                 relative pl-8 py-2.5 text-sm rounded-lg transition-all duration-200 cursor-pointer
                                                                 ${isDone ? 'text-emerald-700 font-bold bg-emerald-50/50 hover:bg-emerald-100' :
                                                                     isCurrent ? 'text-amber-900 font-bold bg-yellow-50 border border-yellow-200 shadow-sm' :
-                                                                        'text-slate-400 opacity-60 hover:opacity-100 hover:bg-slate-50'}
+                                                                        'text-muted-foreground/70 opacity-60 hover:opacity-100 hover:bg-muted/30'}
                                                             `}
                                                         >
                                                             <div className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 
@@ -2040,7 +2043,7 @@ function BrandDashboardContent() {
                                             >
                                                 <BadgeCheck className="mr-2 h-4 w-4" /> 프로젝트 최종 완료
                                             </Button>
-                                            <p className="text-[10px] text-slate-400 mt-2 text-center">
+                                            <p className="text-[10px] text-muted-foreground/70 mt-2 text-center">
                                                 * 정산 및 성과 보고가 끝난 후 눌러주세요.
                                             </p>
                                         </div>
@@ -2051,7 +2054,7 @@ function BrandDashboardContent() {
                                             <p className="font-bold text-primary mb-2 flex items-center gap-1.5">
                                                 <Info className="h-3.5 w-3.5" /> MD's Tip
                                             </p>
-                                            <p className="text-slate-600 leading-relaxed">
+                                            <p className="text-muted-foreground leading-relaxed">
                                                 크리에이터에게 <strong>계약서</strong>를 먼저 발송해주세요. 서명이 완료되면 다음 단계로 넘어갑니다.
                                             </p>
                                         </div>
@@ -2059,19 +2062,19 @@ function BrandDashboardContent() {
                                 </div>
                             </div>
 
-                            <div className="mt-auto p-4 border-t border-slate-200 bg-slate-100/50 text-[10px] text-slate-400 text-center font-medium tracking-tight">
+                            <div className="mt-auto p-4 border-t border-border bg-muted/50 text-[10px] text-muted-foreground/70 text-center font-medium tracking-tight">
                                 CreadyPick Secure Workspace™
                             </div>
                         </div>
 
                         {/* Right Content: Workspace Tabs */}
                         <Tabs value={activeProposalTab} onValueChange={setActiveProposalTab} className="flex-1 flex flex-col min-w-0 bg-white shadow-inner">
-                            <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white z-10">
+                            <div className="px-8 py-5 border-b border-border/50 flex items-center justify-between shrink-0 bg-white z-10">
                                 <div>
-                                    <DialogTitle className="text-xl font-bold tracking-tight text-slate-900">워크스페이스</DialogTitle>
-                                    <DialogDescription className="text-slate-500 text-sm">{chatProposal?.influencer_name}님과의 협업 공간입니다.</DialogDescription>
+                                    <DialogTitle className="text-xl font-bold tracking-tight text-foreground">워크스페이스</DialogTitle>
+                                    <DialogDescription className="text-muted-foreground text-sm">{chatProposal?.influencer_name}님과의 협업 공간입니다.</DialogDescription>
                                 </div>
-                                <TabsList className="bg-slate-100 p-1 rounded-xl h-11">
+                                <TabsList className="bg-muted p-1 rounded-xl h-11">
                                     <TabsTrigger value="chat" className="rounded-lg px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">소통</TabsTrigger>
                                     <TabsTrigger value="contract" className="rounded-lg px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">계약 관리</TabsTrigger>
                                     <TabsTrigger value="shipping" className="rounded-lg px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">배송 관리</TabsTrigger>
@@ -2080,44 +2083,44 @@ function BrandDashboardContent() {
                             </div>
 
                             {/* Chat Tab */}
-                            <TabsContent value="chat" className="flex-1 flex flex-col min-h-0 m-0 data-[state=active]:flex bg-slate-50/30">
+                            <TabsContent value="chat" className="flex-1 flex flex-col min-h-0 m-0 data-[state=active]:flex bg-muted/30/30">
                                 <div className="flex-1 overflow-hidden flex">
                                     {/* Left Panel: Conditions & Summary (Persistent) */}
-                                    <div className="w-[400px] border-r border-slate-200 bg-white overflow-y-auto p-6 space-y-6">
+                                    <div className="w-[400px] border-r border-border bg-white overflow-y-auto p-6 space-y-6">
 
                                         {/* 0. Application Review (For Inbound Proposals) */}
                                         {(chatProposal?.status === 'pending' || chatProposal?.status === 'viewed') && (
                                             <div className="p-5 bg-blue-50/50 border border-blue-100 rounded-2xl space-y-4 shadow-sm">
                                                 <div className="flex items-center gap-2">
                                                     <BadgeCheck className="h-5 w-5 text-blue-600" />
-                                                    <h3 className="font-bold text-lg text-slate-900">지원서 검토</h3>
+                                                    <h3 className="font-bold text-lg text-foreground">지원서 검토</h3>
                                                 </div>
 
                                                 <div className="space-y-4 py-2">
                                                     {chatProposal.instagramHandle && (
                                                         <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                            <Label className="text-xs text-slate-500 block mb-1">활동 계정</Label>
+                                                            <Label className="text-xs text-muted-foreground block mb-1">활동 계정</Label>
                                                             <p className="font-medium text-sm">{chatProposal.instagramHandle}</p>
                                                         </div>
                                                     )}
 
                                                     {chatProposal.motivation && (
                                                         <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                            <Label className="text-xs text-slate-500 block mb-1">지원 동기</Label>
-                                                            <p className="text-sm text-slate-700 whitespace-pre-wrap">{chatProposal.motivation}</p>
+                                                            <Label className="text-xs text-muted-foreground block mb-1">지원 동기</Label>
+                                                            <p className="text-sm text-foreground/90 whitespace-pre-wrap">{chatProposal.motivation}</p>
                                                         </div>
                                                     )}
 
                                                     {chatProposal.content_plan && (
                                                         <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                            <Label className="text-xs text-slate-500 block mb-1">콘텐츠 제작 계획</Label>
-                                                            <p className="text-sm text-slate-700 whitespace-pre-wrap">{chatProposal.content_plan}</p>
+                                                            <Label className="text-xs text-muted-foreground block mb-1">콘텐츠 제작 계획</Label>
+                                                            <p className="text-sm text-foreground/90 whitespace-pre-wrap">{chatProposal.content_plan}</p>
                                                         </div>
                                                     )}
 
                                                     {chatProposal.portfolioLinks && chatProposal.portfolioLinks.length > 0 && (
                                                         <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                            <Label className="text-xs text-slate-500 block mb-1">포트폴리오</Label>
+                                                            <Label className="text-xs text-muted-foreground block mb-1">포트폴리오</Label>
                                                             <ul className="text-sm list-disc pl-4 space-y-1">
                                                                 {chatProposal.portfolioLinks.map((link: string, i: number) => (
                                                                     <li key={i}>
@@ -2132,16 +2135,16 @@ function BrandDashboardContent() {
 
                                                     {chatProposal.insightScreenshot && (
                                                         <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                            <Label className="text-xs text-slate-500 block mb-1">인사이트 캡처</Label>
+                                                            <Label className="text-xs text-muted-foreground block mb-1">인사이트 캡처</Label>
                                                             <a href={chatProposal.insightScreenshot} target="_blank" rel="noopener noreferrer">
-                                                                <img src={chatProposal.insightScreenshot} alt="Insight" className="mt-1 w-full rounded-md border border-slate-200 hover:opacity-90 transition-opacity" />
+                                                                <img src={chatProposal.insightScreenshot} alt="Insight" className="mt-1 w-full rounded-md border border-border hover:opacity-90 transition-opacity" />
                                                             </a>
                                                         </div>
                                                     )}
 
                                                     <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                        <Label className="text-xs text-slate-500 block mb-1">어필 메시지</Label>
-                                                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{chatProposal.message || "메시지 없음"}</p>
+                                                        <Label className="text-xs text-muted-foreground block mb-1">어필 메시지</Label>
+                                                        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{chatProposal.message || "메시지 없음"}</p>
                                                     </div>
                                                 </div>
 
@@ -2154,7 +2157,7 @@ function BrandDashboardContent() {
                                                     </Button>
                                                     <Button
                                                         variant="outline"
-                                                        className="flex-1 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-100 font-bold text-slate-600"
+                                                        className="flex-1 border-border hover:bg-red-50 hover:text-red-600 hover:border-red-100 font-bold text-muted-foreground"
                                                         onClick={() => handleStatusUpdate(chatProposal.id, 'rejected')}
                                                     >
                                                         거절하기
@@ -2165,20 +2168,20 @@ function BrandDashboardContent() {
 
                                         <div className="flex items-center gap-2 mb-2">
                                             <BadgeCheck className="h-5 w-5 text-primary" />
-                                            <h3 className="font-bold text-lg text-slate-900">협업 조건</h3>
+                                            <h3 className="font-bold text-lg text-foreground">협업 조건</h3>
                                         </div>
 
                                         {/* 1. Shared Conditions Summary */}
                                         {chatProposal && (
-                                            <Card className="bg-slate-50 border-slate-100 shadow-sm">
+                                            <Card className="bg-muted/30 border-border/50 shadow-sm">
                                                 <CardContent className="p-4 space-y-4">
                                                     <div className="space-y-1">
-                                                        <Label className="text-xs text-slate-500">제품명</Label>
+                                                        <Label className="text-xs text-muted-foreground">제품명</Label>
                                                         <p className="font-bold text-sm">{chatProposal.product_name || chatProposal.productName || "-"}</p>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs text-slate-500">제공 혜택</Label>
+                                                            <Label className="text-xs text-muted-foreground">제공 혜택</Label>
                                                             <p className="font-bold text-sm">
                                                                 {chatProposal.compensation_amount || chatProposal.cost ?
                                                                     (chatProposal.compensation_amount || `${parseInt(chatProposal.cost).toLocaleString()}원`) :
@@ -2186,14 +2189,14 @@ function BrandDashboardContent() {
                                                             </p>
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs text-slate-500">콘텐츠 유형</Label>
+                                                            <Label className="text-xs text-muted-foreground">콘텐츠 유형</Label>
                                                             <Badge variant="outline" className="bg-white">{chatProposal.content_type || "유형 미정"}</Badge>
                                                         </div>
                                                     </div>
                                                     {chatProposal.has_incentive && (
-                                                        <div className="space-y-1 pt-2 border-t border-slate-100">
+                                                        <div className="space-y-1 pt-2 border-t border-border/50">
                                                             <Label className="text-xs text-primary font-bold">인센티브 (판매 수수료)</Label>
-                                                            <p className="text-xs text-slate-700">{chatProposal.incentive_detail || `${chatProposal.commission}%`}</p>
+                                                            <p className="text-xs text-foreground/90">{chatProposal.incentive_detail || `${chatProposal.commission}%`}</p>
                                                         </div>
                                                     )}
                                                 </CardContent>
@@ -2202,9 +2205,9 @@ function BrandDashboardContent() {
 
                                         {/* 2. Condition Editing Card (Mutual Confirmation) - Synced with Creator View */}
                                         {chatProposal && (
-                                            <div className="mb-6 p-6 bg-slate-50 border border-slate-200 rounded-2xl animate-in fade-in slide-in-from-top-5 duration-700">
+                                            <div className="mb-6 p-6 bg-muted/30 border border-border rounded-2xl animate-in fade-in slide-in-from-top-5 duration-700">
                                                 <div className="flex flex-col gap-2 mb-4">
-                                                    <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
                                                         <BadgeCheck className="h-5 w-5 text-indigo-600" /> 조건 확정 (Mutual Confirmation)
                                                     </h4>
                                                     <div className="flex items-center">
@@ -2219,7 +2222,7 @@ function BrandDashboardContent() {
                                                         )}
                                                     </div>
                                                 </div>
-                                                <p className="text-xs text-slate-500 mb-6">
+                                                <p className="text-xs text-muted-foreground mb-6">
                                                     계약서 작성 전, 협의된 조건(금액, 일정 등)에 대해 양측이 최종 확정을 해야 합니다.<br />
                                                     양측 모두 확정 버튼을 누르면 계약서 생성 단계로 넘어갑니다.
                                                 </p>
@@ -2232,7 +2235,7 @@ function BrandDashboardContent() {
                                                         { label: "업로드 일정", key: "condition_upload_date", placeholder: "날짜 선택" },
                                                     ].map((field) => (
                                                         <div key={field.key} className="space-y-1">
-                                                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{field.label}</Label>
+                                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">{field.label}</Label>
                                                             <Input
                                                                 type="date"
                                                                 className="h-8 text-xs bg-white"
@@ -2256,7 +2259,7 @@ function BrandDashboardContent() {
                                                         </div>
                                                     ))}
                                                     <div className="space-y-1">
-                                                        <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">2차 활용 기간 (개월)</Label>
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">2차 활용 기간 (개월)</Label>
                                                         <div className="relative">
                                                             <Input
                                                                 type="number"
@@ -2296,7 +2299,7 @@ function BrandDashboardContent() {
                                                                     }
                                                                 }}
                                                             />
-                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">개월</span>
+                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/70">개월</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2305,7 +2308,7 @@ function BrandDashboardContent() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="h-7 text-xs text-slate-400 hover:text-slate-600"
+                                                        className="h-7 text-xs text-muted-foreground/70 hover:text-muted-foreground"
                                                         onClick={() => alert("자동 저장됩니다.")}
                                                     >
                                                         <Save className="mr-1.5 h-3 w-3" /> 변경사항 자동 저장됨
@@ -2314,20 +2317,20 @@ function BrandDashboardContent() {
 
                                                 <div className="grid grid-cols-2 gap-4">
                                                     {/* Creator Status (Them) */}
-                                                    <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.influencer_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Creator</span>
+                                                    <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.influencer_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-border'}`}>
+                                                        <span className="text-[10px] font-bold text-muted-foreground/70 uppercase">Creator</span>
                                                         {chatProposal.influencer_condition_confirmed ? (
                                                             <div className="text-indigo-700 font-bold text-sm flex items-center gap-1">
                                                                 <BadgeCheck className="h-4 w-4" /> 확정 완료
                                                             </div>
                                                         ) : (
-                                                            <div className="text-slate-400 font-bold text-xs">확정 대기 중</div>
+                                                            <div className="text-muted-foreground/70 font-bold text-xs">확정 대기 중</div>
                                                         )}
                                                     </div>
 
                                                     {/* Brand Status (Me) */}
-                                                    <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.brand_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Brand (본인)</span>
+                                                    <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.brand_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-border'}`}>
+                                                        <span className="text-[10px] font-bold text-muted-foreground/70 uppercase">Brand (본인)</span>
                                                         {chatProposal.brand_condition_confirmed ? (
                                                             <Button size="sm" className="h-8 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 font-bold shadow-none border border-indigo-200 pointer-events-none">
                                                                 <BadgeCheck className="mr-1.5 h-4 w-4" /> 확정 완료
@@ -2363,10 +2366,10 @@ function BrandDashboardContent() {
                                         )}
                                     </div>
                                     {/* Right Panel: Chat Stream */}
-                                    <div className="flex-1 flex flex-col min-w-0 bg-slate-50/30">
+                                    <div className="flex-1 flex flex-col min-w-0 bg-muted/30/30">
                                         <div className="flex-1 overflow-y-auto p-8 space-y-6" ref={workspaceChatRef}>
                                             <div className="flex justify-center pb-4">
-                                                <span className="text-[10px] text-slate-300 bg-slate-100 px-3 py-1 rounded-full">
+                                                <span className="text-[10px] text-slate-300 bg-muted px-3 py-1 rounded-full">
                                                     채팅 내역의 시작입니다
                                                 </span>
                                             </div>
@@ -2415,13 +2418,13 @@ function BrandDashboardContent() {
                                                         return (
                                                             <div className="flex justify-end animate-in fade-in slide-in-from-right-2 delay-150 mt-4">
                                                                 <div className="max-w-[75%] flex flex-col items-end">
-                                                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl rounded-tr-none p-4 shadow-sm text-left relative">
+                                                                    <div className="bg-muted/30 border border-border rounded-2xl rounded-tr-none p-4 shadow-sm text-left relative">
                                                                         <div className="w-[280px]">
-                                                                            <div className="flex items-center gap-2 mb-3 border-b border-slate-100 pb-2">
+                                                                            <div className="flex items-center gap-2 mb-3 border-b border-border/50 pb-2">
                                                                                 <div className="bg-emerald-100 text-emerald-600 p-1 rounded-md">
                                                                                     <Package className="h-4 w-4" />
                                                                                 </div>
-                                                                                <span className="font-bold text-sm text-slate-700">제작 가이드 {pName}</span>
+                                                                                <span className="font-bold text-sm text-foreground/90">제작 가이드 {pName}</span>
                                                                             </div>
                                                                             {gData.imageUrl && (
                                                                                 <div className="mb-3 rounded-md overflow-hidden h-32 bg-slate-200">
@@ -2432,13 +2435,13 @@ function BrandDashboardContent() {
                                                                                 {gData.sellingPoints && (
                                                                                     <div>
                                                                                         <strong className="block text-emerald-700 mb-1">✨ 소구 포인트</strong>
-                                                                                        <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{gData.sellingPoints}</p>
+                                                                                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{gData.sellingPoints}</p>
                                                                                     </div>
                                                                                 )}
                                                                                 {gData.requiredShots && (
                                                                                     <div>
                                                                                         <strong className="block text-red-600 mb-1">📸 필수 촬영 컷</strong>
-                                                                                        <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{gData.requiredShots}</p>
+                                                                                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{gData.requiredShots}</p>
                                                                                     </div>
                                                                                 )}
                                                                             </div>
@@ -2458,7 +2461,7 @@ function BrandDashboardContent() {
                                                                 <div className={`max-w-[75%] flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
                                                                     <div className={`p-4 rounded-2xl text-sm shadow-sm leading-relaxed transition-all hover:shadow-md ${msg.senderId === user?.id
                                                                         ? 'bg-primary text-white rounded-tr-none'
-                                                                        : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
+                                                                        : 'bg-white border border-border text-foreground rounded-tl-none'
                                                                         }`}>
                                                                         {msg.content.startsWith('[RATE_CARD_JSON]') ? (
                                                                             (() => {
@@ -2476,12 +2479,12 @@ function BrandDashboardContent() {
                                                                                     const jsonStr = msg.content.replace('[GUIDE_CARD_JSON]', '');
                                                                                     const guideData = JSON.parse(jsonStr);
                                                                                     return (
-                                                                                        <div className="w-[280px] bg-slate-50 border border-slate-200 rounded-lg p-4 overflow-hidden text-left">
-                                                                                            <div className="flex items-center gap-2 mb-3 border-b border-slate-100 pb-2">
+                                                                                        <div className="w-[280px] bg-muted/30 border border-border rounded-lg p-4 overflow-hidden text-left">
+                                                                                            <div className="flex items-center gap-2 mb-3 border-b border-border/50 pb-2">
                                                                                                 <div className="bg-emerald-100 text-emerald-600 p-1 rounded-md">
                                                                                                     <Package className="h-4 w-4" />
                                                                                                 </div>
-                                                                                                <span className="font-bold text-sm text-slate-700">제작 가이드 (자동 발송)</span>
+                                                                                                <span className="font-bold text-sm text-foreground/90">제작 가이드 (자동 발송)</span>
                                                                                             </div>
                                                                                             {guideData.imageUrl && (
                                                                                                 <div className="mb-3 rounded-md overflow-hidden h-32 bg-slate-200">
@@ -2492,13 +2495,13 @@ function BrandDashboardContent() {
                                                                                                 {guideData.sellingPoints && (
                                                                                                     <div>
                                                                                                         <strong className="block text-emerald-700 mb-1">✨ 소구 포인트</strong>
-                                                                                                        <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{guideData.sellingPoints}</p>
+                                                                                                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{guideData.sellingPoints}</p>
                                                                                                     </div>
                                                                                                 )}
                                                                                                 {guideData.requiredShots && (
                                                                                                     <div>
                                                                                                         <strong className="block text-red-600 mb-1">📸 필수 촬영 컷</strong>
-                                                                                                        <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{guideData.requiredShots}</p>
+                                                                                                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{guideData.requiredShots}</p>
                                                                                                     </div>
                                                                                                 )}
                                                                                             </div>
@@ -2512,7 +2515,7 @@ function BrandDashboardContent() {
                                                                             msg.content
                                                                         )}
                                                                     </div>
-                                                                    <span className="text-[10px] text-slate-400 mt-2 font-medium px-1">
+                                                                    <span className="text-[10px] text-muted-foreground/70 mt-2 font-medium px-1">
                                                                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                     </span>
                                                                 </div>
@@ -2526,13 +2529,13 @@ function BrandDashboardContent() {
                                         </div>
 
                                         {/* Message Input Area */}
-                                        <div className="p-4 bg-white border-t border-slate-200 z-10 sticky bottom-0">
+                                        <div className="p-4 bg-white border-t border-border z-10 sticky bottom-0">
                                             <div className="flex gap-2 items-end max-w-4xl mx-auto">
                                                 <Textarea
                                                     value={chatMessage}
                                                     onChange={(e) => setChatMessage(e.target.value)}
                                                     placeholder="메시지를 입력하세요..."
-                                                    className="min-h-[44px] max-h-[120px] resize-none border-slate-200 focus:border-primary focus:ring-primary/20 bg-slate-50/50"
+                                                    className="min-h-[44px] max-h-[120px] resize-none border-border focus:border-primary focus:ring-primary/20 bg-muted/30/50"
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter' && !e.shiftKey) {
                                                             e.preventDefault()
@@ -2554,22 +2557,22 @@ function BrandDashboardContent() {
                             </TabsContent>
 
                             {/* Contract Tab */}
-                            < TabsContent value="contract" className="flex-1 overflow-y-auto p-10 bg-slate-50 data-[state=active]:flex flex-col items-center" >
+                            < TabsContent value="contract" className="flex-1 overflow-y-auto p-10 bg-muted/30 data-[state=active]:flex flex-col items-center" >
                                 <div className="w-full max-w-3xl animate-in zoom-in-95 duration-300">
-                                    <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100 flex flex-col h-full">
+                                    <div className="bg-white p-10 rounded-3xl shadow-xl border border-border/50 flex flex-col h-full">
                                         <div className="text-center mb-10">
                                             <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 rotate-3">
                                                 <FileText className="h-10 w-10 text-primary" />
                                             </div>
-                                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">협업 전자 계약서</h3>
-                                            <p className="text-slate-500 mt-3 max-w-md mx-auto leading-relaxed">대화 내용을 분석하여 법적 효력을 갖춘 표준 계약서 초안을 생성합니다.</p>
+                                            <h3 className="text-2xl font-black text-foreground tracking-tight">협업 전자 계약서</h3>
+                                            <p className="text-muted-foreground mt-3 max-w-md mx-auto leading-relaxed">대화 내용을 분석하여 법적 효력을 갖춘 표준 계약서 초안을 생성합니다.</p>
                                         </div>
 
                                         <div className="space-y-5 flex-1 flex flex-col min-h-0">
                                             <div className="flex justify-between items-end px-1">
                                                 <div className="space-y-1">
-                                                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">계약 조항 초안</h4>
-                                                    <p className="text-xs text-slate-400 font-medium">실시간 합의 내용이 자동으로 반영됩니다.</p>
+                                                    <h4 className="text-sm font-black text-foreground uppercase tracking-tight">계약 조항 초안</h4>
+                                                    <p className="text-xs text-muted-foreground/70 font-medium">실시간 합의 내용이 자동으로 반영됩니다.</p>
                                                 </div>
                                                 <Button
                                                     variant="ghost"
@@ -2585,7 +2588,7 @@ function BrandDashboardContent() {
                                                 </Button>
                                             </div>
 
-                                            <div className="flex-1 p-8 bg-slate-50/80 rounded-3xl border border-slate-200 text-sm text-slate-700 leading-relaxed font-mono min-h-[300px] overflow-y-auto shadow-inner relative whitespace-pre-wrap selection:bg-primary/20">
+                                            <div className="flex-1 p-8 bg-muted/30/80 rounded-3xl border border-border text-sm text-foreground/90 leading-relaxed font-mono min-h-[300px] overflow-y-auto shadow-inner relative whitespace-pre-wrap selection:bg-primary/20">
                                                 {generatedContract ? (
                                                     <div>
                                                         <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
@@ -2608,7 +2611,7 @@ function BrandDashboardContent() {
                                                 <Button
                                                     variant="link"
                                                     size="sm"
-                                                    className="text-xs font-bold text-slate-500 underline underline-offset-4 decoration-slate-300 hover:text-primary transition-colors"
+                                                    className="text-xs font-bold text-muted-foreground underline underline-offset-4 decoration-slate-300 hover:text-primary transition-colors"
                                                     onClick={() => setIsFullContractOpen(true)}
                                                 >
                                                     계약서 전체 내용 본문 보기
@@ -2635,7 +2638,7 @@ function BrandDashboardContent() {
                                                 <Send className="mr-3 h-5 w-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                                                 {chatProposal?.contract_status === 'sent' ? "수정된 계약서 다시 보내기" : isSendingContract ? "발송 중..." : "작성된 계약서 크리에이터에게 발송하기"}
                                             </Button>
-                                            <p className="text-center text-[10px] text-slate-400 mt-4 font-medium uppercase tracking-widest">
+                                            <p className="text-center text-[10px] text-muted-foreground/70 mt-4 font-medium uppercase tracking-widest">
                                                 Electronic Signature Powered by CreadyPick Secure™
                                             </p>
                                         </div>
@@ -2643,31 +2646,31 @@ function BrandDashboardContent() {
                                 </div>
                             </TabsContent >
 
-                            <TabsContent value="shipping" className="flex-1 overflow-y-auto p-12 bg-slate-50 data-[state=active]:flex flex-col items-center">
+                            <TabsContent value="shipping" className="flex-1 overflow-y-auto p-12 bg-muted/30 data-[state=active]:flex flex-col items-center">
                                 <div className="w-full max-w-2xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     {/* Product Delivery Section */}
-                                    <div className="bg-white border border-slate-200 rounded-[30px] p-10 shadow-lg">
-                                        <div className="flex items-center gap-6 mb-8 border-b border-slate-100 pb-6">
+                                    <div className="bg-white border border-border rounded-[30px] p-10 shadow-lg">
+                                        <div className="flex items-center gap-6 mb-8 border-b border-border/50 pb-6">
                                             <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center shrink-0">
                                                 <Package className="h-8 w-8 text-indigo-600" />
                                             </div>
                                             <div>
-                                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">제품 배송 관리</h3>
-                                                <p className="text-slate-500 mt-1">크리에이터에게 제품을 발송하고 운송장 번호를 등록하세요.</p>
+                                                <h3 className="text-2xl font-black text-foreground tracking-tight">제품 배송 관리</h3>
+                                                <p className="text-muted-foreground mt-1">크리에이터에게 제품을 발송하고 운송장 번호를 등록하세요.</p>
                                             </div>
                                         </div>
 
                                         {chatProposal?.contract_status !== 'signed' ? (
-                                            <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed text-slate-400">
+                                            <div className="text-center py-10 bg-muted/30 rounded-2xl border border-dashed text-muted-foreground/70">
                                                 <p className="font-bold">🔒 계약이 완료되지 않았습니다</p>
                                                 <p className="text-xs mt-1">계약이 체결되면 배송 관리 기능이 활성화됩니다.</p>
                                             </div>
                                         ) : (
                                             <div className="space-y-6">
-                                                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                                                <div className="bg-muted/30 p-6 rounded-2xl border border-border">
                                                     <div className="flex justify-between items-center mb-4">
-                                                        <h4 className="font-bold text-slate-900 flex items-center gap-2">
-                                                            <MapPin className="h-4 w-4 text-slate-500" /> 배송지 정보
+                                                        <h4 className="font-bold text-foreground flex items-center gap-2">
+                                                            <MapPin className="h-4 w-4 text-muted-foreground" /> 배송지 정보
                                                         </h4>
                                                         {!chatProposal.shipping_address && (
                                                             <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded">미입력</span>
@@ -2677,28 +2680,28 @@ function BrandDashboardContent() {
                                                     {chatProposal.shipping_address ? (
                                                         <div className="space-y-3 text-sm">
                                                             <div className="flex gap-4">
-                                                                <span className="text-slate-500 w-16 shrink-0">받는 분</span>
-                                                                <span className="font-bold text-slate-900">{chatProposal.shipping_name}</span>
+                                                                <span className="text-muted-foreground w-16 shrink-0">받는 분</span>
+                                                                <span className="font-bold text-foreground">{chatProposal.shipping_name}</span>
                                                             </div>
                                                             <div className="flex gap-4">
-                                                                <span className="text-slate-500 w-16 shrink-0">연락처</span>
-                                                                <span className="font-bold text-slate-900">{chatProposal.shipping_phone}</span>
+                                                                <span className="text-muted-foreground w-16 shrink-0">연락처</span>
+                                                                <span className="font-bold text-foreground">{chatProposal.shipping_phone}</span>
                                                             </div>
                                                             <div className="flex gap-4">
-                                                                <span className="text-slate-500 w-16 shrink-0">주소</span>
-                                                                <span className="font-bold text-slate-900 break-keep">{chatProposal.shipping_address}</span>
+                                                                <span className="text-muted-foreground w-16 shrink-0">주소</span>
+                                                                <span className="font-bold text-foreground break-keep">{chatProposal.shipping_address}</span>
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="text-slate-400 text-sm py-4 text-center">
+                                                        <div className="text-muted-foreground/70 text-sm py-4 text-center">
                                                             크리에이터가 아직 배송 정보를 입력하지 않았습니다.
                                                         </div>
                                                     )}
                                                 </div>
 
-                                                <div className="border-t border-slate-100 pt-6">
-                                                    <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                                        <Package className="h-4 w-4 text-slate-500" /> 운송장 등록
+                                                <div className="border-t border-border/50 pt-6">
+                                                    <h4 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                                                        <Package className="h-4 w-4 text-muted-foreground" /> 운송장 등록
                                                     </h4>
 
                                                     {chatProposal.tracking_number ? (
@@ -2706,9 +2709,9 @@ function BrandDashboardContent() {
                                                             <div className="flex items-center justify-between">
                                                                 <div>
                                                                     <p className="text-emerald-700 font-bold text-xs uppercase mb-1">Status: Shipped</p>
-                                                                    <p className="text-slate-900 font-black text-lg">{chatProposal.tracking_number}</p>
+                                                                    <p className="text-foreground font-black text-lg">{chatProposal.tracking_number}</p>
                                                                 </div>
-                                                                <Button variant="outline" size="sm" className="h-8 text-xs bg-white text-slate-500 hover:text-slate-900"
+                                                                <Button variant="outline" size="sm" className="h-8 text-xs bg-white text-muted-foreground hover:text-foreground"
                                                                     onClick={() => {
                                                                         if (confirm("운송장 번호를 수정하시겠습니까?")) {
                                                                             setTrackingInput(chatProposal.tracking_number || "");
@@ -2749,17 +2752,17 @@ function BrandDashboardContent() {
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="content" className="flex-1 overflow-y-auto p-12 bg-slate-50 data-[state=active]:flex flex-col items-center">
+                            <TabsContent value="content" className="flex-1 overflow-y-auto p-12 bg-muted/30 data-[state=active]:flex flex-col items-center">
                                 <div className="w-full max-w-2xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     {/* Result Management Section */}
-                                    <div className={`border border-slate-200 rounded-[30px] p-8 transition-all ${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-50 border-indigo-200 shadow-xl' : 'bg-white shadow-lg opacity-90'}`}>
+                                    <div className={`border border-border rounded-[30px] p-8 transition-all ${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-50 border-indigo-200 shadow-xl' : 'bg-white shadow-lg opacity-90'}`}>
                                         <div className="flex items-center gap-4 mb-4">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center rotate-3 shadow-sm ${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-600 text-white' : 'bg-slate-100'}`}>
-                                                <Star className={`h-6 w-6 ${chatProposal?.content_submission_status === 'submitted' ? 'text-white' : 'text-slate-400'}`} />
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center rotate-3 shadow-sm ${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-600 text-white' : 'bg-muted'}`}>
+                                                <Star className={`h-6 w-6 ${chatProposal?.content_submission_status === 'submitted' ? 'text-white' : 'text-muted-foreground/70'}`} />
                                             </div>
-                                            <h3 className={`text-xl font-bold ${chatProposal?.content_submission_status === 'submitted' ? 'text-indigo-900' : 'text-slate-900'}`}>작업 결과물 관리</h3>
+                                            <h3 className={`text-xl font-bold ${chatProposal?.content_submission_status === 'submitted' ? 'text-indigo-900' : 'text-foreground'}`}>작업 결과물 관리</h3>
                                             {chatProposal?.content_submission_status && (
-                                                <Badge className={`${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-200 text-slate-600'}`}>
+                                                <Badge className={`${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-200 text-muted-foreground'}`}>
                                                     {chatProposal?.content_submission_status === 'submitted' ? '제출됨' : chatProposal?.content_submission_status}
                                                 </Badge>
                                             )}
@@ -2768,7 +2771,7 @@ function BrandDashboardContent() {
                                         {/* Work Submission Display */}
                                         {(chatProposal?.content_submission_url || chatProposal?.content_submission_file_url) ? (
                                             <div className="space-y-4">
-                                                <p className="text-slate-600 mb-2 text-sm font-medium">크리에이터가 작업물을 제출했습니다.</p>
+                                                <p className="text-muted-foreground mb-2 text-sm font-medium">크리에이터가 작업물을 제출했습니다.</p>
 
                                                 {/* Embedded Work Preview for Brand */}
                                                 <div className="mb-6 overflow-hidden rounded-xl border border-indigo-100 bg-white shadow-sm">
@@ -2794,14 +2797,14 @@ function BrandDashboardContent() {
                                                             </div>
                                                         </div>
                                                     ) : chatProposal.content_submission_url ? (
-                                                        <div className="aspect-video w-full bg-slate-100 flex flex-col items-center justify-center p-6 text-center">
+                                                        <div className="aspect-video w-full bg-muted flex flex-col items-center justify-center p-6 text-center">
                                                             <div className="h-10 w-10 rounded-full bg-indigo-50 flex items-center justify-center mb-3">
                                                                 <ExternalLink className="h-5 w-5 text-indigo-500" />
                                                             </div>
-                                                            <p className="text-sm font-bold text-slate-900 mb-1 truncate max-w-full px-4">
+                                                            <p className="text-sm font-bold text-foreground mb-1 truncate max-w-full px-4">
                                                                 {chatProposal.content_submission_url}
                                                             </p>
-                                                            <p className="text-xs text-slate-500 mb-4">제출된 외부 링크입니다.</p>
+                                                            <p className="text-xs text-muted-foreground mb-4">제출된 외부 링크입니다.</p>
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
@@ -2812,18 +2815,18 @@ function BrandDashboardContent() {
                                                             </Button>
                                                         </div>
                                                     ) : (
-                                                        <div className="p-12 text-center text-slate-400">
+                                                        <div className="p-12 text-center text-muted-foreground/70">
                                                             <p className="text-sm">제출된 내용이 없습니다.</p>
                                                         </div>
                                                     )}
 
                                                     {(chatProposal.content_submission_url || chatProposal.content_submission_file_url) && (
-                                                        <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                                                        <div className="p-3 bg-muted/30 border-t border-border/50 flex items-center justify-between">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-[10px] text-white bg-indigo-500 px-1.5 py-0.5 rounded font-bold">
                                                                     {chatProposal.content_submission_file_url ? 'FILE' : 'LINK'}
                                                                 </span>
-                                                                <span className="text-[10px] text-slate-500 font-medium">
+                                                                <span className="text-[10px] text-muted-foreground font-medium">
                                                                     {chatProposal.content_submission_file_url
                                                                         ? chatProposal.content_submission_file_url.split('/').pop()?.split('_v')[0]
                                                                         : chatProposal.content_submission_url
@@ -2889,7 +2892,7 @@ function BrandDashboardContent() {
                                                                     alert("오류가 발생했습니다.");
                                                                 }
                                                             }}
-                                                            className={`${chatProposal?.content_submission_status === 'approved' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'} text-white font-bold transition-all`}
+                                                            className={`${chatProposal?.content_submission_status === 'approved' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-200 text-muted-foreground/70 cursor-not-allowed'} text-white font-bold transition-all`}
                                                         >
                                                             프로젝트 최종 완료
                                                         </Button>
@@ -2897,7 +2900,7 @@ function BrandDashboardContent() {
                                                 )}
                                             </div>
                                         ) : (
-                                            <div className="text-center py-20 bg-slate-50 rounded-[20px] border border-dashed text-slate-400">
+                                            <div className="text-center py-20 bg-muted/30 rounded-[20px] border border-dashed text-muted-foreground/70">
                                                 <div className="h-16 w-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
                                                     <Clock className="h-8 w-8 text-slate-300" />
                                                 </div>
@@ -2908,16 +2911,16 @@ function BrandDashboardContent() {
                                     </div>
 
                                     {/* Feedback Section Integrated inside Content Tab */}
-                                    <div className="bg-white border border-slate-200 rounded-[30px] p-8 shadow-lg">
+                                    <div className="bg-white border border-border rounded-[30px] p-8 shadow-lg">
                                         <div className="flex items-center gap-2 mb-6">
                                             <div className="h-8 w-8 bg-indigo-50 rounded-lg flex items-center justify-center">
                                                 <Send className="h-4 w-4 text-indigo-600" />
                                             </div>
-                                            <h4 className="text-lg font-bold text-slate-900">작업물 피드백</h4>
+                                            <h4 className="text-lg font-bold text-foreground">작업물 피드백</h4>
                                             <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold ml-2">Dedicated Feed</span>
                                         </div>
 
-                                        <div className="bg-slate-50/50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col h-[400px]">
+                                        <div className="bg-muted/30/50 rounded-2xl border border-border overflow-hidden flex flex-col h-[400px]">
                                             {/* Feedback Messages List */}
                                             <div className="flex-1 overflow-y-auto p-6 space-y-4" ref={workFeedbackChatRef}>
                                                 {contextSubmissionFeedback
@@ -2929,7 +2932,7 @@ function BrandDashboardContent() {
                                                             : f.brand_proposal_id === chatProposal?.id?.toString()
                                                     })
                                                     .length === 0 ? (
-                                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 opacity-60">
+                                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground/70 gap-2 opacity-60">
                                                         <div className="p-3 bg-white rounded-full shadow-sm">
                                                             <Info className="h-5 w-5" />
                                                         </div>
@@ -2950,11 +2953,11 @@ function BrandDashboardContent() {
                                                                 <div className={`max-w-[85%] ${f.sender_id === user?.id ? 'items-end' : 'items-start'} flex flex-col`}>
                                                                     <div className={`p-3 rounded-2xl text-sm shadow-sm ${f.sender_id === user?.id
                                                                         ? 'bg-indigo-600 text-white rounded-tr-none'
-                                                                        : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
+                                                                        : 'bg-white border border-border text-foreground rounded-tl-none'
                                                                         }`}>
                                                                         {f.content}
                                                                     </div>
-                                                                    <span className="text-[9px] text-slate-400 mt-1 px-1">
+                                                                    <span className="text-[9px] text-muted-foreground/70 mt-1 px-1">
                                                                         {new Date(f.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                     </span>
                                                                 </div>
@@ -2964,11 +2967,11 @@ function BrandDashboardContent() {
                                             </div>
 
                                             {/* Feedback Input */}
-                                            <div className="p-4 bg-white border-t border-slate-200">
+                                            <div className="p-4 bg-white border-t border-border">
                                                 <div className="flex gap-2">
                                                     <Input
                                                         placeholder="피드백을 입력하세요..."
-                                                        className="h-10 text-sm bg-slate-50 border-none focus:ring-1 focus:ring-indigo-600/20"
+                                                        className="h-10 text-sm bg-muted/30 border-none focus:ring-1 focus:ring-indigo-600/20"
                                                         value={feedbackMsg}
                                                         onChange={(e) => setFeedbackMsg(e.target.value)}
                                                         onKeyDown={(e) => {
@@ -3006,7 +3009,7 @@ function BrandDashboardContent() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                        <div className="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 overflow-hidden relative group">
+                        <div className="border-2 border-dashed border-slate-300 rounded-xl bg-muted/30 overflow-hidden relative group">
                             <SignatureCanvas
                                 ref={sigCanvas}
                                 penColor="black"
@@ -3019,12 +3022,12 @@ function BrandDashboardContent() {
                                 ✍️ Sign Here
                             </div>
                         </div>
-                        <div className="flex justify-between items-center mt-2 text-xs text-slate-500">
+                        <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
                             <span>마우스나 터치로 서명하세요.</span>
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 text-xs text-slate-400 hover:text-red-500"
+                                className="h-6 text-xs text-muted-foreground/70 hover:text-red-500"
                                 onClick={() => sigCanvas.current.clear()}
                             >
                                 <X className="h-3 w-3 mr-1" /> 초기화
@@ -3048,7 +3051,7 @@ function BrandDashboardContent() {
                         <DialogTitle>표준 광고 협업 계약서</DialogTitle>
                         <DialogDescription>작성된 계약서의 전체 내용입니다.</DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto p-6 bg-slate-50 rounded-xl border border-slate-200 font-mono text-sm whitespace-pre-wrap">
+                    <div className="flex-1 overflow-y-auto p-6 bg-muted/30 rounded-xl border border-border font-mono text-sm whitespace-pre-wrap">
                         {generatedContract || `제 1조 [목적]
 본 계약은 '갑'(${user?.name || '브랜드'})과 '을'(${chatProposal?.influencer_name || '크리에이터'})간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.
 
@@ -3075,16 +3078,16 @@ function BrandDashboardContent() {
             <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
                 <AlertDialogContent className="bg-white rounded-2xl border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-slate-900">
+                        <AlertDialogTitle className="text-xl font-bold text-foreground">
                             조건을 최종 확정하시겠습니까?
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-500 text-sm leading-relaxed">
+                        <AlertDialogDescription className="text-muted-foreground text-sm leading-relaxed">
                             현재 입력된 날짜 및 조건으로 확정됩니다.<br />
                             양측이 모두 확정하면 계약서 작성이 가능해집니다.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl border-0 bg-slate-100 hover:bg-slate-200 text-slate-600">취소</AlertDialogCancel>
+                        <AlertDialogCancel className="rounded-xl border-0 bg-muted hover:bg-slate-200 text-muted-foreground">취소</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={executeConfirmCondition}
                             className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold"

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { UnifiedProvider } from "@/components/providers/unified-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { SiteFooter } from "@/components/site-footer";
 
 const geistSans = Geist({
@@ -56,13 +57,20 @@ export default async function RootLayout({
   } = await supabase.auth.getSession();
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <UnifiedProvider>
-          {children}
-          <SiteFooter />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <SiteFooter />
+          </ThemeProvider>
         </UnifiedProvider>
       </body>
     </html>

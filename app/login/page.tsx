@@ -141,7 +141,7 @@ export default function LoginPage() {
                                         />
                                     </div>
                                     {error && (
-                                        <div className="text-sm text-red-500 bg-red-50 p-3 rounded-md flex items-center gap-2">
+                                        <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-md flex items-center gap-2">
                                             <AlertCircle className="h-4 w-4" />
                                             {error}
                                         </div>

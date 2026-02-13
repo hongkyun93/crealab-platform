@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { usePlatform } from "@/components/providers/legacy-platform-hook"
 import { LogOut, Settings, User, Shield, Menu } from "lucide-react"
+import { ModeToggle } from "@/components/ui/mode-toggle"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -75,7 +76,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-6 flex items-center space-x-2">
                         <span className="font-bold text-xl tracking-tight">CreadyPick.</span>
-                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full">V2.0</span>
+                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">v2.2</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link
@@ -151,6 +152,7 @@ export function SiteHeader() {
                     </div>
                 </div>
                 <div className="ml-auto flex items-center space-x-4">
+                    <ModeToggle />
                     {user ? (
                         <div className="flex items-center gap-4">
                             {/* Notification Bell */}
@@ -176,7 +178,7 @@ export function SiteHeader() {
                                                 {notifications.map((n) => (
                                                     <div
                                                         key={n.id}
-                                                        className={`p-4 text-sm hover:bg-muted/50 cursor-pointer transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}
+                                                        className={`p-4 text-sm hover:bg-muted/50 cursor-pointer transition-colors ${!n.is_read ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
                                                         onClick={() => handleNotificationClick(n)}
                                                     >
                                                         <div className="font-medium mb-1">{n.content}</div>

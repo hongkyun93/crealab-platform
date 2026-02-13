@@ -75,7 +75,7 @@ export function CampaignProvider({ children, userId, userType }: { children: Rea
                     budget: c.budget?.toString() || '0',
                     target: c.target_audience || '',
                     description: c.description || '',
-                    image: c.image_url,
+                    image: c.image || c.image_url,
                     date: new Date(c.created_at).toISOString().split('T')[0],
                     eventDate: c.event_date,
                     postingDate: c.posting_date,
@@ -84,6 +84,7 @@ export function CampaignProvider({ children, userId, userType }: { children: Rea
                     tags: c.tags || [],
                     isMock: false,
                     // New Fields
+                    title: c.title,
                     recruitment_count: c.recruitment_count,
                     recruitment_deadline: c.recruitment_deadline,
                     channels: c.channels || [],

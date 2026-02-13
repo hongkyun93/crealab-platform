@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Calendar, Save, Trash2, Package, Send } from "lucide-react"
+import { ArrowLeft, Calendar, Save, Trash2, Package, Send, Globe, Lock } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
@@ -56,6 +56,7 @@ export default function EditEventPage() {
     const [targetProduct, setTargetProduct] = useState("")
     const [description, setDescription] = useState("")
     const [guide, setGuide] = useState("")
+    const [isPrivate, setIsPrivate] = useState(false)
 
     // Load Event Data
     useEffect(() => {
@@ -88,6 +89,7 @@ export default function EditEventPage() {
                 setTitle(event.event)
                 setDescription(event.description)
                 setGuide(event.guide || "")
+                setIsPrivate(event.isPrivate || false)
                 setTargetProduct(event.targetProduct || "")
 
                 // Parse Event Date
@@ -164,7 +166,8 @@ export default function EditEventPage() {
             targetProduct: targetProduct || "미정",
             eventDate: `${eventYear}년 ${eventMonth}`,
             postingDate: isDateFlexible ? "" : `${postingYear}년 ${postingMonth}`,
-            dateFlexible: isDateFlexible
+            dateFlexible: isDateFlexible,
+            isPrivate: isPrivate
         })
 
         if (success) {
@@ -374,6 +377,40 @@ export default function EditEventPage() {
                             <p className="text-xs text-primary/80 font-medium">
                                 ✨ 꿀팁: 가이드를 작성하면 브랜드로부터 광고 제안을 받을 확률이 높아져요!
                             </p>
+
+                        </div>
+
+                        <div className="space-y-3">
+                            <Label>공개 범위 설정</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div
+                                    className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${!isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                                    onClick={() => setIsPrivate(false)}
+                                >
+                                    <Globe className={`h-5 w-5 mt-0.5 ${!isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                                    <div>
+                                        <div className={`font-medium ${!isPrivate ? "text-primary" : "text-foreground"}`}>전체 공개 (Public)</div>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            브랜드가 내 모먼트를 검색하고 제안을 보낼 수 있습니다.
+                                        </p>
+                                    </div>
+                                    {!isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
+                                </div>
+
+                                <div
+                                    className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                                    onClick={() => setIsPrivate(true)}
+                                >
+                                    <Lock className={`h-5 w-5 mt-0.5 ${isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                                    <div>
+                                        <div className={`font-medium ${isPrivate ? "text-primary" : "text-foreground"}`}>나만 보기 (Private)</div>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            다른 사람에게 노출되지 않으며, 개인 일정 관리용으로 저장됩니다.
+                                        </p>
+                                    </div>
+                                    {isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
+                                </div>
+                            </div>
                         </div>
 
                         <div className="flex justify-end gap-4 pt-4">
@@ -386,7 +423,7 @@ export default function EditEventPage() {
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     )
 }

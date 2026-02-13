@@ -14,6 +14,7 @@ export async function createCampaign(formData: FormData) {
     }
 
     // 2. Get Data from Form
+    const title = formData.get('title') as string
     const product = formData.get('product') as string
     const category = formData.get('category') as string
     const budget = formData.get('budget') as string
@@ -29,7 +30,7 @@ export async function createCampaign(formData: FormData) {
         .from('campaigns')
         .insert({
             brand_id: user.id,
-            title: `[${category}] ${product} 캠페인`,
+            title: title || `[${category}] ${product} 캠페인`, // Fallback for safety
             product_name: product,
             category: category,
             budget: budget,
@@ -71,6 +72,7 @@ export async function updateCampaign(id: string, formData: FormData) {
     }
 
     // 2. Get Data from Form
+    const title = formData.get('title') as string
     const product = formData.get('product') as string
     const category = formData.get('category') as string
     const budget = formData.get('budget') as string
@@ -85,7 +87,7 @@ export async function updateCampaign(id: string, formData: FormData) {
     const { error } = await supabase
         .from('campaigns')
         .update({
-            title: `[${category}] ${product} 캠페인`,
+            title: title || `[${category}] ${product} 캠페인`, // Fallback for safety
             product_name: product,
             category: category,
             budget: budget,
