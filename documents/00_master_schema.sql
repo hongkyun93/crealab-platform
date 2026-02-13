@@ -625,6 +625,7 @@ CREATE POLICY "Involved parties can update status"
 ON public.moment_proposals FOR UPDATE 
 USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
 
+DROP POLICY IF EXISTS "Users can delete their own moment proposals" ON moment_proposals;
 CREATE POLICY "Users can delete their own moment proposals" 
 ON public.moment_proposals FOR DELETE 
 USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
