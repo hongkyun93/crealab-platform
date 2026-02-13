@@ -281,13 +281,17 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     // Fetch on mount
     useEffect(() => {
         if (userId) {
+            setIsLoading(true)
             Promise.all([
                 fetchCampaignProposals(userId),
                 fetchBrandProposals(userId)
-            ])
+            ]).finally(() => {
+                setIsLoading(false)
+            })
         } else {
             setCampaignProposals([])
             setBrandProposals([])
+            setIsLoading(false)
         }
     }, [userId])
 
