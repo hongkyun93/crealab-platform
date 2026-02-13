@@ -750,12 +750,27 @@ function InfluencerDashboardContent() {
             <div className="space-y-4">
                 {items.map((proposal) => (
                     <Card key={proposal.id} className={`p-6 border-2 bg-card hover:bg-accent/5 cursor-pointer transition-all
-                        ${type === 'active' ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]' :
-                            type === 'inbound' ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]' :
-                                type === 'outbound' ? 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_25px_rgba(168,85,247,0.5)]' :
-                                    type === 'rejected' ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_25px_rgba(239,68,68,0.5)]' :
-                                        type === 'completed' ? 'border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.3)] hover:shadow-[0_0_25px_rgba(148,163,184,0.5)]' :
-                                            'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]'}
+                        ${type === 'all'
+                            ? (proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed'
+                                ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]'  // Active
+                                : proposal.status === 'completed'
+                                    ? 'border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.3)] hover:shadow-[0_0_25px_rgba(148,163,184,0.5)]'  // Completed - Gray
+                                    : proposal.status === 'rejected'
+                                        ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_25px_rgba(239,68,68,0.5)]'  // Rejected
+                                        : proposal.type === 'brand_offer'
+                                            ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]'  // Inbound
+                                            : 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_25px_rgba(168,85,247,0.5)]')  // Outbound
+                            : type === 'active'
+                                ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]'
+                                : type === 'inbound'
+                                    ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]'
+                                    : type === 'outbound'
+                                        ? 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_25px_rgba(168,85,247,0.5)]'
+                                        : type === 'rejected'
+                                            ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_25px_rgba(239,68,68,0.5)]'
+                                            : type === 'completed'
+                                                ? 'border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.3)] hover:shadow-[0_0_25px_rgba(148,163,184,0.5)]'
+                                                : 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]'}
                     `} onClick={() => {
                             if (type === 'active') {
                                 setChatProposal(proposal);
