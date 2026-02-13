@@ -65,6 +65,8 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { toast } from "sonner"
 import { useEffect, useState, useRef, useCallback } from "react"
 
 import { useRouter, useSearchParams } from "next/navigation"
@@ -179,6 +181,15 @@ function InfluencerDashboardContent() {
     const [isProductGuideOpen, setIsProductGuideOpen] = useState(false)
     const [guideProduct, setGuideProduct] = useState<any>(null)
 
+    // Confirm Dialog State for Accept/Reject
+    const [confirmDialog, setConfirmDialog] = useState<{
+        open: boolean
+        title: string
+        description: string
+        onConfirm: () => Promise<void>
+        variant?: 'default' | 'destructive'
+    } | null>(null)
+
     // Content Submission State
     const [submissionFile, setSubmissionFile] = useState<File | null>(null)
     const [submissionUrl, setSubmissionUrl] = useState("")
@@ -263,53 +274,54 @@ function InfluencerDashboardContent() {
     }
 
     // Accept Proposal Handler
-    const handleAcceptProposal = async (e: React.MouseEvent, proposalId: string) => {
+    const handleAcceptProposal = (e: React.MouseEvent, proposalId: string) => {
         e.stopPropagation() // Prevent card click
 
-        if (!confirm('이 제안을 수락하시겠습니까?')) return
+        setConfirmDialog({
+            open: true,
+            title: '제안 수락',
+            description: '이 제안을 수락하시겠습니까?',
+            onConfirm: async () => {
+                const { error } = await supabase
+                    .from('moment_proposals')
+                    .update({ status: 'accepted' })
+                    .eq('id', proposalId)
 
-        try {
-            const { error } = await supabase
-                .from('moment_proposals')
-                .update({ status: 'accepted' })
-                .eq('id', proposalId)
+                if (error) {
+                    toast.error('수락 실패: ' + error.message)
+                    throw error
+                }
 
-            if (error) {
-                alert('수락 실패: ' + error.message)
-                return
+                await refreshData() // Refresh proposal list
+                toast.success('제안을 수락했습니다!')
             }
-
-            alert('제안을 수락했습니다!')
-            await refreshData() // Refresh proposal list
-        } catch (err) {
-            console.error('Accept proposal error:', err)
-            alert('수락 중 오류가 발생했습니다.')
-        }
+        })
     }
 
     // Reject Proposal Handler
-    const handleRejectProposal = async (e: React.MouseEvent, proposalId: string) => {
+    const handleRejectProposal = (e: React.MouseEvent, proposalId: string) => {
         e.stopPropagation() // Prevent card click
 
-        if (!confirm('이 제안을 거절하시겠습니까?')) return
+        setConfirmDialog({
+            open: true,
+            title: '제안 거절',
+            description: '이 제안을 거절하시겠습니까?',
+            variant: 'destructive',
+            onConfirm: async () => {
+                const { error } = await supabase
+                    .from('moment_proposals')
+                    .update({ status: 'rejected' })
+                    .eq('id', proposalId)
 
-        try {
-            const { error } = await supabase
-                .from('moment_proposals')
-                .update({ status: 'rejected' })
-                .eq('id', proposalId)
+                if (error) {
+                    toast.error('거절 실패: ' + error.message)
+                    throw error
+                }
 
-            if (error) {
-                alert('거절 실패: ' + error.message)
-                return
+                await refreshData()
+                toast.success('제안을 거절했습니다.')
             }
-
-            alert('제안을 거절했습니다.')
-            await refreshData()
-        } catch (err) {
-            console.error('Reject proposal error:', err)
-            alert('거절 중 오류가 발생했습니다.')
-        }
+        })
     }
 
     // Auto-open proposal from URL (Notification Redirect)
@@ -4536,6 +4548,18 @@ function InfluencerDashboardContent() {
                 onOpenChange={setShowReadonlyDialog}
                 proposal={selectedProposal}
             />
+
+            {/* Confirm Dialog for Accept/Reject Actions */}
+            {confirmDialog && (
+                <ConfirmDialog
+                    open={confirmDialog.open}
+                    onOpenChange={(open) => !open && setConfirmDialog(null)}
+                    title={confirmDialog.title}
+                    description={confirmDialog.description}
+                    onConfirm={confirmDialog.onConfirm}
+                    variant={confirmDialog.variant}
+                />
+            )}
         </div>
     )
 }
