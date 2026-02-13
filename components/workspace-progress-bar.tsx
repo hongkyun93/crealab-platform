@@ -13,7 +13,7 @@ type Props = {
 export function WorkspaceProgressBar({ status, contract_status, delivery_status, content_submission_status, className }: Props) {
     // Define steps
     const steps = [
-        { id: 1, label: "매칭 완료" },
+        { id: 1, label: "제안 됨" },
         { id: 2, label: "조건 조율" },
         { id: 3, label: "계약 체결" },
         { id: 4, label: "제품 배송" },

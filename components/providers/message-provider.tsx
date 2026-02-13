@@ -50,13 +50,20 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 .order('created_at', { ascending: true })
 
             if (error) {
-                console.error('[MessageProvider] Fetch error:', error)
-                console.error('[MessageProvider] Fetch error details:', {
-                    message: error.message,
-                    details: error.details,
-                    hint: error.hint,
-                    code: error.code
-                })
+                console.error('[MessageProvider] Fetch error:', error.message)
+
+                // Handle known error codes gracefully
+                if (error.code === '42P01') {
+                    console.warn('[MessageProvider] The "messages" table is missing')
+                    return
+                }
+                if (error.code === '42501') {
+                    console.warn('[MessageProvider] Permission denied for messages')
+                    return
+                }
+
+                // For unexpected errors, log details
+                console.error('[MessageProvider] Unexpected error:', { code: error.code, details: error.details })
                 return
             }
 
@@ -104,13 +111,20 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 .limit(50)
 
             if (error) {
-                console.error('[MessageProvider] Notifications error:', error)
-                console.error('[MessageProvider] Notifications error details:', {
-                    message: error.message,
-                    details: error.details,
-                    hint: error.hint,
-                    code: error.code
-                })
+                console.error('[MessageProvider] Notifications error:', error.message)
+
+                // Handle known error codes gracefully
+                if (error.code === '42P01') {
+                    console.warn('[MessageProvider] The "notifications" table is missing')
+                    return
+                }
+                if (error.code === '42501') {
+                    console.warn('[MessageProvider] Permission denied for notifications')
+                    return
+                }
+
+                // For unexpected errors, log details
+                console.error('[MessageProvider] Unexpected error:', { code: error.code, details: error.details })
                 return
             }
 

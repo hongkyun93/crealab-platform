@@ -210,38 +210,38 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
                     </div>
 
                     {(product.tags?.length || product.accountTag) && (
-                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
                             <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
                                 <div className="space-y-4 flex-1">
                                     {product.accountTag && (
                                         <div className="flex items-center gap-3">
-                                            <div className="bg-white p-2 rounded-full shadow-sm border border-slate-100">
-                                                <AtSign className="h-4 w-4 text-slate-600" />
+                                            <div className="bg-primary/10 p-2 rounded-full shadow-sm">
+                                                <AtSign className="h-4 w-4 text-primary" />
                                             </div>
-                                            <span className="font-bold text-slate-700">{product.accountTag}</span>
+                                            <span className="font-bold text-foreground">{product.accountTag}</span>
                                         </div>
                                     )}
                                     {product.tags && product.tags.length > 0 && (
                                         <div className="flex items-start gap-3">
-                                            <div className="bg-white p-2 rounded-full shadow-sm border border-slate-100 mt-1">
-                                                <Hash className="h-4 w-4 text-slate-600" />
+                                            <div className="bg-primary/10 p-2 rounded-full shadow-sm mt-1">
+                                                <Hash className="h-4 w-4 text-primary" />
                                             </div>
                                             <div className="flex flex-wrap gap-2">
                                                 {product.tags.map((tag: string, i: number) => (
-                                                    <span key={i} className="text-sm text-slate-600 bg-white px-2 py-1 rounded-md border border-slate-100">
+                                                    <span key={i} className="text-sm text-foreground bg-muted px-2 py-1 rounded-md border border-border/50">
                                                         {tag}
                                                     </span>
                                                 ))}
                                             </div>
                                         </div>
                                     )}
-                                    <div className="text-[10px] text-muted-foreground mt-2">
-                                        <span className="text-red-500 font-bold">*[광고] 또는 [협찬]</span> 문구를 상단에 필수로 기재해주세요.
+                                    <div className="text-[10px] text-muted-foreground mt-2 bg-destructive/10 p-2 rounded border border-destructive/20 inline-block">
+                                        <span className="text-destructive font-bold mr-1">*[광고] 또는 [협찬]</span> 문구를 상단에 필수로 기재해주세요.
                                     </div>
                                 </div>
                                 <Button
                                     variant="outline"
-                                    className="gap-2 shrink-0 h-10 border-slate-300 hover:bg-white hover:border-slate-400"
+                                    className="gap-2 shrink-0 h-10 hover:bg-muted"
                                     onClick={() => {
                                         const tags = product.tags ? product.tags.join(" ") : ""
                                         const account = product.accountTag || ""

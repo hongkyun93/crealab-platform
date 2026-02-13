@@ -13,7 +13,7 @@ import { CampaignDetailContent } from "@/components/campaign/campaign-detail-con
 
 interface MyCampaignsViewProps {
     myCampaigns: any[]
-    proposals: any[]
+    campaignProposals: any[]
     selectedCampaignId: string | null
     setSelectedCampaignId: (id: string | null) => void
     deleteCampaign: (id: string) => Promise<void>
@@ -23,7 +23,7 @@ interface MyCampaignsViewProps {
 
 export const MyCampaignsView = React.memo(function MyCampaignsView({
     myCampaigns,
-    proposals,
+    campaignProposals,
     selectedCampaignId,
     setSelectedCampaignId,
     deleteCampaign,
@@ -103,9 +103,9 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
     }, [selectedCampaign, optimisticImage])
 
     // Memoize campaign proposals filtering
-    const campaignProposals = useMemo(
-        () => proposals.filter(p => p.campaignId === selectedCampaign?.id && p.type === 'creator_apply'),
-        [proposals, selectedCampaign?.id]
+    const filteredProposals = useMemo(
+        () => campaignProposals.filter(p => p.campaignId === selectedCampaign?.id && p.type === 'creator_apply'),
+        [campaignProposals, selectedCampaign?.id]
     )
 
     // List View State (Moved up for Hook Rules)
@@ -172,7 +172,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                         </div>
 
                         <div className="bg-muted/10 rounded-xl border min-h-[400px] p-4">
-                            {campaignProposals.length === 0 ? (
+                            {filteredProposals.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3 py-10">
                                     <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
                                         <Bell className="h-5 w-5 opacity-30" />
@@ -181,7 +181,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {campaignProposals.map((p: any) => (
+                                    {filteredProposals.map((p: any) => (
                                         <Card key={p.id} className="overflow-hidden hover:shadow-md transition-all border-l-4 border-l-primary">
                                             <CardHeader className="p-4 pb-2">
                                                 <div className="flex justify-between items-start">
@@ -289,7 +289,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
             ) : (
                 <div className="space-y-4">
                     {filteredCampaigns.map((c) => {
-                        const appCount = proposals.filter(p => p.campaignId === c.id && p.type === 'creator_apply').length
+                        const appCount = campaignProposals.filter(p => p.campaignId === c.id && p.type === 'creator_apply').length
                         return (
                             <Card
                                 key={c.id}

@@ -82,6 +82,65 @@ export async function submitDirectProposal(data: any) {
         status: 'offered' // Force status
     }
 
+    // Check if it's a Moment Proposal
+    if (data.event_id) {
+        const momentProposalData = {
+            brand_id: user.id,
+            influencer_id: data.influencer_id,
+            moment_id: data.event_id,
+            message: data.message,
+            price_offer: data.compensation_amount ? parseInt(data.compensation_amount.replace(/[^0-9]/g, '')) : 0, // Clean price
+            status: 'offered',
+            conditions: {
+                group: 'moment_proposal',
+                product_name: data.product_name,
+                product_type: data.product_type,
+                has_incentive: data.has_incentive,
+                incentive_detail: data.incentive_detail,
+                content_type: data.content_type,
+                desired_date: data.desired_date,
+                date_flexible: data.date_flexible,
+                video_guide: data.video_guide,
+                condition_draft_submission_date: data.condition_draft_submission_date,
+                condition_final_submission_date: data.condition_final_submission_date,
+                condition_upload_date: data.condition_upload_date,
+                condition_secondary_usage_period: data.condition_secondary_usage_period
+            }
+        }
+
+        console.log('[submitDirectProposal] Inserting into moment_proposals:', momentProposalData)
+
+        const { data: result, error } = await supabase
+            .from('moment_proposals')
+            .insert(momentProposalData)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Moment Proposal Error:', error)
+            return { error: `모먼트 제안 실패: ${error.message}` }
+        }
+
+        // Notify
+        if (result.influencer_id) {
+            const brandName = user.user_metadata?.display_name || user.email?.split('@')[0] || "브랜드"
+            await supabase
+                .from('notifications')
+                .insert({
+                    recipient_id: result.influencer_id,
+                    sender_id: user.id,
+                    content: `${brandName}님이 모먼트 협업을 제안했습니다.`,
+                    type: 'proposal_received',
+                    reference_id: result.id,
+                    is_read: false
+                })
+        }
+
+        revalidatePath('/brand')
+        revalidatePath('/creator')
+        return { success: true, data: result }
+    }
+
     const { data: result, error } = await supabase
         .from('brand_proposals')
         .insert(proposalData)

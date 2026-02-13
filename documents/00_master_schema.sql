@@ -69,6 +69,20 @@ ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS usage_rights_pric
 ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS auto_dm_month integer;
 ALTER TABLE public.influencer_details ADD COLUMN IF NOT EXISTS auto_dm_price integer;
 
+-- 2.2a INSTAGRAM ACCOUNTS
+CREATE TABLE IF NOT EXISTS public.instagram_accounts (
+    user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE PRIMARY KEY,
+    instagram_user_id text,
+    access_token text,
+    page_id text,
+    username text,
+    profile_picture_url text,
+    follower_count integer,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+
 -- 2.3 LIFE MOMENTS (Influencer Events)
 CREATE TABLE IF NOT EXISTS public.life_moments (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -177,22 +191,7 @@ ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS selection_announcement_dat
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS min_followers integer;
 ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS max_followers integer;
 
--- 2.6 INFLUENCER EVENTS (Legacy Table - Keep for safety, mirrored to life_moments)
-CREATE TABLE IF NOT EXISTS public.influencer_events (
-  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-  influencer_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-  title text NOT NULL,
-  description text,
-  target_product text,
-  event_date text,
-  posting_date text,
-  category text,
-  tags text[],
-  is_verified boolean DEFAULT false,
-  status text DEFAULT 'recruiting',
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+
 
 -- 2.7 BRAND PROPOSALS (Direct Offers)
 CREATE TABLE IF NOT EXISTS public.brand_proposals (
@@ -249,8 +248,22 @@ CREATE TABLE IF NOT EXISTS public.brand_proposals (
   content_submission_file_url_2 text,
   content_submission_status_2 text DEFAULT 'pending',
   content_submission_date_2 TIMESTAMP WITH TIME ZONE,
-  content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9
+  content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9,
+  
+  -- Application Fields (Added for Campaign-style applications on Products)
+  motivation text,
+  content_plan text,
+  portfolio_links text[],
+  instagram_handle text,
+  insight_screenshot text
 );
+
+-- Force add columns for brand_proposals (Update Safety)
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS motivation text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS content_plan text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS portfolio_links text[];
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS instagram_handle text;
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS insight_screenshot text;
 
 -- 2.8 CAMPAIGN PROPOSALS (Applications)
 CREATE TABLE IF NOT EXISTS public.campaign_proposals (
@@ -304,6 +317,84 @@ CREATE TABLE IF NOT EXISTS public.campaign_proposals (
   content_submission_status_2 text DEFAULT 'pending',
   content_submission_date_2 TIMESTAMP WITH TIME ZONE,
   content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9
+);
+
+
+
+-- 2.8a MOMENT PROPOSALS (New)
+CREATE TABLE IF NOT EXISTS public.moment_proposals (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    
+    -- Relationships
+    brand_id UUID REFERENCES public.profiles(id) NOT NULL,
+    influencer_id UUID REFERENCES public.profiles(id) NOT NULL,
+    moment_id UUID REFERENCES public.life_moments(id) NOT NULL, -- Replaces event_id
+    product_id UUID REFERENCES public.brand_products(id), -- Optional product link
+    product_url TEXT,
+
+    -- Proposal Data (Copied from brand_proposals)
+    product_name TEXT NOT NULL,
+    product_type TEXT DEFAULT 'gift',
+    compensation_amount TEXT, 
+    has_incentive BOOLEAN DEFAULT FALSE,
+    incentive_detail TEXT,
+    content_type TEXT,
+    message TEXT,
+    status TEXT DEFAULT 'offered' CHECK (status IN ('offered', 'negotiating', 'accepted', 'rejected', 'completed', 'cancelled')),
+    
+    is_mock BOOLEAN DEFAULT FALSE,
+    contract_content TEXT,
+    contract_status TEXT DEFAULT 'none',
+    brand_signature TEXT,
+    influencer_signature TEXT,
+    brand_signed_at TIMESTAMP WITH TIME ZONE,
+    influencer_signed_at TIMESTAMP WITH TIME ZONE,
+    
+    shipping_name TEXT,
+    shipping_phone TEXT,
+    shipping_address TEXT,
+    tracking_number TEXT,
+    delivery_status TEXT DEFAULT 'pending',
+    
+    date_flexible BOOLEAN DEFAULT FALSE,
+    desired_date DATE,
+    video_guide TEXT DEFAULT 'brand_provided',
+
+    -- Condition Fields
+    condition_product_receipt_date TEXT,
+    condition_plan_sharing_date TEXT,
+    condition_draft_submission_date TEXT,
+    condition_final_submission_date TEXT,
+    condition_upload_date TEXT,
+    condition_maintenance_period TEXT,
+    condition_secondary_usage_period TEXT,
+    brand_condition_confirmed BOOLEAN DEFAULT FALSE,
+    influencer_condition_confirmed BOOLEAN DEFAULT FALSE,
+
+    -- Content Submission
+    content_submission_url TEXT,
+    content_submission_file_url TEXT,
+    content_submission_status TEXT DEFAULT 'pending',
+    content_submission_date TIMESTAMP WITH TIME ZONE,
+    content_submission_version NUMERIC(3,1) DEFAULT 1.0,
+
+    content_submission_url_2 TEXT,
+    content_submission_file_url_2 TEXT,
+    content_submission_status_2 TEXT DEFAULT 'pending',
+    content_submission_date_2 TIMESTAMP WITH TIME ZONE,
+    content_submission_version_2 NUMERIC(3,1) DEFAULT 0.9,
+    
+    -- Application Fields (If applicable, good to have for symmetry)
+    motivation TEXT,
+    content_plan TEXT,
+    portfolio_links TEXT[],
+    instagram_handle TEXT,
+    insight_screenshot TEXT,
+
+    price_offer BIGINT, -- Legacy/Specific to moment? Keep for safety
+    conditions JSONB DEFAULT '{}'::jsonb -- Legacy/Specific to moment? Keep for backwards compat
 );
 
 -- 2.9 MESSAGES
@@ -435,6 +526,19 @@ ALTER TABLE public.influencer_details ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brand_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.life_moments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
+
+-- 5.1.1 Campaigns (Public Read, Brand Write)
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Campaigns are viewable by everyone" ON campaigns;
+    DROP POLICY IF EXISTS "Brands can insert campaigns" ON campaigns;
+    DROP POLICY IF EXISTS "Brands can update campaigns" ON campaigns;
+    DROP POLICY IF EXISTS "Brands can delete campaigns" ON campaigns;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+CREATE POLICY "Campaigns are viewable by everyone" ON campaigns FOR SELECT USING ( true );
+CREATE POLICY "Brands can insert campaigns" ON campaigns FOR INSERT WITH CHECK ( auth.uid() = brand_id );
+CREATE POLICY "Brands can update campaigns" ON campaigns FOR UPDATE USING ( auth.uid() = brand_id );
+CREATE POLICY "Brands can delete campaigns" ON campaigns FOR DELETE USING ( auth.uid() = brand_id );
 ALTER TABLE public.campaign_proposals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brand_proposals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
@@ -466,6 +570,65 @@ CREATE POLICY "Brands can insert their own products" ON brand_products FOR INSER
 CREATE POLICY "Brands can update their own products" ON brand_products FOR UPDATE USING ( auth.uid() = brand_id );
 CREATE POLICY "Brands can delete their own products" ON brand_products FOR DELETE USING ( auth.uid() = brand_id );
 
+-- 5.3 Brand Proposals (Missing Policies for Influencers)
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Brand proposals are viewable by participants" ON brand_proposals;
+    DROP POLICY IF EXISTS "Brands can insert proposals" ON brand_proposals;
+    DROP POLICY IF EXISTS "Influencers can insert proposals" ON brand_proposals; -- NEW
+    DROP POLICY IF EXISTS "Participants can update proposals" ON brand_proposals;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+CREATE POLICY "Brand proposals are viewable by participants" ON brand_proposals FOR SELECT USING ( auth.uid() = brand_id OR auth.uid() = influencer_id );
+CREATE POLICY "Brands can insert proposals" ON brand_proposals FOR INSERT WITH CHECK ( auth.uid() = brand_id );
+CREATE POLICY "Influencers can insert proposals" ON brand_proposals FOR INSERT WITH CHECK ( auth.uid() = influencer_id ); -- NEW: Allow creators to apply
+CREATE POLICY "Participants can update proposals" ON brand_proposals FOR UPDATE USING ( auth.uid() = brand_id OR auth.uid() = influencer_id );
+
+-- 5.4 Campaign Proposals (Applications) - NEW SECTION
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Campaign proposals are viewable by participants" ON campaign_proposals;
+    DROP POLICY IF EXISTS "Influencers can insert campaign proposals" ON campaign_proposals;
+    DROP POLICY IF EXISTS "Participants can update campaign proposals" ON campaign_proposals;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+CREATE POLICY "Campaign proposals are viewable by participants" ON campaign_proposals FOR SELECT USING (
+    auth.uid() = influencer_id OR
+    EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = campaign_proposals.campaign_id AND c.brand_id = auth.uid())
+);
+
+CREATE POLICY "Influencers can insert campaign proposals" ON campaign_proposals FOR INSERT WITH CHECK (
+    auth.uid() = influencer_id
+);
+
+CREATE POLICY "Participants can update campaign proposals" ON campaign_proposals FOR UPDATE USING (
+    auth.uid() = influencer_id OR
+    EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = campaign_proposals.campaign_id AND c.brand_id = auth.uid())
+);
+
+-- 5.4a Moment Proposals
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Moment proposals are viewable by involved parties" ON moment_proposals;
+    DROP POLICY IF EXISTS "Brands can insert moment proposals" ON moment_proposals;
+    DROP POLICY IF EXISTS "Involved parties can update status" ON moment_proposals;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+ALTER TABLE public.moment_proposals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Moment proposals are viewable by involved parties" 
+ON public.moment_proposals FOR SELECT 
+USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
+
+CREATE POLICY "Brands can insert moment proposals" 
+ON public.moment_proposals FOR INSERT 
+WITH CHECK (auth.uid() = brand_id);
+
+CREATE POLICY "Involved parties can update status" 
+ON public.moment_proposals FOR UPDATE 
+USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
+
+CREATE POLICY "Users can delete their own moment proposals" 
+ON public.moment_proposals FOR DELETE 
+USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
+
 -- 5.3 Life Moments
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Life moments are viewable by everyone" ON life_moments;
@@ -477,6 +640,22 @@ CREATE POLICY "Life moments are viewable by everyone" ON life_moments FOR SELECT
 CREATE POLICY "Influencers can insert their own moments" ON life_moments FOR INSERT WITH CHECK ( auth.uid() = influencer_id );
 CREATE POLICY "Influencers can update their own moments" ON life_moments FOR UPDATE USING ( auth.uid() = influencer_id );
 CREATE POLICY "Influencers can delete their own moments" ON life_moments FOR DELETE USING ( auth.uid() = influencer_id );
+
+-- 5.3a Instagram Accounts
+ALTER TABLE public.instagram_accounts ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Users can view own instagram account" ON instagram_accounts;
+    DROP POLICY IF EXISTS "Users can insert own instagram account" ON instagram_accounts;
+    DROP POLICY IF EXISTS "Users can update own instagram account" ON instagram_accounts;
+    DROP POLICY IF EXISTS "Users can delete own instagram account" ON instagram_accounts;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+CREATE POLICY "Users can view own instagram account" ON instagram_accounts FOR SELECT USING ( auth.uid() = user_id );
+CREATE POLICY "Users can insert own instagram account" ON instagram_accounts FOR INSERT WITH CHECK ( auth.uid() = user_id );
+CREATE POLICY "Users can update own instagram account" ON instagram_accounts FOR UPDATE USING ( auth.uid() = user_id );
+CREATE POLICY "Users can delete own instagram account" ON instagram_accounts FOR DELETE USING ( auth.uid() = user_id );
+
 
 -- 5.4 Messages
 DROP POLICY IF EXISTS "Messages viewable by sender and receiver" ON messages;

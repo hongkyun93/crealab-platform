@@ -56,14 +56,21 @@ async function fetchUserEvents(userId: string): Promise<InfluencerEvent[]> {
         .order('created_at', { ascending: false })
 
     if (error) {
-        console.error('[useEvents] Fetch error:', error)
-        console.error('[useEvents] Fetch error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-        })
-        throw error
+        console.error('[useEvents] Fetch error:', error.message)
+
+        // Handle known error codes gracefully
+        if (error.code === '42P01') {
+            console.warn('[useEvents] The "life_moments" table is missing - returning empty array')
+            return []
+        }
+        if (error.code === '42501') {
+            console.warn('[useEvents] Permission denied - returning empty array')
+            return []
+        }
+
+        // For unexpected errors, still return empty but log full details
+        console.error('[useEvents] Unexpected error:', { code: error.code, details: error.details })
+        return []
     }
 
     const mapped = mapEvents(data || [])
@@ -87,14 +94,21 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
         .order('created_at', { ascending: false })
 
     if (error) {
-        console.error('[useEvents] Fetch All error:', error)
-        console.error('[useEvents] Fetch All error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-        })
-        throw error
+        console.error('[useEvents] Fetch All error:', error.message)
+
+        // Handle known error codes gracefully
+        if (error.code === '42P01') {
+            console.warn('[useEvents] The "life_moments" table is missing - returning empty array')
+            return []
+        }
+        if (error.code === '42501') {
+            console.warn('[useEvents] Permission denied - returning empty array')
+            return []
+        }
+
+        // For unexpected errors, still return empty but log full details
+        console.error('[useEvents] Unexpected error:', { code: error.code, details: error.details })
+        return []
     }
 
     // Fetch influencer_details separately

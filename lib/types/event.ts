@@ -7,6 +7,7 @@ export interface InfluencerEvent {
     avatar: string
     priceVideo?: number
     event: string // Title in DB
+    title?: string // Alias for event
     date: string
     description: string
     tags: string[]

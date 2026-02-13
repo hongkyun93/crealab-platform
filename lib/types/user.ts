@@ -23,6 +23,10 @@ export interface User {
     usageRightsPrice?: number
     autoDmMonth?: number
     autoDmPrice?: number
+
+    // Snake case aliases
+    price_video?: number
+    price_feed?: number
 }
 
 export interface AuthState {

@@ -61,14 +61,14 @@ export const BrandProductListView = React.memo(function BrandProductListView({
 
                             {/* Right: Price & Actions */}
                             <div className="flex items-center gap-6 shrink-0">
-                                <div className="text-right hidden sm:block">
+                                <div className="text-right hidden sm:block w-[80px]">
                                     <span className="text-[10px] text-muted-foreground block mb-0.5">소비자가</span>
                                     <span className="text-sm font-bold text-foreground whitespace-nowrap">
                                         {p.price > 0 ? `${p.price.toLocaleString()}원` : "가격 미정"}
                                     </span>
                                 </div>
 
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 w-[110px] justify-end">
                                     {p.link && (
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" asChild onClick={(e) => e.stopPropagation()} title="웹사이트 방문">
                                             <a href={p.link} target="_blank" rel="noopener noreferrer">

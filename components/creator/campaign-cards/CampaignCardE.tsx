@@ -17,74 +17,102 @@ export function CampaignCardE({ campaign: c, onClick, onApply }: CampaignCardEPr
     // Helper for channels
     const renderChannelIcon = (ch: string) => {
         switch (ch) {
-            case 'instagram': return '📸'
-            case 'youtube': return '▶️'
-            case 'tiktok': return '🎵'
-            case 'blog': return '📝'
-            case 'shorts': return '⚡'
-            case 'reels': return '🎞️'
-            default: return ch
+            case 'instagram': return <span className="text-pink-600 bg-pink-50 p-1 rounded-full text-xs">📸</span>
+            case 'youtube': return <span className="text-red-600 bg-red-50 p-1 rounded-full text-xs">▶️</span>
+            case 'tiktok': return <span className="text-black bg-gray-100 p-1 rounded-full text-xs">🎵</span>
+            case 'blog': return <span className="text-green-600 bg-green-50 p-1 rounded-full text-xs">📝</span>
+            case 'shorts': return <span className="text-red-600 bg-red-50 p-1 rounded-full text-xs">⚡</span>
+            case 'reels': return <span className="text-pink-600 bg-pink-50 p-1 rounded-full text-xs">🎞️</span>
+            default: return <span className="bg-muted p-1 rounded-full text-xs">{ch}</span>
         }
     }
 
     return (
         <Card
-            className="group flex items-center p-3 gap-4 hover:shadow-md transition-all cursor-pointer border-border/60 hover:border-primary/50 md:col-span-2 xl:col-span-3"
+            className="group flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4 hover:shadow-lg transition-all cursor-pointer border-border/60 hover:border-primary/50 relative overflow-hidden"
             onClick={onClick}
         >
+            {/* D-Day Badge (Mobile Overlay) */}
+            {c.recruitment_deadline && (
+                <div className="absolute top-0 right-0 sm:hidden">
+                    <Badge variant="secondary" className="rounded-none rounded-bl-lg bg-red-50 text-red-600 border-0 dark:bg-red-900/20 dark:text-red-400 font-bold">
+                        D-{Math.ceil((new Date(c.recruitment_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+                    </Badge>
+                </div>
+            )}
+
             {/* Thumbnail */}
-            <div className="h-16 w-16 md:h-20 md:w-20 rounded-md bg-muted shrink-0 overflow-hidden relative">
+            <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-lg bg-muted shrink-0 overflow-hidden relative border border-border/50">
                 {(c.image && c.image !== "📦") || c.product_image_url ? (
-                    <img src={c.image && c.image !== "📦" ? c.image : c.product_image_url} alt={c.product} className="w-full h-full object-cover" />
+                    <img src={c.image && c.image !== "📦" ? c.image : c.product_image_url} alt={c.product} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xl">📦</div>
+                    <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
                 )}
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0 grid md:grid-cols-[2fr_1fr_1fr] gap-4 items-center">
+            <div className="flex-1 min-w-0 grid sm:grid-cols-[2fr_1.2fr_auto] gap-4 w-full">
 
                 {/* Main Info */}
-                <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-[10px] h-5 px-1 bg-muted/50 border-0 shrink-0">{c.category}</Badge>
-                        <div className="flex gap-1 min-w-0">
-                            {c.channels?.slice(0, 3).map((channel: string) => (
-                                <span key={channel} className="text-xs shrink-0" title={channel}>{renderChannelIcon(channel)}</span>
+                <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-bold text-primary">{c.brand}</span>
+                        <span>|</span>
+                        <span>{c.category}</span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-bold truncate group-hover:text-primary transition-colors leading-tight">
+                        {c.title || c.product}
+                    </h3>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                        {c.tags?.slice(0, 3).map((tag, i) => (
+                            <span key={i} className="text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                                #{tag}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Details (Visible on all screens now) */}
+                <div className="flex flex-row sm:flex-col gap-3 sm:gap-1 text-sm border-t sm:border-t-0 border-border/50 pt-3 sm:pt-0">
+                    <div className="flex items-center justify-between sm:justify-start gap-2">
+                        <span className="text-muted-foreground text-xs w-12 shrink-0">제공 혜택</span>
+                        <span className="font-bold text-emerald-600 truncate">{c.budget || "협의"}</span>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-start gap-2">
+                        <span className="text-muted-foreground text-xs w-12 shrink-0">모집 인원</span>
+                        <span className="font-medium">{c.recruitment_count ? `${c.recruitment_count}명` : '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-start gap-2 sm:hidden">
+                        <span className="text-muted-foreground text-xs w-12 shrink-0">채널</span>
+                        <div className="flex -space-x-1">
+                            {c.channels?.map((channel: string) => (
+                                <span key={channel} title={channel}>{renderChannelIcon(channel)}</span>
                             ))}
                         </div>
                     </div>
-                    <h3 className="text-sm md:text-base font-bold truncate group-hover:text-primary transition-colors">
-                        {c.title || c.product}
-                    </h3>
-                    <div className="text-xs text-muted-foreground truncate">{c.brand} | {c.product}</div>
                 </div>
 
-                {/* Details (Hidden on small mobile) */}
-                <div className="hidden md:flex flex-col gap-1 text-xs">
-                    <div className="flex justify-between w-full max-w-[150px]">
-                        <span className="text-muted-foreground">제공</span>
-                        <span className="font-bold text-emerald-600">{c.budget || "협의"}</span>
-                    </div>
-                    <div className="flex justify-between w-full max-w-[150px]">
-                        <span className="text-muted-foreground">모집</span>
-                        <span className="font-medium">{c.recruitment_count ? `${c.recruitment_count}명` : '-'}</span>
-                    </div>
-                </div>
-
-                {/* Action & D-Day */}
-                <div className="flex items-center justify-end gap-3">
+                {/* Action & Meta (Desktop) */}
+                <div className="hidden sm:flex flex-col items-end gap-2 pl-4 border-l border-border/50">
                     {c.recruitment_deadline && (
-                        <div className="text-right">
-                            <Badge variant="secondary" className="bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400">
-                                D-{Math.ceil((new Date(c.recruitment_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
-                            </Badge>
-                        </div>
+                        <Badge variant="secondary" className="bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 font-bold whitespace-nowrap">
+                            D-{Math.ceil((new Date(c.recruitment_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+                        </Badge>
                     )}
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-primary/10 hover:text-primary" onClick={onApply}>
-                        <Send className="h-4 w-4" />
+                    <div className="flex gap-1 mb-2">
+                        {c.channels?.slice(0, 3).map((channel: string) => (
+                            <div key={channel} title={channel}>{renderChannelIcon(channel)}</div>
+                        ))}
+                    </div>
+                    <Button size="sm" className="w-full text-xs font-bold shadow-sm" onClick={onApply}>
+                        지원하기 <Send className="ml-1.5 h-3 w-3" />
                     </Button>
                 </div>
+
+                {/* Mobile Action Button */}
+                <Button size="sm" className="w-full sm:hidden mt-2 font-bold" onClick={onApply}>
+                    지원하기 <Send className="ml-1.5 h-3 w-3" />
+                </Button>
             </div>
         </Card>
     )

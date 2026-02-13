@@ -29,7 +29,7 @@ function UnifiedProviderInner({ children }: { children: React.ReactNode }) {
         <CampaignProvider userId={user?.id} userType={user?.type}>
             <EventProvider userId={user?.id}>
                 <ProductProvider userId={user?.id}>
-                    <ProposalProvider userId={user?.id}>
+                    <ProposalProvider userId={user?.id} userType={user?.type}>
                         <MessageProvider userId={user?.id}>
                             <FavoriteProvider userId={user?.id}>
                                 {children}
@@ -88,11 +88,14 @@ export function useUnifiedProvider() {
         deleteProduct: products.deleteProduct,
 
         // Proposals
-        proposals: proposals.proposals,
+        campaignProposals: proposals.campaignProposals,
         brandProposals: proposals.brandProposals,
+        momentProposals: proposals.momentProposals, // [NEW]
         addProposal: proposals.addProposal,
         updateProposal: proposals.updateProposal,
         updateBrandProposal: proposals.updateBrandProposal,
+        deleteBrandProposal: proposals.deleteBrandProposal,
+        refreshProposals: proposals.refreshProposals,
 
         // Messages
         messages: messages.messages,

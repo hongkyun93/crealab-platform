@@ -49,7 +49,12 @@ export function WorkspaceCompactRow({ item, onClick }: WorkspaceCompactRowProps)
                 </div>
 
                 <div className="col-span-2">
-                    <p className="text-sm font-medium truncate">{item.product_name || "제품 협찬"}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        {item.type === 'moment_offer' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-purple-100 text-purple-700 hover:bg-purple-100 border-0">모먼트</Badge>}
+                        {item.type === 'brand_invite' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-blue-100 text-blue-700 hover:bg-blue-100 border-0">직접제안</Badge>}
+                        {item.type === 'creator_apply' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-orange-100 text-orange-700 hover:bg-orange-100 border-0">캠페인</Badge>}
+                        <p className="text-sm font-medium truncate">{item.product_name || "제품 협찬"}</p>
+                    </div>
                     <p className="text-xs text-muted-foreground truncate max-w-[300px]">{item.message}</p>
                 </div>
 

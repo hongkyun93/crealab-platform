@@ -69,7 +69,7 @@ export default function BrandSettingsPage() {
                             신뢰감을 줄 수 있는 정확한 정보를 입력해주세요.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
+                    <CardContent className="space-y-4">
                         <div className="flex flex-col items-center justify-center mb-6">
                             <Label className="mb-2">프로필 이미지</Label>
                             <AvatarUpload

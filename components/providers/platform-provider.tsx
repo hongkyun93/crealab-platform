@@ -119,7 +119,8 @@ export type Product = {
 
 export type Proposal = {
     id: number | string
-    type: 'brand_invite' | 'creator_apply' // 누가 먼저 제안했는지
+    // Status Flow
+    type: 'brand_invite' | 'creator_apply' | 'moment_offer' // 누가 먼저 제안했는지
     dealType: 'ad' | 'gonggu' // 광고 vs 공구
 
     // Brand Invite Specific
@@ -127,7 +128,7 @@ export type Proposal = {
     productId?: string
     requestDetails?: string
 
-    // Creator Apply Specific
+    // campaign_proposals specifics
     campaignId?: string
     campaignName?: string
     productName?: string
@@ -137,8 +138,7 @@ export type Proposal = {
     brandId?: string
     brandName?: string
 
-    cost?: number // 희망 광고비
-    commission?: number // 희망 수수료 (%)
+    priceOffer?: number // Changed from cost to match DB
     message?: string
 
     // Status Flow
@@ -150,7 +150,6 @@ export type Proposal = {
 
     fromId?: string
     toId?: string
-    date: string
     created_at?: string
     completed_at?: string
 
@@ -238,6 +237,26 @@ export type BrandProposal = {
     // Product Card
     product_url?: string
     product?: any
+}
+
+export type MomentProposal = {
+    id: string
+    brand_id: string
+    influencer_id: string
+    moment_id: string // maps to 'event_id' or 'moment_id' in DB depending on column name
+    status: string
+    message: string
+    price_offer: number
+    conditions: any // JSONB
+    created_at: string
+    updated_at: string
+
+    // Joins
+    brand_name?: string
+    brand_avatar?: string
+    influencer_name?: string
+    influencer_avatar?: string
+    moment_title?: string
 }
 
 
@@ -334,9 +353,10 @@ interface PlatformContextType {
     addProduct: (product: Omit<Product, "id" | "brandId" | "brandName">) => void
     updateProduct: (id: string, updates: Partial<Product>) => Promise<any>
     deleteProduct: (id: string) => Promise<void>
-    proposals: Proposal[]
+    campaignProposals: Proposal[]
     deleteProposal: (id: string) => Promise<void>
     brandProposals: BrandProposal[] // New direct proposals
+    momentProposals: MomentProposal[] // [NEW] Moment Proposals
     addProposal: (proposal: Omit<Proposal, "id" | "date">) => Promise<void>
     createBrandProposal: (proposal: any) => Promise<any>
     updateProposal: (id: string | number, data: Partial<Proposal> | object) => Promise<boolean>
@@ -382,8 +402,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
     const [campaigns, setCampaigns] = useState<Campaign[]>(INITIAL_CAMPAIGNS)
     const [events, setEvents] = useState<InfluencerEvent[]>(INITIAL_EVENTS)
     const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS)
-    const [proposals, setProposals] = React.useState<Proposal[]>([])
+    const [campaignProposals, setProposals] = React.useState<Proposal[]>([]) // Keep setProposals for now to minimize diff spread
     const [brandProposals, setBrandProposals] = React.useState<BrandProposal[]>([])
+    const [momentProposals, setMomentProposals] = React.useState<MomentProposal[]>([]) // [NEW]
     const [messages, setMessages] = React.useState<Message[]>([])
     const [submissionFeedback, setSubmissionFeedback] = React.useState<SubmissionFeedback[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
@@ -412,80 +433,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }, [isAuthChecked])
 
-    // Initialize state with Server Session if available
-    useEffect(() => {
-        console.log('[PlatformProvider] initialSession prop:', initialSession?.user?.id || 'none')
-        if (initialSession?.user) {
-            // Need to fetch profile even if we have session, but we can optimistically set basic user
-            const initUserFromSession = async () => {
-                // Reuse fetchUserProfile logic or extract it?
-                // For now, let's just let the existing effect handle the "full" load
-                // But we can set isAuthChecked to true faster if we know we have a session?
-                // Actually, if we have initialSession, we can rely on onAuthStateChange to fire immediately?
-                // No, better to explicitly set it.
-
-                // We will define fetchUserProfile fully before using it here usually, but it's defined below.
-                // Let's rely on the existing effect for profile fetching to avoid duplication,
-                // BUT we can use initialSession to prevent the "Login" flash.
-            }
-        }
-    }, [initialSession])
-
-
-    // Load from localStorage on client mount
-    useEffect(() => {
-        const storedUser = localStorage.getItem("creadypick_user")
-        const storedCampaigns = localStorage.getItem("creadypick_campaigns")
-        const storedEvents = localStorage.getItem("creadypick_events")
-        const storedProducts = localStorage.getItem("creadypick_products")
-        const storedProposals = localStorage.getItem("creadypick_proposals")
-        const storedNotifs = localStorage.getItem("creadypick_notifications")
-        const storedMessages = localStorage.getItem("creadypick_messages")
-
-        if (storedUser) { try { setUser(JSON.parse(storedUser)) } catch (e) { } }
-        if (storedCampaigns) { try { setCampaigns(JSON.parse(storedCampaigns)) } catch (e) { } }
-        if (storedEvents) { try { setEvents(JSON.parse(storedEvents)) } catch (e) { } }
-        if (storedProducts) { try { setProducts(JSON.parse(storedProducts)) } catch (e) { } }
-        if (storedProposals) { try { setProposals(JSON.parse(storedProposals)) } catch (e) { } }
-        if (storedNotifs) { try { setNotifications(JSON.parse(storedNotifs)) } catch (e) { } }
-        if (storedMessages) { try { setMessages(JSON.parse(storedMessages)) } catch (e) { } }
-
-        setIsInitialized(true)
-    }, [])
-
-    // Save changes to localStorage
-    useEffect(() => {
-        if (!isInitialized) return
-        if (user) {
-            localStorage.setItem("creadypick_user", JSON.stringify(user))
-        } else {
-            localStorage.removeItem("creadypick_user")
-        }
-    }, [user, isInitialized])
-
-    useEffect(() => {
-        localStorage.setItem("creadypick_campaigns", JSON.stringify(campaigns))
-    }, [campaigns])
-
-    useEffect(() => {
-        localStorage.setItem("creadypick_events", JSON.stringify(events))
-    }, [events])
-
-    useEffect(() => {
-        localStorage.setItem("creadypick_products", JSON.stringify(products))
-    }, [products])
-
-    useEffect(() => {
-        localStorage.setItem("creadypick_proposals", JSON.stringify(proposals))
-    }, [proposals])
-
-    useEffect(() => {
-        localStorage.setItem("creadypick_notifications", JSON.stringify(notifications))
-    }, [notifications])
-
-    useEffect(() => {
-        localStorage.setItem("creadypick_messages", JSON.stringify(messages))
-    }, [messages, isInitialized])
 
     const login = async (id: string, pw: string): Promise<User> => {
         // Try real Supabase Login First
@@ -679,7 +626,10 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 if (events.length > 0 && !events[0].isMock) {
                     setEvents(INITIAL_EVENTS)
                     setProducts(INITIAL_PRODUCTS)
+                    setEvents(INITIAL_EVENTS)
+                    setProducts(INITIAL_PRODUCTS)
                     setBrandProposals(INITIAL_PROPOSALS)
+                    setMomentProposals([]) // [NEW]
                     setMessages(INITIAL_MESSAGES)
                 }
             }
@@ -771,8 +721,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 if (targetId) {
                     setEvents(mappedEvents)
                 } else {
-                    // 게스트는 Mock 데이터와 병합해서 보여줌 (또는 취향에 따라 제거 가능)
-                    setEvents([...mappedEvents, ...MOCK_EVENTS])
+                    // 게스트는 Mock 데이터와 병합해서 보여줌
+                    const sanitizedMock = MOCK_EVENTS.map(e => ({
+                        ...e,
+                        category: e.category || "기타"
+                    })) as any
+                    setEvents([...mappedEvents, ...sanitizedMock])
                 }
                 console.log('[fetchEvents] Set events state with', mappedEvents.length, 'events')
             }
@@ -816,7 +770,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
                             matchScore: Math.floor(Math.random() * 20) + 80,
                             date: new Date(c.created_at).toISOString().split('T')[0],
                             postingDate: c.posting_date,
-                            eventDate: c.event_date
+                            eventDate: c.event_date,
+                            status: c.status || 'active'
                         }
                     })
                     setCampaigns(mappedCampaigns)
@@ -826,140 +781,265 @@ export function PlatformProvider({ children, initialSession }: { children: React
             }
 
             // 2. Fetch Brand Proposals (Both sent and received, or all if admin)
+            // Define strict type for bpData to avoid implicity any error
+            let bpData: any[] = []
             if (userId) {
                 try {
                     let query = supabase
                         .from('brand_proposals')
-                        .select('*, brand_profile:profiles!brand_proposals_brand_id_fkey(display_name, avatar_url), influencer_profile:profiles!brand_proposals_influencer_id_fkey(display_name, avatar_url), product:brand_products(*)')
+                        .select(`
+                            *,
+                            brand_profile:profiles!brand_proposals_brand_id_fkey(display_name, avatar_url),
+                            influencer_profile:profiles!brand_proposals_influencer_id_fkey(display_name, avatar_url)
+                        `)
+                        .order('created_at', { ascending: false })
 
-                    // Fetch user role to check admin status (Use local state if available to avoid race conditions)
-                    let currentRole = user?.id === userId ? user?.type : null;
+                    const { data, error } = await query
 
-                    if (!currentRole) {
-                        const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
-                        currentRole = profile?.role || 'influencer';
+                    if (error) {
+                        throw error
                     }
 
-                    /*
-                    // RLS handles visibility now. Removing redundant filter which might cause issues.
-                    if (currentRole !== 'admin') {
-                        query = query.or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
-                    }
-                    */
-
-                    const { data: bpData, error: bpError } = await query.order('created_at', { ascending: false })
-
-                    if (bpError) {
-                        console.error('[fetchEvents] Brand proposals fetch error:', JSON.stringify(bpError, null, 2))
-                    }
-
-                    if (bpData) {
-                        console.log('[fetchEvents] Fetched proposals:', bpData.length)
-                        const mappedBP: BrandProposal[] = bpData.map((b: any) => ({
-                            ...(b as any),
+                    if (data) {
+                        bpData = data;
+                        const mappedBP = data.map((b: any) => ({
+                            ...b,
                             type: 'brand_offer',
                             brand_name: b.brand_profile?.display_name || 'Brand',
                             brandAvatar: b.brand_profile?.avatar_url,
                             influencer_name: b.influencer_profile?.display_name || 'Creator',
                             influencerAvatar: b.influencer_profile?.avatar_url
-                        })) as any
+                        }))
                         setBrandProposals(mappedBP)
                     }
                 } catch (bpEx) {
                     console.error('[fetchEvents] Exception fetching brand proposals:', bpEx)
                 }
-
-                // B. Campaign Applications (campaign_proposals table)
-                try {
-                    // Fetch proposals where the user is the influencer (Applications sent)
-                    // OR where the user is the brand of the campaign (Applications received)
-                    // Note: Supabase RLS policies should simplify this, but let's be explicit with the query if possible,
-                    // or just rely on RLS with a broad select.
-
-                    // Since RLS is set up for "viewable by parties", simple select should work for both.
-                    const { data: propData, error: propError } = await supabase
-                        .from('campaign_proposals')
-                        .select(`
-                            *,
-                            campaigns (
-                                title,
-                                brand_id,
-                                profiles (display_name, avatar_url)
-                            ),
-                            profiles (
-                                display_name,
-                                avatar_url,
-                                influencer_details (instagram_handle, followers_count, tags)
-                            )
-                        `)
-                        .order('created_at', { ascending: false })
-
-                    if (propError) throw propError
-
-                    if (propData) {
-                        const mappedProposals: Proposal[] = propData.map((p: any) => {
-                            // Determine type: It's always 'creator_apply' for this table
-                            const isBrandProp = false
-
-                            // Map profile details
-                            // Note: 'profiles' in select is the influencer who applied
-                            const influencer = p.profiles
-                            const details = influencer?.influencer_details?.[0] || influencer?.influencer_details
-
-                            return {
-                                id: p.id,
-                                type: 'creator_apply',
-                                dealType: 'ad', // Default to AD for now
-                                campaignId: p.campaign_id,
-                                campaignName: p.campaigns?.title || "Unknown Campaign",
-                                productName: p.campaigns?.title || "", // Fallback
-
-                                influencerId: p.influencer_id,
-                                influencerName: influencer?.display_name || "Unknown Creator",
-                                influencerAvatar: influencer?.avatar_url,
-
-                                brandId: p.campaigns?.brand_id,
-                                brandName: p.campaigns?.profiles?.display_name,
-                                brandAvatar: p.campaigns?.profiles?.avatar_url,
-
-                                cost: p.price_offer,
-                                message: p.message,
-                                status: p.status,
-                                date: new Date(p.created_at).toISOString().split('T')[0],
-                                created_at: p.created_at,
-
-                                // New Fields
-                                motivation: p.motivation,
-                                content_plan: p.content_plan,
-                                portfolioLinks: p.portfolio_links,
-
-                                // Creator Details from Profile (for Card View)
-                                followers: details?.followers_count,
-                                tags: details?.tags || [],
-
-                                // Application Data (Prioritized)
-                                instagramHandle: p.instagram_handle || details?.instagram_handle,
-                                insightScreenshot: p.insight_screenshot,
-
-                                contract_content: p.contract_content,
-                                contract_status: p.contract_status,
-                                brand_signature: p.brand_signature,
-                                influencer_signature: p.influencer_signature,
-
-                                // Delivery
-                                shipping_name: p.shipping_name,
-                                tracking_number: p.tracking_number,
-                                delivery_status: p.delivery_status
-                            }
-                        })
-                        console.log('[fetchEvents] Fetched campaign proposals:', mappedProposals.length)
-                        setProposals(mappedProposals)
-                    }
-                } catch (e) {
-                    console.error('[fetchEvents] Error fetching campaign proposals:', e)
-                }
             }
 
+
+            // --- [NEW] Fetch Moment Proposals ---
+            let momentData: any[] = []
+            try {
+                // Fetch proposals directly
+                // Using .select() with no complex joins first to ensure data access
+                const { data: mData, error: momentError } = await supabase
+                    .from('moment_proposals')
+                    .select('*')
+                    .or(`brand_id.eq.${userId},influencer_id.eq.${userId}`)
+                    .order('created_at', { ascending: false })
+
+                if (momentError) {
+                    // Optional: handle if table doesn't exist yet in some environments
+                    console.warn('[fetchEvents] Error fetching moment_proposals (might be missing table?):', momentError.message)
+                } else if (mData && mData.length > 0) {
+
+                    // Manual Join for Safety & Performance
+                    const userIds = new Set<string>();
+                    const momentIds = new Set<string>();
+
+                    mData.forEach((m: any) => {
+                        if (m.brand_id) userIds.add(m.brand_id);
+                        if (m.influencer_id) userIds.add(m.influencer_id);
+                        if (m.moment_id || m.event_id) momentIds.add(m.moment_id || m.event_id);
+                    });
+
+                    // Fetch Profiles
+                    const { data: profiles } = await supabase
+                        .from('profiles')
+                        .select('id, display_name, avatar_url')
+                        .in('id', Array.from(userIds));
+
+                    const profileMap = new Map(profiles?.map((p: any) => [p.id, p]));
+
+                    // Fetch Moments (Titles)
+                    const { data: moments } = await supabase
+                        .from('life_moments')
+                        .select('id, title')
+                        .in('id', Array.from(momentIds));
+
+                    const momentMap = new Map(moments?.map((m: any) => [m.id, m]));
+
+                    const mappedMoments: MomentProposal[] = mData.map((m: any) => {
+                        const brand = profileMap.get(m.brand_id);
+                        const influencer = profileMap.get(m.influencer_id);
+                        const momentId = m.moment_id || m.event_id;
+                        const moment = momentMap.get(momentId);
+
+                        return {
+                            id: m.id,
+                            brand_id: m.brand_id,
+                            influencer_id: m.influencer_id,
+                            moment_id: momentId,
+                            status: m.status,
+                            message: m.message,
+                            price_offer: m.price_offer,
+                            conditions: m.conditions || {},
+                            created_at: m.created_at,
+                            updated_at: m.updated_at,
+                            brand_name: brand?.display_name || 'Unknown Brand',
+                            brand_avatar: brand?.avatar_url,
+                            influencer_name: influencer?.display_name || 'Unknown Creator',
+                            influencer_avatar: influencer?.avatar_url,
+                            moment_title: moment?.title || 'Unknown Moment'
+                        }
+                    });
+
+                    setMomentProposals(mappedMoments)
+                    console.log('[fetchEvents] Set moment proposals:', mappedMoments.length)
+                    momentData = mData; // Keep for merging into brand proposals later
+                } else {
+                    setMomentProposals([])
+                }
+            } catch (mEx) {
+                console.error('[fetchEvents] Exception fetching moment proposals:', mEx)
+            }
+
+            // A. Merge into BrandProposals (for Brand Outbound View)
+            if (momentData.length > 0) {
+                const mappedMomentProposalsAsBrand = momentData
+                    .filter((m: any) => m.brand_id === userId)
+                    .map((m: any) => ({
+                        ...m,
+                        type: 'moment_offer',
+                        brand_name: m.brand_profile?.display_name || 'Brand',
+                        brandAvatar: m.brand_profile?.avatar_url,
+                        influencer_name: m.influencer_profile?.display_name || 'Creator',
+                        influencerAvatar: m.influencer_profile?.avatar_url,
+                        product_name: m.moment?.title || "Moment Proposal"
+                    }))
+
+                // Re-map bpData to match structure and merge
+                const existingBP = bpData.map((b: any) => ({
+                    ...b,
+                    type: 'brand_offer',
+                    brand_name: b.brand_profile?.display_name || 'Brand',
+                    brandAvatar: b.brand_profile?.avatar_url,
+                    influencer_name: b.influencer_profile?.display_name || 'Creator',
+                    influencerAvatar: b.influencer_profile?.avatar_url
+                }))
+
+                const combinedBP = [...existingBP, ...mappedMomentProposalsAsBrand]
+                setBrandProposals(combinedBP.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
+            }
+
+
+            // B. Campaign Applications (campaign_proposals table)
+            try {
+                const { data: propData, error: propError } = await supabase
+                    .from('campaign_proposals')
+                    .select(`
+                        *,
+                        campaigns (
+                            title,
+                            brand_id,
+                            profiles (display_name, avatar_url)
+                        ),
+                        profiles (
+                            display_name,
+                            avatar_url,
+                            influencer_details (instagram_handle, followers_count, tags)
+                        )
+                    `)
+                    .order('created_at', { ascending: false })
+
+                if (propError) throw propError
+
+                if (propData) {
+                    const mappedProposals: Proposal[] = propData.map((p: any) => {
+                        const influencer = p.profiles
+                        const details = influencer?.influencer_details?.[0] || influencer?.influencer_details
+
+                        return {
+                            id: p.id,
+                            type: 'creator_apply',
+                            dealType: 'ad',
+                            campaignId: p.campaign_id,
+                            campaignName: p.campaigns?.title || "Unknown Campaign",
+                            productName: p.campaigns?.title || "",
+
+                            influencerId: p.influencer_id,
+                            influencerName: influencer?.display_name || "Unknown Creator",
+                            influencerAvatar: influencer?.avatar_url,
+
+                            brandName: p.campaigns?.profiles?.display_name,
+                            brandAvatar: p.campaigns?.profiles?.avatar_url,
+
+                            // Map price_offer to priceOffer (and legacy cost for compatibility if needed)
+                            priceOffer: p.price_offer,
+                            cost: p.price_offer, // Keep for compatibility
+                            message: p.message,
+                            status: p.status,
+                            date: new Date(p.created_at).toISOString().split('T')[0],
+                            created_at: p.created_at,
+
+                            motivation: p.motivation,
+                            content_plan: p.content_plan,
+                            portfolioLinks: p.portfolio_links,
+
+                            followers: details?.followers_count,
+                            tags: details?.tags || [],
+                            instagramHandle: p.instagram_handle || details?.instagram_handle,
+                            insightScreenshot: p.insight_screenshot,
+
+                            contract_content: p.contract_content,
+                            contract_status: p.contract_status,
+                            brand_signature: p.brand_signature,
+                            influencer_signature: p.influencer_signature,
+
+                            shipping_name: p.shipping_name,
+                            tracking_number: p.tracking_number,
+                            delivery_status: p.delivery_status
+                        }
+                    })
+
+                    // Merge Moment Proposals into Proposals (Inbound for Creators)
+                    if (momentData.length > 0) {
+                        const mappedMomentProposalsAsCreator = momentData
+                            .filter((m: any) => m.influencer_id === userId)
+                            .map((m: any) => {
+                                const influencer = m.influencer_profile
+                                const details = influencer?.influencer_details?.[0] || influencer?.influencer_details
+                                return {
+                                    id: m.id,
+                                    type: 'moment_offer' as const,
+                                    dealType: 'ad' as const,
+                                    campaignName: m.moment?.title || "Life Moment",
+                                    productName: m.moment?.target_product || m.moment?.title || "Moment Proposal",
+
+                                    influencerId: m.influencer_id,
+                                    influencerName: influencer?.display_name,
+                                    influencerAvatar: influencer?.avatar_url,
+
+                                    brandId: m.brand_id,
+                                    brandName: m.brand_profile?.display_name,
+                                    brandAvatar: m.brand_profile?.avatar_url,
+
+                                    priceOffer: m.price_offer,
+                                    cost: m.price_offer,
+                                    message: m.message,
+                                    status: m.status,
+                                    date: new Date(m.created_at).toISOString().split('T')[0],
+                                    created_at: m.created_at,
+
+                                    followers: details?.followers_count,
+                                    tags: details?.tags || [],
+                                    instagramHandle: details?.instagram_handle,
+
+                                    contract_status: m.contract_status,
+                                    delivery_status: m.delivery_status
+                                }
+                            })
+
+                        const combinedProposals = [...mappedProposals, ...mappedMomentProposalsAsCreator]
+                        setProposals(combinedProposals.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()))
+                    } else {
+                        setProposals(mappedProposals)
+                    }
+                }
+            } catch (e) {
+                console.error('[fetchEvents] Error fetching campaign proposals:', e)
+            }
             // 4. Fetch Brand Products
             try {
                 const { data: productData, error: productError } = await supabase
@@ -1792,6 +1872,61 @@ export function PlatformProvider({ children, initialSession }: { children: React
                 return
             }
 
+            // [CASE 1] Campaign Application -> campaign_proposals
+            if (newProposal.campaignId) {
+                console.log('[addProposal] Submitting Campaign Application:', newProposal)
+                const { data, error } = await supabase
+                    .from('campaign_proposals')
+                    .insert({
+                        campaign_id: newProposal.campaignId,
+                        influencer_id: newProposal.fromId,
+                        message: newProposal.message,
+                        price_offer: newProposal.priceOffer,
+                        status: 'applied',
+                        motivation: (newProposal as any).motivation,
+                        content_plan: (newProposal as any).content_plan,
+                        portfolio_links: (newProposal as any).portfolioLinks,
+                        instagram_handle: (newProposal as any).instagramHandle,
+                        insight_screenshot: (newProposal as any).insightScreenshot
+                    })
+                    .select()
+                    .single()
+
+                if (error) throw error
+                console.log('[addProposal] Campaign Application Success:', data)
+                // Optimistic Update
+                // We'll rely on fetchEvents refresh for now or push to proposals
+                setProposals(prev => [{ ...newProposal, id: data.id, status: 'applied', date: new Date().toISOString() } as Proposal, ...prev])
+                alert("캠페인 지원이 완료되었습니다!")
+                return
+            }
+
+            // [CASE 2] Moment Proposal -> moment_proposals
+            if (newProposal.eventId) { // Changed from momentId to eventId to match type
+                console.log('[addProposal] Submitting Moment Proposal:', newProposal)
+                const { data, error } = await supabase
+                    .from('moment_proposals')
+                    .insert({
+                        brand_id: newProposal.toId || targetId, // Changed from userId to targetId
+                        influencer_id: newProposal.fromId, // Creator ID
+                        moment_id: newProposal.eventId, // Changed from momentId to eventId
+                        message: newProposal.message,
+                        price_offer: newProposal.priceOffer,
+                        status: 'offered',
+                        conditions: {}
+                    })
+                    .select()
+                    .single()
+
+                if (error) throw error
+                console.log('[addProposal] Moment Proposal Success:', data)
+                // Refresh data
+                await fetchEvents() // Assuming this refreshes proposals too or we need refreshProposals
+                alert("모먼트 제안이 완료되었습니다!")
+                return
+            }
+
+            // [CASE 3] Product Inquiry -> brand_proposals
             // Find product name and image if productId is provided
             let productName = "새로운 제안"
             if (newProposal.productId) {
@@ -1807,11 +1942,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     influencer_id: newProposal.fromId,
                     product_id: newProposal.productId, // Added product_id linkage
                     product_name: productName,
-                    product_type: newProposal.dealType === 'ad' ? 'gift' : 'loan', // Simple mapping
-                    compensation_amount: newProposal.cost ? `${newProposal.cost.toLocaleString()}원` : "협의",
-                    has_incentive: !!newProposal.commission,
-                    incentive_detail: newProposal.commission ? `${newProposal.commission}% 수수료` : null,
-                    message: newProposal.requestDetails,
+                    product_type: newProposal.dealType === 'ad' ? 'gift' : 'loan',
+                    compensation_amount: newProposal.priceOffer ? `${newProposal.priceOffer.toLocaleString()}원` : "협의",
+                    message: newProposal.requestDetails || newProposal.message,
                     status: 'applied', // status for creator-initiated
                 })
                 .select()
@@ -1833,7 +1966,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         } catch (e: any) {
             console.error("Failed to add proposal:", e)
             if (e.code === '42501') {
-                alert("권한 오류: 제안서를 보낼 권한이 없습니다.\n관리자에게 'fix_proposal_permissions.sql' 실행을 요청하세요.")
+                alert("권한 오류: 제안서를 보낼 권한이 없습니다.")
             } else {
                 alert(`제안 전송에 실패했습니다: ${e.message}`)
             }
@@ -1855,10 +1988,28 @@ export function PlatformProvider({ children, initialSession }: { children: React
             }
 
             // Determine payload
-            const payload = data
+            const payload: any = { ...data }
+
+            // Map legacy fields if present in update data
+            if ('cost' in payload) { payload.price_offer = payload.cost; delete payload.cost; }
+            if ('priceOffer' in payload) { payload.price_offer = payload.priceOffer; delete payload.priceOffer; }
+
+            // Decide table based on proposal type or ID logic?
+            // Usually updateProposal is for 'proposals' state which is 'campaign_proposals' or 'moment_proposals' (inbound for creator)
+            // But 'proposals' state maps 'id' from DB directly.
+            // We assume 'campaign_proposals' is the main target here as per refactor.
+            // CAUTION: moment_proposals are also in 'proposals' state now!
+            const targetProposal = campaignProposals.find(p => p.id === id);
+            let tableName = 'campaign_proposals';
+
+            if (targetProposal?.type === 'moment_offer') {
+                tableName = 'moment_proposals';
+            }
+
+            console.log(`[updateProposal] Updating ${tableName} ID: ${id}`, payload)
 
             const { error } = await supabase
-                .from('proposals')
+                .from(tableName)
                 .update(payload)
                 .eq('id', id)
 
@@ -1868,11 +2019,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             return true
         } catch (e: any) {
             console.error("Failed to update proposal:", e)
-            if (e.code === '42703') { // undefined_column
-                alert("DB 업데이트가 필요합니다. 관리자에게 'add_contract_fields.sql' 실행을 요청해주세요.")
-            } else {
-                alert("제안서 수정에 실패했습니다: " + (e.message || "알 수 없는 오류"))
-            }
+            alert("제안서 수정에 실패했습니다: " + (e.message || "알 수 없는 오류"))
             return false
         }
     }
@@ -2090,6 +2237,72 @@ export function PlatformProvider({ children, initialSession }: { children: React
             return data
         } catch (e: any) {
             console.error("Failed to create brand proposal:", e)
+            throw e
+        }
+    }
+
+    const createMomentProposal = async (data: {
+        momentId: string,
+        influencerId: string,
+        message: string,
+        price?: number,
+        conditions?: any
+    }) => {
+        // Robust check
+        let targetUserId = user?.id;
+        if (!targetUserId) {
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData.session?.user) targetUserId = sessionData.session.user.id;
+        }
+
+        if (!targetUserId) {
+            alert("로그인이 필요합니다.");
+            throw new Error("User not logged in");
+        }
+
+        try {
+            console.log("[createMomentProposal] Sending proposal:", data)
+
+            // 1. Insert into moment_proposals
+            const { data: inserted, error } = await supabase
+                .from('moment_proposals')
+                .insert({
+                    brand_id: targetUserId,
+                    influencer_id: data.influencerId,
+                    moment_id: data.momentId,
+                    message: data.message,
+                    price_offer: data.price,
+                    conditions: data.conditions || {},
+                    status: 'offered'
+                })
+                .select(`
+                    *,
+                    brand_profile:profiles!moment_proposals_brand_id_fkey(display_name, avatar_url),
+                    influencer_profile:profiles!moment_proposals_influencer_id_fkey(display_name, avatar_url),
+                    moment:life_moments(title, target_product) 
+                 `)
+                .single()
+
+            if (error) throw error
+
+            // 2. Optimistic Update (Merge into brandProposals for Outbound tab)
+            if (inserted) {
+                const mapped: any = {
+                    ...inserted,
+                    type: 'moment_offer', // Distinguish type if needed
+                    brand_name: inserted.brand_profile?.display_name || 'Brand',
+                    brandAvatar: inserted.brand_profile?.avatar_url,
+                    influencer_name: inserted.influencer_profile?.display_name || 'Creator',
+                    influencerAvatar: inserted.influencer_profile?.avatar_url,
+                    product_name: inserted.moment?.title || "Moment Proposal" // Use moment title as product name equivalent
+                }
+                setBrandProposals(prev => [mapped, ...prev])
+                alert("제안이 성공적으로 전달되었습니다.")
+                return mapped
+            }
+        } catch (e: any) {
+            console.error("[createMomentProposal] Error:", e)
+            alert(`제안 전송 실패: ${e.message}`)
             throw e
         }
     }
@@ -2351,7 +2564,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             )
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'proposals' },
+                { event: '*', schema: 'public', table: 'campaign_proposals' },
                 () => { console.log('[Realtime] Proposal change detected'); refreshData(); }
             )
             .on(
@@ -2448,8 +2661,9 @@ export function PlatformProvider({ children, initialSession }: { children: React
         campaigns, addCampaign, deleteCampaign,
         events, addEvent, deleteEvent, updateEvent,
         products, addProduct, updateProduct, deleteProduct,
-        proposals, addProposal, updateProposal, deleteProposal, createBrandProposal,
+        campaignProposals, addProposal, updateProposal, deleteProposal, createBrandProposal,
         brandProposals, updateBrandProposal, deleteBrandProposal,
+        momentProposals, // [NEW]
         notifications, sendNotification, markAsRead,
         messages, sendMessage,
         submissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
@@ -2463,7 +2677,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         toggleFavorite,
         supabase
     }), [
-        user, campaigns, events, products, proposals, brandProposals,
+        user, campaigns, events, products, campaignProposals, brandProposals, momentProposals, // [NEW]
         notifications, messages, submissionFeedback, isInitialized, isAuthChecked,
         login, logout, updateUser, addCampaign, deleteCampaign, addEvent, deleteEvent,
         updateEvent, addProduct, updateProduct, deleteProduct, addProposal, updateProposal,

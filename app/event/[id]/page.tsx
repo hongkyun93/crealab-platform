@@ -3,12 +3,13 @@
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, User, BadgeCheck, MessageCircle, Share2, MapPin, Package, Send, SearchX, Loader2, Lock } from "lucide-react"
+import { ArrowLeft, Calendar, User, BadgeCheck, MessageCircle, Share2, MapPin, Package, Send, SearchX, Loader2, Lock, Banknote } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { usePlatform } from "@/components/providers/legacy-platform-hook"
 import { useEffect, useState } from "react"
-import type { InfluencerEvent } from "@/lib/types"
+import { ReadonlyProposalDialog } from "@/components/proposal/readonly-proposal-dialog"
+import type { InfluencerEvent, MomentProposal } from "@/lib/types" // Added MomentProposal
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,9 +35,11 @@ import { submitDirectProposal } from "@/app/actions/proposal"
 export default function EventDetailPage() {
     const params = useParams()
     const router = useRouter()
-    const { events, user, sendNotification, supabase, products, refreshData } = usePlatform()
+    const { events, user, sendNotification, supabase, products, refreshData, momentProposals } = usePlatform()
     const [event, setEvent] = useState<InfluencerEvent | null>(null)
     const [showProposalDialog, setShowProposalDialog] = useState(false)
+    const [showReadonlyDialog, setShowReadonlyDialog] = useState(false)
+    const [selectedProposal, setSelectedProposal] = useState<MomentProposal | null>(null) // [NEW] state
 
     // Proposal form state
     const [productName, setProductName] = useState("")
@@ -344,13 +347,13 @@ ${u.name}의 담당자입니다.
                                     </div>
                                     <div>
                                         <p className="text-xs text-muted-foreground mb-1">콘텐츠 업로드</p>
-                                        <p className="font-semibold">
+                                        <div className="font-semibold">
                                             {event.dateFlexible ? (
                                                 <span className="flex items-center gap-1">
                                                     <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
                                                 </span>
                                             ) : (formatDateToMonth(event.postingDate) || "미정")}
-                                        </p>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -387,9 +390,106 @@ ${u.name}의 담당자입니다.
                                     </div>
                                 </div>
                                 <div className="pt-2 space-y-2">
-                                    <Button className="w-full gap-2" size="lg" onClick={handlePropose}>
-                                        <MessageCircle className="h-5 w-5" /> 협업 제안하기
-                                    </Button>
+                                    {/* Creator View: Received Proposals List */}
+                                    {user?.id === event.influencerId ? (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-semibold">받은 제안 ({momentProposals.filter(p => p.moment_id === event.id).length})</span>
+                                            </div>
+                                            {momentProposals.filter(p => p.moment_id === event.id).length > 0 ? (
+                                                <div className="space-y-2">
+                                                    {momentProposals.filter(p => p.moment_id === event.id).map(prop => (
+                                                        <div key={prop.id} className="bg-background border rounded-lg p-3 space-y-2">
+                                                            <div className="flex items-center gap-2">
+                                                                {prop.brand_avatar ? (
+                                                                    <img src={prop.brand_avatar} alt={prop.brand_name} className="w-6 h-6 rounded-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold">
+                                                                        {prop.brand_name?.substring(0, 1) || 'B'}
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-medium truncate">{prop.brand_name}</p>
+                                                                    <p className="text-xs text-muted-foreground truncate">{formatDateToMonth(prop.created_at)}</p>
+                                                                </div>
+                                                                <Badge variant={prop.status === 'accepted' ? 'default' : 'outline'} className="text-[10px]">
+                                                                    {prop.status === 'offered' ? '대기' : prop.status}
+                                                                </Badge>
+                                                            </div>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="w-full text-xs h-8"
+                                                                onClick={() => {
+                                                                    setSelectedProposal(prop)
+                                                                    setShowReadonlyDialog(true)
+                                                                }}
+                                                            >
+                                                                제안 확인하기
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-4 bg-muted/30 rounded-lg text-xs text-muted-foreground border border-dashed">
+                                                    아직 도착한 제안이 없습니다.
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        // Brand View / Visitor View
+                                        <>
+                                            {momentProposals.find(p => p.moment_id === event.id && (user?.type === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id)) ? (
+                                                (() => {
+                                                    const prop = momentProposals.find(p => p.moment_id === event.id && (user?.type === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id))!;
+                                                    return (
+                                                        <Card className="border-primary/50 bg-primary/5 shadow-sm">
+                                                            <CardHeader className="p-4 pb-2">
+                                                                <CardTitle className="text-sm font-medium flex justify-between items-center text-primary">
+                                                                    <span className="flex items-center gap-2"><Send className="h-4 w-4" /> 제안 보냄</span>
+                                                                    <Badge variant={prop.status === 'accepted' ? 'default' : 'outline'} className="text-xs">
+                                                                        {prop.status === 'offered' ? '대기중' :
+                                                                            prop.status === 'accepted' ? '수락됨' :
+                                                                                prop.status === 'rejected' ? '거절됨' : prop.status}
+                                                                    </Badge>
+                                                                </CardTitle>
+                                                            </CardHeader>
+                                                            <CardContent className="p-4 pt-2 space-y-3">
+                                                                <div>
+                                                                    <p className="text-xs text-muted-foreground">제안 제품</p>
+                                                                    <p className="text-sm font-semibold truncate">
+                                                                        {prop.conditions?.product_name || '제품명 없음'}
+                                                                    </p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-muted-foreground">보낸 날짜</p>
+                                                                    <p className="text-xs font-medium">
+                                                                        {new Date(prop.created_at).toLocaleDateString()}
+                                                                    </p>
+                                                                </div>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="w-full bg-background"
+                                                                    onClick={() => {
+                                                                        setSelectedProposal(prop)
+                                                                        setShowReadonlyDialog(true)
+                                                                    }}
+                                                                >
+                                                                    제안서 보기
+                                                                </Button>
+                                                            </CardContent>
+                                                        </Card>
+                                                    )
+                                                })()
+                                            ) : (
+                                                <Button className="w-full gap-2" size="lg" onClick={handlePropose}>
+                                                    <MessageCircle className="h-5 w-5" /> 협업 제안하기
+                                                </Button>
+                                            )}
+                                        </>
+                                    )}
+
                                     <Button variant="outline" className="w-full gap-2" onClick={() => alert("링크가 복사되었습니다!")}>
                                         <Share2 className="h-4 w-4" /> 공유하기
                                     </Button>
@@ -708,7 +808,7 @@ ${u.name}의 담당자입니다.
                                             )}
                                         >
                                             {finalSubmissionDate ? (
-                                                format(finalSubmissionDate, "yyyy-MM-dd", { locale: ko })
+                                                format(finalSubmissionDate!, "yyyy-MM-dd", { locale: ko })
                                             ) : (
                                                 <span>최종본 제출일 선택</span>
                                             )}
@@ -741,7 +841,7 @@ ${u.name}의 담당자입니다.
                                             )}
                                         >
                                             {desiredDate ? (
-                                                format(desiredDate, "yyyy-MM-dd", { locale: ko })
+                                                format(desiredDate!, "yyyy-MM-dd", { locale: ko })
                                             ) : (
                                                 <span>콘텐츠 업로드일 선택</span>
                                             )}
@@ -805,18 +905,26 @@ ${u.name}의 담당자입니다.
                 </DialogContent>
             </Dialog>
             {/* Security Watermark (Only visible if logged in) */}
-            {user && (
-                <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden flex flex-wrap content-center justify-center opacity-[0.03] select-none">
-                    {Array.from({ length: 20 }).map((_, i) => (
-                        <div key={i} className="w-[300px] h-[300px] flex items-center justify-center -rotate-45">
-                            <span className="text-xl font-black text-slate-900 whitespace-nowrap">
-                                {user.name} ({user.handle || user.type})<br />
-                                CreadyPick Security
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {
+                user && (
+                    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden flex flex-wrap content-center justify-center opacity-[0.03] select-none">
+                        {Array.from({ length: 20 }).map((_, i) => (
+                            <div key={i} className="w-[300px] h-[300px] flex items-center justify-center -rotate-45">
+                                <span className="text-xl font-black text-slate-900 whitespace-nowrap">
+                                    {user?.name} ({user?.handle || user?.type})<br />
+                                    CreadyPick Security
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )
+            }
+            {/* Read-only Proposal Dialog (Full View) */}
+            <ReadonlyProposalDialog
+                open={showReadonlyDialog}
+                onOpenChange={setShowReadonlyDialog}
+                proposal={selectedProposal}
+            />
         </div>
     )
 }

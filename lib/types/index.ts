@@ -21,7 +21,8 @@ export type {
     DealType,
     ProposalStatus,
     ContractStatus,
-    ContentSubmissionStatus
+    ContentSubmissionStatus,
+    MomentProposal // [NEW]
 } from './proposal'
 
 // Message & Notification

@@ -15,8 +15,13 @@ export function ApplicationListRow({ app, onClick }: ApplicationListRowProps) {
         >
             <div className="flex items-center gap-4 flex-1 min-w-0">
                 {/* Icon */}
-                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
-                    <Megaphone className="h-5 w-5" />
+                {/* Icon or Avatar */}
+                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0 overflow-hidden">
+                    {app.brandAvatar ? (
+                        <img src={app.brandAvatar} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                        <Megaphone className="h-5 w-5" />
+                    )}
                 </div>
 
                 {/* Main Info */}

@@ -17,7 +17,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
     DropdownMenuRadioItem,
+    DropdownMenuRadioGroup,
 } from "@/components/ui/dropdown-menu"
+import { Separator } from "@/components/ui/separator"
 import {
     Table,
     TableBody,
@@ -28,7 +30,7 @@ import {
 } from "@/components/ui/table"
 import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight, LayoutGrid, List, Banknote, Table as TableIcon } from "lucide-react"
 import Link from "next/link"
-import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign } from "@/components/providers/legacy-platform-hook"
+import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
@@ -69,6 +71,7 @@ const GuideDialog = dynamic(() => import("@/components/dialogs/GuideDialog").the
 const CampaignDetailDialog = dynamic(() => import("@/components/dialogs/CampaignDetailDialog").then(m => ({ default: m.CampaignDetailDialog })))
 const DetailsModal = dynamic(() => import("@/components/dialogs/DetailsModal").then(m => ({ default: m.DetailsModal })))
 const ProductGuideDialog = dynamic(() => import("@/components/dialogs/ProductGuideDialog").then(m => ({ default: m.ProductGuideDialog })))
+const ReadonlyProposalDialog = dynamic(() => import("@/components/proposal/readonly-proposal-dialog").then(m => ({ default: m.ReadonlyProposalDialog })))
 
 // View Components
 import { DashboardView } from "@/components/creator/views/DashboardView"
@@ -80,6 +83,7 @@ import { InboundProposalsView } from "@/components/creator/views/InboundProposal
 // Imports for Design Options
 import { BrandProductDiscoveryView } from "@/components/creator/views/BrandProductDiscoveryView"
 import { BrandProductListView } from "@/components/creator/views/BrandProductListView"
+import { BrandProductDetailView } from "@/components/creator/views/BrandProductDetailView"
 import { CampaignCardA } from "@/components/creator/campaign-cards/CampaignCardA"
 import { CampaignCardB } from "@/components/creator/campaign-cards/CampaignCardB"
 import { CampaignCardC } from "@/components/creator/campaign-cards/CampaignCardC"
@@ -130,11 +134,11 @@ function AIPlanModal({ isOpen, onOpenChange, planContent }: { isOpen: boolean; o
 function InfluencerDashboardContent() {
     const {
         user, updateUser, campaigns, events, isLoading, notifications, resetData, refreshData,
-        brandProposals, updateBrandProposal,
+        brandProposals, momentProposals, updateBrandProposal, // [NEW] Added momentProposals
         sendNotification,
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
         messages, sendMessage,
-        deleteEvent, proposals, updateProposal,
+        deleteEvent, campaignProposals, updateProposal, addProposal,
         products, switchRole, updateEvent, supabase,
         favorites, toggleFavorite, isInitialized, isAuthLoading
     } = usePlatform()
@@ -181,6 +185,11 @@ function InfluencerDashboardContent() {
     const [relatedProposals, setRelatedProposals] = useState<any[]>([])
     const [workspaceTab, setWorkspaceTab] = useState("active")
     const [workspaceViewMode, setWorkspaceViewMode] = useState<'list' | 'grid' | 'table'>('list')
+    const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
+
+    // ReadonlyProposalDialog State
+    const [showReadonlyDialog, setShowReadonlyDialog] = useState(false)
+    const [selectedProposal, setSelectedProposal] = useState<any>(null)
 
     // AI Planner State
     const [isAIPlanning, setIsAIPlanning] = useState(false)
@@ -229,20 +238,69 @@ function InfluencerDashboardContent() {
 
     const handleViewProposal = (proposalId: string) => {
         // Find proposal in brandProposals (inbound) or proposals (outbound/active)
-        // Then open chat or navigate to it
-        // For simplicity, let's close details modal and open chat if found
+        // Open ReadonlyProposalDialog to show proposal details
 
         setIsDetailsModalOpen(false);
 
         const proposal = brandProposals.find((p: any) => p.id === proposalId) ||
-            proposals.find((p: any) => p.id === proposalId);
+            campaignProposals.find((p: any) => p.id === proposalId);
 
         if (proposal) {
-            setChatProposal(proposal);
-            setIsChatOpen(true);
+            setSelectedProposal(proposal);
+            setShowReadonlyDialog(true);
         } else {
             // If not found in loaded list (maybe archived or bug), just navigate to inbound list as fallback
             setCurrentView('inbound_list');
+        }
+    }
+
+    // Accept Proposal Handler
+    const handleAcceptProposal = async (e: React.MouseEvent, proposalId: string) => {
+        e.stopPropagation() // Prevent card click
+
+        if (!confirm('이 제안을 수락하시겠습니까?')) return
+
+        try {
+            const { error } = await supabase
+                .from('moment_proposals')
+                .update({ status: 'accepted' })
+                .eq('id', proposalId)
+
+            if (error) {
+                alert('수락 실패: ' + error.message)
+                return
+            }
+
+            alert('제안을 수락했습니다!')
+            await refreshData() // Refresh proposal list
+        } catch (err) {
+            console.error('Accept proposal error:', err)
+            alert('수락 중 오류가 발생했습니다.')
+        }
+    }
+
+    // Reject Proposal Handler
+    const handleRejectProposal = async (e: React.MouseEvent, proposalId: string) => {
+        e.stopPropagation() // Prevent card click
+
+        if (!confirm('이 제안을 거절하시겠습니까?')) return
+
+        try {
+            const { error } = await supabase
+                .from('moment_proposals')
+                .update({ status: 'rejected' })
+                .eq('id', proposalId)
+
+            if (error) {
+                alert('거절 실패: ' + error.message)
+                return
+            }
+
+            alert('제안을 거절했습니다.')
+            await refreshData()
+        } catch (err) {
+            console.error('Reject proposal error:', err)
+            alert('거절 중 오류가 발생했습니다.')
         }
     }
 
@@ -258,6 +316,11 @@ function InfluencerDashboardContent() {
             }
         }
     }, [searchParams, brandProposals, chatProposal])
+
+    // Reset sub-tab when main tab changes
+    useEffect(() => {
+        setWorkspaceSubTab('all')
+    }, [workspaceTab])
 
     // Force data refresh on mount to avoid stale data from navigation
     useEffect(() => {
@@ -395,33 +458,75 @@ function InfluencerDashboardContent() {
     // Compatibility for upstream code using upcomingMoments
     const upcomingMoments = [...activeMoments, ...myMoments];
 
+    // Helper function to deduplicate proposals by ID
+    const deduplicateById = (items: any[]) => {
+        const seenIds = new Set<string>()
+        return items.filter(item => {
+            if (!item?.id || seenIds.has(item.id)) return false
+            seenIds.add(item.id)
+            return true
+        })
+    }
+
+    // [FIX] brandProposals already contains moment proposals (merged in ProposalProvider)
+    // We should NOT merge them again here to avoid duplicate keys.
+    const allInboundProposals = deduplicateById([
+        ...(brandProposals || []),
+        // ...(momentProposals || []) // REMOVED: Redundant merge triggering duplicate keys
+    ]).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+
     const filteredProposalsByMoment = selectedMomentId
-        ? (brandProposals?.filter((p: any) => p.event_id === selectedMomentId) || [])
+        ? (allInboundProposals.filter((p: any) => p.event_id === selectedMomentId) || [])
         : []
 
     // --- SHARED DATA LOGIC (Lifted for Dashboard & Proposals View) ---
 
-    // 2. Outbound (Applied to Campaigns) - Waiting
-    const outboundApplications = proposals?.filter((p: any) => p.type === 'creator_apply' && (p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')) || []
+    // [New Logic] Split brandProposals into "Offers" (Inbound) and "Applications" (Outbound)
+    // Heuristic: If it has 'motivation' or 'content_plan', it's likely a Creator Application to a Brand Product.
+    // [FIX] Filter by status to avoid duplicates in Active/Rejected/Completed Lists
+    const brandApplications = brandProposals?.filter((p: any) =>
+        (p.motivation || p.content_plan) &&
+        (p.status === 'applied' || p.status === 'pending' || p.status === 'viewed' || p.status === 'offered')
+    ) || []
 
-    // 3. Active (In Progress) - Both sources
-    const activeInbound = brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'confirmed') || []
-    const activeOutbound = proposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'confirmed') || []
-    const allActive = [...activeInbound, ...activeOutbound].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+    // Brand Offers are those WITHOUT motivation (pure offers from brand)
+    const brandOffers = brandProposals?.filter((p: any) => !p.motivation && !p.content_plan) || []
+
+    // 2. Outbound (Applied to Campaigns + Brand Products) - Waiting
+    const campaignApplications = campaignProposals?.filter((p: any) => p.type === 'creator_apply' && (p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')) || []
+
+    // Combine Campaign Applications + Brand Applications
+    const outboundApplications = [
+        ...campaignApplications,
+        ...brandApplications
+    ].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+
+    // 3. Active (In Progress) - Both sources (deduplicated)
+    const activeInbound = allInboundProposals.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'confirmed') || []
+    const activeOutbound = campaignProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'confirmed') || []
+    const allActive = deduplicateById([...activeInbound, ...activeOutbound]).sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
 
     // Refined Inbound (Waiting for Action)
-    const inboundProposals = brandProposals?.filter((p: any) => !p.status || p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending') || []
+    // brandOffers is filtered from brandProposals, which already contains merged moment_proposals
+    // (See proposal-provider.tsx line 265-269: setBrandProposals([...mappedBrand, ...mappedMoment]))
+    // Do NOT merge momentProposals again - it causes duplicate keys!
+    const inboundProposals = brandOffers
+        .filter((p: any) => !p.status || p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
 
-    // New Rejected List
-    const rejectedProposals = brandProposals?.filter((p: any) => p.status === 'rejected') || []
+    // New Rejected List - Both Inbound (Brand Offers) and Outbound (Campaign Apps) (deduplicated)
+    const rejectedInbound = allInboundProposals.filter((p: any) => p.status === 'rejected') || []
+    const rejectedOutbound = campaignProposals?.filter((p: any) => p.status === 'rejected') || []
+    const rejectedProposals = deduplicateById([...rejectedInbound, ...rejectedOutbound]).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
 
-    // 4. Completed - Both sources
-    const completedInbound = brandProposals?.filter((p: any) => p.status === 'completed') || []
-    const completedOutbound = proposals?.filter((p: any) => p.status === 'completed') || []
-    const allCompleted = [...completedInbound, ...completedOutbound].sort((a, b) => new Date(b.completed_at || b.created_at || 0).getTime() - new Date(a.completed_at || a.created_at || 0).getTime())
+    // 4. Completed - Both sources (deduplicated)
+    const completedInbound = allInboundProposals.filter((p: any) => p.status === 'completed') || []
+    const completedOutbound = campaignProposals?.filter((p: any) => p.status === 'completed') || []
+    const allCompleted = deduplicateById([...completedInbound, ...completedOutbound]).sort((a, b) => new Date(b.completed_at || b.created_at || 0).getTime() - new Date(a.completed_at || a.created_at || 0).getTime())
 
-    // 5. All Items
-    const allWorkspaceItems = [
+    // 5. All Items (Deduplicated)
+    // Filter out duplicates that may appear in multiple arrays (e.g., a proposal in both inboundProposals and activeInbound)
+    const allWorkspaceItemsRaw = [
         ...inboundProposals,
         ...outboundApplications,
         ...activeInbound,
@@ -429,7 +534,86 @@ function InfluencerDashboardContent() {
         ...rejectedProposals,
         ...completedInbound,
         ...completedOutbound
-    ].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+    ]
+
+    // Deduplicate by ID
+    const seenIds = new Set<string>()
+    const allWorkspaceItems = allWorkspaceItemsRaw
+        .filter(item => {
+            if (seenIds.has(item.id)) return false
+            seenIds.add(item.id)
+            return true
+        })
+        .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+
+    // Filter items by type (moment/campaign/brand)
+    const filterByType = (items: any[], type: 'all' | 'moment' | 'campaign' | 'brand') => {
+        if (type === 'all') return items
+
+        return items.filter(item => {
+            if (type === 'moment') {
+                // Moment proposals or brand proposals with event_id
+                return item.moment_id || item.event_id
+            }
+            if (type === 'campaign') {
+                // Campaign proposals
+                return item.campaign_id && !item.moment_id && !item.event_id
+            }
+            if (type === 'brand') {
+                // Brand proposals without event_id (direct offers)
+                return !item.moment_id && !item.event_id && !item.campaign_id
+            }
+            return false
+        })
+    }
+
+    // --- SUB-TAB RENDERING HELPER ---
+    const renderSubTabs = (items: any[]) => {
+        const momentCount = filterByType(items, 'moment').length
+        const campaignCount = filterByType(items, 'campaign').length
+        const brandCount = filterByType(items, 'brand').length
+
+        return (
+            <div className="flex gap-2 mb-4 flex-wrap">
+                <button
+                    onClick={() => setWorkspaceSubTab('all')}
+                    className={`min-w-[90px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-background border border-border text-foreground/90 hover:bg-accent'
+                        }`}
+                >
+                    전체 <span className="ml-1.5 text-xs opacity-70">{items.length}</span>
+                </button>
+                <button
+                    onClick={() => setWorkspaceSubTab('moment')}
+                    className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'moment'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-background border border-border text-foreground/90 hover:bg-accent'
+                        }`}
+                >
+                    모먼트 <span className="ml-1.5 text-xs opacity-70">{momentCount}</span>
+                </button>
+                <button
+                    onClick={() => setWorkspaceSubTab('campaign')}
+                    className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'campaign'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-background border border-border text-foreground/90 hover:bg-accent'
+                        }`}
+                >
+                    캠페인 <span className="ml-1.5 text-xs opacity-70">{campaignCount}</span>
+                </button>
+                <button
+                    onClick={() => setWorkspaceSubTab('brand')}
+                    className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'brand'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-background border border-border text-foreground/90 hover:bg-accent'
+                        }`}
+                >
+                    브랜드 <span className="ml-1.5 text-xs opacity-70">{brandCount}</span>
+                </button>
+            </div>
+        )
+    }
 
     // --- WORKSPACE RENDERING HELPER ---
     const renderWorkspaceItems = (items: any[], type: string) => {
@@ -550,7 +734,7 @@ function InfluencerDashboardContent() {
                             proposal.status === 'completed' ? 'border-l-slate-400' :
                                 proposal.status === 'rejected' ? 'border-l-red-500' :
                                     'border-l-emerald-500'}
-                    `} onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
+                    `} onClick={() => { setSelectedProposal(proposal); setShowReadonlyDialog(true); }}>
                         <div className="flex flex-col md:flex-row gap-6">
                             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-muted/50 border border-border overflow-hidden">
                                 <span className="font-bold text-lg text-muted-foreground">{proposal.brand_name?.[0] || "W"}</span>
@@ -571,8 +755,22 @@ function InfluencerDashboardContent() {
                                                         proposal.status === 'rejected' ? '거절됨' :
                                                             '대기중'}
                                             </Badge>
+                                            {/* Moment Proposal Badge */}
+                                            {proposal.moment_id && (
+                                                <Badge className="text-xs font-normal bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-0">
+                                                    📌 모먼트 제안
+                                                </Badge>
+                                            )}
                                         </h3>
-                                        <p className="text-sm text-muted-foreground">{proposal.brand_name} • {new Date(proposal.created_at).toLocaleDateString()}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {proposal.brand_name} • {new Date(proposal.created_at).toLocaleDateString()}
+                                            {/* Show moment title if available */}
+                                            {proposal.moment_id && proposal.moment_title && (
+                                                <span className="ml-2 text-purple-600 dark:text-purple-400">
+                                                    → {proposal.moment_title}
+                                                </span>
+                                            )}
+                                        </p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {/* Contextual Actions based on type/status */}
@@ -592,13 +790,35 @@ function InfluencerDashboardContent() {
                                         <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
                                     </div>
                                 </div>
-                                <div className="mt-4">
-                                    <WorkspaceProgressBar
-                                        status={proposal.status}
-                                        contract_status={proposal.contract_status}
-                                        delivery_status={proposal.delivery_status}
-                                        content_submission_status={proposal.content_submission_status}
-                                    />
+                                <div className="mt-4 flex items-center gap-4">
+                                    <div className="flex-1">
+                                        <WorkspaceProgressBar
+                                            status={proposal.status}
+                                            contract_status={proposal.contract_status}
+                                            delivery_status={proposal.delivery_status}
+                                            content_submission_status={proposal.content_submission_status}
+                                        />
+                                    </div>
+
+                                    {/* Accept/Reject Buttons - Only show for 'offered' status */}
+                                    {proposal.status === 'offered' && (
+                                        <div className="flex gap-2 shrink-0">
+                                            <Button
+                                                size="sm"
+                                                onClick={(e) => handleAcceptProposal(e, proposal.id)}
+                                                className="bg-green-600 hover:bg-green-700 text-white"
+                                            >
+                                                수락하기
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="destructive"
+                                                onClick={(e) => handleRejectProposal(e, proposal.id)}
+                                            >
+                                                거절하기
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1086,7 +1306,7 @@ function InfluencerDashboardContent() {
             }
 
             // Check Outbound (Campaign Applications)
-            const outbound = proposals.find(p => p.id === proposalId)
+            const outbound = campaignProposals.find(p => p.id === proposalId)
             if (outbound) {
                 console.log('[NotificationNav] Found Outbound Proposal:', proposalId)
                 setCurrentView('campaigns_list')
@@ -1097,7 +1317,7 @@ function InfluencerDashboardContent() {
                 // setChatProposal(outbound) // This depends on if chatProposal supports outbound types
             }
         }
-    }, [searchParams, isLoading, isInitialized, brandProposals, proposals])
+    }, [searchParams, isLoading, isInitialized, brandProposals, campaignProposals])
 
 
     // ... inside renderContent case 'moments_list' ...
@@ -1183,14 +1403,14 @@ function InfluencerDashboardContent() {
             // We search in both brandProposals (offers) and proposals (applications)
             const targetId = proposalId.toString()
             const found = brandProposals.find((p: any) => p.id?.toString() === targetId)
-                || proposals.find((p: any) => p.id?.toString() === targetId)
+                || campaignProposals.find((p: any) => p.id?.toString() === targetId)
 
             if (found) {
                 setChatProposal(found)
                 setIsChatOpen(true)
             }
         }
-    }, [searchParams, brandProposals, proposals])
+    }, [searchParams, brandProposals, campaignProposals])
 
     // Auth Check & Redirect
     useEffect(() => {
@@ -1815,7 +2035,7 @@ function InfluencerDashboardContent() {
                         myMoments={myMoments}
                         pastMoments={pastMoments}
                         upcomingMoments={upcomingMoments}
-                        brandProposals={brandProposals}
+                        brandProposals={allInboundProposals}
                         setCurrentView={setCurrentView}
                         handleOpenDetails={handleOpenDetails}
                         deleteEvent={deleteEvent}
@@ -1845,7 +2065,7 @@ function InfluencerDashboardContent() {
             case "product-detail":
                 if (!selectedProductId) return null;
                 return (
-                    <ProductDetailView
+                    <BrandProductDetailView
                         productId={selectedProductId}
                         onBack={() => setCurrentView("discover-products")}
                     />
@@ -1893,22 +2113,22 @@ function InfluencerDashboardContent() {
 
                         <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="w-full">
                             <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
-                                <TabsTrigger value="all" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
+                                <TabsTrigger value="all" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
                                     전체 보기 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="active" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
+                                <TabsTrigger value="active" className="min-w-[120px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
                                     진행중 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="inbound" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
+                                <TabsTrigger value="inbound" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
                                     받은 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{inboundProposals.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="outbound" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
-                                    보낸 지원 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundApplications.length}</span>
+                                <TabsTrigger value="outbound" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
+                                    보낸 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundApplications.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="rejected" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
+                                <TabsTrigger value="rejected" className="min-w-[120px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
                                     거절됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{rejectedProposals.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="completed" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
+                                <TabsTrigger value="completed" className="min-w-[120px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full transition-all">
                                     완료됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
                                 </TabsTrigger>
                             </TabsList>
@@ -1916,34 +2136,39 @@ function InfluencerDashboardContent() {
 
                             {/* Tab 0: All Items */}
                             <TabsContent value="all" className="space-y-4 mt-6">
-                                {renderWorkspaceItems(allWorkspaceItems, 'all')}
+                                {renderSubTabs(allWorkspaceItems)}
+                                {renderWorkspaceItems(filterByType(allWorkspaceItems, workspaceSubTab), 'all')}
                             </TabsContent>
 
                             {/* Tab 1: Active (In Progress) */}
                             <TabsContent value="active" className="space-y-4 mt-6">
-                                {renderWorkspaceItems(allActive, 'active')}
+                                {renderSubTabs(allActive)}
+                                {renderWorkspaceItems(filterByType(allActive, workspaceSubTab), 'active')}
                             </TabsContent>
 
-                            {/* Tab 2: Inbound (Received) */}
+                            {/* Tab 2: Inbound Proposals (Received) - Moments only, no sub-tabs */}
                             <TabsContent value="inbound" className="space-y-4 mt-6">
                                 {renderWorkspaceItems(inboundProposals, 'inbound')}
                             </TabsContent>
 
-                            {/* Tab 3: Outbound (Sent) */}
+                            {/* Tab 3: Outbound Applications (Sent) */}
                             <TabsContent value="outbound" className="space-y-4 mt-6">
-                                {renderWorkspaceItems(outboundApplications, 'outbound')}
+                                {renderSubTabs(outboundApplications)}
+                                {renderWorkspaceItems(filterByType(outboundApplications, workspaceSubTab), 'outbound')}
                             </TabsContent>
 
 
 
                             {/* Tab 5: Completed */}
                             <TabsContent value="completed" className="space-y-4 mt-6">
-                                {renderWorkspaceItems(allCompleted, 'completed')}
+                                {renderSubTabs(allCompleted)}
+                                {renderWorkspaceItems(filterByType(allCompleted, workspaceSubTab), 'completed')}
                             </TabsContent>
 
                             {/* Tab 4: Rejected - Added Missing Tab Content */}
                             <TabsContent value="rejected" className="space-y-4 mt-6">
-                                {renderWorkspaceItems(rejectedProposals, 'rejected')}
+                                {renderSubTabs(rejectedProposals)}
+                                {renderWorkspaceItems(filterByType(rejectedProposals, workspaceSubTab), 'rejected')}
                             </TabsContent>
                         </Tabs >
                     </div >
@@ -2458,6 +2683,16 @@ function InfluencerDashboardContent() {
                     </div>
                 )
 
+            case "product-detail":
+                return (
+                    <div className="animate-in fade-in slide-in-from-right-4">
+                        <BrandProductDetailView
+                            productId={selectedProductId!}
+                            onBack={() => setCurrentView("discover-products")}
+                        />
+                    </div>
+                )
+
 
             case "discover-campaigns":
                 return (
@@ -2678,7 +2913,6 @@ function InfluencerDashboardContent() {
 
         setIsApplying(true)
         try {
-            const { submitCampaignApplication } = await import('@/app/actions/proposal')
             const { createClient } = await import('@/lib/supabase/client') // Client-side upload
 
             let insightUrl = null;
@@ -2689,7 +2923,7 @@ function InfluencerDashboardContent() {
                 const filePath = `insights/${fileName}`
 
                 const { error: uploadError } = await supabase.storage
-                    .from('campaigns') // Reusing campaigns bucket or maybe 'proposal-assets'? Using campaigns for now as per user setup
+                    .from('campaigns')
                     .upload(filePath, insightFile)
 
                 if (uploadError) {
@@ -2703,26 +2937,26 @@ function InfluencerDashboardContent() {
                 insightUrl = publicUrl
             }
 
-            const cost = desiredCost ? parseInt(desiredCost.replace(/[^0-9]/g, '')) : undefined
+            const priceOffer = desiredCost ? parseInt(desiredCost.replace(/[^0-9]/g, '')) : undefined
             const pLinks = portfolioLinks.split('\n').map(l => l.trim()).filter(Boolean)
 
-            const result = await submitCampaignApplication(selectedCampaign.id, {
+            // Use addProposal from PlatformProvider instead of server action
+            await addProposal({
+                campaignId: selectedCampaign.id,
                 message: appealMessage,
-                price: cost,
-                motivation,
-                content_plan: contentPlan,
-                portfolio_links: pLinks,
-                instagram_handle: instagramHandle,
-                insight_screenshot: insightUrl || undefined
+                motivation: motivation,
+                contentPlan: contentPlan,
+                portfolioLinks: pLinks,
+                instagramHandle: instagramHandle,
+                insightScreenshot: insightUrl || undefined,
+                priceOffer: priceOffer,
+                type: 'creator_apply',
+                status: 'offered'
             })
 
-            if (result.error) {
-                console.error("Submission DB Error:", result.error) // Detailed log
-                alert(`지원 실패: ${JSON.stringify(result.error)}`) // Show details to user for debugging
-            } else {
-                alert("지원서가 성공적으로 발송되었습니다!")
-                setIsApplyDialogOpen(false)
-            }
+            alert("지원서가 성공적으로 발송되었습니다!")
+            setIsApplyDialogOpen(false)
+
         } catch (error: any) {
             console.error("Application error:", error)
             alert(`지원 중 오류가 발생했습니다: ${error.message}`)
@@ -2852,11 +3086,11 @@ function InfluencerDashboardContent() {
 
                     {/* Chat Dialog ... existing code ... */}
                     <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-                        <DialogContent className="max-w-[1100px] p-0 overflow-hidden flex h-[85vh] bg-white border-0 shadow-2xl rounded-2xl">
+                        <DialogContent className="max-w-[1100px] p-0 overflow-hidden flex h-[85vh] bg-background border-0 shadow-2xl rounded-2xl">
                             <div className="flex h-full w-full">
                                 {/* Left Sidebar: Deal Status & Workflow */}
                                 <div className="w-80 bg-muted/30 border-r border-border flex flex-col shrink-0">
-                                    <div className="p-6 border-b border-border bg-white">
+                                    <div className="p-6 border-b border-border bg-background">
                                         <div className="flex items-center gap-3 mb-4">
                                             <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
                                                 {chatProposal?.brand_name?.[0] || "B"}
@@ -2932,7 +3166,7 @@ function InfluencerDashboardContent() {
                                                             >
                                                                 <div className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 
                                                                     ${isDone ? 'bg-emerald-500 border-emerald-500' :
-                                                                        isCurrent ? 'bg-white border-yellow-500 animate-pulse' :
+                                                                        isCurrent ? 'bg-background border-yellow-500 animate-pulse' :
                                                                             'border-slate-300'}
                                                                 `} />
                                                                 {isCurrent && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded-full font-bold">NOW</span>}
@@ -2946,7 +3180,7 @@ function InfluencerDashboardContent() {
 
                                         {/* Quick Actions Placeholder */}
                                         <div className="px-2">
-                                            <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 text-xs">
+                                            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 text-xs">
                                                 <p className="font-bold text-indigo-900 mb-1">💡 Tip</p>
                                                 <p className="text-indigo-700 leading-relaxed">
                                                     계약 단계에서는 표준 계약서가 자동으로 생성됩니다.
@@ -2961,7 +3195,7 @@ function InfluencerDashboardContent() {
                                 </div>
 
                                 {/* Right Content: Chat & Workspaces */}
-                                <Tabs value={activeProposalTab} onValueChange={setActiveProposalTab} className="flex-1 flex flex-col min-w-0 bg-white">
+                                <Tabs value={activeProposalTab} onValueChange={setActiveProposalTab} className="flex-1 flex flex-col min-w-0 bg-background">
                                     <div className="px-6 py-4 border-b border-gray-100 shrink-0 flex flex-row items-center justify-between">
                                         <div>
                                             <DialogTitle className="text-lg">워크스페이스</DialogTitle>
@@ -2972,7 +3206,7 @@ function InfluencerDashboardContent() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="ml-auto mr-4 text-xs h-8 bg-white border-border text-muted-foreground hover:text-indigo-600 hover:border-indigo-200"
+                                                className="ml-auto mr-4 text-xs h-8 bg-background border-border text-muted-foreground hover:text-indigo-600 hover:border-indigo-200"
                                                 onClick={() => fetchProductGuide(chatProposal.product_id)}
                                             >
                                                 <FileText className="mr-1.5 h-3.5 w-3.5" /> 가이드 보기
@@ -2996,7 +3230,7 @@ function InfluencerDashboardContent() {
                                         <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/10">
                                             {/* Proposal Detail Box (at the top of chat) */}
                                             {chatProposal && (
-                                                <div className="mb-6 p-5 bg-white border border-primary/20 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
+                                                <div className="mb-6 p-5 bg-card border border-primary/20 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
                                                     <div className="flex items-center justify-between mb-4 border-b border-primary/10 pb-2">
                                                         <h4 className="text-sm font-bold text-primary flex items-center gap-2">
                                                             <BadgeCheck className="h-5 w-5" /> 협업 제안 상세
@@ -3017,7 +3251,7 @@ function InfluencerDashboardContent() {
                                                             </div>
                                                             <div className="space-y-1">
                                                                 <p className="text-muted-foreground">제시 원고료</p>
-                                                                <p className="font-bold text-emerald-600 text-sm">{chatProposal.compensation_amount}</p>
+                                                                <p className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{chatProposal.compensation_amount}</p>
                                                             </div>
                                                         </div>
 
@@ -3085,7 +3319,7 @@ function InfluencerDashboardContent() {
                                                             <div key={field.key} className="space-y-1">
                                                                 <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">{field.label}</Label>
                                                                 <Input
-                                                                    className="h-8 text-xs bg-white"
+                                                                    className="h-8 text-xs bg-background"
                                                                     placeholder={field.placeholder}
                                                                     value={chatProposal?.[field.key] || ""}
                                                                     onChange={(e) => {
@@ -3117,7 +3351,7 @@ function InfluencerDashboardContent() {
                                                                 <Input
                                                                     type="number"
                                                                     min="0"
-                                                                    className="h-8 text-xs bg-white pr-8"
+                                                                    className="h-8 text-xs bg-background pr-8"
                                                                     placeholder="0"
                                                                     value={(() => {
                                                                         const val = chatProposal.condition_secondary_usage_period || "";
@@ -3156,7 +3390,7 @@ function InfluencerDashboardContent() {
 
                                                     <div className="grid grid-cols-2 gap-4">
                                                         {/* Brand Status */}
-                                                        <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.brand_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-border'}`}>
+                                                        <div className={`border border-border rounded-[30px] p-8 transition-all ${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-50 border-indigo-200 shadow-xl dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-background shadow-lg opacity-90'}`}>
                                                             <span className="text-[10px] font-bold text-muted-foreground/70 uppercase">Brand</span>
                                                             {chatProposal.brand_condition_confirmed ? (
                                                                 <div className="text-indigo-700 font-bold text-sm flex items-center gap-1">
@@ -3168,7 +3402,7 @@ function InfluencerDashboardContent() {
                                                         </div>
 
                                                         {/* Creator Status (Self) */}
-                                                        <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.influencer_condition_confirmed ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-border'}`}>
+                                                        <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.influencer_condition_confirmed ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-background border-border'}`}>
                                                             <span className="text-[10px] font-bold text-muted-foreground/70 uppercase">Creator (본인)</span>
                                                             {chatProposal.influencer_condition_confirmed ? (
                                                                 <div className="text-indigo-700 font-bold text-sm flex items-center gap-1">
@@ -3261,7 +3495,7 @@ function InfluencerDashboardContent() {
                                                                 {/* 1. Greeting Bubble (Visual Only, attached to guide) */}
                                                                 <div className="flex justify-start mt-4 animate-in fade-in slide-in-from-left-2 delay-100">
                                                                     <div className="max-w-[85%] flex flex-col items-start gap-1">
-                                                                        <div className="bg-white border rounded-2xl rounded-tl-none p-3 shadow-sm text-sm">
+                                                                        <div className="bg-background border rounded-2xl rounded-tl-none p-3 shadow-sm text-sm">
                                                                             안녕하세요! 제안을 수락해주셔서 감사합니다. 🥰<br />
                                                                             본격적인 진행에 앞서 해당 캠페인의 제작 가이드를 공유드립니다.
                                                                         </div>
@@ -3271,7 +3505,7 @@ function InfluencerDashboardContent() {
                                                                 {/* 2. Actual Guide Card */}
                                                                 <div className="flex justify-start mt-2 animate-in fade-in slide-in-from-left-2 delay-150">
                                                                     <div className="max-w-[85%] flex flex-col items-start">
-                                                                        <div className="bg-white border rounded-2xl rounded-tl-none p-3 shadow-sm text-sm">
+                                                                        <div className="bg-background border rounded-2xl rounded-tl-none p-3 shadow-sm text-sm">
                                                                             <div className="w-[280px]">
                                                                                 <div className="flex items-center gap-2 mb-3 border-b border-border/50 pb-2">
                                                                                     <div className="bg-emerald-100 text-emerald-600 p-1 rounded-md">
@@ -3319,7 +3553,7 @@ function InfluencerDashboardContent() {
                                                                 <div className={`max-w-[85%] flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
                                                                     <div className={`p-3 rounded-2xl text-sm shadow-sm ${msg.senderId === user?.id
                                                                         ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                                        : 'bg-white border rounded-tl-none'
+                                                                        : 'bg-background border rounded-tl-none'
                                                                         }`}>
                                                                         {msg.content.startsWith('[RATE_CARD_JSON]') ? (
                                                                             (() => {
@@ -3397,7 +3631,7 @@ function InfluencerDashboardContent() {
                                                 })}
                                         </div>
 
-                                        <div className="p-4 border-t bg-white">
+                                        <div className="p-4 border-t bg-background">
                                             <div className="flex gap-2">
                                                 <Input
                                                     placeholder="메시지를 입력하세요..."
@@ -3412,7 +3646,7 @@ function InfluencerDashboardContent() {
 
                                     {/* Contract Tab View */}
                                     <TabsContent value="contract" className="flex-1 overflow-y-auto p-6 bg-muted/30 data-[state=active]:flex flex-col items-center justify-center">
-                                        <div className="w-full max-w-2xl bg-white p-10 rounded-xl shadow-sm border border-border">
+                                        <div className="w-full max-w-2xl bg-background p-10 rounded-xl shadow-sm border border-border">
                                             <div className="text-center mb-8">
                                                 <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                                                     <FileText className="h-8 w-8 text-muted-foreground/70" />
@@ -3446,7 +3680,7 @@ function InfluencerDashboardContent() {
                                                             <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleContractResponse('rejected')}>
                                                                 거절
                                                             </Button>
-                                                            <Button variant="outline" className="border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => handleContractResponse('negotiating')}>
+                                                            <Button variant="outline" className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20" onClick={() => handleContractResponse('negotiating')}>
                                                                 보류/수정요청
                                                             </Button>
                                                             <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={handleStartSigning}>
@@ -3471,9 +3705,9 @@ function InfluencerDashboardContent() {
 
                                     {/* Shipping Tab */}
                                     <TabsContent value="shipping" className="flex-1 overflow-y-auto p-6 bg-muted/30 data-[state=active]:flex flex-col items-center justify-start">
-                                        <div className="w-full max-w-2xl bg-white p-8 rounded-xl shadow-sm border border-border mt-4">
+                                        <div className="w-full max-w-2xl bg-background p-8 rounded-xl shadow-sm border border-border mt-4">
                                             <div className="flex items-center gap-4 mb-6 border-b border-border/50 pb-4">
-                                                <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center">
+                                                <div className="h-12 w-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
                                                     <Package className="h-6 w-6 text-indigo-600" />
                                                 </div>
                                                 <div>
@@ -3520,7 +3754,7 @@ function InfluencerDashboardContent() {
                                                                 <div className="mt-6 pt-6 border-t border-border">
                                                                     {chatProposal.tracking_number ? (
                                                                         <div className="space-y-4">
-                                                                            <div className="bg-white p-4 rounded-xl border border-emerald-100 flex items-center gap-4 shadow-sm">
+                                                                            <div className="bg-background p-4 rounded-xl border border-emerald-100 flex items-center gap-4 shadow-sm">
                                                                                 <div className="h-10 w-10 bg-emerald-50 rounded-lg flex items-center justify-center">
                                                                                     <Package className="h-5 w-5 text-emerald-600" />
                                                                                 </div>
@@ -3567,7 +3801,7 @@ function InfluencerDashboardContent() {
                                                                             setShippingPhone(displayUser.phone || "")
                                                                             setShippingAddress(displayUser.address || "")
                                                                         }}
-                                                                        className="text-xs h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-bold"
+                                                                        className="text-xs h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 font-bold"
                                                                     >
                                                                         <User className="mr-2 h-3.5 w-3.5" /> 프로필 정보 불러오기
                                                                     </Button>
@@ -3600,9 +3834,9 @@ function InfluencerDashboardContent() {
 
                                     {/* Content Submission Tab */}
                                     <TabsContent value="content" className="flex-1 overflow-y-auto p-6 bg-muted/30 data-[state=active]:flex flex-col items-center justify-start">
-                                        <div className="w-full max-w-2xl bg-white p-8 rounded-xl shadow-sm border border-border mt-4">
+                                        <div className="w-full max-w-2xl bg-background p-8 rounded-xl shadow-sm border border-border mt-4">
                                             <div className="flex items-center gap-4 mb-6 border-b border-border/50 pb-4">
-                                                <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center">
+                                                <div className="h-12 w-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
                                                     <Star className="h-6 w-6 text-indigo-600" />
                                                 </div>
                                                 <div>
@@ -3613,7 +3847,7 @@ function InfluencerDashboardContent() {
 
                                             {chatProposal?.delivery_status !== 'delivered' ? (
                                                 <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed text-muted-foreground">
-                                                    <div className="h-16 w-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-border/50">
+                                                    <div className="h-16 w-16 bg-background rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-border/50">
                                                         <Clock className="h-8 w-8 text-slate-300" />
                                                     </div>
                                                     <p className="font-bold">🔒 작업물 제출 단계가 비활성화 상태입니다.</p>
@@ -3624,7 +3858,7 @@ function InfluencerDashboardContent() {
                                                     {/* Submission Display or Form */}
                                                     {(chatProposal.content_submission_status === 'submitted' || chatProposal.content_submission_status === 'approved') && !isReuploading ? (
                                                         <div className="space-y-6">
-                                                            <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl shadow-sm">
+                                                            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-6 rounded-2xl shadow-sm">
                                                                 <div className="flex justify-between items-start mb-4">
                                                                     <div className="flex items-center gap-2 text-indigo-900 font-black">
                                                                         <BadgeCheck className={`h-6 w-6 ${chatProposal.content_submission_status === 'approved' ? 'text-emerald-500' : 'text-indigo-600'}`} />
@@ -3641,7 +3875,7 @@ function InfluencerDashboardContent() {
                                                                         <Button
                                                                             variant="outline"
                                                                             size="sm"
-                                                                            className="h-8 px-3 text-xs bg-white border-indigo-200 text-indigo-600 font-bold hover:bg-indigo-50"
+                                                                            className="h-8 px-3 text-xs bg-background border-indigo-200 text-indigo-600 font-bold hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
                                                                             onClick={() => {
                                                                                 const url = chatProposal.content_submission_file_url || chatProposal.content_submission_url
                                                                                 if (url) window.open(url, '_blank')
@@ -3692,7 +3926,7 @@ function InfluencerDashboardContent() {
                                                     ) : (
                                                         <div className="space-y-6">
                                                             {isReuploading && (
-                                                                <div className="flex justify-between items-center p-3 bg-indigo-50 rounded-xl border border-indigo-100 mb-2">
+                                                                <div className="flex justify-between items-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
                                                                     <span className="text-xs font-black text-indigo-700">
                                                                         ✨ v{(parseFloat(((chatProposal.content_submission_version || 0.9) + 0.1).toFixed(1)))} 버전으로 업데이트 중
                                                                     </span>
@@ -3708,8 +3942,8 @@ function InfluencerDashboardContent() {
                                                             )}
                                                             <Tabs defaultValue="link" className="w-full">
                                                                 <TabsList className="grid w-full grid-cols-2 p-1 bg-muted rounded-xl h-11">
-                                                                    <TabsTrigger value="link" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold">링크 제출</TabsTrigger>
-                                                                    <TabsTrigger value="file" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold">파일 업로드</TabsTrigger>
+                                                                    <TabsTrigger value="link" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm font-bold">링크 제출</TabsTrigger>
+                                                                    <TabsTrigger value="file" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm font-bold">파일 업로드</TabsTrigger>
                                                                 </TabsList>
 
                                                                 <TabsContent value="link" className="space-y-4 pt-4 animate-in fade-in slide-in-from-left-2">
@@ -3728,7 +3962,7 @@ function InfluencerDashboardContent() {
                                                                 </TabsContent>
 
                                                                 <TabsContent value="file" className="space-y-4 pt-4 animate-in fade-in slide-in-from-right-2">
-                                                                    <div className="border-2 border-dashed border-border rounded-2xl p-10 text-center hover:bg-indigo-50/30 hover:border-indigo-200 transition-all cursor-pointer relative group">
+                                                                    <div className="border-2 border-dashed border-border rounded-2xl p-10 text-center hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all cursor-pointer relative group">
                                                                         <input
                                                                             type="file"
                                                                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
@@ -3745,7 +3979,7 @@ function InfluencerDashboardContent() {
                                                                                 }
                                                                             }}
                                                                         />
-                                                                        <div className="h-16 w-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform border border-border/50">
+                                                                        <div className="h-16 w-16 bg-background rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform border border-border/50">
                                                                             <Upload className="h-8 w-8 text-indigo-500" />
                                                                         </div>
                                                                         <p className="font-black text-sm text-foreground">
@@ -3766,7 +4000,7 @@ function InfluencerDashboardContent() {
                                                                         </span>
                                                                         <span>{uploadProgress}%</span>
                                                                     </div>
-                                                                    <div className="w-full bg-white rounded-full h-2.5 overflow-hidden shadow-inner border border-border/50">
+                                                                    <div className="w-full bg-background rounded-full h-2.5 overflow-hidden shadow-inner border border-border/50">
                                                                         <div
                                                                             className="bg-indigo-600 h-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(79,70,229,0.5)]"
                                                                             style={{ width: `${uploadProgress}%` }}
@@ -3797,10 +4031,10 @@ function InfluencerDashboardContent() {
                                                                 <Megaphone className="h-4 w-4 text-indigo-600" />
                                                             </div>
                                                             <h4 className="text-sm font-black text-foreground tracking-tight">작업물 피드백 대화</h4>
-                                                            <span className="text-[9px] bg-white border border-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-bold ml-auto shadow-sm">Real-time Feedback</span>
+                                                            <span className="text-[9px] bg-background border border-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-bold ml-auto shadow-sm">Real-time Feedback</span>
                                                         </div>
 
-                                                        <div className="bg-white rounded-2xl border border-border/50 overflow-hidden flex flex-col h-[400px] shadow-sm">
+                                                        <div className="bg-background rounded-2xl border border-border/50 overflow-hidden flex flex-col h-[400px] shadow-sm">
                                                             {/* Feedback Messages List */}
                                                             <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-muted/30/30" ref={workFeedbackChatRef}>
                                                                 {contextSubmissionFeedback
@@ -3812,7 +4046,7 @@ function InfluencerDashboardContent() {
                                                                     })
                                                                     .length === 0 ? (
                                                                     <div className="h-full flex flex-col items-center justify-center text-muted-foreground/70 gap-2 opacity-50">
-                                                                        <div className="p-4 bg-white rounded-full shadow-sm mb-2">
+                                                                        <div className="p-3 bg-background rounded-full shadow-sm mb-2">
                                                                             <Info className="h-6 w-6 text-slate-300" />
                                                                         </div>
                                                                         <p className="text-sm font-black">피드백 대화 내역이 없습니다.</p>
@@ -3831,7 +4065,7 @@ function InfluencerDashboardContent() {
                                                                             <div key={msg.id} className={`flex flex-col ${msg.sender_id === user?.id ? 'items-end' : 'items-start'}`}>
                                                                                 <div className={`max-w-[85%] p-3 rounded-2xl text-xs shadow-sm ${msg.sender_id === user?.id
                                                                                     ? 'bg-indigo-600 text-white rounded-tr-none'
-                                                                                    : 'bg-white border border-border text-foreground/90 rounded-tl-none'
+                                                                                    : 'bg-background border border-border text-foreground rounded-tl-none'
                                                                                     }`}>
                                                                                     {msg.content}
                                                                                 </div>
@@ -3844,7 +4078,7 @@ function InfluencerDashboardContent() {
                                                             </div>
 
                                                             {/* Feedback Input */}
-                                                            <div className="p-4 bg-white border-t border-border/50">
+                                                            <div className="p-4 bg-background border-t border-border z-10 sticky bottom-0">
                                                                 <div className="flex gap-2">
                                                                     <Input
                                                                         value={feedbackInput}
@@ -4121,12 +4355,12 @@ function InfluencerDashboardContent() {
                             {/* Linked Proposals */}
                             <div>
                                 <h4 className="text-sm font-bold text-foreground mb-3 flex items-center">
-                                    📥 도착한 제안 <Badge className="ml-2 bg-indigo-600 hover:bg-indigo-700">{brandProposals.filter(p => p.event_id === selectedMoment.id).length}건</Badge>
+                                    📥 도착한 제안 <Badge className="ml-2 bg-indigo-600 hover:bg-indigo-700">{allInboundProposals.filter(p => p.event_id === selectedMoment.id).length}건</Badge>
                                 </h4>
 
                                 <div className="space-y-3">
-                                    {brandProposals.filter(p => p.event_id === selectedMoment.id).length > 0 ? (
-                                        brandProposals.filter(p => p.event_id === selectedMoment.id).map(proposal => (
+                                    {allInboundProposals.filter(p => p.event_id === selectedMoment.id).length > 0 ? (
+                                        allInboundProposals.filter(p => p.event_id === selectedMoment.id).map(proposal => (
                                             <div
                                                 key={proposal.id}
                                                 className="bg-white border hover:border-indigo-500 rounded-lg p-4 transition-all cursor-pointer shadow-sm hover:shadow-md group"
@@ -4188,6 +4422,13 @@ function InfluencerDashboardContent() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* ReadonlyProposalDialog for viewing proposal details */}
+            <ReadonlyProposalDialog
+                open={showReadonlyDialog}
+                onOpenChange={setShowReadonlyDialog}
+                proposal={selectedProposal}
+            />
         </div>
     )
 }

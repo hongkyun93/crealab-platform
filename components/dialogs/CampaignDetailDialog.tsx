@@ -104,6 +104,7 @@ export function CampaignDetailDialog({
             <DialogContent className="p-0 gap-0 bg-white border-0 shadow-2xl 
                 w-full h-[100dvh] max-w-none rounded-none 
                 md:h-[90vh] md:max-w-6xl md:rounded-xl overflow-hidden flex flex-col md:block">
+                <DialogTitle className="sr-only">{campaign.product || "캠페인 상세 정보"}</DialogTitle>
 
                 <CampaignDetailContent
                     campaign={campaign}
