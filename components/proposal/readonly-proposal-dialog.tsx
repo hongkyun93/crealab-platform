@@ -54,7 +54,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal }: Readonl
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
                 <DialogHeader>
                     <DialogTitle>제안서 상세</DialogTitle>
                     <DialogDescription>
@@ -62,7 +62,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal }: Readonl
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6 py-2">
+                <div className="flex gap-6 overflow-hidden h-[calc(90vh-8rem)]">
                     {/* 1. Brand & Status Info */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
