@@ -754,7 +754,15 @@ function InfluencerDashboardContent() {
                             proposal.status === 'completed' ? 'border-l-slate-400' :
                                 proposal.status === 'rejected' ? 'border-l-red-500' :
                                     'border-l-emerald-500'}
-                    `} onClick={() => { setSelectedProposal(proposal); setShowReadonlyDialog(true); }}>
+                    `} onClick={() => {
+                            if (type === 'active') {
+                                setChatProposal(proposal);
+                                setIsChatOpen(true);
+                            } else {
+                                setSelectedProposal(proposal);
+                                setShowReadonlyDialog(true);
+                            }
+                        }}>
                         <div className="flex flex-col md:flex-row gap-6">
                             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-muted/50 border border-border overflow-hidden">
                                 <span className="font-bold text-lg text-muted-foreground">{proposal.brand_name?.[0] || "W"}</span>
