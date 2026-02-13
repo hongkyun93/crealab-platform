@@ -49,7 +49,7 @@ export function DetailsModal({
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
-                    <div className="rounded-lg border bg-slate-50 p-4 space-y-4">
+                    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
                         {/* Category and Product Grid */}
                         <div className="grid grid-cols-2 gap-4 text-sm">
                             {type === 'moment' ? (
@@ -74,17 +74,17 @@ export function DetailsModal({
 
                                     {/* Description */}
                                     {data.description && (
-                                        <div className="col-span-2 pt-3 border-t border-slate-200">
-                                            <p className="whitespace-pre-wrap text-slate-700 leading-relaxed text-sm">{data.description}</p>
+                                        <div className="col-span-2 pt-3 border-t border-border">
+                                            <p className="whitespace-pre-wrap text-foreground leading-relaxed text-sm">{data.description}</p>
                                         </div>
                                     )}
 
                                     {/* Production Guide */}
                                     {data.guide && (
-                                        <div className="col-span-2 bg-amber-50 border border-amber-200 rounded-md p-3">
-                                            <span className="text-amber-800 font-medium block mb-2">📝 제작 가이드</span>
-                                            <p className="whitespace-pre-wrap text-amber-900 text-sm leading-relaxed">{data.guide}</p>
-                                            <p className="text-xs text-amber-700 mt-2 pt-2 border-t border-amber-200">
+                                        <div className="col-span-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 rounded-md p-3">
+                                            <span className="text-amber-800 dark:text-amber-300 font-medium block mb-2">📝 제작 가이드</span>
+                                            <p className="whitespace-pre-wrap text-amber-900 dark:text-amber-200 text-sm leading-relaxed">{data.guide}</p>
+                                            <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 pt-2 border-t border-amber-200 dark:border-amber-800/30">
                                                 💡 크리에이터가 예시로 제시한 제작가이드입니다. 언제든지 협의 가능합니다.
                                             </p>
                                         </div>
@@ -102,7 +102,7 @@ export function DetailsModal({
                                     </div>
                                     <div className="col-span-2">
                                         <span className="text-muted-foreground block mb-1">모집 내용</span>
-                                        <p className="whitespace-pre-wrap text-slate-700">{data.description}</p>
+                                        <p className="whitespace-pre-wrap text-foreground">{data.description}</p>
                                     </div>
                                 </>
                             )}
@@ -118,7 +118,7 @@ export function DetailsModal({
                         {proposals.length > 0 ? (
                             <div className="space-y-3">
                                 {proposals.map((prop, idx) => (
-                                    <div key={prop.id || idx} className="flex items-center justify-between p-4 rounded-lg border bg-white shadow-sm hover:border-primary/50 transition-colors">
+                                    <div key={prop.id || idx} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card shadow-sm hover:border-primary/50 transition-colors">
                                         <div className="space-y-1">
                                             <div className="font-medium flex items-center gap-2">
                                                 {prop.brand_name || "Brand"}
@@ -127,7 +127,7 @@ export function DetailsModal({
                                             <p className="text-sm text-muted-foreground line-clamp-1">
                                                 {prop.message || "제안 내용 없음"}
                                             </p>
-                                            <div className="text-xs text-slate-500">
+                                            <div className="text-xs text-muted-foreground">
                                                 제안일: {prop.created_at ? new Date(prop.created_at).toLocaleDateString() : '-'}
                                             </div>
                                         </div>
@@ -138,7 +138,7 @@ export function DetailsModal({
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
+                            <div className="text-center py-8 text-muted-foreground bg-muted/30 rounded-lg border border-dashed border-border">
                                 아직 도착한 제안이 없습니다.
                             </div>
                         )}
