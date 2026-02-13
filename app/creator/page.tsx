@@ -1144,6 +1144,14 @@ function InfluencerDashboardContent() {
             // Also send global message for brand visibility
             await sendMessage(brandId, notificationContent, isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
 
+            // 🔔 Send notification to brand
+            await sendNotification(
+                brandId,
+                `${user?.name}님이 콘텐츠를 제출했습니다.`,
+                'content_submission',
+                proposalId
+            )
+
             // Refresh feedback list
             await fetchSubmissionFeedback(proposalId, !isCampaignProposal)
 

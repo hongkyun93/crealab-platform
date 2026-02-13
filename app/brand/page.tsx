@@ -272,19 +272,31 @@ function BrandDashboardContent() {
         setIsSendingFeedback(true)
         try {
             const isCampaign = !!chatProposal?.campaignId || (chatProposal as any).type === 'creator_apply'
+            const isBrandProposal = !isCampaign;
             const success = await sendSubmissionFeedback(
                 chatProposal.id.toString(),
-                !isCampaign,
-                user.id,
-                feedbackMsg.trim()
+                isBrandProposal,
+                user!.id,
+                feedbackMsg
             )
+
             if (success) {
                 setFeedbackMsg("")
+                setIsSendingFeedback(false)
+                await fetchSubmissionFeedback(chatProposal.id.toString(), isBrandProposal)
+
+                // 🔔 Send notification to influencer
+                await sendNotification(
+                    chatProposal.influencer_id,
+                    `${user?.name}님이 피드백을 남겼습니다.`,
+                    'feedback_received',
+                    chatProposal.id.toString()
+                )
+            } else {
+                setIsSendingFeedback(false)
             }
         } catch (e) {
             console.error("Feedback error:", e)
-        } finally {
-            setIsSendingFeedback(false)
         }
     }
 
