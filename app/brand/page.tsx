@@ -2167,7 +2167,7 @@ function BrandDashboardContent() {
                                     <DialogTitle className="text-xl font-bold tracking-tight text-foreground">워크스페이스</DialogTitle>
                                     <DialogDescription className="text-muted-foreground text-sm">{chatProposal?.influencer_name}님과의 협업 공간입니다.</DialogDescription>
                                 </div>
-                                <TabsList className="bg-muted p-1 rounded-xl h-11">
+                                <TabsList className="bg-muted p-1 rounded-xl h-11 overflow-x-auto inline-flex w-full sm:w-auto">
                                     <TabsTrigger value="chat" className="rounded-lg px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm">소통</TabsTrigger>
                                     <TabsTrigger value="contract" className="rounded-lg px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm">계약 관리</TabsTrigger>
                                     <TabsTrigger value="shipping" className="rounded-lg px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm">배송 관리</TabsTrigger>

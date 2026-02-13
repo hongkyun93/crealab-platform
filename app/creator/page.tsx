@@ -3311,7 +3311,7 @@ function InfluencerDashboardContent() {
                                                 <FileText className="mr-1.5 h-3.5 w-3.5" /> 가이드 보기
                                             </Button>
                                         )}
-                                        <TabsList className="grid w-[420px] grid-cols-4">
+                                        <TabsList className="inline-flex w-full sm:w-auto overflow-x-auto">
                                             <TabsTrigger value="chat">소통</TabsTrigger>
                                             <TabsTrigger value="contract" disabled={!(chatProposal?.brand_condition_confirmed && chatProposal?.influencer_condition_confirmed)}>
                                                 계약 {!(chatProposal?.brand_condition_confirmed && chatProposal?.influencer_condition_confirmed) && <Lock className="ml-1 h-3 w-3 text-muted-foreground/70" />}
@@ -4040,7 +4040,7 @@ function InfluencerDashboardContent() {
                                                                 </div>
                                                             )}
                                                             <Tabs defaultValue="link" className="w-full">
-                                                                <TabsList className="grid w-full grid-cols-2 p-1 bg-muted rounded-xl h-11">
+                                                                <TabsList className="grid w-full grid-cols-2 p-1 bg-muted rounded-xl h-11 overflow-x-auto">
                                                                     <TabsTrigger value="link" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm font-bold">링크 제출</TabsTrigger>
                                                                     <TabsTrigger value="file" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm font-bold">파일 업로드</TabsTrigger>
                                                                 </TabsList>
