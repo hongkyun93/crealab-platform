@@ -736,3 +736,146 @@ GRANT ALL ON storage.buckets TO authenticated;
 
 -- Force Schema Cache Reload
 NOTIFY pgrst, 'reload schema';
+
+-- ==========================================
+-- 8. NOTIFICATION TRIGGERS
+-- ==========================================
+-- Automatic notifications for key business events
+-- Hybrid Approach: DB triggers for core events, client calls for complex interactions
+
+-- 8.1 CAMPAIGN APPLICATION NOTIFICATION
+CREATE OR REPLACE FUNCTION notify_brand_on_campaign_application()
+RETURNS TRIGGER AS $$
+DECLARE
+    brand_user_id UUID;
+    campaign_name TEXT;
+    influencer_name TEXT;
+BEGIN
+    SELECT c.brand_id, c.product_name INTO brand_user_id, campaign_name
+    FROM campaigns c WHERE c.id = NEW.campaign_id;
+    
+    SELECT display_name INTO influencer_name
+    FROM profiles WHERE id = NEW.influencer_id;
+    
+    INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
+    VALUES (
+        brand_user_id,
+        NEW.influencer_id,
+        'campaign_application',
+        COALESCE(influencer_name, '크리에이터') || '님이 "' || COALESCE(campaign_name, '캠페인') || '" 캠페인에 지원했습니다.',
+        NEW.id::text
+    );
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Failed to create campaign application notification: %', SQLERRM;
+        RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_campaign_application ON campaign_proposals;
+CREATE TRIGGER on_campaign_application
+AFTER INSERT ON campaign_proposals
+FOR EACH ROW EXECUTE FUNCTION notify_brand_on_campaign_application();
+
+-- 8.2 MOMENT PROPOSAL NOTIFICATION
+CREATE OR REPLACE FUNCTION notify_influencer_on_moment_proposal()
+RETURNS TRIGGER AS $$
+DECLARE
+    moment_title TEXT;
+    brand_name TEXT;
+BEGIN
+    SELECT title INTO moment_title
+    FROM life_moments WHERE id = NEW.moment_id;
+    
+    SELECT display_name INTO brand_name
+    FROM profiles WHERE id = NEW.brand_id;
+    
+    INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
+    VALUES (
+        NEW.influencer_id,
+        NEW.brand_id,
+        'moment_proposal',
+        COALESCE(brand_name, '브랜드') || '님이 "' || COALESCE(moment_title, '모먼트') || '" 모먼트에 제안했습니다.',
+        NEW.id::text
+    );
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Failed to create moment proposal notification: %', SQLERRM;
+        RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_moment_proposal ON moment_proposals;
+CREATE TRIGGER on_moment_proposal
+AFTER INSERT ON moment_proposals
+FOR EACH ROW EXECUTE FUNCTION notify_influencer_on_moment_proposal();
+
+-- 8.3 PRODUCT APPLICATION NOTIFICATION
+CREATE OR REPLACE FUNCTION notify_brand_on_product_application()
+RETURNS TRIGGER AS $$
+DECLARE
+    influencer_name TEXT;
+BEGIN
+    IF NEW.status IN ('applied', 'pending') THEN
+        SELECT display_name INTO influencer_name
+        FROM profiles WHERE id = NEW.influencer_id;
+        
+        INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
+        VALUES (
+            NEW.brand_id,
+            NEW.influencer_id,
+            'product_application',
+            COALESCE(influencer_name, '크리에이터') || '님이 "' || COALESCE(NEW.product_name, '제품') || '" 제품에 신청했습니다.',
+            NEW.id::text
+        );
+    END IF;
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Failed to create product application notification: %', SQLERRM;
+        RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_product_application ON brand_proposals;
+CREATE TRIGGER on_product_application
+AFTER INSERT ON brand_proposals
+FOR EACH ROW EXECUTE FUNCTION notify_brand_on_product_application();
+
+-- 8.4 BRAND OFFER NOTIFICATION
+CREATE OR REPLACE FUNCTION notify_influencer_on_brand_offer()
+RETURNS TRIGGER AS $$
+DECLARE
+    brand_name TEXT;
+BEGIN
+    IF NEW.status = 'offered' THEN
+        SELECT display_name INTO brand_name
+        FROM profiles WHERE id = NEW.brand_id;
+        
+        INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
+        VALUES (
+            NEW.influencer_id,
+            NEW.brand_id,
+            'brand_offer',
+            COALESCE(brand_name, '브랜드') || '님이 "' || COALESCE(NEW.product_name, '제품') || '" 협업을 제안했습니다.',
+            NEW.id::text
+        );
+    END IF;
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Failed to create brand offer notification: %', SQLERRM;
+        RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_brand_offer ON brand_proposals;
+CREATE TRIGGER on_brand_offer
+AFTER INSERT ON brand_proposals
+FOR EACH ROW EXECUTE FUNCTION notify_influencer_on_brand_offer();
