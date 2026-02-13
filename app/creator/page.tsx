@@ -752,25 +752,25 @@ function InfluencerDashboardContent() {
                     <Card key={proposal.id} className={`p-6 border-2 bg-card hover:bg-accent/5 cursor-pointer transition-all
                         ${type === 'all'
                             ? (proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed'
-                                ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]'  // Active
+                                ? 'border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)] hover:shadow-[0_0_12px_rgba(16,185,129,0.35)]'  // Active
                                 : proposal.status === 'completed'
-                                    ? 'border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.3)] hover:shadow-[0_0_25px_rgba(148,163,184,0.5)]'  // Completed - Gray
+                                    ? 'border-slate-400/50 shadow-[0_0_8px_rgba(148,163,184,0.25)] hover:shadow-[0_0_12px_rgba(148,163,184,0.35)]'  // Completed - Gray
                                     : proposal.status === 'rejected'
-                                        ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_25px_rgba(239,68,68,0.5)]'  // Rejected
+                                        ? 'border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.25)] hover:shadow-[0_0_12px_rgba(239,68,68,0.35)]'  // Rejected
                                         : proposal.type === 'brand_offer'
-                                            ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]'  // Inbound
-                                            : 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_25px_rgba(168,85,247,0.5)]')  // Outbound
+                                            ? 'border-blue-500/50 shadow-[0_0_8px_rgba(59,130,246,0.25)] hover:shadow-[0_0_12px_rgba(59,130,246,0.35)]'  // Inbound
+                                            : 'border-purple-500/50 shadow-[0_0_8px_rgba(168,85,247,0.25)] hover:shadow-[0_0_12px_rgba(168,85,247,0.35)]')  // Outbound
                             : type === 'active'
-                                ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]'
+                                ? 'border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)] hover:shadow-[0_0_12px_rgba(16,185,129,0.35)]'
                                 : type === 'inbound'
-                                    ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]'
+                                    ? 'border-blue-500/50 shadow-[0_0_8px_rgba(59,130,246,0.25)] hover:shadow-[0_0_12px_rgba(59,130,246,0.35)]'
                                     : type === 'outbound'
-                                        ? 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_25px_rgba(168,85,247,0.5)]'
+                                        ? 'border-purple-500/50 shadow-[0_0_8px_rgba(168,85,247,0.25)] hover:shadow-[0_0_12px_rgba(168,85,247,0.35)]'
                                         : type === 'rejected'
-                                            ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_25px_rgba(239,68,68,0.5)]'
+                                            ? 'border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.25)] hover:shadow-[0_0_12px_rgba(239,68,68,0.35)]'
                                             : type === 'completed'
-                                                ? 'border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.3)] hover:shadow-[0_0_25px_rgba(148,163,184,0.5)]'
-                                                : 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]'}
+                                                ? 'border-slate-400/50 shadow-[0_0_8px_rgba(148,163,184,0.25)] hover:shadow-[0_0_12px_rgba(148,163,184,0.35)]'
+                                                : 'border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)] hover:shadow-[0_0_12px_rgba(16,185,129,0.35)]'}
                     `} onClick={() => {
                             if (type === 'active') {
                                 setChatProposal(proposal);
@@ -2169,20 +2169,20 @@ function InfluencerDashboardContent() {
                                 <TabsTrigger value="all" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
                                     전체 보기 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="active" className="min-w-[120px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white border border-emerald-500/30 bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all hover:border-emerald-500/50">
-                                    진행중 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
+                                <TabsTrigger value="active" className="min-w-[120px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(16,185,129,0.6)] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500/50 px-4 py-2 rounded-full font-medium transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+                                    진행중 <span className="ml-2 bg-white/50 dark:bg-black/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="inbound" className="min-w-[130px] data-[state=active]:bg-blue-500 data-[state=active]:text-white border border-blue-500/30 bg-background px-4 py-2 rounded-full transition-all hover:border-blue-500/50">
-                                    받은 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{inboundProposals.length}</span>
+                                <TabsTrigger value="inbound" className="min-w-[130px] data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.6)] bg-blue-500/20 text-blue-700 dark:text-blue-300 border-2 border-blue-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]">
+                                    받은 제안 <span className="ml-2 bg-white/50 dark:bg-black/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-xs">{inboundProposals.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="outbound" className="min-w-[130px] data-[state=active]:bg-purple-500 data-[state=active]:text-white border border-purple-500/30 bg-background px-4 py-2 rounded-full transition-all hover:border-purple-500/50">
-                                    보낸 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundApplications.length}</span>
+                                <TabsTrigger value="outbound" className="min-w-[130px] data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(168,85,247,0.6)] bg-purple-500/20 text-purple-700 dark:text-purple-300 border-2 border-purple-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">
+                                    보낸 제안 <span className="ml-2 bg-white/50 dark:bg-black/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded text-xs">{outboundApplications.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="rejected" className="min-w-[120px] data-[state=active]:bg-red-500 data-[state=active]:text-white border border-red-500/30 bg-background px-4 py-2 rounded-full transition-all hover:border-red-500/50">
-                                    거절됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{rejectedProposals.length}</span>
+                                <TabsTrigger value="rejected" className="min-w-[120px] data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(239,68,68,0.6)] bg-red-500/20 text-red-700 dark:text-red-300 border-2 border-red-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+                                    거절됨 <span className="ml-2 bg-white/50 dark:bg-black/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded text-xs">{rejectedProposals.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="completed" className="min-w-[120px] data-[state=active]:bg-slate-400 data-[state=active]:text-white border border-slate-400/30 bg-background px-4 py-2 rounded-full transition-all hover:border-slate-400/50">
-                                    완료됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
+                                <TabsTrigger value="completed" className="min-w-[120px] data-[state=active]:bg-slate-400 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(148,163,184,0.6)] bg-slate-400/20 text-slate-700 dark:text-slate-300 border-2 border-slate-400/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(148,163,184,0.4)]">
+                                    완료됨 <span className="ml-2 bg-white/50 dark:bg-black/30 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
                                 </TabsTrigger>
                             </TabsList>
 
