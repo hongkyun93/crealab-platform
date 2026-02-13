@@ -193,15 +193,15 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-            {/* Title and View Mode Selector on same row */}
-            <div className="flex justify-between items-start">
-                <div className="flex flex-col gap-4">
-                    <h1 className="text-3xl font-bold tracking-tight">워크스페이스 아카이브</h1>
-                    <p className="text-muted-foreground">크리에이터와 진행 중인 모든 협업을 한곳에서 관리하세요.</p>
+            {/* Title and View Mode Selector - Stacks on mobile */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">워크스페이스 아카이브</h1>
+                    <p className="text-sm sm:text-base text-muted-foreground">크리에이터와 진행 중인 모든 협업을 한곳에서 관리하세요.</p>
                 </div>
 
                 {/* View Mode Selector */}
-                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg self-start">
                     <Button
                         variant={viewMode === 'detail' ? 'default' : 'ghost'}
                         size="icon"
@@ -224,23 +224,23 @@ export const WorkspaceView = React.memo(function WorkspaceView({
             </div>
 
             <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="w-full">
-                <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0 mb-6">
-                    <TabsTrigger value="all" className="min-w-[130px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
+                <TabsList className="flex flex-nowrap sm:flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0 mb-6 overflow-x-auto pb-2">
+                    <TabsTrigger value="all" className="min-w-[130px] flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
                         전체 보기 <span className="ml-2 bg-muted dark:bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="active" className="min-w-[110px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
+                    <TabsTrigger value="active" className="min-w-[110px] flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
                         진행중 <span className="ml-2 bg-muted dark:bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="inbound" className="min-w-[120px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
+                    <TabsTrigger value="inbound" className="min-w-[120px] flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
                         받은 제안 <span className="ml-2 bg-muted dark:bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-xs">{inboundApplications.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="outbound" className="min-w-[120px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
+                    <TabsTrigger value="outbound" className="min-w-[120px] flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
                         보낸 제안 <span className="ml-2 bg-muted dark:bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundOffers.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="rejected" className="min-w-[110px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
+                    <TabsTrigger value="rejected" className="min-w-[110px] flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
                         거절됨 <span className="ml-2 bg-muted dark:bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allRejected.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="completed" className="min-w-[110px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
+                    <TabsTrigger value="completed" className="min-w-[110px] flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border bg-background px-4 py-2 rounded-full text-muted-foreground font-medium transition-all">
                         완료됨 <span className="ml-2 bg-muted dark:bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
                     </TabsTrigger>
                 </TabsList>

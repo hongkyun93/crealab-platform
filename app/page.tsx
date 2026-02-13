@@ -28,13 +28,13 @@ export default function Home() {
               준비된 브랜드와 준비된 크리에이터의 만남!<br />
               &apos;완벽한 타이밍&apos;의 진정성 있는 파트너십으로 광고효과를 극대화하세요.
             </p>
-            <div className="flex gap-4">
-              <Button size="lg" asChild className="h-12 px-8 text-lg">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+              <Button size="lg" asChild className="h-12 px-8 text-lg w-full sm:w-auto">
                 <Link href="/signup?role=brand">
                   브랜드로 시작하기
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" asChild className="h-12 px-8 text-lg">
+              <Button size="lg" variant="outline" asChild className="h-12 px-8 text-lg w-full sm:w-auto">
                 <Link href="/signup?role=creator">
                   크리에이터로 시작하기
                 </Link>
