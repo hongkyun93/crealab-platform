@@ -419,11 +419,12 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
     useEffect(() => {
         console.log('[PlatformProvider] COMPONENT MOUNTED')
-        // Safety: Force Auth Check completion after 5s
+        // Safety: Force Auth Check completion after 10s
         const timer = setTimeout(() => {
-            if (!isAuthChecked) {
+            if (!isAuthChecked || !isInitialized) {
                 console.warn("[PlatformProvider] Auth check timed out, forcing render.")
                 setIsAuthChecked(true)
+                setIsInitialized(true) // CRITICAL: Must also set this to make isLoading = false
             }
         }, 10000)
 
@@ -431,7 +432,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             console.log('[PlatformProvider] COMPONENT UNMOUNTED')
             clearTimeout(timer)
         }
-    }, [isAuthChecked])
+    }, [isAuthChecked, isInitialized])
 
 
     const login = async (id: string, pw: string): Promise<User> => {
