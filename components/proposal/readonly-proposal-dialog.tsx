@@ -99,18 +99,20 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal }: Readonl
                             <Package className="h-4 w-4" /> 제안 제품
                         </h4>
                         <div className="bg-card border rounded-lg p-4">
-                            <div className="flex gap-4">
-                                {/* Large Product Image - Left */}
-                                <div className="h-32 w-32 bg-muted rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                            <div className="flex flex-col lg:flex-row gap-4">
+                                {/* Large Product Image - Full Width on Mobile, Left on Desktop */}
+                                <div className="w-full lg:w-[640px] lg:max-w-[640px] bg-muted rounded-lg flex items-center justify-center overflow-hidden shrink-0">
                                     {data.product_image ? (
-                                        <img src={data.product_image} alt="Product" className="h-full w-full object-cover" />
+                                        <img src={data.product_image} alt="Product" className="w-full h-auto object-contain max-h-[640px]" />
                                     ) : (
-                                        <Package className="h-16 w-16 text-muted-foreground/30" />
+                                        <div className="w-full aspect-square flex items-center justify-center">
+                                            <Package className="h-32 w-32 text-muted-foreground/30" />
+                                        </div>
                                     )}
                                 </div>
 
                                 {/* Product Details - Right */}
-                                <div className="flex-1 space-y-3">
+                                <div className="flex-1 space-y-3 min-w-0">
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-start">
                                             <span className="text-xs text-muted-foreground">제품명</span>
