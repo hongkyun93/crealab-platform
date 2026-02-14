@@ -367,6 +367,149 @@ const DesignWarmPaper = () => (
     </div>
 );
 
+// 11. Kanban Board (A, B, C Columns)
+const DesignKanban = () => {
+    const kanbanData = {
+        upcoming: [
+            {
+                id: "k1",
+                brand: "Voive",
+                product: "Home Fragrance Diffuser",
+                compensation: "200,000 KRW",
+                status: "Contract Signing",
+                dueDate: "2024-03-25",
+                avatar: "V",
+                priority: "high"
+            }
+        ],
+        inProgress: [
+            {
+                id: "k2",
+                brand: "Urban Lifestyle",
+                product: "Minimalist Backpack",
+                compensation: "350,000 KRW",
+                status: "Content Creation",
+                dueDate: "2024-03-20",
+                avatar: "U",
+                priority: "medium"
+            },
+            {
+                id: "k3",
+                brand: "Green Tea Co.",
+                product: "Organic Tea Set",
+                compensation: "180,000 KRW",
+                status: "Product Received",
+                dueDate: "2024-03-28",
+                avatar: "G",
+                priority: "low"
+            }
+        ],
+        completed: [
+            {
+                id: "k4",
+                brand: "Sneaker Lab",
+                product: "Limited Edition Sneakers",
+                compensation: "500,000 KRW",
+                status: "Approved",
+                dueDate: "2024-03-15",
+                avatar: "S",
+                priority: "high"
+            }
+        ]
+    };
+
+    const KanbanCard = ({ project }: { project: any }) => (
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 hover:shadow-md transition-all cursor-move group">
+            <div className="flex items-start gap-3 mb-3">
+                <div className={`h-10 w-10 rounded-lg flex items-center justify-center font-bold text-white shadow-sm ${project.priority === 'high' ? 'bg-gradient-to-br from-purple-500 to-indigo-600' : project.priority === 'medium' ? 'bg-gradient-to-br from-blue-500 to-cyan-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}>
+                    {project.avatar}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-sm text-slate-900 truncate">{project.brand}</h4>
+                    <p className="text-xs text-slate-500 truncate">{project.product}</p>
+                </div>
+                <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 ${project.priority === 'high' ? 'border-red-200 text-red-600 bg-red-50' : project.priority === 'medium' ? 'border-orange-200 text-orange-600 bg-orange-50' : 'border-green-200 text-green-600 bg-green-50'}`}>
+                    {project.priority.toUpperCase()}
+                </Badge>
+            </div>
+
+            <div className="space-y-2 mb-3">
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                    <DollarSign className="w-3 h-3" />
+                    <span className="font-medium">{project.compensation}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                    <Calendar className="w-3 h-3" />
+                    <span>{project.dueDate}</span>
+                </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-700">{project.status}</span>
+                    <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-6 rounded-xl">
+            <div className="mb-6">
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">협업 프로젝트 보드</h3>
+                <p className="text-sm text-slate-600">진행 상태별로 프로젝트를 관리하세요</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Column A: Upcoming */}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="h-3 w-3 rounded-full bg-purple-500 shadow-lg shadow-purple-200"></div>
+                        <h4 className="font-bold text-slate-800">A. 진행 예정</h4>
+                        <Badge variant="secondary" className="ml-auto text-xs h-5">{kanbanData.upcoming.length}</Badge>
+                    </div>
+                    <div className="space-y-3 min-h-[200px] bg-purple-50/30 rounded-xl p-3 border-2 border-dashed border-purple-200">
+                        {kanbanData.upcoming.map(project => (
+                            <KanbanCard key={project.id} project={project} />
+                        ))}
+                        <div className="flex items-center justify-center h-12 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-purple-300 hover:text-purple-500 transition-colors cursor-pointer">
+                            <span className="text-sm font-medium">+ 새 프로젝트</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Column B: In Progress */}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="h-3 w-3 rounded-full bg-blue-500 shadow-lg shadow-blue-200"></div>
+                        <h4 className="font-bold text-slate-800">B. 작업 중</h4>
+                        <Badge variant="secondary" className="ml-auto text-xs h-5">{kanbanData.inProgress.length}</Badge>
+                    </div>
+                    <div className="space-y-3 min-h-[200px] bg-blue-50/30 rounded-xl p-3 border-2 border-dashed border-blue-200">
+                        {kanbanData.inProgress.map(project => (
+                            <KanbanCard key={project.id} project={project} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Column C: Completed */}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="h-3 w-3 rounded-full bg-emerald-500 shadow-lg shadow-emerald-200"></div>
+                        <h4 className="font-bold text-slate-800">C. 완료</h4>
+                        <Badge variant="secondary" className="ml-auto text-xs h-5">{kanbanData.completed.length}</Badge>
+                    </div>
+                    <div className="space-y-3 min-h-[200px] bg-emerald-50/30 rounded-xl p-3 border-2 border-dashed border-emerald-200">
+                        {kanbanData.completed.map(project => (
+                            <KanbanCard key={project.id} project={project} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function WorkspaceDesigns() {
     const [activeTab, setActiveTab] = useState("all");
 
