@@ -604,24 +604,24 @@ export const WorkspaceView = React.memo(function WorkspaceView({
             </div>
 
             <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="w-full">
-                <TabsList className="flex flex-nowrap sm:flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0 mb-6 overflow-x-auto pb-2">
-                    <TabsTrigger value="all" className="min-w-[130px] flex-shrink-0 data-[state=active]:bg-slate-900 data-[state=active]:text-white bg-background text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 px-4 py-2 rounded-full font-medium transition-all">
-                        전체 보기 <span className="ml-2 opacity-70 text-xs">{allWorkspaceItems.length}</span>
+                <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
+                    <TabsTrigger value="all" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
+                        전체 보기 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="active" className="min-w-[120px] flex-shrink-0 data-[state=active]:bg-emerald-600 data-[state=active]:text-white bg-background text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 px-4 py-2 rounded-full font-medium transition-all">
-                        진행중 <span className="ml-2 opacity-70 text-xs">{allActive.length}</span>
+                    <TabsTrigger value="active" className="min-w-[120px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(16,185,129,0.6)] bg-background text-emerald-700 dark:text-emerald-400 border-2 border-emerald-500/50 px-4 py-2 rounded-full font-medium transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+                        진행중 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="inbound" className="min-w-[120px] flex-shrink-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white bg-background text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 px-4 py-2 rounded-full font-medium transition-all">
-                        받은 제안 <span className="ml-2 opacity-70 text-xs">{inboundApplications.length}</span>
+                    <TabsTrigger value="inbound" className="min-w-[130px] data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.6)] bg-background text-blue-700 dark:text-blue-400 border-2 border-blue-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]">
+                        받은 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{inboundApplications.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="outbound" className="min-w-[120px] flex-shrink-0 data-[state=active]:bg-purple-600 data-[state=active]:text-white bg-background text-purple-700 dark:text-purple-400 border border-purple-300 dark:border-purple-700 px-4 py-2 rounded-full font-medium transition-all">
-                        보낸 제안 <span className="ml-2 opacity-70 text-xs">{outboundOffers.length}</span>
+                    <TabsTrigger value="outbound" className="min-w-[130px] data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(168,85,247,0.6)] bg-background text-purple-700 dark:text-purple-400 border-2 border-purple-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">
+                        보낸 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundOffers.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="rejected" className="min-w-[110px] flex-shrink-0 data-[state=active]:bg-red-600 data-[state=active]:text-white bg-background text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700 px-4 py-2 rounded-full font-medium transition-all">
-                        거절됨 <span className="ml-2 opacity-70 text-xs">{allRejected.length}</span>
+                    <TabsTrigger value="rejected" className="min-w-[120px] data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(239,68,68,0.6)] bg-background text-red-700 dark:text-red-400 border-2 border-red-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+                        거절됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allRejected.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="completed" className="min-w-[110px] flex-shrink-0 data-[state=active]:bg-slate-600 data-[state=active]:text-white bg-background text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 px-4 py-2 rounded-full font-medium transition-all">
-                        완료됨 <span className="ml-2 opacity-70 text-xs">{allCompleted.length}</span>
+                    <TabsTrigger value="completed" className="min-w-[120px] data-[state=active]:bg-slate-400 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(148,163,184,0.6)] bg-background text-slate-700 dark:text-slate-400 border-2 border-slate-400/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(148,163,184,0.4)]">
+                        완료됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
                     </TabsTrigger>
                 </TabsList>
 
