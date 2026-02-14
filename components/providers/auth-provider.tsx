@@ -386,7 +386,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
     const context = useContext(AuthContext)
     if (!context) {
-        throw new Error('useAuth must be used within AuthProvider')
+        // Return safe fallback to prevent SSR crashes (Recoverable Error)
+        // This allows the app to hydration-switch to client rendering if server render fails context lookup
+        console.warn('useAuth used outside AuthProvider, returning fallback')
+        return {
+            user: null,
+            isAuthChecked: false,
+            isInitialized: false,
+            login: async () => { throw new Error('Auth not initialized') },
+            logout: async () => { },
+            updateUser: async () => { },
+            switchRole: async () => { }
+        }
     }
     return context
 }

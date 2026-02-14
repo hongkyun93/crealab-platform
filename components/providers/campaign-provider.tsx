@@ -60,6 +60,16 @@ export function CampaignProvider({ children, userId, userType }: { children: Rea
             const { data, error } = await query
 
             if (error) {
+                // Ignore AbortError and transient network errors
+                if (error.code === undefined && (
+                    error.message?.includes('AbortError') ||
+                    error.message?.includes('aborted') ||
+                    error.message === 'Failed to fetch' ||
+                    error.message === 'Load failed'
+                )) {
+                    return
+                }
+
                 console.error('[CampaignProvider] Fetch error:', error)
                 return
             }

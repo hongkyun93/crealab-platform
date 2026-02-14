@@ -35,7 +35,7 @@ import { submitDirectProposal } from "@/app/actions/proposal"
 export default function EventDetailPage() {
     const params = useParams()
     const router = useRouter()
-    const { events, user, sendNotification, supabase, products, refreshData, momentProposals } = usePlatform()
+    const { events, user, sendNotification, supabase, products, refreshData, momentProposals, addMomentProposal } = usePlatform()
     const [event, setEvent] = useState<InfluencerEvent | null>(null)
     const [showProposalDialog, setShowProposalDialog] = useState(false)
     const [showReadonlyDialog, setShowReadonlyDialog] = useState(false)
@@ -181,7 +181,9 @@ ${u.name}의 담당자입니다.
                 event_id: event.id,
                 product_name: productName,
                 product_type: productType,
-                compensation_amount: compensationAmount || null,
+                product_type: productType,
+                // [FIX] Convert Man-won to Won for storage
+                compensation_amount: compensationAmount ? String(parseInt(compensationAmount.replace(/[^0-9]/g, '')) * 10000) : null,
                 has_incentive: hasIncentive,
                 incentive_detail: hasIncentive ? incentiveDetail : null,
                 content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ') || null,
@@ -205,19 +207,64 @@ ${u.name}의 담당자입니다.
                 throw new Error(error || "Unknown Server Error")
             }
 
-            // Trigger manual refresh to ensure UI is updated immediately
-            if (refreshData) await refreshData()
+            // Optimistic Update
+            if (addMomentProposal) {
+                const optimisticProposal: any = {
+                    id: data.id,
+                    moment_id: event.id,
+                    brand_id: user.id,
+                    influencer_id: event.influencerId,
+                    status: 'offered',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
 
+                    // Joins (Optimistic)
+                    brand_name: user.name,
+                    brand_avatar: user.avatar,
+                    influencer_name: event.influencer,
+                    influencer_avatar: event.avatar,
+                    moment_title: event.event,
 
-            // data is the inserted proposal row
-
+                    // Conditions
+                    conditions: {
+                        product_name: productName,
+                        product_type: productType,
+                        compensation_amount: compensationAmount,
+                        has_incentive: hasIncentive,
+                        incentive_detail: incentiveDetail,
+                        content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', '),
+                        desired_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+                        condition_draft_submission_date: draftSubmissionDate ? format(draftSubmissionDate, "yyyy-MM-dd") : null,
+                        condition_final_submission_date: finalSubmissionDate ? format(finalSubmissionDate, "yyyy-MM-dd") : null,
+                        condition_upload_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+                        condition_secondary_usage_period: secondaryUsagePeriod || "불가",
+                        video_guide: videoGuide,
+                        product_url: productUrl
+                    },
+                    product_name: productName,
+                    price_offer: compensationAmount ? parseInt(compensationAmount.replace(/[^0-9]/g, '')) * 10000 : 0,
+                    // [Added] Top-level condition fields for immediate UI reflection
+                    condition_product_receipt_date: null, // Usually not set on creation
+                    condition_draft_submission_date: draftSubmissionDate ? format(draftSubmissionDate, "yyyy-MM-dd") : null,
+                    condition_final_submission_date: finalSubmissionDate ? format(finalSubmissionDate, "yyyy-MM-dd") : null,
+                    condition_upload_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
+                    condition_secondary_usage_period: secondaryUsagePeriod || "불가",
+                    product_url: productUrl,
+                    product_type: productType
+                }
+                addMomentProposal(optimisticProposal)
+            }
 
             // Success
             alert("제안서가 성공적으로 발송되었습니다!")
             setShowProposalDialog(false)
 
+            // Trigger manual refresh in background (Do not await)
+            if (refreshData) refreshData()
+
             // Reset form
             setProductName("")
+            setProductUrl("") // [NEW] Reset URL
             setProductType("gift")
             setCompensationAmount("")
             setHasIncentive(false)
@@ -647,6 +694,17 @@ ${u.name}의 담당자입니다.
                             </div>
                         </div>
 
+                        {/* Product URL (New) */}
+                        <div className="space-y-2">
+                            <Label htmlFor="productUrl">제품 링크 (선택)</Label>
+                            <Input
+                                id="productUrl"
+                                value={productUrl}
+                                onChange={(e) => setProductUrl(e.target.value)}
+                                placeholder="https://..."
+                            />
+                        </div>
+
                         {/* Product Type (Inline) */}
                         <div className="space-y-2">
                             <Label>제품 제공 방식 *</Label>
@@ -686,13 +744,18 @@ ${u.name}의 담당자입니다.
                         </div>
                         {/* Compensation */}
                         <div className="space-y-2">
-                            <Label htmlFor="compensation">보상 금액 (선택)</Label>
-                            <Input
-                                id="compensation"
-                                value={compensationAmount}
-                                onChange={(e) => setCompensationAmount(e.target.value)}
-                                placeholder="예: 100만원"
-                            />
+                            <Label htmlFor="compensation">보상 금액 (단위: 만원)</Label>
+                            <div className="relative">
+                                <Input
+                                    id="compensation"
+                                    type="number"
+                                    value={compensationAmount}
+                                    onChange={(e) => setCompensationAmount(e.target.value)}
+                                    placeholder="예: 10 (10만원)"
+                                    className="pr-12"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">만원</span>
+                            </div>
                         </div>
 
                         {/* Incentive */}

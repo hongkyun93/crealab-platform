@@ -91,9 +91,11 @@ export function useUnifiedProvider() {
         campaignProposals: proposals.campaignProposals,
         brandProposals: proposals.brandProposals,
         momentProposals: proposals.momentProposals, // [NEW]
+        addMomentProposal: proposals.addMomentProposal, // [NEW]
         addProposal: proposals.addProposal,
         updateProposal: proposals.updateProposal,
         updateBrandProposal: proposals.updateBrandProposal,
+        updateMomentProposal: proposals.updateMomentProposal, // [NEW]
         deleteBrandProposal: proposals.deleteBrandProposal,
         refreshProposals: proposals.refreshProposals,
 

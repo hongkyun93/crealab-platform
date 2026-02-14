@@ -165,11 +165,13 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 {event.type === 'upcoming' ? '-' : (
-                                                    event.compensation_amount
-                                                        ? `${Number(event.compensation_amount).toLocaleString()}원`
-                                                        : event.cost
-                                                            ? `${Number(event.cost).toLocaleString()}원`
-                                                            : '-'
+                                                    event.price_offer
+                                                        ? `${Number(event.price_offer).toLocaleString()}원`
+                                                        : event.compensation_amount
+                                                            ? (Number.isNaN(Number(event.compensation_amount)) ? event.compensation_amount : `${Number(event.compensation_amount).toLocaleString()}원`)
+                                                            : event.cost
+                                                                ? `${Number(event.cost).toLocaleString()}원`
+                                                                : '-'
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-center text-xs">
@@ -250,11 +252,13 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                                 <div>
                                                     <span className="text-muted-foreground">원고료:</span>
                                                     <div className="font-medium">
-                                                        {event.compensation_amount
-                                                            ? `${Number(event.compensation_amount).toLocaleString()}원`
-                                                            : event.cost
-                                                                ? `${Number(event.cost).toLocaleString()}원`
-                                                                : '-'}
+                                                        {event.price_offer
+                                                            ? `${Number(event.price_offer).toLocaleString()}원`
+                                                            : event.compensation_amount
+                                                                ? (Number.isNaN(Number(event.compensation_amount)) ? event.compensation_amount : `${Number(event.compensation_amount).toLocaleString()}원`)
+                                                                : event.cost
+                                                                    ? `${Number(event.cost).toLocaleString()}원`
+                                                                    : '-'}
                                                     </div>
                                                 </div>
                                                 <div>

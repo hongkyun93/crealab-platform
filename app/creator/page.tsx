@@ -33,6 +33,8 @@ import Link from "next/link"
 import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
+import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout";
+import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store";
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
 import SignatureCanvas from 'react-signature-canvas'
 import { Badge } from "@/components/ui/badge"
@@ -501,6 +503,31 @@ function InfluencerDashboardContent() {
         }
     }, [contextSubmissionFeedback, chatProposal])
 
+    // [New] Sync Workspace Store
+    useEffect(() => {
+        if (chatProposal) {
+            // 1. Set Proposal
+            useWorkspaceStore.getState().setProposal(chatProposal);
+
+            // 2. Determine Current Stage
+            let stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'completed' = 'negotiation';
+
+            if (chatProposal.brand_condition_confirmed && chatProposal.influencer_condition_confirmed) stage = 'contract';
+            if (chatProposal.contract_status === 'signed') stage = 'shipping';
+            if (chatProposal.delivery_status === 'shipped' || chatProposal.delivery_status === 'delivered') stage = 'content';
+            if (chatProposal.content_submission_url || chatProposal.content_submission_file_url) {
+                if (chatProposal.content_submission_status === 'approved' || chatProposal.status === 'completed') {
+                    stage = 'completed';
+                } else {
+                    stage = 'content';
+                }
+            }
+            if (chatProposal.status === 'completed') stage = 'completed';
+
+            useWorkspaceStore.getState().setCurrentStage(stage);
+        }
+    }, [chatProposal]);
+
     const fetchProductGuide = async (productId: string) => {
         if (!productId) return;
         try {
@@ -572,7 +599,10 @@ function InfluencerDashboardContent() {
             }
         }
         return new Date(dateStr);
+
     }
+
+
 
     const activeMoments = displayEvents.filter((e: any) => {
         const eventDate = parseEventDate(e.eventDate)
@@ -580,13 +610,16 @@ function InfluencerDashboardContent() {
         return eventDate < today && e.status !== 'completed'
     })
 
+
     const myMoments = displayEvents.filter((e: any) => {
         const eventDate = parseEventDate(e.eventDate)
         eventDate.setHours(0, 0, 0, 0)
         return eventDate >= today && e.status !== 'completed'
     })
 
+
     const pastMoments = displayEvents.filter((e: any) => e.status === 'completed')
+
     const myEvents = events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
 
     // Compatibility for upstream code using upcomingMoments
@@ -1220,7 +1253,10 @@ function InfluencerDashboardContent() {
 
         const loadFeedback = async () => {
             const isCampaign = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
-            await fetchSubmissionFeedback(chatProposal.id.toString(), !isCampaign)
+            await fetchSubmissionFeedback(
+                isCampaign ? chatProposal.id.toString() : undefined,
+                !isCampaign ? chatProposal.id.toString() : undefined
+            )
         }
         loadFeedback()
     }, [chatProposal, fetchSubmissionFeedback])
@@ -1316,7 +1352,11 @@ function InfluencerDashboardContent() {
                 ? `🔄 작업물이 v${nextVersion} 버전으로 업데이트되었습니다. (이전 파일은 자동 삭제 처리됨)`
                 : `✅ 새로운 작업물(v${nextVersion})이 제출되었습니다.`
 
-            await sendSubmissionFeedback(proposalId, !isCampaignProposal, user!.id, notificationContent)
+            await sendSubmissionFeedback(
+                isCampaignProposal ? proposalId : undefined,
+                !isCampaignProposal ? proposalId : undefined,
+                notificationContent
+            )
 
             // Also send global message for brand visibility
             await sendMessage(brandId, notificationContent, isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
@@ -1330,7 +1370,10 @@ function InfluencerDashboardContent() {
             )
 
             // Refresh feedback list
-            await fetchSubmissionFeedback(proposalId, !isCampaignProposal)
+            await fetchSubmissionFeedback(
+                isCampaignProposal ? proposalId : undefined,
+                !isCampaignProposal ? proposalId : undefined
+            )
 
             alert(`작업물(v${nextVersion})이 제출되었습니다.`)
             setSubmissionUrl("")
@@ -1353,11 +1396,18 @@ function InfluencerDashboardContent() {
             const isCampaign = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
             const isBrandProposal = !isCampaign
 
-            const success = await sendSubmissionFeedback(chatProposal.id.toString(), isBrandProposal, user!.id, feedbackInput.trim())
+            const success = await sendSubmissionFeedback(
+                isCampaign ? chatProposal.id.toString() : undefined,
+                isBrandProposal ? chatProposal.id.toString() : undefined,
+                feedbackInput.trim()
+            )
 
-            if (success) {
+            if (success) { // sendSubmissionFeedback returns void/promise<void> usually, wait, check impl
                 setFeedbackInput("")
-                await fetchSubmissionFeedback(chatProposal.id.toString(), isBrandProposal)
+                await fetchSubmissionFeedback(
+                    isCampaign ? chatProposal.id.toString() : undefined,
+                    isBrandProposal ? chatProposal.id.toString() : undefined
+                )
             }
         } catch (e) {
             console.error("Failed to send feedback:", e)
@@ -3346,1057 +3396,13 @@ function InfluencerDashboardContent() {
                     <ApplyDialog
                         open={isApplyDialogOpen}
                         onOpenChange={setIsApplyDialogOpen}
-                        selectedCampaign={selectedCampaign}
-                        appealMessage={appealMessage}
-                        setAppealMessage={setAppealMessage}
-                        desiredCost={desiredCost}
-                        setDesiredCost={setDesiredCost}
-                        motivation={motivation}
-                        setMotivation={setMotivation}
-                        contentPlan={contentPlan}
-                        setContentPlan={setContentPlan}
-                        portfolioLinks={portfolioLinks}
-                        setPortfolioLinks={setPortfolioLinks}
-                        instagramHandle={instagramHandle}
-                        setInstagramHandle={setInstagramHandle}
-                        insightFile={insightFile}
-                        setInsightFile={setInsightFile}
-                        onSubmit={handleSubmitApplication}
-                        isApplying={isApplying}
-                        onClose={() => setIsApplyDialogOpen(false)}
-                        onGenerateAIPlan={handleGenerateAIPlan}
-                        isAIPlanning={isAIPlanning}
                     />
 
-                    {/* Chat Dialog ... existing code ... */}
+                    {/* Workspace Dialog (Mobile & Desktop Unified) */}
                     <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-                        <DialogContent className="max-w-[1100px] p-0 overflow-hidden flex h-[85vh] bg-background border-0 shadow-2xl rounded-2xl">
-                            <div className="flex h-full w-full">
-                                {/* Left Sidebar: Deal Status & Workflow */}
-                                <div className="w-80 bg-muted/30 border-r border-border flex flex-col shrink-0">
-                                    <div className="p-6 border-b border-border bg-background">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
-                                                {chatProposal?.brand_name?.[0] || "B"}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-lg leading-tight">{chatProposal?.brand_name}</h3>
-                                                <p className="text-xs text-muted-foreground">{chatProposal?.product_name}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${chatProposal?.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
-                                                chatProposal?.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                                    'bg-indigo-100 text-indigo-700'
-                                                }`}>
-                                                {chatProposal?.status === 'accepted' ? '진행 중' :
-                                                    chatProposal?.status === 'rejected' ? '거절됨' : '협의 중'}
-                                            </span>
-                                            <span className="text-xs font-medium text-emerald-600 ml-auto">
-                                                {chatProposal?.compensation_amount}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Workflow Steps - Dynamic & Clickable */}
-                                    <div className="flex-1 overflow-y-auto p-4 space-y-6" ref={workspaceChatRef}>
-                                        <div>
-                                            <h4 className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider mb-3 px-2">진행 단계</h4>
-                                            <ul className="space-y-1">
-                                                {(() => {
-                                                    // Determine current step index
-                                                    // 0: Negotiation (Default)
-                                                    // 1: Contract (Accepted status)
-                                                    // 2: Shipping (Contract Signed)
-                                                    // 3: Content (Shipped)
-                                                    // 4: Complete (Completed)
-
-                                                    let currentStepIndex = 0;
-                                                    if (chatProposal?.brand_condition_confirmed && chatProposal?.influencer_condition_confirmed) currentStepIndex = 1;
-                                                    if (chatProposal?.contract_status === 'signed') currentStepIndex = 2;
-                                                    if (chatProposal?.delivery_status === 'shipped' || chatProposal?.delivery_status === 'delivered') currentStepIndex = 3;
-                                                    if (chatProposal?.content_submission_url || chatProposal?.content_submission_file_url) {
-                                                        if (chatProposal?.content_submission_status === 'approved' || chatProposal?.status === 'completed') {
-                                                            currentStepIndex = 4;
-                                                        } else {
-                                                            currentStepIndex = 3;
-                                                        }
-                                                    }
-                                                    if (chatProposal?.status === 'completed') currentStepIndex = 5;
-
-                                                    const steps = [
-                                                        { id: 0, label: "조건 조율 및 확정", tab: "chat" },
-                                                        { id: 1, label: "전자 계약서 (서명/발송)", tab: "contract" },
-                                                        { id: 2, label: "제품 배송/수령", tab: "shipping" },
-                                                        { id: 3, label: "콘텐츠 작업 및 제출", tab: "content" },
-                                                        { id: 4, label: "최종 완료 및 정산", tab: "content" }
-                                                    ];
-
-                                                    return steps.map((step, idx) => {
-                                                        const isDone = idx < currentStepIndex || chatProposal?.status === 'completed';
-                                                        const isCurrent = idx === currentStepIndex && chatProposal?.status !== 'completed';
-                                                        const isLocked = idx > currentStepIndex;
-
-                                                        return (
-                                                            <li
-                                                                key={step.id}
-                                                                onClick={() => !isLocked && setActiveProposalTab(step.tab)}
-                                                                className={`
-                                                                    relative pl-8 py-2.5 text-sm rounded-lg transition-all duration-200 cursor-pointer
-                                                                    ${isDone ? 'text-emerald-700 font-bold bg-emerald-50/50 hover:bg-emerald-100' :
-                                                                        isCurrent ? 'text-amber-900 font-bold bg-yellow-50 border border-yellow-200 shadow-sm' :
-                                                                            'text-muted-foreground/70 opacity-60 hover:opacity-100 hover:bg-muted/30'}
-                                                                `}
-                                                            >
-                                                                <div className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 
-                                                                    ${isDone ? 'bg-emerald-500 border-emerald-500' :
-                                                                        isCurrent ? 'bg-background border-yellow-500 animate-pulse' :
-                                                                            'border-slate-300'}
-                                                                `} />
-                                                                {isCurrent && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded-full font-bold">NOW</span>}
-                                                                {step.label}
-                                                            </li>
-                                                        );
-                                                    });
-                                                })()}
-                                            </ul>
-                                        </div>
-
-                                        {/* Quick Actions Placeholder */}
-                                        <div className="px-2">
-                                            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 text-xs">
-                                                <p className="font-bold text-indigo-900 mb-1">💡 Tip</p>
-                                                <p className="text-indigo-700 leading-relaxed">
-                                                    계약 단계에서는 표준 계약서가 자동으로 생성됩니다.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-4 border-t border-border bg-muted/30 text-[10px] text-muted-foreground/70 text-center">
-                                        CreadyPick Secure Workspace™
-                                    </div>
-                                </div>
-
-                                {/* Right Content: Chat & Workspaces */}
-                                <Tabs value={activeProposalTab} onValueChange={setActiveProposalTab} className="flex-1 flex flex-col min-w-0 bg-background">
-                                    <div className="px-6 py-4 border-b border-gray-100 shrink-0 flex flex-row items-center justify-between">
-                                        <div>
-                                            <DialogTitle className="text-lg">워크스페이스</DialogTitle>
-                                            <DialogDescription>브랜드와 협업을 진행하세요.</DialogDescription>
-                                        </div>
-                                        {/* Guide Button in Chat Header */}
-                                        {chatProposal?.product_id && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="ml-auto mr-4 text-xs h-8 bg-background border-border text-muted-foreground hover:text-indigo-600 hover:border-indigo-200"
-                                                onClick={() => fetchProductGuide(chatProposal.product_id)}
-                                            >
-                                                <FileText className="mr-1.5 h-3.5 w-3.5" /> 가이드 보기
-                                            </Button>
-                                        )}
-                                        <TabsList className="inline-flex w-full sm:w-auto overflow-x-auto">
-                                            <TabsTrigger value="chat">소통</TabsTrigger>
-                                            <TabsTrigger value="contract" disabled={!(chatProposal?.brand_condition_confirmed && chatProposal?.influencer_condition_confirmed)}>
-                                                계약 {!(chatProposal?.brand_condition_confirmed && chatProposal?.influencer_condition_confirmed) && <Lock className="ml-1 h-3 w-3 text-muted-foreground/70" />}
-                                            </TabsTrigger>
-                                            <TabsTrigger value="shipping" disabled={!(chatProposal?.brand_condition_confirmed && chatProposal?.influencer_condition_confirmed)}>
-                                                배송 {!(chatProposal?.brand_condition_confirmed && chatProposal?.influencer_condition_confirmed) && <Lock className="ml-1 h-3 w-3 text-muted-foreground/70" />}
-                                            </TabsTrigger>
-                                            <TabsTrigger value="content" disabled={!(chatProposal?.brand_condition_confirmed && chatProposal?.influencer_condition_confirmed)}>
-                                                작업물 {!(chatProposal?.brand_condition_confirmed && chatProposal?.influencer_condition_confirmed) && <Lock className="ml-1 h-3 w-3 text-muted-foreground/70" />}
-                                            </TabsTrigger>
-                                        </TabsList>
-                                    </div>
-
-                                    <TabsContent value="chat" className="flex-1 flex flex-col min-h-0 m-0 data-[state=active]:flex">
-                                        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/10">
-                                            {/* Proposal Detail Box (at the top of chat) */}
-                                            {chatProposal && (
-                                                <div className="mb-6 p-5 bg-card border border-primary/20 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
-                                                    <div className="flex items-center justify-between mb-4 border-b border-primary/10 pb-2">
-                                                        <h4 className="text-sm font-bold text-primary flex items-center gap-2">
-                                                            <BadgeCheck className="h-5 w-5" /> 협업 제안 상세
-                                                        </h4>
-                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm ${chatProposal.status === 'accepted' ? 'bg-emerald-500 text-white' :
-                                                            chatProposal.status === 'rejected' ? 'bg-red-500 text-white' : 'bg-primary text-white'
-                                                            }`}>
-                                                            {chatProposal.status === 'accepted' ? '수락됨' :
-                                                                chatProposal.status === 'rejected' ? '거절됨' :
-                                                                    chatProposal.status === 'pending' ? '보류 중' : '검토 요청됨'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="space-y-4">
-                                                        <div className="grid grid-cols-2 gap-4 text-xs">
-                                                            <div className="space-y-1">
-                                                                <p className="text-muted-foreground">브랜드 / 제품</p>
-                                                                <p className="font-bold text-sm truncate">{chatProposal.brand_name} / {chatProposal.product_name}</p>
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <p className="text-muted-foreground">제시 원고료</p>
-                                                                <p className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{chatProposal.compensation_amount}</p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="p-3 bg-muted/20 rounded-lg border border-primary/5">
-                                                            <p className="text-[11px] text-muted-foreground mb-1">브랜드 메시지</p>
-                                                            <p className="text-xs italic leading-relaxed whitespace-pre-wrap text-foreground/80">"{chatProposal.message}"</p>
-                                                        </div>
-
-                                                        {/* Action Buttons inside Chat (Available in all views now) */}
-                                                        {(chatProposal.status === 'offered' || chatProposal.status === 'pending' || chatProposal.status === 'negotiating' || !chatProposal.status) && (
-                                                            <div className="flex gap-2 pt-2">
-                                                                <Button
-                                                                    size="sm"
-                                                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold h-9"
-                                                                    onClick={() => handleStatusUpdate(chatProposal.id, 'accepted')}
-                                                                    disabled={isUpdatingStatus}
-                                                                >
-                                                                    {isUpdatingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : "수락하기"}
-                                                                </Button>
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    className="flex-1 font-bold h-9 border-amber-200 text-amber-700 hover:bg-amber-50"
-                                                                    onClick={() => handleStatusUpdate(chatProposal.id, 'pending')}
-                                                                    disabled={isUpdatingStatus}
-                                                                >
-                                                                    {isUpdatingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : "보류"}
-                                                                </Button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Condition Confirmation Card (Mutual Agreement) - Added for Creator */}
-                                            {chatProposal && (
-                                                <div className="mb-6 p-6 bg-muted/30 border border-border rounded-2xl animate-in fade-in slide-in-from-top-5 duration-700">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                                                            <BadgeCheck className="h-5 w-5 text-indigo-600" /> 조건 확정 (Mutual Confirmation)
-                                                        </h4>
-                                                        {chatProposal.brand_condition_confirmed && chatProposal.influencer_condition_confirmed ? (
-                                                            <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded-full border border-indigo-200">
-                                                                ✅ 양측 확정 완료
-                                                            </span>
-                                                        ) : (
-                                                            <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full border border-amber-200">
-                                                                ⏳ 확정 대기 중
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground mb-6">
-                                                        계약서 작성 전, 협의된 조건(금액, 일정 등)에 대해 양측이 최종 확정을 해야 합니다.<br />
-                                                        양측 모두 확정 버튼을 누르면 계약서 생성 단계로 넘어갑니다.
-                                                    </p>
-
-                                                    {/* Condition Fields Grid */}
-                                                    {/* Condition Fields Grid */}
-                                                    <div className="grid grid-cols-2 gap-4 mb-6">
-                                                        {[
-                                                            { label: "초안 제출", key: "condition_draft_submission_date", placeholder: "예: 2024-03-20" },
-                                                            { label: "최종본 제출", key: "condition_final_submission_date", placeholder: "예: 2024-03-25" },
-                                                            { label: "업로드 일정", key: "condition_upload_date", placeholder: "예: 2024-03-30" },
-                                                        ].map((field) => (
-                                                            <div key={field.key} className="space-y-1">
-                                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">{field.label}</Label>
-                                                                <Input
-                                                                    className="h-8 text-xs bg-background"
-                                                                    placeholder={field.placeholder}
-                                                                    value={chatProposal?.[field.key] || ""}
-                                                                    onChange={(e) => {
-                                                                        const val = e.target.value;
-                                                                        setChatProposal((prev: any) => ({ ...prev, [field.key]: val }));
-                                                                    }}
-                                                                    onBlur={async (e) => {
-                                                                        const val = e.target.value || "해당 없음";
-                                                                        const isCampaignProposal = !!chatProposal.campaignId || (chatProposal as any)?.type === 'creator_apply';
-                                                                        const proposalId = chatProposal.id.toString();
-
-                                                                        try {
-                                                                            if (isCampaignProposal) {
-                                                                                await updateProposal(proposalId, { [field.key]: val });
-                                                                            } else {
-                                                                                await updateBrandProposal(proposalId, { [field.key]: val });
-                                                                            }
-                                                                        } catch (err) {
-                                                                            console.error("Failed to save condition:", err);
-                                                                        }
-                                                                        setChatProposal((prev: any) => ({ ...prev, [field.key]: val }));
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        ))}
-                                                        <div className="space-y-1">
-                                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">2차 활용 기간 (개월)</Label>
-                                                            <div className="relative">
-                                                                <Input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    className="h-8 text-xs bg-background pr-8"
-                                                                    placeholder="0"
-                                                                    value={(() => {
-                                                                        const val = chatProposal.condition_secondary_usage_period || "";
-                                                                        if (val === "불가능") return "0";
-                                                                        return val.replace(/[^0-9]/g, "");
-                                                                    })()}
-                                                                    onChange={(e) => {
-                                                                        const numVal = e.target.value;
-                                                                        setChatProposal((prev: any) => ({
-                                                                            ...prev,
-                                                                            condition_secondary_usage_period: numVal ? `${numVal}개월` : ""
-                                                                        }));
-                                                                    }}
-                                                                    onBlur={async (e) => {
-                                                                        const numVal = e.target.value;
-                                                                        const valToSave = numVal ? `${numVal}개월` : "0개월";
-                                                                        const isCampaignProposal = !!chatProposal.campaignId || (chatProposal as any)?.type === 'creator_apply';
-                                                                        const proposalId = chatProposal.id.toString();
-
-                                                                        try {
-                                                                            if (isCampaignProposal) {
-                                                                                await updateProposal(proposalId, { condition_secondary_usage_period: valToSave });
-                                                                            } else {
-                                                                                await updateBrandProposal(proposalId, { condition_secondary_usage_period: valToSave });
-                                                                            }
-                                                                        } catch (err) {
-                                                                            console.error("Failed to save condition:", err);
-                                                                        }
-                                                                        setChatProposal((prev: any) => ({ ...prev, condition_secondary_usage_period: valToSave }));
-                                                                    }}
-                                                                />
-                                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/70">개월</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        {/* Brand Status */}
-                                                        <div className={`border border-border rounded-[30px] p-8 transition-all ${chatProposal?.content_submission_status === 'submitted' ? 'bg-indigo-50 border-indigo-200 shadow-xl dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-background shadow-lg opacity-90'}`}>
-                                                            <span className="text-[10px] font-bold text-muted-foreground/70 uppercase">Brand</span>
-                                                            {chatProposal.brand_condition_confirmed ? (
-                                                                <div className="text-indigo-700 font-bold text-sm flex items-center gap-1">
-                                                                    <BadgeCheck className="h-4 w-4" /> 확정 완료
-                                                                </div>
-                                                            ) : (
-                                                                <div className="text-muted-foreground/70 font-bold text-xs">확정 대기 중</div>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Creator Status (Self) */}
-                                                        <div className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${chatProposal.influencer_condition_confirmed ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-background border-border'}`}>
-                                                            <span className="text-[10px] font-bold text-muted-foreground/70 uppercase">Creator (본인)</span>
-                                                            {chatProposal.influencer_condition_confirmed ? (
-                                                                <div className="text-indigo-700 font-bold text-sm flex items-center gap-1">
-                                                                    <BadgeCheck className="h-4 w-4" /> 확정 완료
-                                                                </div>
-                                                            ) : (
-                                                                <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
-                                                                    <AlertDialogTrigger asChild>
-                                                                        <Button
-                                                                            size="sm"
-                                                                            className="h-8 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 shadow-md"
-                                                                        >
-                                                                            조건 확정하기
-                                                                        </Button>
-                                                                    </AlertDialogTrigger>
-                                                                    <AlertDialogContent>
-                                                                        <AlertDialogHeader>
-                                                                            <AlertDialogTitle>조건 확정</AlertDialogTitle>
-                                                                            <AlertDialogDescription>
-                                                                                현재 협의된 조건으로 확정하시겠습니까?<br />
-                                                                                확정 후에는 수정이 불가능할 수 있습니다.
-                                                                            </AlertDialogDescription>
-                                                                        </AlertDialogHeader>
-                                                                        <AlertDialogFooter>
-                                                                            <AlertDialogCancel>취소</AlertDialogCancel>
-                                                                            <AlertDialogAction onClick={async () => {
-                                                                                const isCampaignProposal = !!chatProposal.campaignId || (chatProposal as any)?.type === 'creator_apply';
-                                                                                const proposalId = chatProposal.id.toString();
-
-                                                                                try {
-                                                                                    if (isCampaignProposal) {
-                                                                                        await updateProposal(proposalId, { influencer_condition_confirmed: true });
-                                                                                    } else {
-                                                                                        await updateBrandProposal(proposalId, { influencer_condition_confirmed: true });
-                                                                                    }
-                                                                                    setChatProposal((prev: any) => ({ ...prev, influencer_condition_confirmed: true }));
-
-                                                                                    // Notify Brand
-                                                                                    const receiverId = chatProposal.brand_id || (chatProposal as any).brandId || (chatProposal as any).brand?.id;
-                                                                                    if (receiverId) {
-                                                                                        await sendMessage(receiverId, "✅ [시스템 알림] 크리에이터가 조건을 최종 확정했습니다. 브랜드 담당자님도 확정해주세요.", undefined, proposalId);
-                                                                                    }
-                                                                                } catch (e) {
-                                                                                    console.error(e);
-                                                                                    alert("업데이트 실패");
-                                                                                }
-                                                                            }}>확정</AlertDialogAction>
-                                                                        </AlertDialogFooter>
-                                                                    </AlertDialogContent>
-                                                                </AlertDialog>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {messages.filter((m: any) => {
-                                                if (!chatProposal) return false
-                                                const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
-
-                                                // Filter by the correct ID column
-                                                if (isCampaignProposal) {
-                                                    return m.proposalId?.toString() === chatProposal.id?.toString()
-                                                } else {
-                                                    return m.brandProposalId?.toString() === chatProposal.id?.toString()
-                                                }
-                                            })
-                                                .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                                                .map((msg: any, idx: any) => {
-                                                    // Helper to render Guide Card
-                                                    const renderGuideCard = () => {
-                                                        const pId = chatProposal?.product_id;
-                                                        if (!pId) return null;
-                                                        const prod = products.find(p => p.id === pId);
-                                                        // Explicit check for guide content
-                                                        // @ts-ignore
-                                                        if (!prod || (!prod.selling_points && !prod.required_shots && !prod.points && !prod.shots)) return null;
-
-                                                        const gData = {
-                                                            name: prod.name,
-                                                            // @ts-ignore
-                                                            sellingPoints: prod.selling_points || prod.points,
-                                                            // @ts-ignore
-                                                            requiredShots: prod.required_shots || prod.shots,
-                                                            // @ts-ignore
-                                                            imageUrl: prod.image_url || prod.image
-                                                        };
-
-                                                        return (
-                                                            <React.Fragment>
-                                                                {/* 1. Greeting Bubble (Visual Only, attached to guide) */}
-                                                                <div className="flex justify-start mt-4 animate-in fade-in slide-in-from-left-2 delay-100">
-                                                                    <div className="max-w-[85%] flex flex-col items-start gap-1">
-                                                                        <div className="bg-background border rounded-2xl rounded-tl-none p-3 shadow-sm text-sm">
-                                                                            안녕하세요! 제안을 수락해주셔서 감사합니다. 🥰<br />
-                                                                            본격적인 진행에 앞서 해당 캠페인의 제작 가이드를 공유드립니다.
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* 2. Actual Guide Card */}
-                                                                <div className="flex justify-start mt-2 animate-in fade-in slide-in-from-left-2 delay-150">
-                                                                    <div className="max-w-[85%] flex flex-col items-start">
-                                                                        <div className="bg-background border rounded-2xl rounded-tl-none p-3 shadow-sm text-sm">
-                                                                            <div className="w-[280px]">
-                                                                                <div className="flex items-center gap-2 mb-3 border-b border-border/50 pb-2">
-                                                                                    <div className="bg-emerald-100 text-emerald-600 p-1 rounded-md">
-                                                                                        <Package className="h-4 w-4" />
-                                                                                    </div>
-                                                                                    <span className="font-bold text-sm text-foreground/90">제작 가이드 {chatProposal.product_name}</span>
-                                                                                </div>
-                                                                                {gData.imageUrl && (
-                                                                                    <div className="mb-3 rounded-md overflow-hidden h-32 bg-slate-200">
-                                                                                        {gData.imageUrl.startsWith('http') ? (
-                                                                                            <img src={gData.imageUrl} alt="Product" className="w-full h-full object-cover" />
-                                                                                        ) : (
-                                                                                            <div className="w-full h-full flex items-center justify-center text-4xl">{gData.imageUrl}</div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                )}
-                                                                                <div className="space-y-3 text-xs">
-                                                                                    {gData.sellingPoints && (
-                                                                                        <div>
-                                                                                            <strong className="block text-emerald-700 mb-1">✨ 소구 포인트</strong>
-                                                                                            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{gData.sellingPoints}</p>
-                                                                                        </div>
-                                                                                    )}
-                                                                                    {gData.requiredShots && (
-                                                                                        <div>
-                                                                                            <strong className="block text-red-600 mb-1">📸 필수 촬영 컷</strong>
-                                                                                            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{gData.requiredShots}</p>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                            <span className="block text-[10px] opacity-70 mt-1 text-right">
-                                                                                자동 발송됨
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </React.Fragment>
-                                                        )
-                                                    }
-
-                                                    return (
-                                                        <React.Fragment key={idx}>
-                                                            <div className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
-                                                                <div className={`max-w-[85%] flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
-                                                                    <div className={`p-3 rounded-2xl text-sm shadow-sm ${msg.senderId === user?.id
-                                                                        ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                                        : 'bg-background border rounded-tl-none'
-                                                                        }`}>
-                                                                        {msg.content.startsWith('[RATE_CARD_JSON]') ? (
-                                                                            (() => {
-                                                                                try {
-                                                                                    const jsonStr = msg.content.replace('[RATE_CARD_JSON]', '');
-                                                                                    const rateData = JSON.parse(jsonStr);
-                                                                                    return <RateCardMessage {...rateData} />;
-                                                                                } catch (e) {
-                                                                                    return "단가표 로딩 오류";
-                                                                                }
-                                                                            })()
-                                                                        ) : msg.content.startsWith('[GUIDE_CARD_JSON]') ? (
-                                                                            (() => {
-                                                                                try {
-                                                                                    const jsonStr = msg.content.replace('[RATE_CARD_JSON]', '');
-                                                                                    const rateData = JSON.parse(jsonStr);
-                                                                                    return <RateCardMessage {...rateData} />;
-                                                                                } catch (e) {
-                                                                                    return "단가표 로딩 오류";
-                                                                                }
-                                                                            })()
-                                                                        ) : msg.content.startsWith('[GUIDE_CARD_JSON]') ? (
-                                                                            (() => {
-                                                                                try {
-                                                                                    const jsonStr = msg.content.replace('[GUIDE_CARD_JSON]', '');
-                                                                                    const guideData = JSON.parse(jsonStr);
-                                                                                    return (
-                                                                                        <div className="w-[280px] bg-muted/30 border border-border rounded-lg p-4 overflow-hidden">
-                                                                                            <div className="flex items-center gap-2 mb-3 border-b border-border/50 pb-2">
-                                                                                                <div className="bg-emerald-100 text-emerald-600 p-1 rounded-md">
-                                                                                                    <Package className="h-4 w-4" />
-                                                                                                </div>
-                                                                                                <span className="font-bold text-sm text-foreground/90">제작 가이드 (자동 발송)</span>
-                                                                                            </div>
-                                                                                            {guideData.imageUrl && (
-                                                                                                <div className="mb-3 rounded-md overflow-hidden h-32 bg-slate-200">
-                                                                                                    <img src={guideData.imageUrl} alt="Product" className="w-full h-full object-cover" />
-                                                                                                </div>
-                                                                                            )}
-                                                                                            <div className="space-y-3 text-xs">
-                                                                                                {guideData.sellingPoints && (
-                                                                                                    <div>
-                                                                                                        <strong className="block text-emerald-700 mb-1">✨ 소구 포인트</strong>
-                                                                                                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{guideData.sellingPoints}</p>
-                                                                                                    </div>
-                                                                                                )}
-                                                                                                {guideData.requiredShots && (
-                                                                                                    <div>
-                                                                                                        <strong className="block text-red-600 mb-1">📸 필수 촬영 컷</strong>
-                                                                                                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{guideData.requiredShots}</p>
-                                                                                                    </div>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    );
-                                                                                } catch (e) {
-                                                                                    return "제작 가이드 로딩 오류";
-                                                                                }
-                                                                            })()
-                                                                        ) : (
-                                                                            msg.content
-                                                                        )}
-                                                                        {/* Only show proposal card for the very first message in the thread */}
-                                                                        {idx === 0 && msg.proposalId && renderProposalCard(msg.proposalId)}
-                                                                        <span className="block text-[10px] opacity-70 mt-1">
-                                                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            {/* Auto-render Guide Card after Rate Card */}
-                                                            {msg.content.startsWith('[RATE_CARD_JSON]') && renderGuideCard()}
-                                                        </React.Fragment>
-                                                    )
-                                                })}
-                                        </div>
-
-                                        <div className="p-4 border-t bg-background">
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    placeholder="메시지를 입력하세요..."
-                                                    value={chatMessage}
-                                                    onChange={(e) => setChatMessage(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                                                />
-                                                <Button onClick={handleSendMessage}>전송</Button>
-                                            </div>
-                                        </div>
-                                    </TabsContent>
-
-                                    {/* Contract Tab View */}
-                                    <TabsContent value="contract" className="flex-1 overflow-y-auto p-6 bg-muted/30 data-[state=active]:flex flex-col items-center justify-center">
-                                        <div className="w-full max-w-2xl bg-background p-10 rounded-xl shadow-sm border border-border">
-                                            <div className="text-center mb-8">
-                                                <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                                                    <FileText className="h-8 w-8 text-muted-foreground/70" />
-                                                </div>
-                                                <h3 className="text-xl font-bold text-foreground">표준 계약서 검토</h3>
-                                                <p className="text-muted-foreground mt-2">브랜드와 협의된 내용으로 작성된 계약서입니다.<br />꼼꼼히 확인 후 서명해주세요.</p>
-                                            </div>
-
-                                            {chatProposal?.contract_status === 'sent' || chatProposal?.contract_status === 'signed' ? (
-                                                <div className="space-y-4 mb-8">
-                                                    <div className="flex justify-between items-center px-1">
-                                                        <h4 className="text-sm font-bold text-foreground/90">
-                                                            계약서 내용
-                                                            {chatProposal.contract_status === 'signed' && <span className="ml-2 text-emerald-600">(서명 완료됨)</span>}
-                                                        </h4>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="text-xs h-7 gap-1"
-                                                            onClick={handleDownloadContract}
-                                                        >
-                                                            <FileText className="h-3 w-3" /> PDF 다운로드
-                                                        </Button>
-                                                    </div>
-                                                    <div className="p-4 bg-muted/30 rounded-lg border border-border/50 text-sm text-muted-foreground leading-relaxed font-mono min-h-[200px] overflow-y-auto max-h-[400px] whitespace-pre-wrap">
-                                                        {chatProposal.contract_content || "계약서 내용을 불러오는 중..."}
-                                                    </div>
-
-                                                    {chatProposal.contract_status !== 'signed' && (
-                                                        <div className="grid grid-cols-3 gap-3 mt-6">
-                                                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleContractResponse('rejected')}>
-                                                                거절
-                                                            </Button>
-                                                            <Button variant="outline" className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20" onClick={() => handleContractResponse('negotiating')}>
-                                                                보류/수정요청
-                                                            </Button>
-                                                            <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={handleStartSigning}>
-                                                                동의 및 서명
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                    {chatProposal.contract_status === 'signed' && (
-                                                        <Button className="w-full" disabled variant="secondary">
-                                                            <BadgeCheck className="mr-2 h-4 w-4" /> 이미 서명된 계약서입니다
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
-                                                    <p>아직 계약서가 도착하지 않았습니다.</p>
-                                                    <p className="text-xs mt-1">브랜드가 계약서를 발송하면 이곳에서 확인할 수 있습니다.</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TabsContent>
-
-                                    {/* Shipping Tab */}
-                                    <TabsContent value="shipping" className="flex-1 overflow-y-auto p-6 bg-muted/30 data-[state=active]:flex flex-col items-center justify-start">
-                                        <div className="w-full max-w-2xl bg-background p-8 rounded-xl shadow-sm border border-border mt-4">
-                                            <div className="flex items-center gap-4 mb-6 border-b border-border/50 pb-4">
-                                                <div className="h-12 w-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                                                    <Package className="h-6 w-6 text-indigo-600" />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-xl font-bold text-foreground">제품 배송 / 수령 관리</h3>
-                                                    <p className="text-sm text-muted-foreground">협찬 제품 수령을 위한 정보를 입력하고 배송 상태를 확인하세요.</p>
-                                                </div>
-                                            </div>
-
-                                            {chatProposal?.contract_status !== 'signed' ? (
-                                                <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed text-muted-foreground">
-                                                    <p className="mb-2">🔒 계약이 완료되지 않았습니다.</p>
-                                                    <p className="text-xs">계약서 서명을 완료하면 제품 배송 단계가 활성화됩니다.</p>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-8">
-                                                    {/* Shipping Info Section */}
-                                                    <div>
-                                                        <div className="flex items-center justify-between mb-4">
-                                                            <h4 className="font-bold flex items-center gap-2 text-foreground">
-                                                                <MapPin className="h-4 w-4 text-indigo-600" /> 배송지 정보
-                                                            </h4>
-                                                            {chatProposal.shipping_address && (
-                                                                <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                                                                    <BadgeCheck className="h-3 w-3" /> 제출 완료
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        {chatProposal.shipping_address ? (
-                                                            <div className="bg-muted/30 p-6 rounded-2xl border border-border text-sm space-y-3">
-                                                                <div className="grid grid-cols-[80px_1fr]">
-                                                                    <span className="text-muted-foreground">받는 분</span>
-                                                                    <span className="font-black text-foreground">{chatProposal.shipping_name}</span>
-                                                                </div>
-                                                                <div className="grid grid-cols-[80px_1fr]">
-                                                                    <span className="text-muted-foreground">연락처</span>
-                                                                    <span className="font-black text-foreground">{chatProposal.shipping_phone}</span>
-                                                                </div>
-                                                                <div className="grid grid-cols-[80px_1fr]">
-                                                                    <span className="text-muted-foreground">주소</span>
-                                                                    <span className="font-black text-foreground leading-relaxed">{chatProposal.shipping_address}</span>
-                                                                </div>
-
-                                                                <div className="mt-6 pt-6 border-t border-border">
-                                                                    {chatProposal.tracking_number ? (
-                                                                        <div className="space-y-4">
-                                                                            <div className="bg-background p-4 rounded-xl border border-emerald-100 flex items-center gap-4 shadow-sm">
-                                                                                <div className="h-10 w-10 bg-emerald-50 rounded-lg flex items-center justify-center">
-                                                                                    <Package className="h-5 w-5 text-emerald-600" />
-                                                                                </div>
-                                                                                <div className="flex-1">
-                                                                                    <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider mb-0.5">Status: Shipped</p>
-                                                                                    <p className="text-sm font-black text-foreground">운송장 번호: {chatProposal.tracking_number}</p>
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Product Received Confirmation Logic */}
-                                                                            {chatProposal.delivery_status === 'delivered' ? (
-                                                                                <div className="bg-emerald-50 text-emerald-700 text-sm font-black p-4 rounded-xl border border-emerald-100 flex items-center gap-3 justify-center shadow-sm">
-                                                                                    <BadgeCheck className="h-5 w-5" />
-                                                                                    제품 수령이 완료되었습니다. 작업을 시작해보세요!
-                                                                                </div>
-                                                                            ) : (
-                                                                                <Button
-                                                                                    type="button"
-                                                                                    onClick={handleProductReceived}
-                                                                                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition-all active:scale-95"
-                                                                                    variant="default"
-                                                                                >
-                                                                                    <Package className="mr-2 h-5 w-5" />
-                                                                                    브랜드 제품 수령 완료 (수령 시 클릭)
-                                                                                </Button>
-                                                                            )}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="flex items-center justify-center gap-3 py-6 bg-muted/50 rounded-xl border border-dashed border-slate-300 text-muted-foreground/70">
-                                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                                            <p className="text-xs font-bold">브랜드에서 제품 발송을 준비하고 있습니다.</p>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="space-y-5 bg-muted/30 p-6 rounded-2xl border border-border">
-                                                                <div className="flex justify-end mb-2">
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="ghost"
-                                                                        onClick={() => {
-                                                                            setShippingName(displayUser.name || "")
-                                                                            setShippingPhone(displayUser.phone || "")
-                                                                            setShippingAddress(displayUser.address || "")
-                                                                        }}
-                                                                        className="text-xs h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 font-bold"
-                                                                    >
-                                                                        <User className="mr-2 h-3.5 w-3.5" /> 프로필 정보 불러오기
-                                                                    </Button>
-                                                                </div>
-                                                                <div className="grid md:grid-cols-2 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-black text-foreground/90">받는 분 성함</Label>
-                                                                        <Input value={shippingName} onChange={e => setShippingName(e.target.value)} placeholder="실명을 입력하세요" className="h-11 rounded-xl" />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-black text-foreground/90">연락처</Label>
-                                                                        <Input value={shippingPhone} onChange={e => setShippingPhone(e.target.value)} placeholder="010-0000-0000" className="h-11 rounded-xl" />
-                                                                    </div>
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-xs font-black text-foreground/90">배송지 주소</Label>
-                                                                    <Input value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} placeholder="정확한 주소를 입력하세요" className="h-11 rounded-xl" />
-                                                                </div>
-                                                                <Button onClick={handleSaveShippingInfo} disabled={isSavingShipping} className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg mt-2">
-                                                                    {isSavingShipping ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
-                                                                    배송지 정보 제출하고 제품 받기
-                                                                </Button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TabsContent>
-
-                                    {/* Content Submission Tab */}
-                                    <TabsContent value="content" className="flex-1 overflow-y-auto p-6 bg-muted/30 data-[state=active]:flex flex-col items-center justify-start">
-                                        <div className="w-full max-w-2xl bg-background p-8 rounded-xl shadow-sm border border-border mt-4">
-                                            <div className="flex items-center gap-4 mb-6 border-b border-border/50 pb-4">
-                                                <div className="h-12 w-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                                                    <Star className="h-6 w-6 text-indigo-600" />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-xl font-bold text-foreground">작업물 제출 및 피드백</h3>
-                                                    <p className="text-sm text-muted-foreground">완성된 콘텐츠를 제출하고 브랜드와 피드백을 주고받으세요.</p>
-                                                </div>
-                                            </div>
-
-                                            {chatProposal?.delivery_status !== 'delivered' ? (
-                                                <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed text-muted-foreground">
-                                                    <div className="h-16 w-16 bg-background rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-border/50">
-                                                        <Clock className="h-8 w-8 text-slate-300" />
-                                                    </div>
-                                                    <p className="font-bold">🔒 작업물 제출 단계가 비활성화 상태입니다.</p>
-                                                    <p className="text-xs mt-1">'배송' 탭에서 제품 수령 완료 후 제출할 수 있습니다.</p>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-8">
-                                                    {/* Submission Display or Form */}
-                                                    {(chatProposal.content_submission_status === 'submitted' || chatProposal.content_submission_status === 'approved') && !isReuploading ? (
-                                                        <div className="space-y-6">
-                                                            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-6 rounded-2xl shadow-sm">
-                                                                <div className="flex justify-between items-start mb-4">
-                                                                    <div className="flex items-center gap-2 text-indigo-900 font-black">
-                                                                        <BadgeCheck className={`h-6 w-6 ${chatProposal.content_submission_status === 'approved' ? 'text-emerald-500' : 'text-indigo-600'}`} />
-                                                                        {chatProposal.content_submission_status === 'approved' ? (
-                                                                            <span className="text-emerald-700">브랜드 최종 승인 완료</span>
-                                                                        ) : (
-                                                                            "작업물 제출 완료"
-                                                                        )}
-                                                                        <span className="text-[10px] bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full font-bold ml-1">
-                                                                            v{chatProposal.content_submission_version?.toFixed(1) || "1.0"}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex gap-2">
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="h-8 px-3 text-xs bg-background border-indigo-200 text-indigo-600 font-bold hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
-                                                                            onClick={() => {
-                                                                                const url = chatProposal.content_submission_file_url || chatProposal.content_submission_url
-                                                                                if (url) window.open(url, '_blank')
-                                                                            }}
-                                                                        >
-                                                                            <Download className="h-3.5 w-3.5 mr-1.5" />
-                                                                            파일 보기/다운
-                                                                        </Button>
-                                                                        {chatProposal.status !== 'completed' && (
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                onClick={() => setIsReuploading(true)}
-                                                                                className="text-xs h-8 px-3 text-muted-foreground hover:text-indigo-600 font-bold"
-                                                                            >
-                                                                                <Upload className="h-3.5 w-3.5 mr-1.5" /> 수정/재제출
-                                                                            </Button>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Work Preview */}
-                                                                <div className="overflow-hidden rounded-xl border border-indigo-100 bg-black shadow-inner aspect-video flex items-center justify-center group relative">
-                                                                    {chatProposal.content_submission_file_url ? (
-                                                                        chatProposal.content_submission_file_url.match(/\.(mp4|mov|webm)$/i) ? (
-                                                                            <video
-                                                                                src={chatProposal.content_submission_file_url}
-                                                                                controls
-                                                                                className="w-full h-full object-contain"
-                                                                            />
-                                                                        ) : (
-                                                                            <img
-                                                                                src={chatProposal.content_submission_file_url}
-                                                                                alt="Submission Preview"
-                                                                                className="w-full h-full object-contain"
-                                                                            />
-                                                                        )
-                                                                    ) : chatProposal.content_submission_url ? (
-                                                                        <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-900 w-full h-full">
-                                                                            <ExternalLink className="h-8 w-8 text-indigo-400 mb-3" />
-                                                                            <p className="text-white font-bold text-sm mb-1 truncate max-w-xs">{chatProposal.content_submission_url}</p>
-                                                                            <p className="text-indigo-300 text-[10px] uppercase font-bold tracking-widest">External Content Link</p>
-                                                                        </div>
-                                                                    ) : null}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-6">
-                                                            {isReuploading && (
-                                                                <div className="flex justify-between items-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
-                                                                    <span className="text-xs font-black text-indigo-700">
-                                                                        ✨ v{(parseFloat(((chatProposal.content_submission_version || 0.9) + 0.1).toFixed(1)))} 버전으로 업데이트 중
-                                                                    </span>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        onClick={() => setIsReuploading(false)}
-                                                                        className="text-xs h-7 text-red-500 hover:bg-red-50 font-bold px-3"
-                                                                    >
-                                                                        재제출 취소
-                                                                    </Button>
-                                                                </div>
-                                                            )}
-                                                            <Tabs defaultValue="link" className="w-full">
-                                                                <TabsList className="grid w-full grid-cols-2 p-1 bg-muted rounded-xl h-11 overflow-x-auto">
-                                                                    <TabsTrigger value="link" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm font-bold">링크 제출</TabsTrigger>
-                                                                    <TabsTrigger value="file" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm font-bold">파일 업로드</TabsTrigger>
-                                                                </TabsList>
-
-                                                                <TabsContent value="link" className="space-y-4 pt-4 animate-in fade-in slide-in-from-left-2">
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-black text-foreground/90">콘텐츠 링크 (YouTube, Instagram, TikTok 등)</Label>
-                                                                        <Input
-                                                                            placeholder="https://www.youtube.com/watch?v=..."
-                                                                            value={submissionUrl}
-                                                                            onChange={(e) => setSubmissionUrl(e.target.value)}
-                                                                            className="h-11 rounded-xl"
-                                                                        />
-                                                                        <p className="text-[10px] text-muted-foreground/70 font-medium">
-                                                                            브랜드가 실시간으로 확인할 수 있는 공개된 URL을 입력해주세요.
-                                                                        </p>
-                                                                    </div>
-                                                                </TabsContent>
-
-                                                                <TabsContent value="file" className="space-y-4 pt-4 animate-in fade-in slide-in-from-right-2">
-                                                                    <div className="border-2 border-dashed border-border rounded-2xl p-10 text-center hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all cursor-pointer relative group">
-                                                                        <input
-                                                                            type="file"
-                                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                                            onChange={(e) => {
-                                                                                const file = e.target.files?.[0]
-                                                                                console.log('[CreatorUpload] File selected:', file)
-                                                                                if (file) {
-                                                                                    if (file.size > 500 * 1024 * 1024) {
-                                                                                        alert("파일 크기는 500MB를 초과할 수 없습니다.")
-                                                                                        return
-                                                                                    }
-                                                                                    setSubmissionFile(file)
-                                                                                    console.log('[CreatorUpload] State updated with file:', file.name)
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                        <div className="h-16 w-16 bg-background rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform border border-border/50">
-                                                                            <Upload className="h-8 w-8 text-indigo-500" />
-                                                                        </div>
-                                                                        <p className="font-black text-sm text-foreground">
-                                                                            {submissionFile ? submissionFile.name : "클릭하여 작업물 파일 업로드"}
-                                                                        </p>
-                                                                        <p className="text-[10px] text-muted-foreground/70 mt-2 font-bold uppercase tracking-widest">
-                                                                            MAX 500MB (MP4, MOV, JPG, PNG, PDF)
-                                                                        </p>
-                                                                    </div>
-                                                                </TabsContent>
-                                                            </Tabs>
-
-                                                            {isSubmittingContent && submissionFile && (
-                                                                <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border/50 animate-in zoom-in-95">
-                                                                    <div className="flex justify-between text-xs font-black text-indigo-600">
-                                                                        <span className="flex items-center gap-2">
-                                                                            <Loader2 className="h-3 w-3 animate-spin" /> 파일을 안전하게 서버로 전송 중...
-                                                                        </span>
-                                                                        <span>{uploadProgress}%</span>
-                                                                    </div>
-                                                                    <div className="w-full bg-background rounded-full h-2.5 overflow-hidden shadow-inner border border-border/50">
-                                                                        <div
-                                                                            className="bg-indigo-600 h-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(79,70,229,0.5)]"
-                                                                            style={{ width: `${uploadProgress}%` }}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            <Button
-                                                                onClick={() => handleContentSubmission()}
-                                                                disabled={isSubmittingContent || (!submissionUrl.trim() && !submissionFile)}
-                                                                className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-2xl shadow-xl transition-all active:scale-[0.98] group"
-                                                            >
-                                                                {isSubmittingContent ? (
-                                                                    <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                                                                ) : (
-                                                                    <Check className="mr-3 h-6 w-6 group-hover:scale-110 transition-transform" />
-                                                                )}
-                                                                {isReuploading ? "수정된 작업물 최종 제출하기" : "브랜드에게 작업물 제출하기"}
-                                                            </Button>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Integrated Feedback Section moved inside Content Tab */}
-                                                    <div className="bg-muted/30 p-6 rounded-[24px] border border-border mt-10 shadow-inner">
-                                                        <div className="flex items-center gap-2 mb-4">
-                                                            <div className="h-8 w-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                                                <Megaphone className="h-4 w-4 text-indigo-600" />
-                                                            </div>
-                                                            <h4 className="text-sm font-black text-foreground tracking-tight">작업물 피드백 대화</h4>
-                                                            <span className="text-[9px] bg-background border border-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-bold ml-auto shadow-sm">Real-time Feedback</span>
-                                                        </div>
-
-                                                        <div className="bg-background rounded-2xl border border-border/50 overflow-hidden flex flex-col h-[400px] shadow-sm">
-                                                            {/* Feedback Messages List */}
-                                                            <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-muted/30/30" ref={workFeedbackChatRef}>
-                                                                {contextSubmissionFeedback
-                                                                    .filter(f => {
-                                                                        const isCampaign = !!chatProposal?.campaignId || chatProposal?.type === 'creator_apply'
-                                                                        return isCampaign
-                                                                            ? f.proposal_id === chatProposal?.id?.toString()
-                                                                            : f.brand_proposal_id === chatProposal?.id?.toString()
-                                                                    })
-                                                                    .length === 0 ? (
-                                                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground/70 gap-2 opacity-50">
-                                                                        <div className="p-3 bg-background rounded-full shadow-sm mb-2">
-                                                                            <Info className="h-6 w-6 text-slate-300" />
-                                                                        </div>
-                                                                        <p className="text-sm font-black">피드백 대화 내역이 없습니다.</p>
-                                                                        <p className="text-[10px] text-center">작업물에 대한 수정 요청이나 의견이<br />여기에 표시됩니다.</p>
-                                                                    </div>
-                                                                ) : (
-                                                                    contextSubmissionFeedback
-                                                                        .filter(f => {
-                                                                            const isCampaign = !!chatProposal?.campaignId || chatProposal?.type === 'creator_apply'
-                                                                            return isCampaign
-                                                                                ? f.proposal_id === chatProposal?.id?.toString()
-                                                                                : f.brand_proposal_id === chatProposal?.id?.toString()
-                                                                        })
-                                                                        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                                                                        .map((msg) => (
-                                                                            <div key={msg.id} className={`flex flex-col ${msg.sender_id === user?.id ? 'items-end' : 'items-start'}`}>
-                                                                                <div className={`max-w-[85%] p-3 rounded-2xl text-xs shadow-sm ${msg.sender_id === user?.id
-                                                                                    ? 'bg-indigo-600 text-white rounded-tr-none'
-                                                                                    : 'bg-background border border-border text-foreground rounded-tl-none'
-                                                                                    }`}>
-                                                                                    {msg.content}
-                                                                                </div>
-                                                                                <span className="text-[9px] text-muted-foreground/70 mt-1 font-medium px-1">
-                                                                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                                </span>
-                                                                            </div>
-                                                                        ))
-                                                                )}
-                                                            </div>
-
-                                                            {/* Feedback Input */}
-                                                            <div className="p-4 bg-background border-t border-border z-10 sticky bottom-0">
-                                                                <div className="flex gap-2">
-                                                                    <Input
-                                                                        value={feedbackInput}
-                                                                        onChange={(e) => setFeedbackInput(e.target.value)}
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                                                                                handleSendFeedback()
-                                                                            }
-                                                                        }}
-                                                                        placeholder="피드백 입력..."
-                                                                        className="text-xs h-10 rounded-xl bg-muted/30 border-none focus:ring-1 focus:ring-indigo-600/20"
-                                                                    />
-                                                                    <Button
-                                                                        disabled={!feedbackInput.trim() || isSendingFeedback}
-                                                                        onClick={handleSendFeedback}
-                                                                        size="sm"
-                                                                        className="bg-indigo-600 hover:bg-indigo-700 h-10 w-12 rounded-xl transition-all shadow-md active:scale-90"
-                                                                    >
-                                                                        {isSendingFeedback ? (
-                                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                                        ) : (
-                                                                            <Send className="h-4 w-4" />
-                                                                        )}
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TabsContent>
-                                </Tabs>
-                            </div>
+                        <DialogContent className="max-w-[100vw] h-[100dvh] sm:max-w-[1500px] sm:w-[95vw] sm:h-[90vh] sm:max-h-[900px] p-0 gap-0 overflow-hidden flex flex-col bg-background border-0 shadow-2xl sm:rounded-2xl">
+                            <DialogTitle className="sr-only">Creator Workspace</DialogTitle>
+                            <CreatorWorkspaceLayout />
                         </DialogContent>
                     </Dialog>
                 </div>

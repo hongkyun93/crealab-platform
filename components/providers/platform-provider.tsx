@@ -357,6 +357,8 @@ interface PlatformContextType {
     deleteProposal: (id: string) => Promise<void>
     brandProposals: BrandProposal[] // New direct proposals
     momentProposals: MomentProposal[] // [NEW] Moment Proposals
+    deleteMomentProposal: (id: string) => Promise<void> // [NEW]
+    addMomentProposal: (proposal: MomentProposal) => void // [NEW] Optimistic Add
     addProposal: (proposal: Omit<Proposal, "id" | "date">) => Promise<void>
     createBrandProposal: (proposal: any) => Promise<any>
     updateProposal: (id: string | number, data: Partial<Proposal> | object) => Promise<boolean>
@@ -803,14 +805,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
                     if (data) {
                         bpData = data;
-                        const mappedBP = data.map((b: any) => ({
-                            ...b,
-                            type: 'brand_offer',
-                            brand_name: b.brand_profile?.display_name || 'Brand',
-                            brandAvatar: b.brand_profile?.avatar_url,
-                            influencer_name: b.influencer_profile?.display_name || 'Creator',
-                            influencerAvatar: b.influencer_profile?.avatar_url
-                        }))
+                        const mappedBP = data.map((b: any) => mapProposalFromDB(b, 'brand_offer'));
                         setBrandProposals(mappedBP)
                     }
                 } catch (bpEx) {
@@ -882,7 +877,22 @@ export function PlatformProvider({ children, initialSession }: { children: React
                             brand_avatar: brand?.avatar_url,
                             influencer_name: influencer?.display_name || 'Unknown Creator',
                             influencer_avatar: influencer?.avatar_url,
-                            moment_title: moment?.title || 'Unknown Moment'
+                            moment_title: moment?.title || 'Unknown Moment',
+                            // [Mapping] Ensure condition dates are available at top-level
+                            condition_product_receipt_date: m.condition_product_receipt_date,
+                            condition_draft_submission_date: m.condition_draft_submission_date,
+                            condition_final_submission_date: m.condition_final_submission_date,
+                            condition_upload_date: m.condition_upload_date,
+                            condition_maintenance_period: m.condition_maintenance_period,
+                            condition_secondary_usage_period: m.condition_secondary_usage_period,
+                            product_url: m.product_url,
+                            product_type: m.product_type,
+                            // [Mapping] Additional fields requested by user
+                            price_offer: m.price_offer,
+                            has_incentive: m.has_incentive,
+                            incentive_detail: m.incentive_detail,
+                            content_type: m.content_type,
+                            compensation_amount: m.compensation_amount // [Fallback]
                         }
                     });
 
@@ -907,7 +917,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         brandAvatar: m.brand_profile?.avatar_url,
                         influencer_name: m.influencer_profile?.display_name || 'Creator',
                         influencerAvatar: m.influencer_profile?.avatar_url,
-                        product_name: m.moment?.title || "Moment Proposal"
+                        product_name: m.product_name || m.moment?.title || "Moment Proposal",
+                        // [FIX] Map Condition Fields
+                        specialTerms: m.special_terms,
+                        special_terms: m.special_terms,
+                        condition_product_receipt_date: m.condition_product_receipt_date,
+                        condition_draft_submission_date: m.condition_draft_submission_date,
+                        condition_upload_date: m.condition_upload_date,
+                        compensation_amount: m.compensation_amount
                     }))
 
                 // Re-map bpData to match structure and merge
@@ -917,7 +934,15 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     brand_name: b.brand_profile?.display_name || 'Brand',
                     brandAvatar: b.brand_profile?.avatar_url,
                     influencer_name: b.influencer_profile?.display_name || 'Creator',
-                    influencerAvatar: b.influencer_profile?.avatar_url
+                    influencerAvatar: b.influencer_profile?.avatar_url,
+                    // [FIX] Ensure fields are preserved during merge
+                    product_name: b.product_name,
+                    specialTerms: b.special_terms,
+                    special_terms: b.special_terms,
+                    condition_product_receipt_date: b.condition_product_receipt_date,
+                    condition_draft_submission_date: b.condition_draft_submission_date,
+                    condition_upload_date: b.condition_upload_date,
+                    compensation_amount: b.compensation_amount
                 }))
 
                 const combinedBP = [...existingBP, ...mappedMomentProposalsAsBrand]
@@ -951,47 +976,20 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         const influencer = p.profiles
                         const details = influencer?.influencer_details?.[0] || influencer?.influencer_details
 
-                        return {
-                            id: p.id,
-                            type: 'creator_apply',
-                            dealType: 'ad',
-                            campaignId: p.campaign_id,
+                        return mapProposalFromDB(p, 'creator_apply', {
                             campaignName: p.campaigns?.title || "Unknown Campaign",
                             productName: p.campaigns?.title || "",
-
-                            influencerId: p.influencer_id,
-                            influencerName: influencer?.display_name || "Unknown Creator",
-                            influencerAvatar: influencer?.avatar_url,
 
                             brandName: p.campaigns?.profiles?.display_name,
                             brandAvatar: p.campaigns?.profiles?.avatar_url,
 
-                            // Map price_offer to priceOffer (and legacy cost for compatibility if needed)
-                            priceOffer: p.price_offer,
-                            cost: p.price_offer, // Keep for compatibility
-                            message: p.message,
-                            status: p.status,
-                            date: new Date(p.created_at).toISOString().split('T')[0],
-                            created_at: p.created_at,
-
-                            motivation: p.motivation,
-                            content_plan: p.content_plan,
-                            portfolioLinks: p.portfolio_links,
+                            influencerName: influencer?.display_name,
+                            influencerAvatar: influencer?.avatar_url,
 
                             followers: details?.followers_count,
                             tags: details?.tags || [],
-                            instagramHandle: p.instagram_handle || details?.instagram_handle,
-                            insightScreenshot: p.insight_screenshot,
-
-                            contract_content: p.contract_content,
-                            contract_status: p.contract_status,
-                            brand_signature: p.brand_signature,
-                            influencer_signature: p.influencer_signature,
-
-                            shipping_name: p.shipping_name,
-                            tracking_number: p.tracking_number,
-                            delivery_status: p.delivery_status
-                        }
+                            instagramHandle: p.instagram_handle || details?.instagram_handle
+                        });
                     })
 
                     // Merge Moment Proposals into Proposals (Inbound for Creators)
@@ -1026,6 +1024,17 @@ export function PlatformProvider({ children, initialSession }: { children: React
                                     followers: details?.followers_count,
                                     tags: details?.tags || [],
                                     instagramHandle: details?.instagram_handle,
+
+                                    // [FIX] Map Condition Fields
+                                    specialTerms: m.special_terms,
+                                    special_terms: m.special_terms,
+                                    date_received: m.condition_product_receipt_date,
+                                    date_draft: m.condition_draft_submission_date,
+                                    date_upload: m.condition_upload_date,
+                                    condition_product_receipt_date: m.condition_product_receipt_date,
+                                    condition_draft_submission_date: m.condition_draft_submission_date,
+                                    condition_upload_date: m.condition_upload_date,
+                                    compensation_amount: m.compensation_amount,
 
                                     contract_status: m.contract_status,
                                     delivery_status: m.delivery_status
@@ -1096,6 +1105,83 @@ export function PlatformProvider({ children, initialSession }: { children: React
             isFetchingEvents.current = false
         }
     }, [user, supabase])
+
+    // --- [HELPER] Unified Proposal Mapping ---
+    const mapProposalFromDB = useCallback((row: any, type: Proposal['type'], extraData: any = {}): Proposal => {
+        // 1. Basic Fields
+        const proposal: Proposal = {
+            id: row.id,
+            type: type,
+            dealType: 'ad', // Default
+            status: row.status,
+            created_at: row.created_at,
+            date: new Date(row.created_at).toISOString().split('T')[0],
+
+            message: row.message,
+
+            // 2. Roles & Profiles (Allow override via extraData)
+            brandId: row.brand_id,
+            brandName: extraData.brandName || row.brand_profile?.display_name || row.profiles?.display_name || 'Brand',
+            brandAvatar: extraData.brandAvatar || row.brand_profile?.avatar_url || row.profiles?.avatar_url,
+
+            influencerId: row.influencer_id,
+            influencerName: extraData.influencerName || row.influencer_profile?.display_name || row.profiles?.display_name || 'Creator',
+            influencerAvatar: extraData.influencerAvatar || row.influencer_profile?.avatar_url || row.profiles?.avatar_url,
+
+            // 3. Product & Campaign
+            productId: row.product_id,
+            productName: row.product_name || extraData.productName || '',
+            product_name: row.product_name,
+            campaignId: row.campaign_id,
+            campaignName: row.campaigns?.title || extraData.campaignName || '',
+            momentId: row.moment_id || row.event_id,
+
+            // 4. Commercial Terms
+            priceOffer: row.price_offer,
+            price_offer: row.price_offer,
+            compensation_amount: row.compensation_amount, // Text field
+            cost: row.price_offer || (row.compensation_amount ? parseInt(row.compensation_amount.replace(/[^0-9]/g, '') || '0') : 0),
+
+            // 5. Conditions & Dates (Strict Mapping)
+            specialTerms: row.special_terms,
+            special_terms: row.special_terms,
+
+            condition_product_receipt_date: row.condition_product_receipt_date,
+            condition_draft_submission_date: row.condition_draft_submission_date,
+            condition_upload_date: row.condition_upload_date,
+            condition_plan_sharing_date: row.condition_plan_sharing_date,
+
+            // Legacy/UI Aliases for Dates
+            date_received: row.condition_product_receipt_date,
+            date_draft: row.condition_draft_submission_date,
+            date_upload: row.condition_upload_date,
+
+            // 6. Contract
+            contract_content: row.contract_content,
+            contract_status: row.contract_status,
+            brand_signature: row.brand_signature,
+            influencer_signature: row.influencer_signature,
+            brand_signed_at: row.brand_signed_at,
+            influencer_signed_at: row.influencer_signed_at,
+
+            // 7. Delivery
+            shipping_name: row.shipping_name,
+            shipping_phone: row.shipping_phone,
+            shipping_address: row.shipping_address,
+            tracking_number: row.tracking_number,
+            delivery_status: row.delivery_status,
+
+            // 8. Application Specific
+            motivation: row.motivation,
+            content_plan: row.content_plan,
+            portfolioLinks: row.portfolio_links,
+            instagramHandle: row.instagram_handle,
+
+            ...extraData // Allow specific overrides
+        };
+
+        return proposal;
+    }, []);
 
     const fetchMessages = React.useCallback(async (userId: string) => {
         if (isFetchingMessages.current) return
@@ -1197,7 +1283,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    // Polling for new messages every 5 seconds
+    // Polling for new messages every 30 seconds
     useEffect(() => {
         if (!user) return
 
@@ -1207,6 +1293,49 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
         return () => clearInterval(interval)
     }, [user?.id])
+
+    // [REALTIME] Subscribe to Proposal Changes for Instant Sync across clients
+    useEffect(() => {
+        if (!user) return;
+
+        console.log('[Realtime] Setting up proposal subscriptions for user:', user.id);
+
+        const channel = supabase.channel('proposal-changes')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'brand_proposals' },
+                (payload) => {
+                    console.log('[Realtime] Brand Proposal Change:', payload.eventType);
+                    fetchEvents(user.id);
+                }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'moment_proposals' },
+                (payload) => {
+                    console.log('[Realtime] Moment Proposal Change:', payload.eventType);
+                    fetchEvents(user.id);
+                }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'campaign_proposals' },
+                (payload) => {
+                    console.log('[Realtime] Campaign Proposal Change:', payload.eventType);
+                    fetchEvents(user.id);
+                }
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('[Realtime] Connected to proposal updates');
+                }
+            });
+
+        return () => {
+            console.log('[Realtime] Unsubscribing from proposal updates');
+            supabase.removeChannel(channel);
+        };
+    }, [user?.id, supabase]);
 
     // ... (Failsafe useEffect remains same) ...
     useEffect(() => {
@@ -1700,6 +1829,35 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
+    const deleteMomentProposal = async (id: string) => {
+        // Robust check
+        let targetId = user?.id;
+        if (!targetId) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user) targetId = data.session.user.id;
+        }
+
+        if (!targetId) {
+            console.error("[deleteMomentProposal] No active session found.");
+            return;
+        }
+
+        const prev = [...momentProposals]
+        setMomentProposals(prev => prev.filter(p => p.id !== id))
+        try {
+            const { error } = await supabase.from('moment_proposals').delete().eq('id', id)
+            if (error) throw error
+        } catch (e) {
+            console.error("Failed to delete moment proposal:", e)
+            setMomentProposals(prev)
+            throw e
+        }
+    }
+
+    const addMomentProposal = (proposal: MomentProposal) => {
+        setMomentProposals(prev => [proposal, ...prev])
+    }
+
     const deleteProposal = async (id: string) => {
         // Robust check
         let targetId = user?.id;
@@ -1995,29 +2153,48 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if ('cost' in payload) { payload.price_offer = payload.cost; delete payload.cost; }
             if ('priceOffer' in payload) { payload.price_offer = payload.priceOffer; delete payload.priceOffer; }
 
-            // Decide table based on proposal type or ID logic?
-            // Usually updateProposal is for 'proposals' state which is 'campaign_proposals' or 'moment_proposals' (inbound for creator)
-            // But 'proposals' state maps 'id' from DB directly.
-            // We assume 'campaign_proposals' is the main target here as per refactor.
-            // CAUTION: moment_proposals are also in 'proposals' state now!
-            const targetProposal = campaignProposals.find(p => p.id === id);
-            let tableName = 'campaign_proposals';
+            // [SMART UPDATE] Determine table based on ID presence in local state
+            // This is efficient because we already have the data loaded
+            const isBrandProposal = brandProposals.some(p => p.id === id);
+            const isMomentProposal = momentProposals.some(p => p.id === id);
 
-            if (targetProposal?.type === 'moment_offer') {
-                tableName = 'moment_proposals';
+            // Fix: Use 'campaignProposals' state which contains both campaign apps and inbound moment proposals for creator
+            let isCampaignProposal = false;
+            // The state variable is checked here.
+            isCampaignProposal = campaignProposals.some(p => p.id === id && p.type === 'creator_apply');
+
+            console.log(`[updateProposal] Routing update for ID ${id}:`, { isBrandProposal, isMomentProposal, isCampaignProposal });
+
+            let tableName = 'brand_proposals'; // Default or Fallback
+            if (isMomentProposal) tableName = 'moment_proposals';
+            if (isCampaignProposal) tableName = 'campaign_proposals';
+            if (isBrandProposal) tableName = 'brand_proposals';
+
+            // Special Fields Mapping for DB Columns
+            const dbPayload: any = { ...payload, updated_at: new Date().toISOString() };
+
+            // Map camelCase to snake_case for DB
+            if (payload.specialTerms !== undefined) dbPayload.special_terms = payload.specialTerms;
+            if (payload.dateReceived !== undefined) dbPayload.condition_product_receipt_date = payload.dateReceived;
+            if (payload.dateDraft !== undefined) dbPayload.condition_draft_submission_date = payload.dateDraft;
+            if (payload.dateUpload !== undefined) dbPayload.condition_upload_date = payload.dateUpload;
+            if (payload.cost !== undefined) {
+                dbPayload.compensation_amount = String(payload.cost);
+                dbPayload.price_offer = payload.cost;
             }
-
-            console.log(`[updateProposal] Updating ${tableName} ID: ${id}`, payload)
 
             const { error } = await supabase
                 .from(tableName)
-                .update(payload)
-                .eq('id', id)
+                .update(dbPayload)
+                .eq('id', id);
 
-            if (error) throw error
+            if (error) throw error;
 
-            setProposals(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
-            return true
+            console.log(`[updateProposal] Success updating ${tableName}`);
+
+            // Refresh Data to reflect changes
+            await fetchEvents(targetId);
+            return true;
         } catch (e: any) {
             console.error("Failed to update proposal:", e)
             alert("제안서 수정에 실패했습니다: " + (e.message || "알 수 없는 오류"))
@@ -2041,15 +2218,42 @@ export function PlatformProvider({ children, initialSession }: { children: React
 
             const payload = typeof updates === 'string' ? { status: updates } : updates
 
+            // [SMART UPDATE] Determine table based on proposal type
+            // Check all potential sources to find the proposal and its type
+            let targetProposal: any = brandProposals.find(p => p.id === id);
+
+            if (!targetProposal) {
+                targetProposal = campaignProposals.find(p => p.id === id);
+            }
+            if (!targetProposal) {
+                targetProposal = momentProposals.find(p => p.id === id);
+            }
+
+            let tableName = 'brand_proposals';
+
+            if (targetProposal?.type === 'moment_offer') {
+                tableName = 'moment_proposals';
+            } else if (targetProposal?.type === 'creator_apply') {
+                tableName = 'campaign_proposals';
+            }
+
+            console.log(`[updateBrandProposal] Updating ${tableName} ID: ${id}`, payload)
+
             const { error } = await supabase
-                .from('brand_proposals')
+                .from(tableName)
                 .update(payload)
                 .eq('id', id)
 
             if (error) throw error
 
-            // Update local state
+            if (error) throw error
+
+            // Update local state (Optimistic)
             setBrandProposals(prev => prev.map(p => p.id === id ? { ...p, ...payload } : p))
+
+            // [FIX] Force Re-fetch to ensure all clients and mappings are synced immediately
+            await fetchEvents(targetId);
+
             return true
         } catch (e: any) {
             console.error("Failed to update proposal:", e)
@@ -2242,13 +2446,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const createMomentProposal = async (data: {
-        momentId: string,
-        influencerId: string,
-        message: string,
-        price?: number,
-        conditions?: any
-    }) => {
+    const createMomentProposal = async (proposalData: any) => {
         // Robust check
         let targetUserId = user?.id;
         if (!targetUserId) {
@@ -2262,20 +2460,22 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
 
         try {
-            console.log("[createMomentProposal] Sending proposal:", data)
+            console.log("[createMomentProposal] Sending proposal:", proposalData)
+
+            // Prepare payload for moment_proposals
+            const payload = {
+                ...proposalData,
+                moment_id: proposalData.moment_id || proposalData.event_id,
+                status: 'offered'
+            };
+
+            // Remove incompatible fields
+            delete payload.event_id; // moment_proposals uses moment_id
 
             // 1. Insert into moment_proposals
             const { data: inserted, error } = await supabase
                 .from('moment_proposals')
-                .insert({
-                    brand_id: targetUserId,
-                    influencer_id: data.influencerId,
-                    moment_id: data.momentId,
-                    message: data.message,
-                    price_offer: data.price,
-                    conditions: data.conditions || {},
-                    status: 'offered'
-                })
+                .insert(payload)
                 .select(`
                     *,
                     brand_profile:profiles!moment_proposals_brand_id_fkey(display_name, avatar_url),
@@ -2664,7 +2864,8 @@ export function PlatformProvider({ children, initialSession }: { children: React
         products, addProduct, updateProduct, deleteProduct,
         campaignProposals, addProposal, updateProposal, deleteProposal, createBrandProposal,
         brandProposals, updateBrandProposal, deleteBrandProposal,
-        momentProposals, // [NEW]
+        momentProposals, deleteMomentProposal,
+        addMomentProposal, // [NEW]
         notifications, sendNotification, markAsRead,
         messages, sendMessage,
         submissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,

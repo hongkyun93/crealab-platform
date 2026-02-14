@@ -38,6 +38,16 @@ export function FavoriteProvider({ children, userId }: { children: React.ReactNo
                 .order('created_at', { ascending: false })
 
             if (error) {
+                // Ignore AbortError and transient network errors
+                if (error.code === undefined && (
+                    error.message?.includes('AbortError') ||
+                    error.message?.includes('aborted') ||
+                    error.message === 'Failed to fetch' ||
+                    error.message === 'Load failed'
+                )) {
+                    return
+                }
+
                 console.error('[FavoriteProvider] Fetch error:', error)
                 return
             }

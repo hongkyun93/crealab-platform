@@ -20,11 +20,13 @@ export interface Proposal {
     campaignId?: string
     campaignName?: string
     productName?: string
+    product_name?: string // snake_case alias
     influencerId?: string
     influencerName?: string
     influencerAvatar?: string
     brandId?: string
     brandName?: string
+    brand_name?: string // snake_case alias
     brandAvatar?: string
 
     cost?: number
@@ -38,6 +40,7 @@ export interface Proposal {
     negotiationBase?: number
     negotiationIncentive?: string
     priceOffer?: number // camelCase alias for MomentProposal compatibility
+    price_offer?: number // [FIX] snake_case mapping from DB
 
     fromId?: string
     toId?: string
@@ -61,6 +64,22 @@ export interface Proposal {
     brand_signed_at?: string
     influencer_signed_at?: string
 
+    // Schedule Dates
+    date_received?: string // 제품 수령일
+    date_draft?: string // 초안 제출일
+    date_upload?: string // 업로드일
+
+    // [FIX] Strict DB Mapping for Conditions
+    condition_product_receipt_date?: string
+    condition_draft_submission_date?: string
+    condition_upload_date?: string
+    condition_plan_sharing_date?: string
+    condition_final_submission_date?: string
+    condition_maintenance_period?: string
+
+    specialTerms?: string // 특약사항
+    special_terms?: string // snake_case mapping
+
     // Delivery
     shipping_name?: string
     tracking_number?: string
@@ -83,19 +102,14 @@ export interface Proposal {
     content_submission_version_2?: number
 
     // Condition Fields
-    condition_product_receipt_date?: string
-    condition_plan_sharing_date?: string
-    condition_draft_submission_date?: string
-    condition_final_submission_date?: string
-    condition_upload_date?: string
-    condition_maintenance_period?: string
+
     condition_secondary_usage_period?: string
 
     // Creator Details (for brand view)
     tags?: string[]
     followers?: number
     campaign?: any // Related campaign data
-}
+    brand_avatar?: string // [FIX] Snake case for compatibility
 
 export interface BrandProposal {
     id: string
@@ -157,13 +171,8 @@ export interface BrandProposal {
     influencer_condition_confirmed?: boolean
 
     // Condition Fields
-    condition_product_receipt_date?: string
-    condition_plan_sharing_date?: string
-    condition_draft_submission_date?: string
-    condition_final_submission_date?: string
-    condition_upload_date?: string
-    condition_maintenance_period?: string
-    condition_secondary_usage_period?: string
+    // Condition Fields (Already defined above)
+
 
     // Content Submission
     content_submission_url?: string
@@ -216,4 +225,36 @@ export interface MomentProposal {
     product?: any
     product_name?: string
     completed_at?: string
+
+    // [Added] Condition Fields (Matching DB)
+    condition_product_receipt_date?: string
+    condition_draft_submission_date?: string
+    condition_final_submission_date?: string
+    condition_upload_date?: string
+    condition_maintenance_period?: string
+    condition_secondary_usage_period?: string
+
+    // [Added] Proposal Details
+    has_incentive?: boolean
+    incentive_detail?: string
+    content_type?: string
+    product_url?: string
+    product_type?: string
+    compensation_amount?: string // [Fallback] For legacy data
+
+    // [Added] Logistics
+    delivery_status?: string
+    shipping_name?: string
+    shipping_phone?: string
+    shipping_address?: string
+    tracking_number?: string
+
+    // [Added] Confirmations
+    brand_condition_confirmed?: boolean
+    influencer_condition_confirmed?: boolean
+
+    // [Added] Submissions
+    content_submission_url?: string
+    content_submission_status?: string
+    content_submission_date?: string
 }

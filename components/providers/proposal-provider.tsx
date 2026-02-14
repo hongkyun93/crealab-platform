@@ -8,10 +8,12 @@ interface ProposalContextType {
     campaignProposals: Proposal[]
     brandProposals: BrandProposal[]
     momentProposals: MomentProposal[] // [NEW]
+    addMomentProposal: (proposal: MomentProposal) => void // [NEW] Optimistic Add
     isLoading: boolean
     addProposal: (proposal: Partial<Proposal>) => Promise<void>
     updateProposal: (id: string | number, updates: Partial<Proposal>) => Promise<boolean>
     updateBrandProposal: (id: string | number, updates: Partial<BrandProposal>) => Promise<boolean>
+    updateMomentProposal: (id: string | number, updates: Partial<MomentProposal>) => Promise<boolean> // [NEW]
     deleteBrandProposal: (id: string | number) => Promise<void>
     refreshProposals: (userId?: string) => Promise<void>
 }
@@ -22,9 +24,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     const [supabase] = useState(() => createClient())
     const [campaignProposals, setCampaignProposals] = useState<Proposal[]>([])
     const [brandProposals, setBrandProposals] = useState<BrandProposal[]>([])
-    const [momentProposals, setMomentProposals] = useState<MomentProposal[]>([]) // [NEW]
+    const [momentProposals, setMomentProposals] = useState<MomentProposal[]>([]) // [NEW] // FIXED
     const [isLoading, setIsLoading] = useState(false)
     const isFetching = useRef(false)
+
+    // [NEW] Optimistic Add
+    const addMomentProposal = (proposal: MomentProposal) => {
+        setMomentProposals(prev => [proposal, ...prev])
+    }
 
     // Fetch creator proposals (applications to campaigns)
     // For Influencers: My applications
@@ -64,6 +71,16 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             const { data, error } = await query
 
             if (error) {
+                // Ignore AbortError and transient network errors
+                if (error.code === undefined && (
+                    error.message?.includes('AbortError') ||
+                    error.message?.includes('aborted') ||
+                    error.message === 'Failed to fetch' ||
+                    error.message === 'Load failed'
+                )) {
+                    return
+                }
+
                 console.error('[ProposalProvider] Creator proposals error:', error)
                 return
             }
@@ -156,8 +173,25 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             const brandData = brandRes.data || []
             const momentData = momentRes.data || []
 
-            if (brandRes.error) console.error('[ProposalProvider] Brand proposals error:', brandRes.error)
-            if (momentRes.error) console.error('[ProposalProvider] Moment proposals error:', momentRes.error)
+            if (brandRes.error) {
+                const error = brandRes.error
+                const isIgnorable = error.code === undefined && (
+                    error.message?.includes('AbortError') ||
+                    error.message?.includes('aborted') ||
+                    error.message === 'Failed to fetch'
+                )
+                if (!isIgnorable) console.error('[ProposalProvider] Brand proposals error:', error)
+            }
+
+            if (momentRes.error) {
+                const error = momentRes.error
+                const isIgnorable = error.code === undefined && (
+                    error.message?.includes('AbortError') ||
+                    error.message?.includes('aborted') ||
+                    error.message === 'Failed to fetch'
+                )
+                if (!isIgnorable) console.error('[ProposalProvider] Moment proposals error:', error)
+            }
 
             const mappedBrand: BrandProposal[] = brandData.map((p: any) => ({
                 id: p.id,
@@ -490,6 +524,68 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         }
     }
 
+    // [NEW] Update Moment Proposal
+    const updateMomentProposal = async (id: string | number, updates: Partial<MomentProposal>): Promise<boolean> => {
+        try {
+            console.log('[ProposalProvider] Updating moment proposal:', id, updates)
+
+            const dbUpdates: any = {}
+            // Status & Logistics
+            if (updates.status) dbUpdates.status = updates.status
+            if (updates.delivery_status) dbUpdates.delivery_status = updates.delivery_status
+            if (updates.shipping_name) dbUpdates.shipping_name = updates.shipping_name
+            if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
+            if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
+            if (updates.shipping_phone) dbUpdates.shipping_phone = updates.shipping_phone
+
+            // Conditions
+            if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
+            if (updates.compensation_amount !== undefined) dbUpdates.compensation_amount = updates.compensation_amount
+            if (updates.product_name) dbUpdates.product_name = updates.product_name
+            if (updates.product_type) dbUpdates.product_type = updates.product_type
+            if (updates.has_incentive !== undefined) dbUpdates.has_incentive = updates.has_incentive
+            if (updates.incentive_detail !== undefined) dbUpdates.incentive_detail = updates.incentive_detail
+            if (updates.content_type) dbUpdates.content_type = updates.content_type
+            if (updates.message) dbUpdates.message = updates.message
+
+            // Dates
+            if (updates.condition_product_receipt_date) dbUpdates.condition_product_receipt_date = updates.condition_product_receipt_date
+            if (updates.condition_draft_submission_date) dbUpdates.condition_draft_submission_date = updates.condition_draft_submission_date
+            if (updates.condition_final_submission_date) dbUpdates.condition_final_submission_date = updates.condition_final_submission_date
+            if (updates.condition_upload_date) dbUpdates.condition_upload_date = updates.condition_upload_date
+            if (updates.condition_secondary_usage_period) dbUpdates.condition_secondary_usage_period = updates.condition_secondary_usage_period
+            if (updates.condition_maintenance_period) dbUpdates.condition_maintenance_period = updates.condition_maintenance_period
+
+            // Confirmations
+            if (updates.brand_condition_confirmed !== undefined) dbUpdates.brand_condition_confirmed = updates.brand_condition_confirmed
+            if (updates.influencer_condition_confirmed !== undefined) dbUpdates.influencer_condition_confirmed = updates.influencer_condition_confirmed
+
+            // Submissions
+            if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
+            if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
+
+            const { error } = await supabase
+                .from('moment_proposals')
+                .update(dbUpdates)
+                .eq('id', id)
+
+            if (error) {
+                console.error('[ProposalProvider] Update Moment error:', error)
+                return false
+            }
+
+            // Update local state
+            setMomentProposals(prev => prev.map(p =>
+                p.id === id ? { ...p, ...updates } : p
+            ))
+
+            return true
+        } catch (error: any) {
+            console.error('[ProposalProvider] Update Moment error:', error)
+            return false
+        }
+    }
+
     // Delete brand proposal
     const deleteBrandProposal = async (id: string | number) => {
         try {
@@ -518,10 +614,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             campaignProposals,
             brandProposals,
             momentProposals, // [NEW]
+            addMomentProposal, // [NEW]
             isLoading,
             addProposal,
             updateProposal,
             updateBrandProposal,
+            updateMomentProposal, // [NEW]
             deleteBrandProposal,
             refreshProposals
         }}>

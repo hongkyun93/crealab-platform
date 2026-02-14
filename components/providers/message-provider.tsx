@@ -55,6 +55,12 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     return
                 }
 
+                // Handle network errors gracefully
+                if (error.message === 'Failed to fetch' || error.message === 'Load failed') {
+                    // console.warn('[MessageProvider] Network error fetching messages (likely transient)')
+                    return
+                }
+
                 console.error('[MessageProvider] Fetch error:', error.message)
 
                 // Handle known error codes gracefully
@@ -118,6 +124,12 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
             if (error) {
                 // Ignore AbortError (happens when component unmounts during fetch)
                 if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+                    return
+                }
+
+                // Handle network errors gracefully
+                if (error.message === 'Failed to fetch' || error.message === 'Load failed') {
+                    // console.warn('[MessageProvider] Network error fetching notifications (likely transient)')
                     return
                 }
 
@@ -273,6 +285,11 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 `)
                 .order('created_at', { ascending: true })
 
+            if (!proposalId && !brandProposalId) {
+                console.warn('[MessageProvider] Missing both proposalId and brandProposalId for feedback fetch')
+                return []
+            }
+
             if (proposalId) {
                 query = query.eq('proposal_id', proposalId)
             } else if (brandProposalId) {
@@ -282,6 +299,17 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
             const { data, error } = await query
 
             if (error) {
+                // Ignore AbortError or network failure during unmount/reload
+                if (error.code === undefined && (error.message === 'Failed to fetch' || error.message === 'Load failed')) {
+                    console.warn('[MessageProvider] Network error fetching feedback (likely transient)')
+                    return []
+                }
+
+                // Ignore empty error objects (often happens with aborted requests or specific Supabase edge cases)
+                if (Object.keys(error).length === 0) {
+                    return []
+                }
+
                 console.error('[MessageProvider] Feedback fetch error:', error)
                 return []
             }

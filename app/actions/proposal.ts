@@ -98,6 +98,7 @@ export async function submitDirectProposal(data: any) {
                 has_incentive: data.has_incentive,
                 incentive_detail: data.incentive_detail,
                 content_type: data.content_type,
+                product_url: data.product_url, // [NEW] Save product URL
                 desired_date: data.desired_date,
                 date_flexible: data.date_flexible,
                 video_guide: data.video_guide,

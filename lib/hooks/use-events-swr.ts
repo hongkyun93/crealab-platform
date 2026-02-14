@@ -56,7 +56,18 @@ async function fetchUserEvents(userId: string): Promise<InfluencerEvent[]> {
         .order('created_at', { ascending: false })
 
     if (error) {
-        console.error('[useEvents] Fetch error:', error.message)
+        // Ignore AbortError (Request Cancelled)
+        if (
+            error.name === 'AbortError' ||
+            error.message?.includes('AbortError') ||
+            error.code === '20' ||
+            // Ignore empty error objects (often cancellation artifacts)
+            (Object.keys(error).length === 0 && !error.message)
+        ) {
+            return []
+        }
+
+        console.error('[useEvents] Fetch error:', error.message || error)
 
         // Handle known error codes gracefully
         if (error.code === '42P01') {
@@ -69,7 +80,7 @@ async function fetchUserEvents(userId: string): Promise<InfluencerEvent[]> {
         }
 
         // For unexpected errors, still return empty but log full details
-        console.error('[useEvents] Unexpected error:', { code: error.code, details: error.details })
+        console.error('[useEvents] Unexpected error:', { code: error.code, details: error.details, raw: error })
         return []
     }
 
@@ -94,7 +105,18 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
         .order('created_at', { ascending: false })
 
     if (error) {
-        console.error('[useEvents] Fetch All error:', error.message)
+        // Ignore AbortError (Request Cancelled)
+        if (
+            error.name === 'AbortError' ||
+            error.message?.includes('AbortError') ||
+            error.code === '20' ||
+            // Ignore empty error objects (often cancellation artifacts)
+            (Object.keys(error).length === 0 && !error.message)
+        ) {
+            return []
+        }
+
+        console.error('[useEvents] Fetch All error:', error.message || error)
 
         // Handle known error codes gracefully
         if (error.code === '42P01') {
@@ -107,7 +129,7 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
         }
 
         // For unexpected errors, still return empty but log full details
-        console.error('[useEvents] Unexpected error:', { code: error.code, details: error.details })
+        console.error('[useEvents] Unexpected error:', { code: error.code, details: error.details, raw: error })
         return []
     }
 
