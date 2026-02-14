@@ -897,12 +897,6 @@ function InfluencerDashboardContent() {
                                                         proposal.status === 'rejected' ? '거절됨' :
                                                             '수락 대기중'}
                                             </Badge>
-                                            {/* Moment Proposal Badge */}
-                                            {proposal.moment_id && (
-                                                <Badge className="text-xs font-normal bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-0">
-                                                    📌 모먼트 제안
-                                                </Badge>
-                                            )}
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
                                             {proposal.brand_name} • {new Date(proposal.created_at).toLocaleDateString()}
