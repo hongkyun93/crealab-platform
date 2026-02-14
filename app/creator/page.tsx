@@ -389,6 +389,55 @@ function InfluencerDashboardContent() {
         })
     }
 
+    // Creator cancels outbound proposals (brand_proposals + campaign_applications)
+    const handleCancelProposal = (e: React.MouseEvent, proposalId: string) => {
+        e.stopPropagation()
+
+        setConfirmDialog({
+            open: true,
+            title: '제안 취소',
+            description: '이 제안을 취소하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+            variant: 'destructive',
+            onConfirm: async () => {
+                try {
+                    const proposal = allOutboundProposals.find((p: any) => p.id === proposalId)
+
+                    if (!proposal) {
+                        toast.error('제안을 찾을 수 없습니다.')
+                        return
+                    }
+
+                    let error = null
+
+                    // Creator's outbound = brand_proposals or campaign_applications
+                    if (proposal.campaign_id) {
+                        const result = await supabase
+                            .from('campaign_applications')
+                            .update({ status: 'cancelled' })
+                            .eq('id', proposalId)
+                        error = result.error
+                    } else {
+                        const result = await supabase
+                            .from('brand_proposals')
+                            .update({ status: 'cancelled' })
+                            .eq('id', proposalId)
+                        error = result.error
+                    }
+
+                    if (error) {
+                        toast.error('취소 실패: ' + error.message)
+                        throw error
+                    }
+
+                    await refreshData()
+                    toast.success('제안을 취소했습니다.')
+                } catch (error: any) {
+                    console.error('Cancel error:', error)
+                }
+            }
+        })
+    }
+
     // Auto-open proposal from URL (Notification Redirect)
     useEffect(() => {
         const proposalId = searchParams.get('proposalId')

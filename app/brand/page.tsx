@@ -168,6 +168,7 @@ function BrandDashboardContent() {
     const [isSendingContract, setIsSendingContract] = useState(false)
     const [workspaceTab, setWorkspaceTab] = useState("inbound") // Lifted state for sidebar control
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
+    const [workspaceViewMode, setWorkspaceViewMode] = useState<'list' | 'grid' | 'table'>('list') // View mode for workspace archive
     const [activeProposalTab, setActiveProposalTab] = useState("chat") // Controlled tab state for Proposal Dialog
     const [feedbackMsg, setFeedbackMsg] = useState("")
 

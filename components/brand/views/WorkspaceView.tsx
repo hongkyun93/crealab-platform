@@ -1,16 +1,17 @@
 "use client"
 
-import React, { useMemo } from "react"
+import React, { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
-import { CheckCircle2, X } from "lucide-react"
-import { Card } from "@/components/ui/card"
+import { CheckCircle2, X, LayoutGrid, Table2, List, Ban, ChevronRight } from "lucide-react"
+import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
-import { LayoutList, AlignJustify } from "lucide-react"
-import { useState, useEffect } from "react"
-import { WorkspaceCompactRow } from "@/components/brand/WorkspaceCompactRow"
+import { toast } from "sonner"
+import { usePlatform } from "@/components/providers/legacy-platform-hook"
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 
 interface WorkspaceViewProps {
     campaignProposals: any[]
@@ -23,6 +24,14 @@ interface WorkspaceViewProps {
     onViewProposal?: (proposal: any) => void
 }
 
+interface ConfirmDialogState {
+    open: boolean
+    title: string
+    description: string
+    variant?: 'default' | 'destructive'
+    onConfirm: () => void
+}
+
 export const WorkspaceView = React.memo(function WorkspaceView({
     campaignProposals,
     brandProposals,
@@ -33,35 +42,167 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     handleStatusUpdate,
     onViewProposal
 }: WorkspaceViewProps) {
-    const [viewMode, setViewMode] = useState<'detail' | 'compact'>('detail')
+    const { supabase, refreshData } = usePlatform()
+    const [viewMode, setViewMode] = useState<'list' | 'grid' | 'table'>('list')
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
+    const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false, title: '', description: '', onConfirm: () => { } })
 
     // Reset sub-tab when main workspace tab changes
     useEffect(() => {
         setWorkspaceSubTab('all')
     }, [workspaceTab])
 
-    // Memoize filtering logic to prevent recalculation on every render
-    // 1. Inbound (Received Applications from Creators) - Waiting
+    // ACTION HANDLERS
+
+    // Brand accepts inbound proposals (campaign_applications or brand_proposals)
+    const handleAcceptProposal = (e: React.MouseEvent, proposalId: string) => {
+        e.stopPropagation()
+
+        setConfirmDialog({
+            open: true,
+            title: '제안 수락',
+            description: '이 제안을 수락하시겠습니까?',
+            onConfirm: async () => {
+                try {
+                    // Find proposal to determine table
+                    const proposal = [...campaignProposals, ...brandProposals].find((p: any) => p.id === proposalId)
+
+                    if (!proposal) {
+                        toast.error('제안을 찾을 수 없습니다.')
+                        return
+                    }
+
+                    let error = null
+
+                    // Inbound for brand = campaign_applications or brand_proposals
+                    if (proposal.campaign_id) {
+                        const result = await supabase
+                            .from('campaign_applications')
+                            .update({ status: 'accepted' })
+                            .eq('id', proposalId)
+                        error = result.error
+                    } else {
+                        const result = await supabase
+                            .from('brand_proposals')
+                            .update({ status: 'accepted' })
+                            .eq('id', proposalId)
+                        error = result.error
+                    }
+
+                    if (error) {
+                        toast.error('수락 실패: ' + error.message)
+                        throw error
+                    }
+
+                    await refreshData()
+                    toast.success('제안을 수락했습니다!')
+                } catch (error: any) {
+                    console.error('Accept error:', error)
+                }
+            }
+        })
+    }
+
+    const handleRejectProposal = (e: React.MouseEvent, proposalId: string) => {
+        e.stopPropagation()
+
+        setConfirmDialog({
+            open: true,
+            title: '제안 거절',
+            description: '이 제안을 거절하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+            variant: 'destructive',
+            onConfirm: async () => {
+                try {
+                    const proposal = [...campaignProposals, ...brandProposals].find((p: any) => p.id === proposalId)
+
+                    if (!proposal) {
+                        toast.error('제안을 찾을 수 없습니다.')
+                        return
+                    }
+
+                    let error = null
+
+                    if (proposal.campaign_id) {
+                        const result = await supabase
+                            .from('campaign_applications')
+                            .update({ status: 'rejected' })
+                            .eq('id', proposalId)
+                        error = result.error
+                    } else {
+                        const result = await supabase
+                            .from('brand_proposals')
+                            .update({ status: 'rejected' })
+                            .eq('id', proposalId)
+                        error = result.error
+                    }
+
+                    if (error) {
+                        toast.error('거절 실패: ' + error.message)
+                        throw error
+                    }
+
+                    await refreshData()
+                    toast.success('제안을 거절했습니다.')
+                } catch (error: any) {
+                    console.error('Reject error:', error)
+                }
+            }
+        })
+    }
+
+    // Brand cancels outbound proposals (moment_proposals)
+    const handleCancelProposal = (e: React.MouseEvent, proposalId: string) => {
+        e.stopPropagation()
+
+        setConfirmDialog({
+            open: true,
+            title: '제안 취소',
+            description: '이 제안을 취소하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+            variant: 'destructive',
+            onConfirm: async () => {
+                try {
+                    // Outbound for brand = moment_proposals (in brandProposals array)
+                    const { error } = await supabase
+                        .from('moment_proposals')
+                        .update({ status: 'cancelled' })
+                        .eq('id', proposalId)
+
+                    if (error) {
+                        toast.error('취소 실패: ' + error.message)
+                        throw error
+                    }
+
+                    await refreshData()
+                    toast.success('제안을 취소했습니다.')
+                } catch (error: any) {
+                    console.error('Cancel error:', error)
+                }
+            }
+        })
+    }
+
+    // MEMOIZED DATA FILTERING
+
+    // 1. Inbound (Received Applications from Creators) - brand_proposals + campaign_applications
     const inboundApplications = useMemo(
         () => campaignProposals?.filter((p: any) => p.status === 'applied' || p.status === 'pending' || p.status === 'viewed') || [],
         [campaignProposals]
     )
 
-    // 2. Outbound (Sent Offers to Creators) - Waiting
+    // 2. Outbound (Sent Offers to Creators) - moment_proposals (from brandProposals)
     const outboundOffers = useMemo(
-        () => brandProposals?.filter(p => !p.status || p.status === 'offered' || p.status === 'negotiating') || [],
+        () => brandProposals?.filter(p => (!p.status || p.status === 'offered' || p.status === 'negotiating') && p.moment_id) || [],
         [brandProposals]
     )
 
-    // 3. Active (In Progress) - Both sources
+    // 3. Active (In Progress)
     const activeInbound = useMemo(
         () => campaignProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') || [],
         [campaignProposals]
     )
 
     const activeOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') || [],
+        () => brandProposals?.filter((p: any) => (p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') && p.moment_id) || [],
         [brandProposals]
     )
 
@@ -72,14 +213,14 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         [activeInbound, activeOutbound]
     )
 
-    // 4. Completed - Both sources
+    // 4. Completed
     const completedInbound = useMemo(
         () => campaignProposals?.filter((p: any) => p.status === 'completed') || [],
         [campaignProposals]
     )
 
     const completedOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => p.status === 'completed') || [],
+        () => brandProposals?.filter((p: any) => p.status === 'completed' && p.moment_id) || [],
         [brandProposals]
     )
 
@@ -90,14 +231,14 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         [completedInbound, completedOutbound]
     )
 
-    // 5. Rejected - Both sources
+    // 5. Rejected
     const rejectedInbound = useMemo(
         () => campaignProposals?.filter((p: any) => p.status === 'rejected') || [],
         [campaignProposals]
     )
 
     const rejectedOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => p.status === 'rejected') || [],
+        () => brandProposals?.filter((p: any) => p.status === 'rejected' && p.moment_id) || [],
         [brandProposals]
     )
 
@@ -154,7 +295,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 <button
                     onClick={() => setWorkspaceSubTab('all')}
                     className={`min-w-[90px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
-                        ? 'bg-slate-900 text-white'
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
                 >
@@ -163,7 +304,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 <button
                     onClick={() => setWorkspaceSubTab('moment')}
                     className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'moment'
-                        ? 'bg-slate-900 text-white'
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
                 >
@@ -172,7 +313,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 <button
                     onClick={() => setWorkspaceSubTab('campaign')}
                     className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'campaign'
-                        ? 'bg-slate-900 text-white'
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
                 >
@@ -181,7 +322,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 <button
                     onClick={() => setWorkspaceSubTab('brand')}
                     className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'brand'
-                        ? 'bg-slate-900 text-white'
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
                 >
@@ -191,9 +332,239 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         )
     }
 
+    // RENDER ITEMS BASED ON VIEW MODE
+    const renderItems = (items: any[], tabType: string) => {
+        if (items.length === 0) {
+            return (
+                <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground">
+                    {tabType === 'all' && '내역이 없습니다.'}
+                    {tabType === 'active' && '진행 중인 협업이 없습니다.'}
+                    {tabType === 'inbound' && '도착한 지원서가 없습니다.'}
+                    {tabType === 'outbound' && '보낸 제안이 없습니다.'}
+                    {tabType === 'rejected' && '거절된 내역이 없습니다.'}
+                    {tabType === 'completed' && '완료된 협업이 없습니다.'}
+                </div>
+            )
+        }
+
+        // TABLE VIEW
+        if (viewMode === 'table') {
+            return (
+                <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/50">
+                                <TableHead className="w-[200px]">크리에이터</TableHead>
+                                <TableHead>제품/서비스</TableHead>
+                                <TableHead className="w-[120px]">등록일</TableHead>
+                                <TableHead className="w-[120px] text-right">상태</TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {items.map((item: any) => (
+                                <TableRow
+                                    key={item.id}
+                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                    onClick={() => { setChatProposal(item); setIsChatOpen(true); }}
+                                >
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] overflow-hidden">
+                                                {item.influencerName?.[0] || item.influencer_name?.[0] || "C"}
+                                            </div>
+                                            {item.influencerName || item.influencer_name}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>{item.product_name || item.productName}</TableCell>
+                                    <TableCell className="text-muted-foreground text-xs">{new Date(item.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Badge variant="outline" className={`text-[10px] h-5 px-2 font-medium border-2 rounded-full transition-all bg-background
+                                            ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
+                                                item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_10px_rgba(148,163,184,0.3)]' :
+                                                    item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
+                                                        'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
+                                        `}>
+                                            {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            )
+        }
+
+        // GRID VIEW
+        if (viewMode === 'grid') {
+            return (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {items.map((item: any) => (
+                        <Card key={item.id} className={`cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 bg-card border-l-4 overflow-hidden group
+                            ${tabType === 'active' ? 'border-l-emerald-500' :
+                                tabType === 'inbound' ? 'border-l-blue-500' :
+                                    tabType === 'outbound' ? 'border-l-purple-500' :
+                                        tabType === 'rejected' ? 'border-l-red-500' :
+                                            tabType === 'completed' ? 'border-l-slate-400' :
+                                                item.status === 'accepted' || item.status === 'signed' ? 'border-l-emerald-500' :
+                                                    item.status === 'completed' ? 'border-l-slate-400' :
+                                                        item.status === 'rejected' ? 'border-l-red-500' :
+                                                            item.campaign_id ? 'border-l-blue-500' : 'border-l-purple-500'}
+                        `} onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
+                            <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border overflow-hidden
+                                    ${item.status === 'accepted' || item.status === 'signed' ? 'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:border-emerald-800' :
+                                        item.status === 'completed' ? 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700' :
+                                            'bg-blue-50 border-blue-100 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800'}
+                                `}>
+                                    {item.influencerName?.[0] || item.influencer_name?.[0] || "C"}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold truncate text-sm">{item.influencerName || item.influencer_name}</h4>
+                                    <p className="text-xs text-muted-foreground truncate">{item.product_name || item.productName}</p>
+                                </div>
+                                <Badge variant="outline" className={`text-[10px] h-5 px-2 font-medium shrink-0 border-2 rounded-full transition-all bg-background
+                                    ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
+                                        item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_10px_rgba(148,163,184,0.3)]' :
+                                            item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
+                                                'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
+                                `}>
+                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
+                                </Badge>
+                            </CardHeader>
+                            <CardContent className="pb-3 text-xs space-y-2">
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>계약상태</span>
+                                    <span className={item.contract_status === 'signed' ? 'text-primary font-medium' : ''}>{item.contract_status || '대기중'}</span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>배송상태</span>
+                                    <span className={item.delivery_status === 'delivered' ? 'text-primary font-medium' : ''}>{item.delivery_status || '대기중'}</span>
+                                </div>
+                                <div className="w-full bg-muted h-1.5 rounded-full mt-2">
+                                    <div
+                                        className="bg-primary h-1.5 rounded-full transition-all"
+                                        style={{ width: item.contract_status === 'signed' ? (item.content_submission_status === 'submitted' ? '100%' : '66%') : '33%' }}
+                                    ></div>
+                                </div>
+                            </CardContent>
+                            <CardFooter className="pt-0 pb-3 text-[10px] text-muted-foreground flex justify-between">
+                                <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                <span className="group-hover:text-primary transition-colors">상세보기 →</span>
+                            </CardFooter>
+                        </Card>
+                    ))}
+                </div>
+            )
+        }
+
+        // LIST VIEW (Default)
+        return (
+            <div className="space-y-4">
+                {items.map((item: any) => {
+                    const isInbound = tabType === 'inbound' || (tabType === 'all' && item.campaign_id)
+                    const isOutbound = tabType === 'outbound' || (tabType === 'all' && item.moment_id)
+
+                    return (
+                        <Card key={item.id} className={`p-6 border-l-4 bg-card hover:bg-accent/5 cursor-pointer hover:shadow-md transition-all
+                            ${tabType === 'active' ? 'border-l-emerald-500' :
+                                tabType === 'inbound' ? 'border-l-blue-500' :
+                                    tabType === 'outbound' ? 'border-l-purple-500' :
+                                        tabType === 'rejected' ? 'border-l-red-500' :
+                                            tabType === 'completed' ? 'border-l-slate-400' :
+                                                item.status === 'accepted' || item.status === 'signed' ? 'border-l-emerald-500' :
+                                                    item.status === 'completed' ? 'border-l-slate-400' :
+                                                        item.status === 'rejected' ? 'border-l-red-500' :
+                                                            item.campaign_id ? 'border-l-blue-500' : 'border-l-purple-500'}
+                        `} onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
+                            <div className="flex gap-6">
+                                <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xl shrink-0 overflow-hidden">
+                                    {item.influencerAvatar ? <img src={item.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (item.influencerName?.[0] || item.influencer_name?.[0] || "C")}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                {item.influencerName || item.influencer_name}
+                                                <Badge variant="outline" className={`text-xs font-medium border-2 rounded-full px-3 py-0.5 transition-all bg-background
+                                                    ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
+                                                        item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
+                                                            item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
+                                                                'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.3)]'}
+                                                `}>
+                                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' :
+                                                        item.status === 'completed' ? '완료됨' :
+                                                            item.status === 'rejected' ? '거절됨' :
+                                                                '수락 대기중'}
+                                                </Badge>
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground mt-1">{item.product_name || item.productName || "제품 협찬"}</p>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground/70">{new Date(item.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                    {item.message && (
+                                        <div className="mt-3 bg-muted/30 p-3 rounded text-sm text-foreground/80 line-clamp-2">
+                                            {item.message}
+                                        </div>
+                                    )}
+                                    <div className="mt-4">
+                                        <WorkspaceProgressBar
+                                            status={item.status}
+                                            contract_status={item.contract_status}
+                                            delivery_status={item.delivery_status}
+                                            content_submission_status={item.content_submission_status}
+                                        />
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    {isInbound && (item.status === 'applied' || item.status === 'pending' || item.status === 'viewed') && (
+                                        <div className="flex gap=2 mt-4">
+                                            <Button
+                                                size="sm"
+                                                className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                                                onClick={(e) => handleAcceptProposal(e, item.id)}
+                                            >
+                                                <CheckCircle2 className="mr-1 h-3 w-3" /> 수락
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 text-xs border-red-200 hover:bg-red-50 text-red-700"
+                                                onClick={(e) => handleRejectProposal(e, item.id)}
+                                            >
+                                                <X className="mr-1 h-3 w-3" /> 거절
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {isOutbound && (!item.status || item.status === 'offered' || item.status === 'negotiating') && (
+                                        <div className="mt-4">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 text-xs border-gray-200 hover:bg-gray-50 text-gray-700"
+                                                onClick={(e) => handleCancelProposal(e, item.id)}
+                                            >
+                                                <Ban className="mr-1 h-3 w-3" /> 제안 취소
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </Card>
+                    )
+                })}
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-            {/* Title and View Mode Selector - Stacks on mobile */}
+            {/* Title and View Mode Selector */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">워크스페이스 아카이브</h1>
@@ -203,22 +574,31 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 {/* View Mode Selector */}
                 <div className="flex items-center gap-1 bg-muted p-1 rounded-lg self-start">
                     <Button
-                        variant={viewMode === 'detail' ? 'default' : 'ghost'}
+                        variant={viewMode === 'list' ? 'default' : 'ghost'}
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() => setViewMode('detail')}
-                        title="상세 보기"
+                        onClick={() => setViewMode('list')}
+                        title="리스트 보기"
                     >
-                        <LayoutList className="h-4 w-4" />
+                        <List className="h-4 w-4" />
                     </Button>
                     <Button
-                        variant={viewMode === 'compact' ? 'default' : 'ghost'}
+                        variant={viewMode === 'grid' ? 'default' : 'ghost'}
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() => setViewMode('compact')}
-                        title="컴팩트 보기"
+                        onClick={() => setViewMode('grid')}
+                        title="그리드 보기"
                     >
-                        <AlignJustify className="h-4 w-4" />
+                        <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant={viewMode === 'table' ? 'default' : 'ghost'}
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setViewMode('table')}
+                        title="테이블 보기"
+                    >
+                        <Table2 className="h-4 w-4" />
                     </Button>
                 </div>
             </div>
@@ -245,7 +625,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                     </TabsTrigger>
                 </TabsList>
 
-                {/* Sub-tabs - Moved below main tabs */}
+                {/* Sub-tabs */}
                 <div className="mt-4 mb-4">
                     {workspaceTab === 'all' && renderSubTabs(allWorkspaceItems)}
                     {workspaceTab === 'active' && renderSubTabs(allActive)}
@@ -255,384 +635,48 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                     {workspaceTab === 'completed' && renderSubTabs(allCompleted)}
                 </div>
 
-                {/* 0. All Items Tab */}
                 <TabsContent value="all" className="space-y-4">
-                    {filterByType(allWorkspaceItems, workspaceSubTab).length === 0 ? (
-                        <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                            내역이 없습니다.
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {filterByType(allWorkspaceItems, workspaceSubTab).map((p: any) => (
-                                viewMode === 'compact' ? (
-                                    <WorkspaceCompactRow
-                                        key={p.id}
-                                        item={p}
-                                        onClick={() => { setChatProposal(p); setIsChatOpen(true); }}
-                                    />
-                                ) : (
-                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-border border-l-4 border-l-muted transition-all bg-card" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-6 w-full">
-                                                <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xl shrink-0">
-                                                    {(p.influencer_name?.[0] || "C")}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between">
-                                                        <div>
-                                                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                                                {p.influencer_name}
-                                                                <Badge variant="outline" className="text-xs font-normal">
-                                                                    {p.status === 'accepted' || p.status === 'signed' ? '진행중' :
-                                                                        p.status === 'completed' ? '완료됨' :
-                                                                            p.status === 'rejected' ? '거절됨' :
-                                                                                '대기중'}
-                                                                </Badge>
-                                                            </h3>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                {p.type === 'moment_offer' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 border-0">모먼트</Badge>}
-                                                                {p.type === 'brand_invite' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 border-0">직접제안</Badge>}
-                                                                {p.type === 'creator_apply' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100 border-0">캠페인</Badge>}
-                                                                <p className="text-sm text-muted-foreground">{p.product_name || "제품 협찬"}</p>
-                                                            </div>
-                                                        </div>
-                                                        <span className="text-xs text-muted-foreground/70">{new Date(p.created_at).toLocaleDateString()}</span>
-                                                    </div>
-                                                    <div className="mt-3 bg-muted/30 p-3 rounded text-sm text-foreground/80">
-                                                        {p.message}
-                                                    </div>
-                                                    <div className="mt-4">
-                                                        <WorkspaceProgressBar
-                                                            status={p.status}
-                                                            contract_status={p.contract_status}
-                                                            delivery_status={p.delivery_status}
-                                                            content_submission_status={p.content_submission_status}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                )
-                            ))}
-                        </div>
-                    )}
+                    {renderItems(filterByType(allWorkspaceItems, workspaceSubTab), 'all')}
                 </TabsContent>
 
-                {/* 1. Active Tab */}
                 <TabsContent value="active" className="space-y-4">
-                    {filterByType(allActive, workspaceSubTab).length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-lg border border-dashed">진행 중인 협업이 없습니다.</div>
-                    ) : (
-                        <div className={viewMode === 'compact' ? "space-y-2" : "space-y-4"}>
-                            {filterByType(allActive, workspaceSubTab).map((p: any) => (
-                                viewMode === 'compact' ? (
-                                    <WorkspaceCompactRow key={p.id} item={p} onClick={() => { setChatProposal(p); setIsChatOpen(true); }} />
-                                ) : (
-                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-border border-l-4 border-l-green-500 transition-all bg-card" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-6 w-full">
-                                                <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xl shrink-0 overflow-hidden">
-                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between">
-                                                        <div>
-                                                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                                                {p.influencer_name}
-                                                                <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 border-0">진행중</Badge>
-                                                            </h3>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                {p.type === 'moment_offer' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 border-0">모먼트</Badge>}
-                                                                {p.type === 'brand_invite' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 border-0">직접제안</Badge>}
-                                                                {p.type === 'creator_apply' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100 border-0">캠페인</Badge>}
-                                                                <p className="text-sm text-muted-foreground">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
-                                                            </div>
-                                                        </div>
-                                                        <span className="text-xs text-muted-foreground/70">{new Date(p.created_at || p.date).toLocaleDateString()}</span>
-                                                    </div>
-                                                    <div className="mt-4">
-                                                        <WorkspaceProgressBar
-                                                            status={p.status}
-                                                            contract_status={p.contract_status}
-                                                            delivery_status={p.delivery_status}
-                                                            content_submission_status={p.content_submission_status}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                )
-                            ))}
-                        </div>
-                    )}
+                    {renderItems(filterByType(allActive, workspaceSubTab), 'active')}
                 </TabsContent>
 
-                {/* 2. Inbound Tab (Received Proposals) */}
                 <TabsContent value="inbound" className="space-y-4">
-                    {filterByType(inboundApplications, workspaceSubTab).length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-lg border border-dashed">도착한 지원서가 없습니다.</div>
-                    ) : (
-                        <div className={viewMode === 'compact' ? "space-y-2 " : "space-y-4"}>
-                            {filterByType(inboundApplications, workspaceSubTab).map((p: any) => (
-                                viewMode === 'compact' ? (
-                                    <WorkspaceCompactRow key={p.id} item={p} onClick={() => { setChatProposal(p); setIsChatOpen(true); }} />
-                                ) : (
-                                    <Card key={p.id} className="p-6 cursor-pointer hover:border-border border-l-4 border-l-blue-500 transition-all bg-card group" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-4 w-full">
-                                                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-lg shrink-0 overflow-hidden border border-border">
-                                                    {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencerName?.[0] || "C")}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    {/* Unified Header: Name | Insta | Followers | Tags | Cost ... Badge */}
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                                            {/* Name */}
-                                                            <h3 className="font-bold text-sm text-foreground">{p.influencerName}</h3>
-                                                            <span className="text-muted-foreground/50">|</span>
-
-                                                            {/* Stats */}
-                                                            {p.instagramHandle && (
-                                                                <>
-                                                                    <span className="font-medium text-pink-600 dark:text-pink-400">@{p.instagramHandle.replace('@', '')}</span>
-                                                                    <span className="text-slate-300 dark:text-slate-700">|</span>
-                                                                </>
-                                                            )}
-                                                            {p.followers !== undefined && (
-                                                                <>
-                                                                    <span className="font-medium text-slate-700 dark:text-slate-300">{p.followers >= 10000 ? `${(p.followers / 10000).toFixed(1)}만` : p.followers.toLocaleString()}</span>
-                                                                    <span className="text-slate-300 dark:text-slate-700">|</span>
-                                                                </>
-                                                            )}
-                                                            {p.tags && p.tags.length > 0 && (
-                                                                <>
-                                                                    <div className="flex gap-1">
-                                                                        {p.tags.slice(0, 3).map((tag: string, i: number) => (
-                                                                            <span key={i} className="text-slate-500 dark:text-slate-400">#{tag}</span>
-                                                                        ))}
-                                                                    </div>
-                                                                    <span className="text-slate-300 dark:text-slate-700">|</span>
-                                                                </>
-                                                            )}
-
-                                                            <span className="font-bold text-emerald-600 dark:text-emerald-400">{p.cost ? `${p.cost.toLocaleString()}원` : '협의'}</span>
-                                                        </div>
-
-                                                        <Badge variant="secondary" className="shrink-0 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/30 text-[10px] h-5 px-1.5 ml-2">지원서 도착</Badge>
-                                                    </div>
-
-                                                    {/* Message Preview */}
-                                                    {p.message && (
-                                                        <div className="bg-muted/30 px-3 py-2 rounded text-xs text-foreground/80 line-clamp-1 border border-border/50 italic mb-2">
-                                                            "{p.message}"
-                                                        </div>
-                                                    )}
-
-                                                    {/* Footer: Date & Quick Action */}
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-[10px] text-muted-foreground/50">{new Date(p.created_at).toLocaleDateString()}</span>
-
-                                                        {/* Quick Accept Button */}
-                                                        <Button
-                                                            size="sm"
-                                                            className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity px-3"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleStatusUpdate(p.id, 'accepted');
-                                                            }}
-                                                        >
-                                                            <CheckCircle2 className="mr-1 h-3 w-3" /> 바로 수락
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                )
-                            ))}
-                        </div>
-                    )}
+                    {renderItems(filterByType(inboundApplications, workspaceSubTab), 'inbound')}
                 </TabsContent>
 
-                {/* 3. Outbound Tab (Sent Offers) */}
                 <TabsContent value="outbound" className="space-y-4">
-                    {filterByType(outboundOffers, workspaceSubTab).length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-lg border border-dashed">보낸 제안이 없습니다.</div>
-                    ) : (
-                        <div className={viewMode === 'compact' ? "space-y-2" : "space-y-4"}>
-                            {
-                                filterByType(outboundOffers, workspaceSubTab).map((p: any) => (
-                                    viewMode === 'compact' ? (
-                                        <WorkspaceCompactRow key={p.id} item={p} onClick={() => { setChatProposal(p); setIsChatOpen(true); }} />
-                                    ) : (
-                                        <Card key={p.id} className="p-6 cursor-pointer hover:border-border border-l-4 border-l-purple-500 transition-all bg-card group" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex gap-6 w-full">
-                                                    <div className="h-14 w-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold text-xl shrink-0 overflow-hidden">
-                                                        {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex justify-between">
-                                                            <div>
-                                                                <h3 className="font-bold text-lg flex items-center gap-2">
-                                                                    {p.influencer_name}
-                                                                    <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-900/30 dark:text-purple-400">제안함</Badge>
-                                                                </h3>
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    {p.type === 'moment_offer' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 border-0">모먼트</Badge>}
-                                                                    {p.type === 'brand_invite' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 border-0">직접제안</Badge>}
-                                                                    <p className="text-sm text-muted-foreground">{p.product_name || p.productName || "제품 협찬"}</p>
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-xs text-muted-foreground/70">{new Date(p.created_at).toLocaleDateString()}</span>
-                                                        </div>
-                                                        <div className="mt-4">
-                                                            <WorkspaceProgressBar
-                                                                status={p.status}
-                                                                contract_status={p.contract_status}
-                                                                delivery_status={p.delivery_status}
-                                                                content_submission_status={p.content_submission_status}
-                                                            />
-                                                        </div>
-                                                        <div className="flex gap-2 mt-4">
-                                                            <Button
-                                                                variant="outline"
-                                                                className="flex-1 h-8 text-xs font-bold border-purple-200 hover:bg-purple-50 text-purple-700 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/20 px-2"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (onViewProposal) {
-                                                                        onViewProposal(p);
-                                                                    } else {
-                                                                        setChatProposal(p); // Fallback
-                                                                        setIsChatOpen(true);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                보낸 제안 보기
-                                                            </Button>
-                                                            <Button
-                                                                className="flex-1 h-8 text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white px-2"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setChatProposal(p);
-                                                                    setIsChatOpen(true);
-                                                                }}
-                                                            >
-                                                                워크스페이스 열기
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    )
-                                ))
-                            }
-                        </div>
-                    )}
+                    {renderItems(filterByType(outboundOffers, workspaceSubTab), 'outbound')}
                     <div className="flex justify-end mt-4">
                         <Button variant="outline" asChild>
                             <Link href="/brand?view=discover">크리에이터 찾으러 가기</Link>
                         </Button>
                     </div>
-                </TabsContent >
+                </TabsContent>
 
-                {/* 4. Rejected Tab (Archive) */}
                 <TabsContent value="rejected" className="space-y-4">
-                    {filterByType(allRejected, workspaceSubTab).length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-lg border border-dashed">거절된 내역이 없습니다.</div>
-                    ) : (
-                        <div className={viewMode === 'compact' ? "space-y-2" : "space-y-4"}>
-                            {
-                                filterByType(allRejected, workspaceSubTab).map((p: any) => (
-                                    viewMode === 'compact' ? (
-                                        <WorkspaceCompactRow key={p.id} item={p} onClick={() => { setChatProposal(p); setIsChatOpen(true); }} />
-                                    ) : (
-                                        <Card key={p.id} className="p-6 cursor-pointer hover:border-border border-l-4 border-l-red-200 transition-all bg-muted opacity-75 hover:opacity-100" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex gap-6 w-full">
-                                                    <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xl shrink-0 overflow-hidden">
-                                                        <X className="h-6 w-6" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex justify-between">
-                                                            <div>
-                                                                <h3 className="font-bold text-lg flex items-center gap-2 text-muted-foreground line-through decoration-muted-foreground/50">
-                                                                    {p.influencer_name || p.influencerName}
-                                                                    <Badge variant="secondary" className="bg-muted text-muted-foreground">거절됨</Badge>
-                                                                </h3>
-                                                                <p className="text-sm text-muted-foreground">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
-                                                            </div>
-                                                            <span className="text-xs text-muted-foreground/70">{new Date(p.created_at || p.date).toLocaleDateString()}</span>
-                                                        </div>
-                                                        <div className="mt-4 opacity-50">
-                                                            <WorkspaceProgressBar
-                                                                status={p.status}
-                                                                contract_status={p.contract_status}
-                                                                delivery_status={p.delivery_status}
-                                                                content_submission_status={p.content_submission_status}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    )
-                                ))
-                            }
-                        </div>
-                    )}
-                </TabsContent >
+                    {renderItems(filterByType(allRejected, workspaceSubTab), 'rejected')}
+                </TabsContent>
 
-                {/* 5. Completed Tab */}
                 <TabsContent value="completed" className="space-y-4">
-                    {filterByType(allCompleted, workspaceSubTab).length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-lg border border-dashed">완료된 협업이 없습니다.</div>
-                    ) : (
-                        <div className={viewMode === 'compact' ? "space-y-2" : "space-y-4"}>
-                            {
-                                filterByType(allCompleted, workspaceSubTab).map((p: any) => (
-                                    viewMode === 'compact' ? (
-                                        <WorkspaceCompactRow key={p.id} item={p} onClick={() => { setChatProposal(p); setIsChatOpen(true); }} />
-                                    ) : (
-                                        <Card key={p.id} className="p-6 cursor-pointer hover:border-border border-l-4 border-l-muted-foreground transition-all bg-card" onClick={() => { setChatProposal(p); setIsChatOpen(true); }}>
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex gap-6 w-full">
-                                                    <div className="h-14 w-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold text-xl shrink-0 overflow-hidden">
-                                                        {p.influencerAvatar ? <img src={p.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (p.influencer_name?.[0] || "C")}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex justify-between">
-                                                            <div>
-                                                                <h3 className="font-bold text-lg flex items-center gap-2">
-                                                                    {p.influencer_name || p.influencerName}
-                                                                    <Badge className="bg-muted text-muted-foreground border border-border">완료됨</Badge>
-                                                                </h3>
-                                                                <p className="text-sm text-muted-foreground">{p.product_name || p.campaign?.product_name || "제품 협찬"}</p>
-                                                            </div>
-                                                            <span className="text-xs text-muted-foreground/70">{new Date(p.completed_at || p.created_at).toLocaleDateString()}</span>
-                                                        </div>
-                                                        <div className="mt-4">
-                                                            <WorkspaceProgressBar
-                                                                status={p.status}
-                                                                contract_status={p.contract_status}
-                                                                delivery_status={p.delivery_status}
-                                                                content_submission_status={p.content_submission_status}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    )
-                                ))
-                            }
-                        </div>
-                    )}
+                    {renderItems(filterByType(allCompleted, workspaceSubTab), 'completed')}
                 </TabsContent>
             </Tabs>
-        </div >
+
+            {/* Confirm Dialog */}
+            <ConfirmDialog
+                open={confirmDialog.open}
+                onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
+                onConfirm={() => {
+                    confirmDialog.onConfirm()
+                    setConfirmDialog({ ...confirmDialog, open: false })
+                }}
+                title={confirmDialog.title}
+                description={confirmDialog.description}
+                variant={confirmDialog.variant}
+            />
+        </div>
     )
 })
