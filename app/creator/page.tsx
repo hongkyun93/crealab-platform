@@ -747,9 +747,14 @@ function InfluencerDashboardContent() {
                                     <TableCell>{item.product_name}</TableCell>
                                     <TableCell className="text-muted-foreground text-xs">{new Date(item.created_at).toLocaleDateString()}</TableCell>
                                     <TableCell className="text-right">
-                                        <span className="text-xs text-muted-foreground mr-2">
-                                            {item.contract_status === 'signed' ? '계약완료' : '협의중'}
-                                        </span>
+                                        <Badge variant="outline" className={`text-[10px] h-5 px-2 font-medium border-2 rounded-full transition-all bg-background
+                                            ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
+                                                item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_10px_rgba(148,163,184,0.3)]' :
+                                                    item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
+                                                        'text-blue-700 dark:text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.3)]'}
+                                        `}>
+                                            {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
+                                        </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -808,7 +813,7 @@ function InfluencerDashboardContent() {
                                             item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
                                                 'text-blue-700 dark:text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.3)]'}
                                 `}>
-                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '대기'}
+                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
                                 </Badge>
                             </CardHeader>
                             <CardContent className="pb-3 text-xs space-y-2">
@@ -890,7 +895,7 @@ function InfluencerDashboardContent() {
                                                 {proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' ? '진행중' :
                                                     proposal.status === 'completed' ? '완료됨' :
                                                         proposal.status === 'rejected' ? '거절됨' :
-                                                            '대기중'}
+                                                            '수락 대기중'}
                                             </Badge>
                                             {/* Moment Proposal Badge */}
                                             {proposal.moment_id && (
