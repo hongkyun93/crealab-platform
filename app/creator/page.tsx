@@ -802,11 +802,11 @@ function InfluencerDashboardContent() {
                                     <h4 className="font-bold truncate text-sm">{item.brand_name}</h4>
                                     <p className="text-xs text-muted-foreground truncate">{item.product_name}</p>
                                 </div>
-                                <Badge variant="outline" className={`text-[10px] h-5 px-2 font-medium shrink-0 border-2 rounded-full transition-all
-                                    ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
-                                        item.status === 'completed' ? 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_10px_rgba(148,163,184,0.3)]' :
-                                            item.status === 'rejected' ? 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
-                                                'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.3)]'}
+                                <Badge variant="outline" className={`text-[10px] h-5 px-2 font-medium shrink-0 border-2 rounded-full transition-all bg-background
+                                    ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
+                                        item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_10px_rgba(148,163,184,0.3)]' :
+                                            item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
+                                                'text-blue-700 dark:text-blue-400 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.3)]'}
                                 `}>
                                     {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '대기'}
                                 </Badge>
@@ -881,11 +881,11 @@ function InfluencerDashboardContent() {
                                     <div>
                                         <h3 className="font-bold text-xl flex items-center gap-2 text-foreground">
                                             {proposal.product_name || proposal.brand_name}
-                                            <Badge variant="outline" className={`text-xs font-medium border-2 rounded-full px-3 py-0.5 transition-all
-                                                ${proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
-                                                    proposal.status === 'completed' ? 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
-                                                        proposal.status === 'rejected' ? 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
-                                                            'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/50 shadow-[0_0_12px_rgba(59,130,246,0.3)]'}
+                                            <Badge variant="outline" className={`text-xs font-medium border-2 rounded-full px-3 py-0.5 transition-all bg-background
+                                                ${proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
+                                                    proposal.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
+                                                        proposal.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
+                                                            'text-blue-700 dark:text-blue-400 border-blue-500/50 shadow-[0_0_12px_rgba(59,130,246,0.3)]'}
                                             `}>
                                                 {proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' ? '진행중' :
                                                     proposal.status === 'completed' ? '완료됨' :
