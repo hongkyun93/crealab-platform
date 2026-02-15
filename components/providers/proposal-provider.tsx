@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "./auth-provider"
 import type { Proposal, BrandProposal, MomentProposal } from "@/lib/types"
 
 interface ProposalContextType {
@@ -15,13 +15,16 @@ interface ProposalContextType {
     updateBrandProposal: (id: string | number, updates: Partial<BrandProposal>) => Promise<boolean>
     updateMomentProposal: (id: string | number, updates: Partial<MomentProposal>) => Promise<boolean> // [NEW]
     deleteBrandProposal: (id: string | number) => Promise<void>
+    deleteMomentProposal: (id: string | number) => Promise<void> // [NEW]
+    createBrandProposal: (proposal: any) => Promise<any> // [NEW]
+    createMomentProposal: (proposal: any) => Promise<any> // [NEW]
     refreshProposals: (userId?: string) => Promise<void>
 }
 
 const ProposalContext = createContext<ProposalContextType | undefined>(undefined)
 
 export function ProposalProvider({ children, userId, userType }: { children: React.ReactNode, userId?: string, userType?: string }) {
-    const [supabase] = useState(() => createClient())
+    const { supabase } = useAuth()
     const [campaignProposals, setCampaignProposals] = useState<Proposal[]>([])
     const [brandProposals, setBrandProposals] = useState<BrandProposal[]>([])
     const [momentProposals, setMomentProposals] = useState<MomentProposal[]>([]) // [NEW] // FIXED
@@ -36,7 +39,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     // Fetch creator proposals (applications to campaigns)
     // For Influencers: My applications
     // For Brands: Applications to My Campaigns
-    const fetchCampaignProposals = async (targetUserId?: string) => {
+    const fetchCampaignProposals = async (targetUserId?: string, signal?: AbortSignal) => {
         const id = targetUserId || userId
         if (!id) return
 
@@ -51,6 +54,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     profiles!influencer_id(display_name, avatar_url)
                 `)
                 .order('created_at', { ascending: false })
+                .abortSignal(signal || null as any)
 
             if (userType === 'brand') {
                 // If Brand, join on campaigns and filter by brand_id
@@ -63,6 +67,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     `)
                     .eq('campaigns.brand_id', id)
                     .order('created_at', { ascending: false })
+                    .abortSignal(signal || null as any)
             } else {
                 // If Influencer (or undefined/other), filter by influencer_id
                 query = query.eq('influencer_id', id)
@@ -72,11 +77,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             if (error) {
                 // Ignore AbortError and transient network errors
-                if (error.code === undefined && (
-                    error.message?.includes('AbortError') ||
-                    error.message?.includes('aborted') ||
-                    error.message === 'Failed to fetch' ||
-                    error.message === 'Load failed'
+                if (error.name === 'AbortError' || (
+                    (error.code === undefined || error.code === '') && (
+                        error.message?.includes('AbortError') ||
+                        error.message?.includes('aborted') ||
+                        error.message === 'Failed to fetch' ||
+                        error.message === 'Load failed' ||
+                        error.details?.includes('AbortError')
+                    )
                 )) {
                     return
                 }
@@ -140,7 +148,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     }
 
     // Fetch brand proposals (offers to influencers)
-    const fetchBrandProposals = async (targetUserId?: string) => {
+    const fetchBrandProposals = async (targetUserId?: string, signal?: AbortSignal) => {
         const id = targetUserId || userId
         if (!id) return
 
@@ -157,7 +165,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         products:brand_products(name, image_url)
                     `)
                     .or(`brand_id.eq.${id},influencer_id.eq.${id}`)
-                    .order('created_at', { ascending: false }),
+                    .order('created_at', { ascending: false })
+                    .abortSignal(signal || null as any),
                 supabase
                     .from('moment_proposals')
                     .select(`
@@ -168,6 +177,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     `)
                     .or(`brand_id.eq.${id},influencer_id.eq.${id}`)
                     .order('created_at', { ascending: false })
+                    .abortSignal(signal || null as any)
             ])
 
             const brandData = brandRes.data || []
@@ -175,21 +185,23 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             if (brandRes.error) {
                 const error = brandRes.error
-                const isIgnorable = error.code === undefined && (
+                const isIgnorable = error.name === 'AbortError' || ((error.code === undefined || error.code === '') && (
                     error.message?.includes('AbortError') ||
                     error.message?.includes('aborted') ||
-                    error.message === 'Failed to fetch'
-                )
+                    error.message === 'Failed to fetch' ||
+                    error.details?.includes('AbortError')
+                ))
                 if (!isIgnorable) console.error('[ProposalProvider] Brand proposals error:', error)
             }
 
             if (momentRes.error) {
                 const error = momentRes.error
-                const isIgnorable = error.code === undefined && (
+                const isIgnorable = error.name === 'AbortError' || ((error.code === undefined || error.code === '') && (
                     error.message?.includes('AbortError') ||
                     error.message?.includes('aborted') ||
-                    error.message === 'Failed to fetch'
-                )
+                    error.message === 'Failed to fetch' ||
+                    error.details?.includes('AbortError')
+                ))
                 if (!isIgnorable) console.error('[ProposalProvider] Moment proposals error:', error)
             }
 
@@ -314,18 +326,28 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
     // Fetch on mount
     useEffect(() => {
+        const controller = new AbortController()
+        const signal = controller.signal
+
         if (userId) {
             setIsLoading(true)
             Promise.all([
-                fetchCampaignProposals(userId),
-                fetchBrandProposals(userId)
+                fetchCampaignProposals(userId, signal),
+                fetchBrandProposals(userId, signal)
             ]).finally(() => {
-                setIsLoading(false)
+                if (!signal.aborted) {
+                    setIsLoading(false)
+                }
             })
         } else {
             setCampaignProposals([])
             setBrandProposals([])
+            setMomentProposals([])
             setIsLoading(false)
+        }
+
+        return () => {
+            controller.abort()
         }
     }, [userId])
 
@@ -346,13 +368,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     }
 
     // Add proposal
-    const addProposal = async (proposal: Partial<Proposal>) => {
+    const addProposal = async (proposal: Partial<Proposal> & { influencerId?: string }) => {
         if (!userId) {
             throw new Error('User ID required')
         }
 
         try {
             console.log('[ProposalProvider] Creating proposal:', proposal)
+            const targetInfluencerId = proposal.influencerId || userId
 
             // Distinguish between Campaign Application and Product Proposal
             if (proposal.campaignId) {
@@ -360,7 +383,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 const { data, error } = await supabase
                     .from('campaign_proposals')
                     .insert({
-                        influencer_id: userId,
+                        influencer_id: targetInfluencerId,
                         campaign_id: proposal.campaignId,
                         price_offer: proposal.cost,
                         message: proposal.message,
@@ -609,6 +632,70 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         }
     }
 
+    // Delete moment proposal
+    const deleteMomentProposal = async (id: string | number) => {
+        try {
+            console.log('[ProposalProvider] Deleting moment proposal:', id)
+
+            const { error } = await supabase
+                .from('moment_proposals')
+                .delete()
+                .eq('id', id)
+
+            if (error) {
+                console.error('[ProposalProvider] Delete Moment error:', error)
+                throw error
+            }
+
+            setMomentProposals(prev => prev.filter(p => p.id !== id))
+            console.log('[ProposalProvider] Moment proposal deleted')
+        } catch (error: any) {
+            console.error('[ProposalProvider] Delete Moment error:', error)
+            throw error
+        }
+    }
+
+    // [NEW] Create Brand Proposal (Snake case wrapper)
+    const createBrandProposal = async (proposal: any) => {
+        // Map to camelCase for addProposal if possible, or just insert directly
+        // The previous implementation utilized direct insert to 'brand_proposals'
+        // We will try to rely on direct insert here for maximum compatibility with legacy code
+        try {
+            const { data, error } = await supabase
+                .from('brand_proposals')
+                .insert(proposal)
+                .select()
+                .single()
+
+            if (error) throw error
+
+            setBrandProposals(prev => [data, ...prev])
+            return data
+        } catch (error) {
+            console.error('[ProposalProvider] createBrandProposal error:', error)
+            throw error
+        }
+    }
+
+    // [NEW] Create Moment Proposal (Snake case wrapper)
+    const createMomentProposal = async (proposal: any) => {
+        try {
+            const { data, error } = await supabase
+                .from('moment_proposals')
+                .insert(proposal)
+                .select()
+                .single()
+
+            if (error) throw error
+
+            setMomentProposals(prev => [data, ...prev])
+            return data
+        } catch (error) {
+            console.error('[ProposalProvider] createMomentProposal error:', error)
+            throw error
+        }
+    }
+
     return (
         <ProposalContext.Provider value={{
             campaignProposals,
@@ -621,6 +708,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             updateBrandProposal,
             updateMomentProposal, // [NEW]
             deleteBrandProposal,
+            deleteMomentProposal, // [NEW]
+            createBrandProposal, // [NEW]
+            createMomentProposal, // [NEW]
             refreshProposals
         }}>
             {children}

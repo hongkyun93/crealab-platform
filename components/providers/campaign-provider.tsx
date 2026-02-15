@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "./auth-provider"
 import type { Campaign } from "@/lib/types"
 import { createCampaign as createCampaignAction, updateCampaignStatus, deleteCampaign as deleteCampaignAction } from "@/app/actions/campaign"
 
@@ -16,25 +16,28 @@ interface CampaignContextType {
 
 const CampaignContext = createContext<CampaignContextType | undefined>(undefined)
 
-export function CampaignProvider({ children, userId, userType }: { children: React.ReactNode, userId?: string, userType?: string }) {
-    const [supabase] = useState(() => createClient())
+export function CampaignProvider({ children, userId, userType, teamId }: {
+    children: React.ReactNode,
+    userId?: string,
+    userType?: string,
+    teamId?: string
+}) {
+    const { supabase } = useAuth()
     const [campaigns, setCampaigns] = useState<Campaign[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const isFetching = useRef(false)
 
-    // Fetch campaigns from database
-    const fetchCampaigns = async (targetUserId?: string) => {
+    // Fetch campaigns from database (Team-based)
+    const fetchCampaigns = async (targetUserId?: string, signal?: AbortSignal) => {
         if (isFetching.current) return
-        // If influencer, we don't strictly need a userId to fetch *all* campaigns, but we usually have one.
-        // If brand, we need userId.
-        if (!targetUserId && !userId && userType === 'brand') return
+        if (!targetUserId && !userId && !teamId) return
 
         isFetching.current = true
         setIsLoading(true)
 
         try {
             const id = targetUserId || userId
-            console.log(`[CampaignProvider] Fetching campaigns. User: ${id}, Type: ${userType}`)
+            console.log(`[CampaignProvider] Fetching campaigns. User: ${id}, Type: ${userType}, Team: ${teamId}`)
 
             let query = supabase
                 .from('campaigns')
@@ -43,34 +46,36 @@ export function CampaignProvider({ children, userId, userType }: { children: Rea
                     profiles(display_name, avatar_url)
                 `)
                 .order('created_at', { ascending: false })
+                .abortSignal(signal || null as any)
 
-            // Only filter by brand_id if the user is a Brand
-            // Influencers and Admins see all campaigns
-            if (userType === 'brand') {
+            // Filter by team_id if available (Team-based), otherwise fall back to brand_id
+            // [MCN Support] If teamId is 'ALL', fetch all campaigns accessible via RLS
+            if (teamId && teamId !== 'ALL') {
+                query = query.eq('team_id', teamId)
+            } else if (userType === 'brand' && (!teamId || teamId !== 'ALL')) {
+                // Only filter by brand_id if NOT in Unified View (ALL)
+                // If Unified View, RLS returns all campaigns for all managed brands
                 query = query.eq('brand_id', id)
-            } else {
-                // For influencers/others, maybe filter out 'closed' ones if desired, 
-                // but the UI does some filtering too. Let's fetch all for now and let UI filter.
-                // Or maybe explicitly fetch only active? 
-                // The prompt implies "Discover", so usually active. 
-                // However, the existing UI filters by `c.status !== 'closed'`.
-                // We'll fetch all matching the base query.
             }
+            // Influencers see all campaigns
 
             const { data, error } = await query
 
             if (error) {
                 // Ignore AbortError and transient network errors
-                if (error.code === undefined && (
-                    error.message?.includes('AbortError') ||
-                    error.message?.includes('aborted') ||
-                    error.message === 'Failed to fetch' ||
-                    error.message === 'Load failed'
+                if (error.name === 'AbortError' || (
+                    (error.code === undefined || error.code === '') && (
+                        error.message?.includes('AbortError') ||
+                        error.message?.includes('aborted') ||
+                        error.message === 'Failed to fetch' ||
+                        error.message === 'Load failed' ||
+                        error.details?.includes('AbortError')
+                    )
                 )) {
                     return
                 }
 
-                console.error('[CampaignProvider] Fetch error:', error)
+                console.error('[CampaignProvider] Fetch error:', JSON.stringify(error, null, 2))
                 return
             }
 
@@ -116,15 +121,22 @@ export function CampaignProvider({ children, userId, userType }: { children: Rea
         }
     }
 
-    // Fetch on mount and when userId changes
+    // Fetch on mount and when userId/teamId changes
     useEffect(() => {
-        if (userId) {
-            fetchCampaigns(userId)
+        const controller = new AbortController()
+        const signal = controller.signal
+
+        if (userId || teamId) {
+            fetchCampaigns(userId, signal)
         } else {
             // Clear data if no user (logout)
             setCampaigns([])
         }
-    }, [userId])
+
+        return () => {
+            controller.abort()
+        }
+    }, [userId, teamId])
 
     // Add campaign
     const addCampaign = async (newCampaign: Omit<Campaign, "id" | "date" | "matchScore">) => {
@@ -157,6 +169,9 @@ export function CampaignProvider({ children, userId, userType }: { children: Rea
             if (newCampaign.selection_announcement_date) formData.append('selectionDate', newCampaign.selection_announcement_date)
             if (newCampaign.min_followers) formData.append('minFollowers', newCampaign.min_followers.toString())
             if (newCampaign.max_followers) formData.append('maxFollowers', newCampaign.max_followers.toString())
+
+            // [NEW] Pass Team ID
+            if (teamId) formData.append('teamId', teamId)
 
             const result = await createCampaignAction(formData)
 

@@ -15,11 +15,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { ArrowLeft, CheckCircle2, DollarSign, Percent, Send, ExternalLink, ImageIcon, Sparkles, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
 
 interface BrandProductDetailViewProps {
@@ -28,7 +35,7 @@ interface BrandProductDetailViewProps {
 }
 
 export function BrandProductDetailView({ productId, onBack }: BrandProductDetailViewProps) {
-    const { products, user, addProposal } = usePlatform()
+    const { products, user, addProposal } = useUnifiedProvider()
     const [isOpen, setIsOpen] = useState(false)
 
     // Form State (Matching ApplyDialog)
@@ -51,6 +58,51 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
         if (user?.handle) {
             setInstagramHandle(user.handle)
         }
+    }, [user])
+
+    // Agency/MCN Support
+    const [targetCreatorId, setTargetCreatorId] = useState<string>("")
+    const [teamMembers, setTeamMembers] = useState<any[]>([])
+
+    useEffect(() => {
+        const fetchTeamMembers = async () => {
+            // Only fetch if Agency/MCN
+            if (user?.type === 'agency' || user?.type === 'mcn') {
+                const supabase = createClient()
+                // Assuming user has teamId (we added it to type)
+                // If not, we might need to fetch it or rely on a wrapper that provides it.
+                // For now, let's try to find team details.
+                const { data } = await supabase
+                    .from('team_members')
+                    .select('team_id')
+                    .eq('user_id', user.id)
+                    .single()
+
+                if (data?.team_id) {
+                    const { data: members } = await supabase
+                        .from('team_members')
+                        .select(`
+                            id,
+                            user_id,
+                            users:user_id (
+                                email,
+                                raw_user_meta_data
+                            )
+                        `)
+                        .eq('team_id', data.team_id)
+
+                    if (members) {
+                        setTeamMembers(members.map((m: any) => ({
+                            id: m.id,
+                            user_id: m.user_id,
+                            name: m.users?.raw_user_meta_data?.name || m.users?.email,
+                            email: m.users?.email
+                        })))
+                    }
+                }
+            }
+        }
+        fetchTeamMembers()
     }, [user])
 
     if (!product) {
@@ -157,6 +209,13 @@ ${appealMessage || '없음'}
                 return
             }
 
+            const effectiveCreatorId = (user?.type === 'agency' || user?.type === 'mcn') ? targetCreatorId : user?.id
+            if ((user?.type === 'agency' || user?.type === 'mcn') && !targetCreatorId) {
+                alert("지원을 대행할 크리에이터를 선택해주세요.")
+                setIsSubmitting(false)
+                return
+            }
+
             console.log("Submitting proposal for product:", product.id, "Brand:", product.brandId)
 
             await addProposal({
@@ -167,7 +226,7 @@ ${appealMessage || '없음'}
                 commission: 0, // Not used in new form
                 requestDetails: formattedMessage,
                 status: "applied",
-                fromId: user.id,
+                fromId: effectiveCreatorId,
                 toId: product.brandId,
                 // We pass these purely so valid types don't complain, 
                 // but if the DB doesn't have them, they might be ignored by the provider or cause error depending on implementation.
@@ -253,6 +312,24 @@ ${appealMessage || '없음'}
                                         </DialogHeader>
 
                                         <div className="grid gap-4 py-4">
+                                            {/* Agency/MCN Creator Selection */}
+                                            {teamMembers && teamMembers.length > 0 && (
+                                                <div className="space-y-2 pb-2 border-b">
+                                                    <Label htmlFor="creator_select" className="text-purple-600 font-bold">크리에이터 선택 (대리 지원)</Label>
+                                                    <Select value={targetCreatorId} onValueChange={setTargetCreatorId}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="지원을 대행할 크리에이터를 선택하세요" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {teamMembers.map((member) => (
+                                                                <SelectItem key={member.user_id || member.id} value={member.user_id || member.id}>
+                                                                    {member.name || member.email}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            )}
                                             {/* Instagram Handle */}
                                             <div className="space-y-2">
                                                 <Label htmlFor="handle">활동 계정 (인스타그램 ID) <span className="text-red-500">*</span></Label>

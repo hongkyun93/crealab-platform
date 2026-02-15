@@ -8,23 +8,23 @@ const supabase = createClient()
 /**
  * Helper to map DB result to InfluencerEvent
  */
-const mapEvents = (data: any[], detailsMap?: Map<string, any>): InfluencerEvent[] => {
+const mapEvents = (data: any[]): InfluencerEvent[] => {
     return data.map((e: any) => {
-        const details = detailsMap?.get(e.influencer_id)
+        const profile = e.profiles || {}
 
         return {
             id: e.id,
-            influencer: e.profiles?.display_name || 'Creator',
+            influencer: profile.display_name || 'Creator',
             influencerId: e.influencer_id,
-            handle: details?.instagram_handle || '@creator',
-            avatar: e.profiles?.avatar_url || '',
-            priceVideo: details?.price_video || 0,
+            handle: profile.instagram_handle || profile.handle || '@creator',
+            avatar: profile.avatar_url || '',
+            priceVideo: profile.price_video || 0,
             event: e.title,
             date: e.event_date || new Date(e.created_at).toISOString().split('T')[0],
             description: e.description || '',
             tags: e.tags || [],
-            verified: e.profiles?.role === 'influencer',
-            followers: details?.followers_count || 0,
+            verified: profile.role === 'creator',
+            followers: profile.followers_count || 0,
             category: e.category || '',
             targetProduct: e.target_product || '',
             eventDate: e.event_date || '',
@@ -41,19 +41,45 @@ const mapEvents = (data: any[], detailsMap?: Map<string, any>): InfluencerEvent[
 }
 
 /**
- * Fetcher for user-specific events
+ * Fetcher for user-specific events (Team-based or User-based)
  */
-async function fetchUserEvents(userId: string): Promise<InfluencerEvent[]> {
-    console.log('[useEvents] Fetching events for user:', userId)
+/**
+ * Fetcher for user-specific events (Team-based or User-based)
+ */
+async function fetchUserEvents(teamId?: string, userId?: string, fetchMode: 'team' | 'user' = 'team'): Promise<InfluencerEvent[]> {
+    console.log('[useEvents] Fetching events. Team:', teamId, 'User:', userId, 'Mode:', fetchMode)
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('life_moments')
         .select(`
       *,
-      profiles(display_name, avatar_url, role)
+      profiles(*)
     `)
-        .eq('influencer_id', userId)
         .order('created_at', { ascending: false })
+
+    // [MCN Support] If teamId is 'ALL', fetch all accessible events (RLS handles security)
+    if (teamId === 'ALL') {
+        // No filter, rely on RLS
+    }
+    // [Creator/Proxy Support] If mode is 'user', Strictly filter by User ID (Own Data)
+    // This allows creators/proxies to see "My Moments" regardless of which team "owns" them (or if team_id is null)
+    else if (fetchMode === 'user' && userId) {
+        query = query.eq('influencer_id', userId)
+    }
+    // [Team Support] Filter by Team ID if present (Default MCN View)
+    else if (teamId) {
+        query = query.eq('team_id', teamId)
+    }
+    // [Fallback] Filter by User ID
+    else if (userId) {
+        query = query.eq('influencer_id', userId)
+    }
+    else {
+        // No context provided, return empty
+        return []
+    }
+
+    const { data, error } = await query
 
     if (error) {
         // Ignore AbortError (Request Cancelled)
@@ -99,7 +125,7 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
         .from('life_moments')
         .select(`
       *,
-      profiles(display_name, avatar_url, role)
+      profiles(*)
     `)
         .eq('is_private', false)
         .order('created_at', { ascending: false })
@@ -133,40 +159,23 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
         return []
     }
 
-    // Fetch influencer_details separately
-    const influencerIds = [...new Set(data.map((e: any) => e.influencer_id).filter(Boolean))]
-    console.log('[useEvents] Fetching details for', influencerIds.length, 'influencers')
-
-    const { data: detailsData, error: detailsError } = await supabase
-        .from('influencer_details')
-        .select('*')
-        .in('id', influencerIds)
-
-    if (detailsError) {
-        console.error('[useEvents] Error fetching influencer_details:', detailsError)
-    }
-
-    // Create details map
-    const detailsMap = new Map()
-    if (detailsData) {
-        detailsData.forEach((detail: any) => {
-            detailsMap.set(detail.id, detail)
-        })
-        console.log('[useEvents] Loaded details for', detailsMap.size, 'influencers')
-    }
-
-    const mapped = mapEvents(data || [], detailsMap)
+    const mapped = mapEvents(data || [])
     console.log('[useEvents] Loaded ALL public events:', mapped.length)
     return mapped
 }
 
 /**
- * Custom hook for user-specific events with SWR
+ * Custom hook for user-specific events with SWR (Team-based or User-based)
  */
-export function useUserEvents(userId?: string) {
+export function useUserEvents(teamId?: string, userId?: string, fetchMode: 'team' | 'user' = 'team') {
+    // Determine key based on context (Team > User) AND Mode
+    const keyId = teamId || userId
+    // Include fetchMode in SWR key to separate cache
+    const swrKey = keyId ? [SWR_KEYS.EVENTS_USER(keyId), fetchMode] : null
+
     const { data, error, isLoading, mutate: revalidate } = useSWR(
-        userId ? SWR_KEYS.EVENTS_USER(userId) : null,
-        () => fetchUserEvents(userId!),
+        swrKey,
+        () => fetchUserEvents(teamId, userId, fetchMode),
         {
             revalidateOnFocus: true,
             revalidateOnReconnect: true,
@@ -209,19 +218,26 @@ export function usePublicEvents() {
  */
 export const eventMutations = {
     /**
-     * Add a new event
+     * Add a new event (Team-based or User-based)
      */
     async addEvent(
-        userId: string,
-        newEvent: Omit<InfluencerEvent, "id" | "influencer" | "handle" | "avatar" | "verified" | "followers">
+        teamId: string | undefined, // Team can be undefined now
+        userId: string,             // User ID is mandatory for ownership (default)
+        newEvent: Omit<InfluencerEvent, "id" | "influencer" | "creator" | "handle" | "avatar" | "verified" | "followers">
     ): Promise<boolean> {
         try {
-            console.log('[eventMutations] Creating event:', newEvent)
+            console.log('[eventMutations] Creating event. Team:', teamId, 'User:', userId, 'Target:', newEvent.influencerId)
+
+            if (!teamId && !userId) {
+                console.error('[eventMutations] Cannot create event: No context (Team or User) provided')
+                return false
+            }
 
             const { data, error } = await supabase
                 .from('life_moments')
                 .insert({
-                    influencer_id: userId,
+                    team_id: teamId || null,        // Allow null team_id
+                    influencer_id: newEvent.influencerId || userId,          // Allow override with specific influencerId
                     title: newEvent.event,
                     description: newEvent.description,
                     tags: newEvent.tags,
@@ -239,15 +255,18 @@ export const eventMutations = {
                 .single()
 
             if (error) {
-                console.error('[eventMutations] Create error:', error)
+                console.error('[eventMutations] Create error raw:', error)
+                console.error('[eventMutations] Create error json:', JSON.stringify(error))
+                console.error('[eventMutations] Input data:', { teamId, userId, newEvent })
                 return false
             }
 
-            // Revalidate both user events and public events
-            await Promise.all([
-                mutate(SWR_KEYS.EVENTS_USER(userId)),
-                mutate(SWR_KEYS.EVENTS_PUBLIC),
-            ])
+            // Revalidate caches
+            const cacheKeyId = teamId || userId
+            if (cacheKeyId) {
+                await mutate(SWR_KEYS.EVENTS_USER(cacheKeyId))
+            }
+            await mutate(SWR_KEYS.EVENTS_PUBLIC)
 
             console.log('[eventMutations] Event created successfully')
             return true
@@ -258,10 +277,11 @@ export const eventMutations = {
     },
 
     /**
-     * Update an existing event
+     * Update an existing event (Team-based or User-based)
      */
     async updateEvent(
-        userId: string,
+        teamId: string | undefined,
+        userId: string | undefined, // Needed for cache invalidation fallback
         id: string,
         updates: Partial<InfluencerEvent>
     ): Promise<boolean> {
@@ -293,10 +313,11 @@ export const eventMutations = {
             }
 
             // Revalidate caches
-            await Promise.all([
-                mutate(SWR_KEYS.EVENTS_USER(userId)),
-                mutate(SWR_KEYS.EVENTS_PUBLIC),
-            ])
+            const cacheKeyId = teamId || userId
+            if (cacheKeyId) {
+                await mutate(SWR_KEYS.EVENTS_USER(cacheKeyId))
+            }
+            await mutate(SWR_KEYS.EVENTS_PUBLIC)
 
             return true
         } catch (error: any) {
@@ -306,9 +327,13 @@ export const eventMutations = {
     },
 
     /**
-     * Delete an event
+     * Delete an event (Team-based or User-based)
      */
-    async deleteEvent(userId: string, id: string): Promise<boolean> {
+    async deleteEvent(
+        teamId: string | undefined,
+        userId: string | undefined,
+        id: string
+    ): Promise<boolean> {
         try {
             console.log('[eventMutations] Deleting event:', id)
 
@@ -323,10 +348,11 @@ export const eventMutations = {
             }
 
             // Revalidate caches
-            await Promise.all([
-                mutate(SWR_KEYS.EVENTS_USER(userId)),
-                mutate(SWR_KEYS.EVENTS_PUBLIC),
-            ])
+            const cacheKeyId = teamId || userId
+            if (cacheKeyId) {
+                await mutate(SWR_KEYS.EVENTS_USER(cacheKeyId))
+            }
+            await mutate(SWR_KEYS.EVENTS_PUBLIC)
 
             return true
         } catch (error: any) {

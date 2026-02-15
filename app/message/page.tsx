@@ -9,10 +9,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { MoreVertical, Paperclip, Search, Send, Phone, Video, BadgeCheck } from "lucide-react"
 import { useState, useRef, useEffect, useMemo } from "react"
-import { usePlatform, MOCK_INFLUENCER_USER } from "@/components/providers/legacy-platform-hook"
+import { MOCK_INFLUENCER_USER } from "@/components/providers/legacy-platform-hook"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 
 export default function MessagePage() {
-    const { user, messages: allMessages, sendMessage, brandProposals } = usePlatform()
+    const { user, messages: allMessages, sendMessage, brandProposals } = useUnifiedProvider()
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
     const [messageInput, setMessageInput] = useState("")
     const [isComposing, setIsComposing] = useState(false)

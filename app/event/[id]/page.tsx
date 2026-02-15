@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ArrowLeft, Calendar, User, BadgeCheck, MessageCircle, Share2, MapPin, Package, Send, SearchX, Loader2, Lock, Banknote } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { useEffect, useState } from "react"
 import { ReadonlyProposalDialog } from "@/components/proposal/readonly-proposal-dialog"
 import type { InfluencerEvent, MomentProposal } from "@/lib/types" // Added MomentProposal
@@ -35,7 +35,7 @@ import { submitDirectProposal } from "@/app/actions/proposal"
 export default function EventDetailPage() {
     const params = useParams()
     const router = useRouter()
-    const { events, user, sendNotification, supabase, products, refreshData, momentProposals, addMomentProposal } = usePlatform()
+    const { events, user, sendNotification, supabase, products, refreshData, momentProposals, addMomentProposal } = useUnifiedProvider()
     const [event, setEvent] = useState<InfluencerEvent | null>(null)
     const [showProposalDialog, setShowProposalDialog] = useState(false)
     const [showReadonlyDialog, setShowReadonlyDialog] = useState(false)
@@ -82,30 +82,31 @@ export default function EventDetailPage() {
                                 display_name,
                                 avatar_url,
                                 role,
-                                influencer_details(*)
+                                instagram_handle,
+                                followers_count,
+                                price_video
                             )
                         `)
                         .eq('id', params.id)
                         .single()
 
                     if (e) {
-                        const profile = e.profiles;
-                        const details = profile?.influencer_details ? (Array.isArray(profile.influencer_details) ? profile.influencer_details[0] : profile.influencer_details) : null;
+                        const profile = e.profiles || {};
 
                         targetEvent = {
                             id: e.id,
-                            influencer: profile?.display_name || "Unknown",
+                            influencer: profile.display_name || "Unknown",
                             influencerId: e.influencer_id,
-                            handle: details?.instagram_handle || "",
-                            avatar: profile?.avatar_url || "",
+                            handle: profile.instagram_handle || "",
+                            avatar: profile.avatar_url || "",
                             category: e.category || "Life Moment", // Default category
                             event: e.title, // map 'title' to 'event'
                             date: new Date(e.created_at).toISOString().split('T')[0],
                             description: e.description,
                             tags: e.tags || [],
                             verified: e.is_verified || false,
-                            followers: details?.followers_count || 0,
-                            priceVideo: details?.price_video || 0,
+                            followers: profile.followers_count || 0,
+                            priceVideo: profile.price_video || 0,
                             targetProduct: e.target_product || "",
                             eventDate: e.event_date || "",
                             postingDate: e.posting_date || "",
@@ -180,7 +181,6 @@ ${u.name}의 담당자입니다.
                 influencer_id: event.influencerId,
                 event_id: event.id,
                 product_name: productName,
-                product_type: productType,
                 product_type: productType,
                 // [FIX] Convert Man-won to Won for storage
                 compensation_amount: compensationAmount ? String(parseInt(compensationAmount.replace(/[^0-9]/g, '')) * 10000) : null,

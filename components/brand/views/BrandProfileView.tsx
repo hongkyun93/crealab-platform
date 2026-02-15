@@ -1,13 +1,16 @@
 "use client"
 
-import React from "react"
-import { Loader2 } from "lucide-react"
+import React, { useState } from "react"
+import { Loader2, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { AvatarUpload } from "@/components/ui/avatar-upload"
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { useRouter } from "next/navigation"
 
 interface BrandProfileViewProps {
     user: any
@@ -25,6 +28,7 @@ interface BrandProfileViewProps {
     handleSaveProfile: () => void
     updateUser: (data: any) => Promise<void>
     switchRole: (role: string) => Promise<void>
+    refreshData?: () => void
 }
 
 export const BrandProfileView = React.memo(function BrandProfileView({
@@ -44,6 +48,10 @@ export const BrandProfileView = React.memo(function BrandProfileView({
     updateUser,
     switchRole
 }: BrandProfileViewProps) {
+    const { supabase } = useUnifiedProvider()
+    const router = useRouter()
+    const [confirmSwitch, setConfirmSwitch] = useState(false)
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             <h1 className="text-3xl font-bold tracking-tight">브랜드 설정</h1>
@@ -107,17 +115,28 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                     <p className="text-xs text-muted-foreground mb-4">
                         * 전환 후에도 브랜드 정보는 유지되지만, 대시보드 인터페이스가 크리에이터용으로 변경됩니다.
                     </p>
-                    <Button
-                        variant="outline"
-                        className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
-                        onClick={async () => {
-                            if (confirm("정말로 크리에이터 계정으로 전환하시겠습니까?")) {
-                                await switchRole('influencer');
-                            }
+                    <div className="flex justify-start">
+                        <Button
+                            variant="outline"
+                            className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                            onClick={() => setConfirmSwitch(true)}
+                        >
+                            <User className="h-4 w-4 mr-2" />
+                            크리에이터 계정으로 전환 (로그아웃)
+                        </Button>
+                    </div>
+
+                    <ConfirmDialog
+                        open={confirmSwitch}
+                        onOpenChange={setConfirmSwitch}
+                        title="계정 전환"
+                        description="정말로 크리에이터 계정으로 전환하시겠습니까? (로그아웃 됩니다)"
+                        onConfirm={async () => {
+                            await supabase.auth.signOut()
+                            router.push("/")
                         }}
-                    >
-                        크리에이터 계정으로 전환하기
-                    </Button>
+                        confirmText="전환"
+                    />
                 </CardContent>
             </Card>
         </div>

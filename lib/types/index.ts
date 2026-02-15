@@ -37,3 +37,12 @@ export type {
     Favorite,
     FavoriteTargetType
 } from './favorite'
+
+// Team
+export type {
+    Team,
+    TeamMember,
+    TeamRole,
+    TeamWithMembers,
+    TeamMemberWithProfile
+} from './team'

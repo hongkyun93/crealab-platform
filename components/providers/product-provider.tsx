@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect } from "react"
 import { useProductsSWR, productMutations } from "@/lib/hooks/use-products-swr"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "./auth-provider"
 import { mutate } from 'swr'
 import { SWR_KEYS } from '@/lib/swr-config'
 import type { Product } from "@/lib/types"
@@ -18,13 +18,17 @@ interface ProductContextType {
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined)
 
-export function ProductProvider({ children, userId }: { children: React.ReactNode, userId?: string }) {
-    // Use SWR hook for data fetching
-    const { products, isLoading, revalidate } = useProductsSWR()
+export function ProductProvider({ children, userId, teamId }: {
+    children: React.ReactNode,
+    userId?: string,
+    teamId?: string
+}) {
+    const { supabase } = useAuth()
+    // Use SWR hook for data fetching (filtered by team for brands)
+    const { products, isLoading, revalidate } = useProductsSWR(teamId)
 
     // Setup Realtime subscription for live updates
     useEffect(() => {
-        const supabase = createClient()
 
         console.log('[ProductProvider] Setting up Realtime subscription')
 
@@ -50,12 +54,12 @@ export function ProductProvider({ children, userId }: { children: React.ReactNod
         }
     }, [])
 
-    // Wrapper functions to maintain API compatibility
+    // Wrapper functions to maintain API compatibility (Team-based)
     const addProduct = async (newProduct: Omit<Product, "id" | "brandId" | "createdAt">) => {
-        if (!userId) {
-            throw new Error('User ID required to create product')
+        if (!teamId && !userId) {
+            throw new Error('Team ID or User ID required to create product')
         }
-        await productMutations.addProduct(userId, newProduct)
+        await productMutations.addProduct(teamId || userId!, newProduct)
     }
 
     const updateProduct = async (id: string, updates: Partial<Product>) => {

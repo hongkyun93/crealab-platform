@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { toast } from "sonner"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 
 interface WorkspaceViewProps {
@@ -42,7 +42,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     handleStatusUpdate,
     onViewProposal
 }: WorkspaceViewProps) {
-    const { supabase, refreshData } = usePlatform()
+    const { supabase, refreshData } = useUnifiedProvider()
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'table'>('list')
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
     const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false, title: '', description: '', onConfirm: () => { } })

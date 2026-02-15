@@ -24,12 +24,14 @@ export async function createCampaign(formData: FormData) {
     const postingDate = formData.get('postingDate') as string
     const tags = formData.get('tags') as string
     const image = formData.get('image') as string
+    const teamId = formData.get('teamId') as string // [NEW]
 
     // 3. Insert into DB
     const { error } = await supabase
         .from('campaigns')
         .insert({
             brand_id: user.id,
+            team_id: teamId || null, // [NEW]
             title: title || `[${category}] ${product} 캠페인`, // Fallback for safety
             product_name: product,
             category: category,

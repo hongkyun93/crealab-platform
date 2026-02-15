@@ -1,13 +1,13 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from "react"
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 
 // --- Types ---
 // --- Types ---
 export type User = {
     id: string
     name: string
-    type: "brand" | "influencer" | "admin"
+    type: "brand" | "creator" | "admin" | "agency" | "mcn"
     avatar?: string
     bio?: string
     tags?: string[]
@@ -274,7 +274,7 @@ export const MOCK_INFLUENCER_USER: User = {
     // Then: Fetch query.
 
     name: "김수민",
-    type: "influencer",
+    type: "creator",
     handle: "@im_breath_ing",
     followers: 5851,
     avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
@@ -345,7 +345,7 @@ interface PlatformContextType {
     addCampaign: (campaign: Omit<Campaign, "id" | "date" | "matchScore">) => void
     deleteCampaign: (id: string | number) => void
     events: InfluencerEvent[]
-    addEvent: (event: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">) => Promise<boolean>
+    addEvent: (event: Omit<InfluencerEvent, "id" | "creator" | "handle" | "avatar" | "verified" | "followers">) => Promise<boolean>
     updateEvent: (id: string, data: Partial<InfluencerEvent>) => Promise<boolean>
     deleteEvent: (id: string) => Promise<boolean>
 
@@ -378,7 +378,7 @@ interface PlatformContextType {
     sendSubmissionFeedback: (proposalId: string, isBrandProposal: boolean, senderId: string, content: string) => Promise<boolean>
 
     updateBrandProposal: (id: string, updates: string | object) => Promise<boolean>
-    switchRole: (newRole: 'brand' | 'influencer') => Promise<void>
+    switchRole: (newRole: 'brand' | 'creator') => Promise<void>
     isLoading: boolean
     resetData: () => void
     refreshData: () => Promise<void>
@@ -463,7 +463,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
                     return {
                         id: data.session.user.id,
                         name: data.session.user.user_metadata?.name || id.split('@')[0],
-                        type: (data.session.user.user_metadata?.role as "brand" | "influencer" | "admin") || "influencer"
+                        type: (data.session.user.user_metadata?.role as "brand" | "creator" | "admin") || "creator"
                     }
                 }
             }
@@ -483,50 +483,59 @@ export function PlatformProvider({ children, initialSession }: { children: React
             // Verify if we have a profile and fetch details
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('*, influencer_details(*)')
+                .select('*')
                 .eq('id', sessionUser.id)
                 .single()
 
             if (profile) {
-                // Supabase might return influencer_details as an array or a single object depending on the query/schema
-                let details = null;
-                if (Array.isArray(profile.influencer_details)) {
-                    details = profile.influencer_details.length > 0 ? profile.influencer_details[0] : null;
-                } else {
-                    details = profile.influencer_details;
-                }
-
-                console.log('[fetchUserProfile] Extracted details:', {
-                    hasDetails: !!details,
-                    tags: details?.tags,
+                console.log('[fetchUserProfile] Profile loaded:', {
+                    tags: profile.tags,
                     prices: {
-                        v: details?.price_video,
-                        f: details?.price_feed,
-                        ur_m: details?.usage_rights_month
+                        v: profile.price_video,
+                        f: profile.price_feed,
                     }
                 });
+
+                // Fetch team info if applicable (MCN or Creator)
+                let teamId = undefined;
+                try {
+                    const { data: teamMember } = await supabase
+                        .from('team_members')
+                        .select('team_id')
+                        .eq('user_id', sessionUser.id)
+                        .maybeSingle()
+
+                    if (teamMember) {
+                        teamId = teamMember.team_id
+                    }
+                } catch (err) {
+                    console.warn('[fetchUserProfile] Team fetch error:', err)
+                }
 
                 return {
                     id: sessionUser.id,
                     name: profile.display_name || profile.name || sessionUser.email?.split('@')[0] || "User",
-                    type: (profile.role as "brand" | "influencer" | "admin") || "influencer",
+                    type: (profile.role as "brand" | "creator" | "admin" | "mcn" | "agency") || ((profile.user_type === 'brand' || profile.user_type === 'agency') ? 'brand' : 'creator'),
+                    role: profile.role,
+                    onboardingCompleted: profile.onboarding_completed || false,
                     avatar: profile.avatar_url,
                     bio: profile.bio,
                     website: profile.website,
-                    handle: details?.instagram_handle || undefined,
-                    followers: details?.followers_count || 0,
-                    tags: details?.tags || [],
+                    handle: profile.instagram_handle || profile.handle,
+                    followers: profile.followers_count || 0,
+                    tags: profile.tags || [],
                     phone: profile.phone,
                     address: profile.address,
+                    teamId: teamId, // Add teamId here
 
                     // Map Rate Card Fields
-                    priceVideo: details?.price_video || 0,
-                    priceFeed: details?.price_feed || 0,
-                    secondaryRights: details?.secondary_rights || 0,
-                    usageRightsMonth: details?.usage_rights_month || 0,
-                    usageRightsPrice: details?.usage_rights_price || 0,
-                    autoDmMonth: details?.auto_dm_month || 0,
-                    autoDmPrice: details?.auto_dm_price || 0
+                    priceVideo: profile.price_video || 0,
+                    priceFeed: profile.price_feed || 0,
+                    secondaryRights: profile.secondary_rights || 0,
+                    usageRightsMonth: profile.usage_rights_month || 0,
+                    usageRightsPrice: profile.usage_rights_price || 0,
+                    autoDmMonth: profile.auto_dm_month || 0,
+                    autoDmPrice: profile.auto_dm_price || 0
                 }
             }
 
@@ -541,7 +550,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         return {
             id: sessionUser.id,
             name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || "User",
-            type: (sessionUser.user_metadata?.role as "brand" | "influencer" | "admin") || "influencer",
+            type: (sessionUser.user_metadata?.role as "brand" | "creator" | "admin") || "creator",
             avatar: sessionUser.user_metadata?.avatar_url,
             tags: []
         }
@@ -671,48 +680,24 @@ export function PlatformProvider({ children, initialSession }: { children: React
             if (eventsData) {
                 console.log('[fetchEvents] Fetched events from DB:', eventsData.length, 'events')
 
-                // 2. Get unique influencer IDs
-                const influencerIds = [...new Set(eventsData.map((e: any) => e.influencer_id).filter(Boolean))]
-                console.log('[fetchEvents] Fetching details for', influencerIds.length, 'influencers')
-
-                // 3. Fetch influencer_details separately
-                const { data: detailsData, error: detailsError } = await supabase
-                    .from('influencer_details')
-                    .select('*')
-                    .in('id', influencerIds)
-
-                if (detailsError) {
-                    console.error('[fetchEvents] Error fetching influencer_details:', detailsError)
-                }
-
-                // 4. Create a map of influencer details
-                const detailsMap = new Map()
-                if (detailsData) {
-                    detailsData.forEach((detail: any) => {
-                        detailsMap.set(detail.id, detail)
-                    })
-                    console.log('[fetchEvents] Loaded details for', detailsMap.size, 'influencers')
-                }
-
-                // 5. Map events with merged data
+                // 2. Map events using joined profiles data
                 const mappedEvents: InfluencerEvent[] = eventsData.map((e: any) => {
-                    const profile = e.profiles
-                    const details = detailsMap.get(e.influencer_id)
+                    const profile = e.profiles || {}
 
                     return {
                         id: e.id,
-                        influencer: profile?.display_name || "Unknown",
+                        influencer: profile.display_name || "Unknown",
                         influencerId: e.influencer_id,
-                        handle: details?.instagram_handle || "",
-                        avatar: profile?.avatar_url || "",
+                        handle: profile.instagram_handle || profile.handle || "",
+                        avatar: profile.avatar_url || "",
                         category: e.category || "기타",
                         event: e.title,
                         date: new Date(e.created_at).toISOString().split('T')[0],
                         description: e.description,
                         tags: e.tags || [],
                         verified: e.is_verified || false,
-                        followers: details?.followers_count || 0,
-                        priceVideo: details?.price_video || 0,
+                        followers: profile.followers_count || 0,
+                        priceVideo: profile.price_video || 0,
                         targetProduct: e.target_product || "",
                         eventDate: e.created_at,
                         postingDate: e.posting_date || "",
@@ -720,11 +705,11 @@ export function PlatformProvider({ children, initialSession }: { children: React
                         status: e.status || 'recruiting'
                     }
                 })
-                // 로그인 한 유저(targetId 존재)는 실제 DB 데이터만 표시
+
                 if (targetId) {
                     setEvents(mappedEvents)
                 } else {
-                    // 게스트는 Mock 데이터와 병합해서 보여줌
+                    // Start with Real Data, Append Mock if needed
                     const sanitizedMock = MOCK_EVENTS.map(e => ({
                         ...e,
                         category: e.category || "기타"
@@ -788,7 +773,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             let bpData: any[] = []
             if (userId) {
                 try {
-                    let query = supabase
+                    const query = supabase
                         .from('brand_proposals')
                         .select(`
                             *,
@@ -888,7 +873,6 @@ export function PlatformProvider({ children, initialSession }: { children: React
                             product_url: m.product_url,
                             product_type: m.product_type,
                             // [Mapping] Additional fields requested by user
-                            price_offer: m.price_offer,
                             has_incentive: m.has_incentive,
                             incentive_detail: m.incentive_detail,
                             content_type: m.content_type,
@@ -1436,7 +1420,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             console.log('[updateUser] Profile table update success')
 
             // 2. Influencer Details Update
-            if (user.type === 'influencer') {
+            if (user.type === 'creator') {
                 const detailsUpdates: any = {
                     id: user.id, // Primary key for upsert
                     updated_at: new Date().toISOString(),
@@ -1491,7 +1475,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }, [user, supabase])
 
-    const switchRole = React.useCallback(async (newRole: 'brand' | 'influencer') => {
+    const switchRole = React.useCallback(async (newRole: 'brand' | 'creator') => {
         if (!user) {
             alert("로그인 세션이 확인되지 않습니다.")
             return
@@ -1515,7 +1499,7 @@ export function PlatformProvider({ children, initialSession }: { children: React
             }
 
             // 2. If switching to influencer, ensure influencer_details exists
-            if (newRole === 'influencer') {
+            if (newRole === 'creator') {
                 console.log('[switchRole] Initializing/verifying influencer_details...')
                 const { error: detailsError } = await supabase
                     .from('influencer_details')
@@ -1594,13 +1578,14 @@ export function PlatformProvider({ children, initialSession }: { children: React
         }
     }
 
-    const addEvent = async (newEvent: Omit<InfluencerEvent, "id" | "influencer" | "influencerId" | "handle" | "avatar" | "verified" | "followers">): Promise<boolean> => {
+    const addEvent = async (newEvent: Omit<InfluencerEvent, "id" | "creator" | "handle" | "avatar" | "verified" | "followers">): Promise<boolean> => {
         // Robust check: If user state is not ready, try explicit session check
-        let targetUserId = user?.id;
+        // If newEvent.influencerId is provided (MCN/Agency proxy), use it.
+        let targetUserId = newEvent.influencerId || user?.id;
         let targetUserName = user?.name || "Unknown";
         let targetUserAvatar = user?.avatar || "";
-        let targetUserHandle = user?.handle || "";
-        let targetUserFollowers = user?.followers || 0;
+        const targetUserHandle = user?.handle || "";
+        const targetUserFollowers = user?.followers || 0;
 
         if (!targetUserId) {
             console.log("[addEvent] User state missing, checking session...");
@@ -1614,6 +1599,22 @@ export function PlatformProvider({ children, initialSession }: { children: React
             } else {
                 console.error("[addEvent] No active session found.");
                 return false;
+            }
+        }
+
+        // [FIX] Proxy Creation: Fetch Influencer Details if we are an Agency
+        if (targetUserId !== user?.id) {
+            console.log("[addEvent] Proxy creation detected. Fetching details for:", targetUserId);
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('display_name, avatar_url, handle, followers') // Ensure these columns exist or join
+                .eq('id', targetUserId)
+                .single();
+
+            if (profile) {
+                targetUserName = profile.display_name || "Unknown Creator";
+                targetUserAvatar = profile.avatar_url;
+                // Note: handle/followers might be in influencer_details, simplest to just get name/avatar for UI
             }
         }
 

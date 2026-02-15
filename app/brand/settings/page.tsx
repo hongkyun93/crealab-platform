@@ -8,13 +8,13 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AvatarUpload } from "@/components/ui/avatar-upload"
+import { toast } from "sonner"
 
 export default function BrandSettingsPage() {
-    const { user, updateUser } = usePlatform()
+    const { user, updateUser } = useUnifiedProvider()
     const router = useRouter()
 
     const [name, setName] = useState("")
@@ -36,11 +36,11 @@ export default function BrandSettingsPage() {
                 website,
                 bio
             })
-            alert("브랜드 정보가 저장되었습니다.")
+            toast.success("브랜드 정보가 저장되었습니다.")
             router.push("/brand")
         } catch (error) {
             console.error("Failed to save brand settings:", error)
-            alert("저장에 실패했습니다. 다시 시도해주세요.")
+            toast.error("저장에 실패했습니다. 다시 시도해주세요.")
         }
     }
 
@@ -119,6 +119,38 @@ export default function BrandSettingsPage() {
                                 placeholder="브랜드의 비전과 가치를 설명해주세요. 크리에이터들이 참고하게 됩니다."
                                 className="min-h-[120px]"
                             />
+                        </div>
+
+                        <div className="pt-4 border-t">
+                            <h3 className="text-sm font-medium mb-4 text-muted-foreground">계정 정보</h3>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">이메일</Label>
+                                    <Input
+                                        id="email"
+                                        value={user?.email || ""}
+                                        disabled
+                                        className="bg-muted"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        이메일은 변경할 수 없습니다.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="role">역할</Label>
+                                    <Input
+                                        id="role"
+                                        value={user?.type === 'brand' ? '브랜드' : user?.type === 'mcn' ? 'MCN' : user?.type === 'agency' ? '에이전시' : '크리에이터'}
+                                        disabled
+                                        className="bg-muted"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        역할은 변경할 수 없습니다.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                     <CardFooter className="flex justify-end gap-2">

@@ -10,8 +10,8 @@ import { Proposal } from "@/lib/types/proposal";
 
 interface SmartContractPanelProps {
     proposal: Proposal;
-    userType: 'brand' | 'influencer';
-    onSign: (role: 'brand' | 'influencer') => Promise<void>;
+    userType: 'brand' | 'creator';
+    onSign: (role: 'brand' | 'creator') => Promise<void>;
     isSigning?: boolean;
 }
 

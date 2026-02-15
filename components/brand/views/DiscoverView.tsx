@@ -18,6 +18,8 @@ import {
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
 import { DiscoverTableView } from "@/components/brand/DiscoverTableView"
 import { LayoutGrid, Table as TableIcon } from "lucide-react"
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { toast } from "sonner"
 import { useState } from "react"
 
 interface DiscoverViewProps {
@@ -62,6 +64,7 @@ export const DiscoverView = React.memo(function DiscoverView({
     deleteEvent
 }: DiscoverViewProps) {
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -258,9 +261,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                                         onClick={(e) => {
                                                             e.preventDefault();
                                                             e.stopPropagation();
-                                                            if (confirm("정말로 이 모먼트를 삭제하시겠습니까?")) {
-                                                                deleteEvent(item.id).catch(() => alert("삭제에 실패했습니다."));
-                                                            }
+                                                            setConfirmDeleteId(item.id)
                                                         }}
                                                     >
                                                         <Trash2 className="h-3 w-3" />
@@ -348,6 +349,25 @@ export const DiscoverView = React.memo(function DiscoverView({
                     user={user}
                 />
             )}
+
+            <ConfirmDialog
+                open={!!confirmDeleteId}
+                onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+                title="모먼트 삭제"
+                description="정말로 이 모먼트를 삭제하시겠습니까?"
+                onConfirm={async () => {
+                    if (confirmDeleteId) {
+                        try {
+                            await deleteEvent(confirmDeleteId)
+                        } catch (error) {
+                            toast.error("삭제에 실패했습니다.")
+                        }
+                        setConfirmDeleteId(null)
+                    }
+                }}
+                confirmText="삭제"
+                variant="destructive"
+            />
         </div>
     )
 })

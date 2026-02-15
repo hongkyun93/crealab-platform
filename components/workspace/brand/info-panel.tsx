@@ -71,7 +71,7 @@ export function InfoPanel() {
         }
     };
 
-    const handleSign = async (role: 'brand' | 'influencer') => {
+    const handleSign = async (role: 'brand' | 'creator') => {
         if (!proposal?.id) return;
 
         console.log('[InfoPanel] Signing contract as:', role);

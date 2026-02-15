@@ -13,9 +13,9 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuTrigger,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
     DropdownMenuRadioItem,
     DropdownMenuRadioGroup,
 } from "@/components/ui/dropdown-menu"
@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/table"
 import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight, LayoutGrid, List, Banknote, Table as TableIcon, Menu } from "lucide-react"
 import Link from "next/link"
-import { usePlatform, MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout";
@@ -56,20 +57,10 @@ import {
     SheetTitle,
     SheetTrigger,
 } from "@/components/ui/sheet"
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 import { toast } from "sonner"
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
@@ -98,6 +89,13 @@ import { BrandProductDetailView } from "@/components/creator/views/BrandProductD
 import { CampaignCardA } from "@/components/creator/campaign-cards/CampaignCardA"
 import { CampaignCardB } from "@/components/creator/campaign-cards/CampaignCardB"
 import { CampaignCardC } from "@/components/creator/campaign-cards/CampaignCardC"
+
+// MCN Components
+import { TeamMembersCard } from "@/components/mcn/team-members-card"
+import { TeamStatistics } from "@/components/mcn/team-statistics"
+import { InviteLinkGenerator } from "@/components/mcn/invite-link-generator"
+import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
+import { Building2, Users as UsersIcon } from "lucide-react"
 import { CampaignCardD } from "@/components/creator/campaign-cards/CampaignCardD"
 import { CampaignCardE } from "@/components/creator/campaign-cards/CampaignCardE"
 import { CampaignListRow } from "@/components/creator/CampaignListRow"
@@ -152,7 +150,12 @@ function InfluencerDashboardContent() {
         deleteEvent, campaignProposals, updateProposal, addProposal,
         products, switchRole, updateEvent, supabase,
         favorites, toggleFavorite, isInitialized, isAuthLoading
-    } = usePlatform()
+    } = useUnifiedProvider()
+
+    // MCN Proxy Mode Support
+    const { effectiveUser, isProxyMode, actualUser } = useEffectiveUser()
+    // Treat 'agency' same as 'mcn' for dashboard logic
+    const isMCN = user?.type === 'mcn' || user?.type === 'agency'
 
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -198,6 +201,7 @@ function InfluencerDashboardContent() {
     const [isSubmittingContent, setIsSubmittingContent] = useState(false)
     const [uploadProgress, setUploadProgress] = useState(0)
     const [isReuploading, setIsReuploading] = useState(false)
+    const [isApplying, setIsApplying] = useState(false) // [New] Application Loading State
 
     // Details Modal State
     const [selectedItemDetails, setSelectedItemDetails] = useState<any>(null)
@@ -223,6 +227,39 @@ function InfluencerDashboardContent() {
     const [portfolioLinks, setPortfolioLinks] = useState("")
     const [instagramHandle, setInstagramHandle] = useState("")
     const [insightFile, setInsightFile] = useState<File | null>(null)
+    // [New] Proxy Application State
+    const [targetCreatorId, setTargetCreatorId] = useState<string>("")
+    const [teamMembers, setTeamMembers] = useState<any[]>([])
+
+    useEffect(() => {
+        const fetchTeamMembers = async () => {
+            if (user?.type === 'agency' || user?.type === 'mcn') {
+                const { data, error } = await supabase
+                    .from('team_members')
+                    .select(`
+                        id,
+                        user_id,
+                        role,
+                        users:user_id (
+                            email,
+                            raw_user_meta_data
+                        )
+                    `)
+                    .eq('team_id', user.teamId) // Assuming teamId is available on user object
+
+                if (data) {
+                    const members = data.map((m: any) => ({
+                        id: m.id,
+                        user_id: m.user_id,
+                        name: m.users?.raw_user_meta_data?.name || m.users?.email,
+                        email: m.users?.email
+                    }))
+                    setTeamMembers(members)
+                }
+            }
+        }
+        fetchTeamMembers()
+    }, [user, supabase])
 
     const handleGenerateAIPlan = async (campaign: any) => {
         if (!campaign) return
@@ -244,14 +281,14 @@ function InfluencerDashboardContent() {
                 if (data.result.motivation) setMotivation(data.result.motivation)
                 if (data.result.content_plan) setContentPlan(data.result.content_plan)
 
-                alert("AI가 지원 동기와 콘텐츠 기획안을 자동으로 작성했습니다!")
+                toast.success("AI가 지원 동기와 콘텐츠 기획안을 자동으로 작성했습니다!")
                 // setIsAIPlanModalOpen(true) // No longer needed
             } else {
-                alert("AI 기획안 생성에 실패했습니다.")
+                toast.error("AI 기획안 생성에 실패했습니다.")
             }
         } catch (e) {
             console.error("AI Plan Error:", e)
-            alert("오류가 발생했습니다.")
+            toast.error("오류가 발생했습니다.")
         } finally {
             setIsAIPlanning(false)
         }
@@ -487,7 +524,7 @@ function InfluencerDashboardContent() {
 
 
 
-    const displayUser = user
+    const displayUser = (isProxyMode && effectiveUser) ? effectiveUser : user
 
     // Auto-scroll for Main Workspace Chat
     useEffect(() => {
@@ -542,7 +579,7 @@ function InfluencerDashboardContent() {
             setIsProductGuideOpen(true);
         } catch (e) {
             console.error("Failed to fetch product guide:", e);
-            alert("제작 가이드를 불러올 수 없습니다.");
+            toast.error("제작 가이드를 불러올 수 없습니다.");
         }
     }
 
@@ -582,65 +619,73 @@ function InfluencerDashboardContent() {
 
 
     // Filter events (Admins see all, users see theirs)
-    const displayEvents = displayUser?.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
+    const { displayEvents, activeMoments, myMoments, pastMoments, myEvents, upcomingMoments } = useMemo(() => {
+        const display = displayUser?.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
 
-    // Date-based filtering for refined UI
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+        // Date-based filtering for refined UI
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
 
-    // Date-based filtering with robust parsing
-    const parseEventDate = (dateStr: string) => {
-        if (!dateStr) return new Date(0); // Return epoch if invalid
-        // Handle "YYYY년 M월" format
-        if (dateStr.includes('년') && dateStr.includes('월')) {
-            const parts = dateStr.match(/(\d+)년\s*(\d+)월/);
-            if (parts) {
-                return new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, 1);
+        // Date-based filtering with robust parsing
+        const parseEventDate = (dateStr: string) => {
+            if (!dateStr) return new Date(0); // Return epoch if invalid
+            // Handle "YYYY년 M월" format
+            if (dateStr.includes('년') && dateStr.includes('월')) {
+                const parts = dateStr.match(/(\d+)년\s*(\d+)월/);
+                if (parts) {
+                    return new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, 1);
+                }
             }
+            return new Date(dateStr);
         }
-        return new Date(dateStr);
 
-    }
+        const active = display.filter((e: any) => {
+            const eventDate = parseEventDate(e.eventDate)
+            eventDate.setHours(0, 0, 0, 0)
+            return eventDate < today && e.status !== 'completed'
+        })
 
+        const my = display.filter((e: any) => {
+            const eventDate = parseEventDate(e.eventDate)
+            eventDate.setHours(0, 0, 0, 0)
+            return eventDate >= today && e.status !== 'completed'
+        })
 
+        const past = display.filter((e: any) => e.status === 'completed')
 
-    const activeMoments = displayEvents.filter((e: any) => {
-        const eventDate = parseEventDate(e.eventDate)
-        eventDate.setHours(0, 0, 0, 0)
-        return eventDate < today && e.status !== 'completed'
-    })
+        const mine = events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
 
+        // Compatibility for upstream code using upcomingMoments
+        const upcoming = [...active, ...my];
 
-    const myMoments = displayEvents.filter((e: any) => {
-        const eventDate = parseEventDate(e.eventDate)
-        eventDate.setHours(0, 0, 0, 0)
-        return eventDate >= today && e.status !== 'completed'
-    })
-
-
-    const pastMoments = displayEvents.filter((e: any) => e.status === 'completed')
-
-    const myEvents = events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
-
-    // Compatibility for upstream code using upcomingMoments
-    const upcomingMoments = [...activeMoments, ...myMoments];
+        return {
+            displayEvents: display,
+            activeMoments: active,
+            myMoments: my,
+            pastMoments: past,
+            myEvents: mine,
+            upcomingMoments: upcoming
+        }
+    }, [displayUser, events])
 
     // Helper function to deduplicate proposals by ID
-    const deduplicateById = (items: any[]) => {
+    const deduplicateById = useMemo(() => (items: any[]) => {
         const seenIds = new Set<string>()
         return items.filter(item => {
             if (!item?.id || seenIds.has(item.id)) return false
             seenIds.add(item.id)
             return true
         })
-    }
+    }, [])
 
-    // [FIX] brandProposals already contains moment proposals (merged in ProposalProvider)
-    // We should NOT merge them again here to avoid duplicate keys.
-    const allInboundProposals = deduplicateById([
-        ...(brandProposals || []),
-        // ...(momentProposals || []) // REMOVED: Redundant merge triggering duplicate keys
-    ]).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    const allInboundProposals = useMemo(() => {
+        // [FIX] brandProposals already contains moment proposals (merged in ProposalProvider)
+        // We should NOT merge them again here to avoid duplicate keys.
+        return deduplicateById([
+            ...(brandProposals || []),
+            // ...(momentProposals || []) // REMOVED: Redundant merge triggering duplicate keys
+        ]).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    }, [brandProposals, deduplicateById])
 
     const filteredProposalsByMoment = selectedMomentId
         ? (allInboundProposals.filter((p: any) => p.event_id === selectedMomentId) || [])
@@ -1029,9 +1074,10 @@ function InfluencerDashboardContent() {
                                                 수락하기
                                             </Button>
                                             <Button
+                                                variant="outline"
                                                 size="sm"
-                                                variant="destructive"
-                                                onClick={(e) => handleRejectProposal(e, proposal.id)}
+                                                className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                onClick={() => handleRejectClick(chatProposal)}
                                             >
                                                 거절하기
                                             </Button>
@@ -1055,25 +1101,7 @@ function InfluencerDashboardContent() {
         setIsSignatureModalOpen(true)
     }
 
-    const performContractSign = async () => {
-        if (!chatProposal) return
-        if (sigCanvas.current.isEmpty()) {
-            alert("서명을 입력해주세요.")
-            return
-        }
-
-        if (!confirm("서명과 함께 계약서에 동의하시겠습니까?")) return
-
-        const signatureData = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png')
-        await handleContractResponse('signed', signatureData)
-        setIsSignatureModalOpen(false)
-    }
-
-    const handleContractResponse = async (status: 'signed' | 'negotiating' | 'rejected', signatureData?: string) => {
-        if (!chatProposal) return
-
-        if (!confirm(status === 'signed' ? "계약서에 서명하시겠습니까?" : status === 'negotiating' ? "수정 요청을 보내시겠습니까?" : "거절하시겠습니까?")) return
-
+    const processContractResponse = async (status: 'signed' | 'negotiating' | 'rejected', signatureData?: string) => {
         try {
             const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply';
             const proposalId = chatProposal.id?.toString();
@@ -1102,9 +1130,6 @@ function InfluencerDashboardContent() {
                 await updateBrandProposal(proposalId, updateData)
             }
 
-            // NOTE: The above logic inside 'if' is tricky because I need access to 'updateProposal' from context if I want to use it.
-            // I see 'updateBrandProposal' is destructured. I need to make sure 'updateProposal' is also destructured.
-
             // Local update
             setChatProposal((prev: any) => ({ ...prev, contract_status: status, influencer_signature: signatureData }))
 
@@ -1121,11 +1146,45 @@ function InfluencerDashboardContent() {
                 await sendMessage(brandId, msg, undefined, proposalId)
             }
 
-            alert("상태가 업데이트되었습니다.")
+            toast.success("상태가 업데이트되었습니다.")
         } catch (e) {
             console.error("Contract update failed:", e)
-            alert("오류가 발생했습니다.")
+            toast.error("오류가 발생했습니다.")
         }
+    }
+
+    const performContractSign = () => {
+        if (!chatProposal) return
+        if (sigCanvas.current.isEmpty()) {
+            toast.error("서명을 입력해주세요.")
+            return
+        }
+
+        setConfirmDialog({
+            open: true,
+            title: "서명 확인",
+            description: "서명과 함께 계약서에 동의하시겠습니까?",
+            onConfirm: async () => {
+                const signatureData = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png')
+                await processContractResponse('signed', signatureData)
+                setIsSignatureModalOpen(false)
+            }
+        })
+    }
+
+    const handleContractResponse = async (status: 'signed' | 'negotiating' | 'rejected', signatureData?: string) => {
+        if (!chatProposal) return
+
+        const message = status === 'signed' ? "계약서에 서명하시겠습니까?" : status === 'negotiating' ? "수정 요청을 보내시겠습니까?" : "거절하시겠습니까?"
+
+        setConfirmDialog({
+            open: true,
+            title: "확인",
+            description: message,
+            onConfirm: async () => {
+                await processContractResponse(status, signatureData)
+            }
+        })
     }
 
     const handleProductReceived = async (e?: React.MouseEvent) => {
@@ -1133,37 +1192,42 @@ function InfluencerDashboardContent() {
         e?.stopPropagation()
         if (!chatProposal) return
 
-        if (!confirm("제품을 수령하셨습니까? 수령 처리 후에는 취소할 수 없습니다.")) return
+        setConfirmDialog({
+            open: true,
+            title: "제품 수령 확인",
+            description: "제품을 수령하셨습니까? 수령 처리 후에는 취소할 수 없습니다.",
+            onConfirm: async () => {
+                try {
+                    const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
+                    const proposalId = chatProposal.id?.toString()
+                    const brandId = isCampaignProposal ? chatProposal.campaign?.brand_id : chatProposal.brand_id
 
-        try {
-            const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
-            const proposalId = chatProposal.id?.toString()
-            const brandId = isCampaignProposal ? chatProposal.campaign?.brand_id : chatProposal.brand_id
+                    const updateData: any = {
+                        delivery_status: 'delivered'
+                    }
 
-            const updateData: any = {
-                delivery_status: 'delivered'
+                    if (isCampaignProposal) {
+                        await updateProposal(proposalId, updateData)
+                    } else {
+                        await updateBrandProposal(proposalId, updateData)
+                    }
+
+                    setChatProposal((prev: any) => ({ ...prev, ...updateData }))
+
+                    await sendMessage(brandId, "📦 [자동 알림] 크리에이터가 제품 수령을 완료했습니다.", isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
+
+                    toast.success("제품 수령이 확인되었습니다. 이제 작업물을 제출할 수 있습니다.")
+                } catch (e) {
+                    console.error("Product update failed:", e)
+                    toast.error("오류가 발생했습니다.")
+                }
             }
-
-            if (isCampaignProposal) {
-                await updateProposal(proposalId, updateData)
-            } else {
-                await updateBrandProposal(proposalId, updateData)
-            }
-
-            setChatProposal((prev: any) => ({ ...prev, ...updateData }))
-
-            await sendMessage(brandId, "📦 [자동 알림] 크리에이터가 제품 수령을 완료했습니다.", isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
-
-            alert("제품 수령이 확인되었습니다. 이제 작업물을 제출할 수 있습니다.")
-        } catch (e) {
-            console.error("Product update failed:", e)
-            alert("오류가 발생했습니다.")
-        }
+        })
     }
 
     const handleSaveShippingInfo = async () => {
         if (!shippingName || !shippingPhone || !shippingAddress) {
-            alert("모든 배송 정보를 입력해주세요.")
+            toast.error("모든 배송 정보를 입력해주세요.")
             return
         }
         if (!chatProposal) return
@@ -1192,7 +1256,7 @@ function InfluencerDashboardContent() {
             // Notify Brand
             await sendMessage(brandId, "🚚 배송지 정보를 입력했습니다. 제품 발송 부탁드립니다!", isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
 
-            alert("배송지 정보가 저장되었습니다.")
+            toast.success("배송지 정보가 저장되었습니다.")
         } catch (e) {
             console.error("Shipping info save failed:", e)
             alert("저장 중 오류가 발생했습니다.")
@@ -1230,7 +1294,7 @@ function InfluencerDashboardContent() {
     const [isCampaignDetailOpen, setIsCampaignDetailOpen] = useState(false)
     const [appealMessage, setAppealMessage] = useState("")
     const [desiredCost, setDesiredCost] = useState("")
-    const [isApplying, setIsApplying] = useState(false)
+
 
     const [showSuccessDialog, setShowSuccessDialog] = useState(false)
 
@@ -1272,7 +1336,7 @@ function InfluencerDashboardContent() {
         const fileToUpload = submissionFile
 
         if (!submissionUrl && !fileToUpload) {
-            alert("링크 또는 파일을 입력해주세요.")
+            toast.error("링크 또는 파일을 입력해주세요.")
             return
         }
 
@@ -1442,11 +1506,11 @@ function InfluencerDashboardContent() {
             if (data.result) {
                 setGeneratedContract(data.result)
             } else {
-                alert("계약서 생성에 실패했습니다: " + (data.error || "알 수 없는 오류"))
+                toast.error("계약서 생성에 실패했습니다: " + (data.error || "알 수 없는 오류"))
             }
         } catch (e) {
             console.error(e)
-            alert("계약서 생성 중 오류가 발생했습니다.")
+            toast.error("계약서 생성 중 오류가 발생했습니다.")
         } finally {
             setIsGeneratingContract(false)
         }
@@ -1616,7 +1680,7 @@ function InfluencerDashboardContent() {
 
     // Onboarding Check: Automatically show settings if crucial info is missing
     useEffect(() => {
-        if (user && !isLoading && user.type === 'influencer') {
+        if (user && !isLoading && user.type === 'creator') {
             // Only force settings if name or handle is truly missing
             const isMissingInfo = !user.handle || !user.name
             if (isMissingInfo && currentView !== 'settings' && initialView !== 'settings' && currentView !== 'profile') {
@@ -1727,7 +1791,8 @@ function InfluencerDashboardContent() {
                 setChatProposal((prev: any) => prev ? { ...prev, status } : prev)
             }
 
-            if (status === 'accepted' || status === 'pending') {
+            const newStatus = status; // Renamed for clarity
+            if (newStatus === 'accepted' || newStatus === 'pending') {
                 setIsChatOpen(true)
 
                 // Try to find the proposal to get brand_id for messaging
@@ -1740,7 +1805,7 @@ function InfluencerDashboardContent() {
                     }
 
                     // Send notification/message to brand
-                    if (status === 'accepted') {
+                    if (newStatus === 'accepted') {
                         // Pass proposal.id as 4th argument (brandProposalId)
                         await sendMessage(proposal.brand_id, `✅ [시스템 알림] 크리에이터가 협업 제안을 수락했습니다! 대화를 시작해보세요.`, undefined, proposal.id)
 
@@ -1776,46 +1841,54 @@ function InfluencerDashboardContent() {
                             }, 500)
                         }
 
-                        alert("제안을 수락했습니다. 이제 워크스페이스에서 브랜드와 대화할 수 있습니다.")
-                    } else if (status === 'pending') {
+                        toast.success("제안을 수락했습니다. 이제 워크스페이스에서 브랜드와 대화할 수 있습니다.")
+                    } else if (newStatus === 'pending') {
                         await sendMessage(proposal.brand_id, `⏳ [시스템 알림] 크리에이터가 제안을 확인했으며, 현재 검토(보류) 중입니다.`, undefined, proposal.id)
-                        alert("제안을 보류 처리했습니다. 나중에 다시 수락할 수 있습니다.")
+                        toast.success("제안을 보류 처리했습니다. 나중에 다시 수락할 수 있습니다.")
                     }
                 }
-            } else if (status === 'rejected') {
-                alert("제안을 거절했습니다.")
-                await refreshData()
+            } else if (newStatus === 'rejected') {
+                // This case is handled by separate function usually but kept for completeness
+            } else {
+                toast.success("상태가 업데이트되었습니다.")
             }
+
+            refreshData()
         } catch (e) {
-            console.error("Status update error:", e)
-            alert("업데이트 중 오류가 발생했습니다. 다시 시도해주세요.")
+            console.error(e)
+            toast.error("업데이트 중 오류가 발생했습니다. 다시 시도해주세요.")
         } finally {
             setIsUpdatingStatus(false)
         }
     }
 
-    const handleReject = async (proposal: any) => {
-        if (!confirm('정말 이 제안을 거절하시겠습니까?')) return
+    const handleRejectClick = (proposal: any) => {
+        setConfirmDialog({
+            open: true,
+            title: "정말 이 제안을 거절하시겠습니까?",
+            description: "거절 시 해당 브랜드에게 자동으로 정중한 거절 메시지가 발송되며, 제안 상태가 '거절됨'으로 변경됩니다.",
+            onConfirm: async () => {
+                try {
+                    // Update status to rejected
+                    await updateBrandProposal(proposal.id, 'rejected')
 
-        try {
-            // Update status to rejected
-            await updateBrandProposal(proposal.id, 'rejected')
+                    // UI Update
+                    setChatProposal((prev: any) => prev ? { ...prev, status: 'rejected' } : prev)
 
-            // UI Update
-            setChatProposal((prev: any) => prev ? { ...prev, status: 'rejected' } : prev)
+                    // Send polite rejection message
+                    await sendMessage(proposal.brand_id, `안녕하세요 ${proposal.brand_name}님, 제안 주셔서 감사합니다.\n아쉽게도 현재 제 일정 및 상황상 참여가 어려울 것 같습니다. 😢\n다음에 더 좋은 기회로 뵙기를 희망합니다!`, undefined, proposal.id)
 
-            // Send polite rejection message
-            await sendMessage(proposal.brand_id, `안녕하세요 ${proposal.brand_name}님, 제안 주셔서 감사합니다.\n아쉽게도 현재 제 일정 및 상황상 참여가 어려울 것 같습니다. 😢\n다음에 더 좋은 기회로 뵙기를 희망합니다!`, undefined, proposal.id)
+                    // Force refresh so the list updates (moving to rejected)
+                    await refreshData()
 
-            // Force refresh so the list updates (moving to rejected)
-            await refreshData()
-
-            alert('제안을 거절했습니다.')
-            setIsChatOpen(false)
-        } catch (e) {
-            console.error('Reject error:', e)
-            alert('오류가 발생했습니다.')
-        }
+                    toast.success('제안을 거절했습니다.')
+                } catch (e) {
+                    console.error("Rejection error:", e)
+                    toast.error("처리 중 오류가 발생했습니다.")
+                }
+            },
+            variant: "destructive"
+        })
     }
 
     const renderProposalCard = (proposalId: string) => {
@@ -1893,7 +1966,7 @@ function InfluencerDashboardContent() {
         const receiverId = chatProposal.brand_id || chatProposal.brandId || chatProposal.toId || chatProposal.to_id || chatProposal.brand?.id || chatProposal.campaign?.brand_id
         if (!receiverId) {
             console.error("[handleSendMessage] No receiver ID found in chatProposal:", chatProposal)
-            alert("수신인 정보를 찾을 수 없습니다.")
+            toast.error("수신인 정보를 찾을 수 없습니다.")
             return
         }
 
@@ -2645,15 +2718,15 @@ function InfluencerDashboardContent() {
                                                 <p className="font-medium text-sm">Instagram 비즈니스 계정</p>
                                                 <p className="text-xs text-muted-foreground">인사이트(도달수, 팔로워) 연동을 위해 필요합니다.</p>
                                             </div>
-                                        </div>
+                                        </div >
                                         <Button variant="outline" size="sm" onClick={() => {
                                             alert("Facebook App ID가 설정되지 않아 실제 연결은 되지 않습니다. (구현 완료)");
                                             // In real implementation: call useInstagram().login()
                                         }}>
                                             연결하기
                                         </Button>
-                                    </div>
-                                </div>
+                                    </div >
+                                </div >
 
                                 <div className="space-y-4 pt-4 border-t">
                                     <h3 className="text-lg font-semibold">예상 단가표 (Rate Card)</h3>
@@ -2809,9 +2882,15 @@ function InfluencerDashboardContent() {
                                     variant="outline"
                                     className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
                                     onClick={async () => {
-                                        if (confirm("정말로 브랜드 계정으로 전환하시겠습니까?")) {
-                                            await switchRole('brand');
-                                        }
+                                        setConfirmDialog({
+                                            open: true,
+                                            title: "계정 유형 전환",
+                                            description: "브랜드 계정으로 전환하시겠습니까? 계정 유형을 변경하면 브랜드 전용 대시보드를 사용하게 됩니다.",
+                                            onConfirm: async () => {
+                                                await switchRole('brand');
+                                            },
+                                            variant: "destructive"
+                                        })
                                     }}
                                 >
                                     브랜드 계정으로 전환하기
@@ -3081,6 +3160,81 @@ function InfluencerDashboardContent() {
 
 
 
+
+    const handleSubmitApplication = async () => {
+        if (!instagramHandle || !motivation || !contentPlan) {
+            toast.error("활동 계정, 지원 동기, 콘텐츠 제작 계획은 필수 입력 항목입니다.")
+            return
+        }
+
+        const effectiveCreatorId = effectiveUserId
+
+        if ((user?.type === 'agency' || user?.type === 'mcn') && !effectiveCreatorId) {
+            toast.error("지원을 대행할 크리에이터를 선택해주세요.")
+            return
+        }
+
+        if (!selectedCampaign) return
+
+        setIsApplying(true)
+        try {
+            // Upload Insight File
+            let insightUrl = null
+            if (insightFile) {
+                const fileExt = insightFile.name.split('.').pop()
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+                const filePath = `insights/${fileName}`
+                const { error: uploadError } = await supabase.storage.from('campaigns').upload(filePath, insightFile)
+                if (!uploadError) {
+                    const { data } = supabase.storage.from('campaigns').getPublicUrl(filePath)
+                    insightUrl = data.publicUrl
+                }
+            }
+
+            const priceOffer = desiredCost ? parseInt(desiredCost.replace(/[^0-9]/g, '')) : undefined
+            const pLinks = portfolioLinks.split('\n').map(l => l.trim()).filter(Boolean)
+
+            await addProposal({
+                campaignId: selectedCampaign.id,
+                influencerId: effectiveCreatorId, // Explicitly pass for Proxy Mode
+                fromId: effectiveCreatorId!,
+                toId: selectedCampaign.brandId || selectedCampaign.brand_id,
+                message: appealMessage || motivation,
+                status: 'applied',
+                type: 'creator_apply',
+                motivation: motivation,
+                content_plan: contentPlan,
+                portfolioLinks: pLinks,
+                instagramHandle: instagramHandle,
+                insightScreenshot: insightUrl || undefined,
+                priceOffer: priceOffer,
+                dealType: 'ad',
+                date: new Date().toISOString()
+            } as any)
+
+            setIsApplyDialogOpen(false)
+
+            // Cleanup state
+            setTargetCreatorId("")
+            setAppealMessage("")
+            setDesiredCost("")
+            setMotivation("")
+            setContentPlan("")
+            setPortfolioLinks("")
+            setInsightFile(null)
+
+            await refreshData()
+            toast.success("지원서가 성공적으로 발송되었습니다!")
+            handleOpenDetails(null, 'campaign')
+
+        } catch (e: any) {
+            console.error("Application Error:", e)
+            toast.error(`지원 중 오류가 발생했습니다: ${e.message}`)
+        } finally {
+            setIsApplying(false)
+        }
+    }
+
     const handleApplyClick = (campaign: any) => {
         setSelectedCampaign(campaign)
         setAppealMessage("") // Reset general message
@@ -3105,108 +3259,50 @@ function InfluencerDashboardContent() {
 
     const handleDownloadContract = () => {
         if (!chatProposal?.contract_content) {
-            alert("계약서 내용이 없습니다.")
+            toast.error("계약서 내용이 없습니다.")
             return
         }
 
         const contractText = chatProposal.contract_content
         const win = window.open('', '', 'width=800,height=600')
         win?.document.write(`
-                            <html>
-                                <head>
-                                    <title>표준 광고 협업 계약서</title>
-                                    <style>
-                                        body {font - family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; }
-                                        h1 {text - align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-                                        pre {white - space: pre-wrap; font-family: inherit; }
-                                        .signature-section {margin - top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-                                        .sign-box {width: 45%; border-top: 1px solid #333; padding-top: 10px; }
-                                        .sign-img {max - height: 50px; margin-top: 10px; }
-                                    </style>
-                                </head>
-                                <body>
-                                    <h1>표준 광고 협업 계약서</h1>
-                                    <pre>${contractText}</pre>
+                        <html>
+                            <head>
+                                <title>표준 광고 협업 계약서</title>
+                                <style>
+                                    body {font - family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; }
+                                    h1 {text - align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+                                    pre {white - space: pre-wrap; font-family: inherit; }
+                                    .signature-section {margin - top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+                                    .sign-box {width: 45%; border-top: 1px solid #333; padding-top: 10px; }
+                                    .sign-img {max - height: 50px; margin-top: 10px; }
+                                </style>
+                            </head>
+                            <body>
+                                <h1>표준 광고 협업 계약서</h1>
+                                <pre>${contractText}</pre>
 
-                                    <div class="signature-section">
-                                        <div class="sign-box">
-                                            <p><strong>갑 (브랜드):</strong> ${chatProposal?.brand_name || 'CreadyPick'}</p>
-                                            ${chatProposal?.brand_signature ? `<img src="${chatProposal.brand_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
-                                            <p><small>${chatProposal?.brand_signed_at ? new Date(chatProposal.brand_signed_at).toLocaleDateString() : ''}</small></p>
-                                        </div>
-                                        <div class="sign-box">
-                                            <p><strong>을 (크리에이터):</strong> ${chatProposal?.influencer_name || user?.name || 'Creator'}</p>
-                                            ${chatProposal?.influencer_signature ? `<img src="${chatProposal.influencer_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
-                                            <p><small>${chatProposal?.influencer_signed_at ? new Date(chatProposal.influencer_signed_at).toLocaleDateString() : ''}</small></p>
-                                        </div>
+                                <div class="signature-section">
+                                    <div class="sign-box">
+                                        <p><strong>갑 (브랜드):</strong> ${chatProposal?.brand_name || 'CreadyPick'}</p>
+                                        ${chatProposal?.brand_signature ? `<img src="${chatProposal.brand_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                                        <p><small>${chatProposal?.brand_signed_at ? new Date(chatProposal.brand_signed_at).toLocaleDateString() : ''}</small></p>
                                     </div>
-                                    <script>
-                                        window.onload = function() {window.print(); window.close(); }
-                                    </script>
-                                </body>
-                            </html>
-                            `)
+                                    <div class="sign-box">
+                                        <p><strong>을 (크리에이터):</strong> ${chatProposal?.influencer_name || user?.name || 'Creator'}</p>
+                                        ${chatProposal?.influencer_signature ? `<img src="${chatProposal.influencer_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                                        <p><small>${chatProposal?.influencer_signed_at ? new Date(chatProposal.influencer_signed_at).toLocaleDateString() : ''}</small></p>
+                                    </div>
+                                </div>
+                                <script>
+                                    window.onload = function() {window.print(); window.close(); }
+                                </script>
+                            </body>
+                        </html>
+                        `)
         win?.document.close()
     }
-    const handleSubmitApplication = async () => {
-        if (!instagramHandle || !motivation || !contentPlan) {
-            alert("활동 계정, 지원 동기, 콘텐츠 제작 계획은 필수 입력 항목입니다.")
-            return
-        }
 
-        setIsApplying(true)
-        try {
-            const { createClient } = await import('@/lib/supabase/client') // Client-side upload
-
-            let insightUrl = null;
-            if (insightFile) {
-                const supabase = createClient()
-                const fileExt = insightFile.name.split('.').pop()
-                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-                const filePath = `insights/${fileName}`
-
-                const { error: uploadError } = await supabase.storage
-                    .from('campaigns')
-                    .upload(filePath, insightFile)
-
-                if (uploadError) {
-                    throw new Error(`이미지 업로드 실패: ${uploadError.message}`)
-                }
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('campaigns')
-                    .getPublicUrl(filePath)
-
-                insightUrl = publicUrl
-            }
-
-            const priceOffer = desiredCost ? parseInt(desiredCost.replace(/[^0-9]/g, '')) : undefined
-            const pLinks = portfolioLinks.split('\n').map(l => l.trim()).filter(Boolean)
-
-            // Use addProposal from PlatformProvider instead of server action
-            await addProposal({
-                campaignId: selectedCampaign.id,
-                message: appealMessage,
-                motivation: motivation,
-                contentPlan: contentPlan,
-                portfolioLinks: pLinks,
-                instagramHandle: instagramHandle,
-                insightScreenshot: insightUrl || undefined,
-                priceOffer: priceOffer,
-                type: 'creator_apply',
-                status: 'offered'
-            })
-
-            alert("지원서가 성공적으로 발송되었습니다!")
-            setIsApplyDialogOpen(false)
-
-        } catch (error: any) {
-            console.error("Application error:", error)
-            alert(`지원 중 오류가 발생했습니다: ${error.message}`)
-        } finally {
-            setIsApplying(false)
-        }
-    }
 
 
     if (!displayUser || isLoading) {
@@ -3297,16 +3393,18 @@ function InfluencerDashboardContent() {
                                             <Bell className="mr-2 h-4 w-4" /> 알림
                                         </Button>
                                         <div className="my-2 border-t" />
-                                        <Button
-                                            variant={currentView === "settings" ? "secondary" : "ghost"}
-                                            className="w-full justify-start"
-                                            onClick={() => {
-                                                setCurrentView("settings")
-                                                setIsMobileSidebarOpen(false)
-                                            }}
-                                        >
-                                            <Settings className="mr-2 h-4 w-4" /> 프로필 관리
-                                        </Button>
+                                        {(!isMCN || isProxyMode) && (
+                                            <Button
+                                                variant={currentView === "settings" ? "secondary" : "ghost"}
+                                                className="w-full justify-start"
+                                                onClick={() => {
+                                                    setCurrentView("settings")
+                                                    setIsMobileSidebarOpen(false)
+                                                }}
+                                            >
+                                                <Settings className="mr-2 h-4 w-4" /> 프로필 관리
+                                            </Button>
+                                        )}
                                     </nav>
                                 </div>
                             </SheetContent>
@@ -3364,18 +3462,58 @@ function InfluencerDashboardContent() {
                                 <Bell className="mr-2 h-4 w-4" /> 알림
                             </Button>
                             <div className="my-2 border-t" />
-                            <Button
-                                variant={currentView === "settings" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("settings")}
-                            >
-                                <Settings className="mr-2 h-4 w-4" /> 프로필 관리
-                            </Button>
+                            {(!isMCN || isProxyMode) && (
+                                <Button
+                                    variant={currentView === "settings" ? "secondary" : "ghost"}
+                                    className="w-full justify-start"
+                                    onClick={() => setCurrentView("settings")}
+                                >
+                                    <Settings className="mr-2 h-4 w-4" /> 프로필 관리
+                                </Button>
+                            )}
+
                         </nav>
+
+                        {/* MCN Management Tools (Sidebar) */}
+                        {isMCN && (
+                            <div className="p-4 space-y-6 overflow-y-auto border-t">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Building2 className="h-4 w-4 text-primary" />
+                                    <h4 className="font-bold text-sm">MCN 관리</h4>
+                                </div>
+
+                                <TeamStatistics />
+                                {/* Compact versions or full cards - Scrollable sidebar allows vertical flow */}
+                                <div className="space-y-4">
+                                    <TeamMembersCard />
+                                    <InviteLinkGenerator />
+                                </div>
+                            </div>
+                        )}
+
                     </aside>
 
                     {/* Main Content */}
-                    {renderContent()}
+                    {isMCN && !isProxyMode ? (
+                        /* MCN 본인 모드: 크리에이터 기능 차단 */
+                        <div className="flex-1 p-8 pt-0">
+                            <Card className="p-12 text-center bg-muted/20 border-dashed">
+                                <UsersIcon className="h-20 w-20 mx-auto mb-6 text-muted-foreground/40" />
+                                <h2 className="text-3xl font-bold mb-3">
+                                    소속 크리에이터를 선택해주세요
+                                </h2>
+                                <p className="text-muted-foreground text-lg mb-2">
+                                    헤더에서 관리할 크리에이터를 선택하시면
+                                </p>
+                                <p className="text-muted-foreground text-lg">
+                                    해당 크리에이터의 모먼트와 협업을 관리할 수 있습니다
+                                </p>
+                            </Card>
+                        </div>
+                    ) : (
+                        /* 일반 크리에이터 OR 프록시 모드: 정상 표시 */
+                        renderContent()
+                    )}
 
                     {/* Render the Dialog */}
                     {/* AI Plan Modal */}
@@ -3396,6 +3534,30 @@ function InfluencerDashboardContent() {
                     <ApplyDialog
                         open={isApplyDialogOpen}
                         onOpenChange={setIsApplyDialogOpen}
+                        selectedCampaign={selectedCampaign}
+                        appealMessage={appealMessage}
+                        setAppealMessage={setAppealMessage}
+                        desiredCost={desiredCost}
+                        setDesiredCost={setDesiredCost}
+                        motivation={motivation}
+                        setMotivation={setMotivation}
+                        contentPlan={contentPlan}
+                        setContentPlan={setContentPlan}
+                        portfolioLinks={portfolioLinks}
+                        setPortfolioLinks={setPortfolioLinks}
+                        instagramHandle={instagramHandle}
+                        setInstagramHandle={setInstagramHandle}
+                        insightFile={insightFile}
+                        setInsightFile={setInsightFile}
+                        onSubmit={handleSubmitApplication}
+                        isApplying={false} // Todo: Add state
+                        onClose={() => setIsApplyDialogOpen(false)}
+                        onGenerateAIPlan={handleGenerateAIPlan}
+                        isAIPlanning={isAIPlanning}
+                        // Proxy Props
+                        targetCreatorId={targetCreatorId}
+                        setTargetCreatorId={setTargetCreatorId}
+                        teamMembers={teamMembers}
                     />
 
                     {/* Workspace Dialog (Mobile & Desktop Unified) */}
@@ -3420,10 +3582,16 @@ function InfluencerDashboardContent() {
                         router.push(`/creator/edit/${id}`);
                     }}
                     onDelete={(id) => {
-                        if (confirm("정말 이 모먼트를 삭제하시겠습니까? 복구할 수 없습니다.")) {
-                            deleteEvent(id);
-                            setIsDetailsModalOpen(false);
-                        }
+                        setConfirmDialog({
+                            open: true,
+                            title: "모먼트 삭제",
+                            description: "정말 이 모먼트를 삭제하시겠습니까? 복구할 수 없습니다.",
+                            onConfirm: async () => {
+                                await deleteEvent(id);
+                                setIsDetailsModalOpen(false);
+                            },
+                            variant: "destructive"
+                        })
                     }}
                 />
 

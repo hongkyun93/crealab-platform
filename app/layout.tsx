@@ -46,6 +46,8 @@ export const metadata: Metadata = {
 
 import { createClient } from "@/lib/supabase/server";
 
+import { Toaster } from "@/components/ui/sonner";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -70,6 +72,7 @@ export default async function RootLayout({
           >
             {children}
             <SiteFooter />
+            <Toaster />
           </ThemeProvider>
         </UnifiedProvider>
       </body>

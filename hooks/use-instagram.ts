@@ -31,7 +31,7 @@ export function useInstagram() {
         };
 
         (function (d, s, id) {
-            var js: any, fjs: any = d.getElementsByTagName(s)[0];
+            let js: any, fjs: any = d.getElementsByTagName(s)[0];
             if (d.getElementById(id)) return;
             js = d.createElement(s); js.id = id;
             js.src = "https://connect.facebook.net/en_US/sdk.js";

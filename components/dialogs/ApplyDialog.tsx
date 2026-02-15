@@ -13,6 +13,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Send, Sparkles } from "lucide-react"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
 interface ApplyDialogProps {
     open: boolean
@@ -37,6 +44,10 @@ interface ApplyDialogProps {
     onClose: () => void
     onGenerateAIPlan: (campaign: any) => void
     isAIPlanning: boolean
+    // Agency/MCN Support
+    targetCreatorId?: string
+    setTargetCreatorId?: (val: string) => void
+    teamMembers?: any[]
 }
 
 export function ApplyDialog({
@@ -61,7 +72,10 @@ export function ApplyDialog({
     isApplying,
     onClose,
     onGenerateAIPlan,
-    isAIPlanning
+    isAIPlanning,
+    targetCreatorId,
+    setTargetCreatorId,
+    teamMembers = []
 }: ApplyDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -73,6 +87,24 @@ export function ApplyDialog({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+                    {/* Agency/MCN Creator Selection */}
+                    {teamMembers && teamMembers.length > 0 && setTargetCreatorId && (
+                        <div className="space-y-2 pb-2 border-b">
+                            <Label htmlFor="creator_select" className="text-purple-600 font-bold">크리에이터 선택 (대리 지원)</Label>
+                            <Select value={targetCreatorId} onValueChange={setTargetCreatorId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="지원을 대행할 크리에이터를 선택하세요" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {teamMembers.map((member) => (
+                                        <SelectItem key={member.user_id || member.id} value={member.user_id || member.id}>
+                                            {member.name || member.email}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <Label htmlFor="handle">활동 계정 (인스타그램 ID) <span className="text-red-500">*</span></Label>
                         <Input

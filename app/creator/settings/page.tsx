@@ -8,14 +8,39 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
-import { useEffect, useState } from "react"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { useRef, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/providers/auth-provider"
+import { toast } from "sonner"
 import { AvatarUpload } from "@/components/ui/avatar-upload"
+import { Loader2 } from "lucide-react"
+
+import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
 
 export default function CreatorSettingsPage() {
-    const { user, updateUser } = usePlatform()
+    // MCN Logic: Access Control
+    const { effectiveUser, isProxyMode, actualUser } = useEffectiveUser()
+    const { user, updateUser, isLoading } = useUnifiedProvider() // Destructure isLoading
     const router = useRouter()
+
+    // Determine if user is MCN/Agency
+    const isMCN = actualUser?.type === 'mcn' || actualUser?.type === 'agency'
+
+    // Redirect or Block if MCN is in Own Mode
+    useEffect(() => {
+        if (!isLoading && isMCN && !isProxyMode) {
+            router.push('/creator') // Redirect to dashboard to select a creator
+        }
+    }, [isMCN, isProxyMode, router, isLoading])
+
+    if (isLoading) {
+        return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+    }
+
+    if (isMCN && !isProxyMode) {
+        return null // Don't render content while redirecting
+    }
 
     const [name, setName] = useState("")
     const [handle, setHandle] = useState("")
@@ -39,11 +64,11 @@ export default function CreatorSettingsPage() {
                 handle, // Assuming handle is editable for internal use or display
                 bio
             })
-            alert("프로필 정보가 저장되었습니다.")
+            toast.success("프로필 정보가 저장되었습니다.")
             router.push("/creator")
         } catch (error) {
             console.error("Failed to save creator settings:", error)
-            alert("저장에 실패했습니다. 다시 시도해주세요.")
+            toast.error("저장에 실패했습니다. 다시 시도해주세요.")
         }
     }
 
@@ -123,6 +148,38 @@ export default function CreatorSettingsPage() {
                                 placeholder="브랜드에게 나를 어필할 수 있는 짧은 소개를 적어주세요."
                                 className="min-h-[120px]"
                             />
+                        </div>
+
+                        <div className="pt-4 border-t">
+                            <h3 className="text-sm font-medium mb-4 text-muted-foreground">계정 정보</h3>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">이메일</Label>
+                                    <Input
+                                        id="email"
+                                        value={user?.email || ""}
+                                        disabled
+                                        className="bg-muted"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        이메일은 변경할 수 없습니다.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="role">역할</Label>
+                                    <Input
+                                        id="role"
+                                        value={user?.type === 'brand' ? '브랜드' : user?.type === 'mcn' ? 'MCN' : user?.type === 'agency' ? '에이전시' : '크리에이터'}
+                                        disabled
+                                        className="bg-muted"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        역할은 변경할 수 없습니다.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                     <CardFooter className="flex justify-end gap-2">

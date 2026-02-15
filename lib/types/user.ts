@@ -1,19 +1,23 @@
 // User and Authentication Types
-export type UserType = "brand" | "influencer" | "admin"
+export type UserType = 'brand' | 'creator' | 'admin' | 'agency' | 'mcn'
 
 export interface User {
     id: string
     name: string
+    email?: string
     type: UserType
+    role?: string
     avatar?: string
     bio?: string
-    tags?: string[]
     website?: string
     handle?: string
     followers?: number
+    tags?: string[]
     phone?: string
     address?: string
     isMock?: boolean
+    teamId?: string
+    onboardingCompleted?: boolean // Track if user completed initial onboarding
 
     // Rate Card Fields (for influencers)
     priceVideo?: number
@@ -23,14 +27,4 @@ export interface User {
     usageRightsPrice?: number
     autoDmMonth?: number
     autoDmPrice?: number
-
-    // Snake case aliases
-    price_video?: number
-    price_feed?: number
-}
-
-export interface AuthState {
-    user: User | null
-    isAuthenticated: boolean
-    isLoading: boolean
 }

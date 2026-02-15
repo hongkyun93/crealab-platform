@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "./auth-provider"
 import type { Message, Notification, SubmissionFeedback } from "@/lib/types"
 
 interface MessageContextType {
@@ -21,7 +21,7 @@ interface MessageContextType {
 const MessageContext = createContext<MessageContextType | undefined>(undefined)
 
 export function MessageProvider({ children, userId }: { children: React.ReactNode, userId?: string }) {
-    const [supabase] = useState(() => createClient())
+    const { supabase } = useAuth()
     const [messages, setMessages] = useState<Message[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [submissionFeedback, setSubmissionFeedback] = useState<SubmissionFeedback[]>([])

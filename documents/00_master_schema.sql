@@ -19,37 +19,38 @@ END $$;
 
 -- 2.1 PROFILES
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL PRIMARY KEY,
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email text,
-  role user_role DEFAULT 'influencer',
   display_name text,
-  handle text,
   avatar_url text,
-  bio text,
-  website text,
+  user_type text DEFAULT 'influencer',
+  role text, -- 'brand', 'creator', 'mcn', 'agency'
   phone text,
-  address text,
+  instagram_handle text,
+  description text,
   is_mock boolean DEFAULT false,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  
+  -- Merged from influencer_details
+  followers_count integer DEFAULT 0,
+  tier text,
+  tags text[] DEFAULT '{}',
+  price_video integer DEFAULT 0, -- Short-form video price
+  price_feed integer DEFAULT 0, -- Feed post price
+  secondary_rights boolean DEFAULT false, -- Secondary usage rights availability
+  usage_rights_month integer DEFAULT 0, -- 2nd usage rights duration (months)
+  usage_rights_price integer DEFAULT 0, -- 2nd usage rights price
+  auto_dm_month integer DEFAULT 0, -- Auto DM duration (months)
+  auto_dm_price integer DEFAULT 0 -- Auto DM price
 );
 
--- 2.2 INFLUENCER DETAILS
-CREATE TABLE IF NOT EXISTS public.influencer_details (
-  id uuid REFERENCES public.profiles(id) PRIMARY KEY,
-  instagram_handle text,
-  followers_count integer,
-  tier text,
-  tags text[],
-  price_video integer, -- Short-form video price
-  price_feed integer, -- Feed post price
-  secondary_rights boolean DEFAULT false, -- Secondary usage rights availability
-  usage_rights_month integer, -- 2nd usage rights duration (months)
-  usage_rights_price integer, -- 2nd usage rights price
-  auto_dm_month integer, -- Auto DM duration (months)
-  auto_dm_price integer, -- Auto DM price
-  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- Ensure user_type exists (for existing tables)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS user_type text DEFAULT 'influencer';
+
+-- DEPRECATED: influencer_details (Merged into profiles)
+-- CREATE TABLE IF NOT EXISTS public.influencer_details ...
+
 
 -- 2.2a INSTAGRAM ACCOUNTS
 CREATE TABLE IF NOT EXISTS public.instagram_accounts (
@@ -63,6 +64,49 @@ CREATE TABLE IF NOT EXISTS public.instagram_accounts (
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- 2.2b TEAMS
+CREATE TABLE IF NOT EXISTS public.teams (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name text NOT NULL,
+  slug text UNIQUE NOT NULL,
+  logo_url text,
+  website text,
+  business_registration_number text,
+  created_by uuid REFERENCES auth.users DEFAULT auth.uid(),
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 2.2c TEAM MEMBERS
+CREATE TABLE IF NOT EXISTS public.team_members (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  team_id uuid REFERENCES public.teams(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  role text DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(team_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON public.team_members(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_user_id ON public.team_members(user_id);
+
+-- Team Invitations
+CREATE TABLE IF NOT EXISTS public.team_invitations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    role TEXT DEFAULT 'member',
+    invited_by UUID REFERENCES public.profiles(id),
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    expires_at TIMESTAMPTZ DEFAULT (now() + interval '7 days'),
+    UNIQUE(team_id, email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_invitations_team_id ON public.team_invitations(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_invitations_email ON public.team_invitations(email);
+CREATE INDEX IF NOT EXISTS idx_team_invitations_status ON public.team_invitations(status);
 
 -- 2.3 LIFE MOMENTS (Influencer Events)
 CREATE TABLE IF NOT EXISTS public.life_moments (
@@ -213,6 +257,63 @@ CREATE TABLE IF NOT EXISTS public.brand_proposals (
   -- Meta
   is_mock boolean DEFAULT false,
   insight_screenshot text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 2.7.5 CAMPAIGN APPLICATIONS (Legacy/Active)
+CREATE TABLE IF NOT EXISTS public.campaign_applications (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  campaign_id uuid REFERENCES public.campaigns(id) NOT NULL,
+  influencer_id uuid REFERENCES public.profiles(id) NOT NULL,
+  
+  message text,
+  price_offer integer,
+  status text DEFAULT 'pending',
+  
+  motivation text,
+  content_plan text,
+  portfolio_links text[],
+  instagram_handle text,
+  insight_screenshot text,
+  
+  -- Logistics
+  shipping_name text,
+  shipping_phone text,
+  shipping_address text,
+  tracking_number text,
+  delivery_status text DEFAULT 'pending',
+
+  -- Contract
+  contract_content TEXT,
+  contract_status TEXT DEFAULT 'none',
+  brand_signature TEXT,
+  influencer_signature TEXT,
+  brand_signed_at TIMESTAMP WITH TIME ZONE,
+  influencer_signed_at TIMESTAMP WITH TIME ZONE,
+
+  -- Conditions
+  condition_product_receipt_date text,
+  condition_plan_sharing_date text,
+  condition_draft_submission_date text,
+  condition_final_submission_date text,
+  condition_upload_date text,
+  condition_maintenance_period text,
+  condition_secondary_usage_period text,
+  brand_condition_confirmed BOOLEAN DEFAULT FALSE,
+  influencer_condition_confirmed BOOLEAN DEFAULT FALSE,
+  special_terms text,
+
+  -- Submission
+  content_submission_url text,
+  content_submission_file_url text,
+  content_submission_status text DEFAULT 'pending',
+  content_submission_date TIMESTAMP WITH TIME ZONE,
+  content_submission_version NUMERIC(3,1) DEFAULT 1.0,
+  content_submission_url_2 text,
+  content_submission_file_url_2 text,
+  content_submission_status_2 text DEFAULT 'pending',
+  content_submission_date_2 TIMESTAMP WITH TIME ZONE,
+  
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -408,22 +509,36 @@ CREATE TABLE IF NOT EXISTS public.favorites (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
+SECURITY DEFINER SET search_path = public, extensions
 AS $$
 DECLARE
-  preferred_role user_role;
+  preferred_role text; -- Changed from user_role to text
+  new_team_id uuid;
+  base_slug text;
+  final_slug text;
+  counter int;
+  user_name text;
 BEGIN
-  IF new.raw_user_meta_data->>'role_type' = 'brand' THEN
+  -- 1. Determine Role
+  -- Check metadata 'role_type' or 'role' (fallback)
+  IF new.raw_user_meta_data->>'role_type' = 'brand' OR new.raw_user_meta_data->>'role' = 'brand' THEN
     preferred_role := 'brand';
   ELSE
     preferred_role := 'influencer';
   END IF;
 
+  -- 2. Determine Name
+  user_name := COALESCE(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1));
+  IF user_name IS NULL OR user_name = '' THEN
+      user_name := 'User';
+  END IF;
+
+  -- 3. Insert Profile
   INSERT INTO public.profiles (id, email, display_name, role)
   VALUES (
     new.id, 
     new.email, 
-    COALESCE(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)), 
+    user_name, 
     preferred_role
   )
   ON CONFLICT (id) DO UPDATE
@@ -431,7 +546,44 @@ BEGIN
     email = EXCLUDED.email,
     display_name = COALESCE(EXCLUDED.display_name, public.profiles.display_name);
     
+  -- 4. Create Team (For everyone)
+    
+    -- Generate Slug
+    base_slug := lower(regexp_replace(user_name, '[^a-zA-Z0-9]', '', 'g'));
+    IF base_slug IS NULL OR base_slug = '' THEN base_slug := 'team'; END IF;
+    
+    final_slug := base_slug;
+    counter := 1;
+    
+    -- Ensure unique slug
+    WHILE EXISTS (SELECT 1 FROM public.teams WHERE slug = final_slug) LOOP
+        final_slug := base_slug || counter;
+        counter := counter + 1;
+    END LOOP;
+
+    -- Insert Team
+    INSERT INTO public.teams (name, slug, logo_url)
+    VALUES (
+        user_name,
+        final_slug,
+        new.raw_user_meta_data->>'avatar_url'
+    )
+    RETURNING id INTO new_team_id;
+
+    -- Insert Team Member (Owner)
+    INSERT INTO public.team_members (team_id, user_id, role)
+    VALUES (
+        new_team_id,
+        new.id,
+        'owner'
+    );
+
   RETURN new;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Log error (visible in Supabase logs) then raise
+        RAISE WARNING 'Error in handle_new_user: %', SQLERRM;
+        RAISE; -- Re-raise to fail the transaction (signup failure is better than partial state)
 END;
 $$;
 
@@ -439,6 +591,27 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- Trigger for Manual Team Creation (auto-add owner)
+CREATE OR REPLACE FUNCTION public.handle_new_team()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL THEN
+      INSERT INTO public.team_members (team_id, user_id, role)
+      VALUES (new.id, auth.uid(), 'owner')
+      ON CONFLICT (team_id, user_id) DO NOTHING;
+  END IF;
+  RETURN new;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_team_created ON public.teams;
+CREATE TRIGGER on_team_created
+  AFTER INSERT ON public.teams
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_team();
 
 
 -- ==========================================
@@ -459,73 +632,235 @@ ALTER TABLE public.submission_feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.instagram_accounts ENABLE ROW LEVEL SECURITY;
 
--- 4.1 Profiles & Details
-CREATE POLICY "Public profiles" ON profiles FOR SELECT USING (true);
-CREATE POLICY "Self insert profiles" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Self update profiles" ON profiles FOR UPDATE USING (auth.uid() = id);
+-- 4.1a Teams
+ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public influencer_details" ON influencer_details FOR SELECT USING (true);
-CREATE POLICY "Self insert details" ON influencer_details FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Self update details" ON influencer_details FOR UPDATE USING (auth.uid() = id);
+-- Helper function to get user's team IDs without RLS recursion
+CREATE OR REPLACE FUNCTION public.get_user_team_ids(target_user_id UUID)
+RETURNS TABLE(team_id UUID)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT team_id FROM public.team_members WHERE user_id = target_user_id;
+$$;
 
-CREATE POLICY "Self view instagram" ON instagram_accounts FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Self manage instagram" ON instagram_accounts FOR ALL USING (auth.uid() = user_id);
+-- Helper function to check if user is owner/admin of a team (prevents RLS recursion)
+CREATE OR REPLACE FUNCTION public.is_team_owner_or_admin(target_team_id UUID, target_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.team_members 
+    WHERE team_id = target_team_id 
+    AND user_id = target_user_id 
+    AND role IN ('owner', 'admin')
+  );
+$$;
+
+DROP POLICY IF EXISTS "Members can view their teams" ON public.teams;
+CREATE POLICY "Members can view their teams" ON public.teams
+  FOR SELECT USING (
+    id IN (SELECT public.get_user_team_ids(auth.uid()))
+    OR
+    created_by = auth.uid()
+  );
+
+DROP POLICY IF EXISTS "Authenticated users can create teams" ON public.teams;
+CREATE POLICY "Authenticated users can create teams" ON public.teams 
+FOR INSERT 
+WITH CHECK (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Owners can update their teams" ON public.teams;
+CREATE POLICY "Owners can update their teams" ON public.teams
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.team_members 
+      WHERE team_id = teams.id 
+      AND user_id = auth.uid()
+      AND role = 'owner'
+    )
+  );
+
+DROP POLICY IF EXISTS "Members can view team members" ON public.team_members;
+CREATE POLICY "Members can view team members" ON public.team_members
+  FOR SELECT USING (
+    -- Direct check: user can see team_members rows for teams they belong to
+    team_id IN (SELECT public.get_user_team_ids(auth.uid()))
+  );
+
+DROP POLICY IF EXISTS "Owners and admins can add members" ON public.team_members;
+CREATE POLICY "Owners and admins can add members" ON public.team_members
+  FOR INSERT WITH CHECK (
+    public.is_team_owner_or_admin(team_id, auth.uid())
+  );
+
+-- Team Invitations RLS
+ALTER TABLE public.team_invitations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Members view team invitations" ON public.team_invitations;
+CREATE POLICY "Members view team invitations" ON public.team_invitations
+  FOR SELECT USING (
+    team_id IN (SELECT public.get_user_team_ids(auth.uid()))
+  );
+
+DROP POLICY IF EXISTS "Managers create invitations" ON public.team_invitations;
+CREATE POLICY "Managers create invitations" ON public.team_invitations
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_id = team_invitations.team_id
+      AND user_id = auth.uid()
+      AND role IN ('owner', 'manager')
+    )
+  );
+
+DROP POLICY IF EXISTS "Managers update invitations" ON public.team_invitations;
+CREATE POLICY "Managers update invitations" ON public.team_invitations
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_id = team_invitations.team_id
+      AND user_id = auth.uid()
+      AND role IN ('owner', 'manager')
+    )
+  );
+
+DROP POLICY IF EXISTS "Managers delete invitations" ON public.team_invitations;
+CREATE POLICY "Managers delete invitations" ON public.team_invitations
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_id = team_invitations.team_id
+      AND user_id = auth.uid()
+      AND role IN ('owner', 'manager')
+    )
+  );
+
+DROP POLICY IF EXISTS "Public profiles" ON public.profiles;
+CREATE POLICY "Public profiles" ON public.profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Self insert profiles" ON public.profiles;
+CREATE POLICY "Self insert profiles" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Self update profiles" ON public.profiles;
+CREATE POLICY "Self update profiles" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Public influencer_details" ON public.influencer_details;
+CREATE POLICY "Public influencer_details" ON public.influencer_details FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Self insert details" ON public.influencer_details;
+CREATE POLICY "Self insert details" ON public.influencer_details FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Self update details" ON public.influencer_details;
+CREATE POLICY "Self update details" ON public.influencer_details FOR UPDATE USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Self view instagram" ON public.instagram_accounts;
+CREATE POLICY "Self view instagram" ON public.instagram_accounts FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Self manage instagram" ON public.instagram_accounts;
+CREATE POLICY "Self manage instagram" ON public.instagram_accounts FOR ALL USING (auth.uid() = user_id);
 
 -- 4.2 Brand Products
-CREATE POLICY "Public brand_products" ON brand_products FOR SELECT USING (true);
-CREATE POLICY "Brand manage products" ON brand_products FOR ALL USING (auth.uid() = brand_id);
+DROP POLICY IF EXISTS "Public brand_products" ON public.brand_products;
+CREATE POLICY "Public brand_products" ON public.brand_products FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Brand manage products" ON public.brand_products;
+CREATE POLICY "Brand manage products" ON public.brand_products FOR ALL USING (auth.uid() = brand_id);
 
 -- 4.3 Life Moments
-CREATE POLICY "Public life_moments" ON life_moments FOR SELECT USING (is_private = false OR auth.uid() = influencer_id);
-CREATE POLICY "Influencer manage moments" ON life_moments FOR ALL USING (auth.uid() = influencer_id);
+DROP POLICY IF EXISTS "Public life_moments" ON public.life_moments;
+CREATE POLICY "Public life_moments" ON public.life_moments FOR SELECT USING (is_private = false OR auth.uid() = influencer_id);
+
+DROP POLICY IF EXISTS "Influencer manage moments" ON public.life_moments;
+CREATE POLICY "Influencer manage moments" ON public.life_moments FOR ALL USING (auth.uid() = influencer_id);
 
 -- 4.4 Campaigns
-CREATE POLICY "Public campaigns" ON campaigns FOR SELECT USING (true);
-CREATE POLICY "Brand manage campaigns" ON campaigns FOR ALL USING (auth.uid() = brand_id);
+DROP POLICY IF EXISTS "Public campaigns" ON public.campaigns;
+CREATE POLICY "Public campaigns" ON public.campaigns FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Brand manage campaigns" ON public.campaigns;
+CREATE POLICY "Brand manage campaigns" ON public.campaigns FOR ALL USING (auth.uid() = brand_id);
 
 -- 4.5 Proposals (Unified Logic: Involved Parties Only)
 -- Brand Proposals
-CREATE POLICY "Brand proposals view" ON brand_proposals FOR SELECT USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
-CREATE POLICY "Brand proposals insert" ON brand_proposals FOR INSERT WITH CHECK (auth.uid() = brand_id OR auth.uid() = influencer_id);
-CREATE POLICY "Brand proposals update" ON brand_proposals FOR UPDATE USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
+DROP POLICY IF EXISTS "Brand proposals view" ON public.brand_proposals;
+CREATE POLICY "Brand proposals view" ON public.brand_proposals FOR SELECT USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
+
+DROP POLICY IF EXISTS "Brand proposals insert" ON public.brand_proposals;
+CREATE POLICY "Brand proposals insert" ON public.brand_proposals FOR INSERT WITH CHECK (auth.uid() = brand_id OR auth.uid() = influencer_id);
+
+DROP POLICY IF EXISTS "Brand proposals update" ON public.brand_proposals;
+CREATE POLICY "Brand proposals update" ON public.brand_proposals FOR UPDATE USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
 
 -- Campaign Proposals
-CREATE POLICY "Campaign proposals view" ON campaign_proposals FOR SELECT USING (
+DROP POLICY IF EXISTS "Campaign proposals view" ON public.campaign_proposals;
+CREATE POLICY "Campaign proposals view" ON public.campaign_proposals FOR SELECT USING (
     auth.uid() = influencer_id OR 
     EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = campaign_proposals.campaign_id AND c.brand_id = auth.uid())
 );
-CREATE POLICY "Campaign proposals insert" ON campaign_proposals FOR INSERT WITH CHECK (auth.uid() = influencer_id);
-CREATE POLICY "Campaign proposals update" ON campaign_proposals FOR UPDATE USING (
+
+DROP POLICY IF EXISTS "Campaign proposals insert" ON public.campaign_proposals;
+CREATE POLICY "Campaign proposals insert" ON public.campaign_proposals FOR INSERT WITH CHECK (auth.uid() = influencer_id);
+
+DROP POLICY IF EXISTS "Campaign proposals update" ON public.campaign_proposals;
+CREATE POLICY "Campaign proposals update" ON public.campaign_proposals FOR UPDATE USING (
     auth.uid() = influencer_id OR 
     EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = campaign_proposals.campaign_id AND c.brand_id = auth.uid())
 );
 
 -- Moment Proposals (Brand initiates, Influencer accepts)
-CREATE POLICY "Moment proposals view" ON moment_proposals FOR SELECT USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
-CREATE POLICY "Moment proposals insert" ON moment_proposals FOR INSERT WITH CHECK (auth.uid() = brand_id);
-CREATE POLICY "Moment proposals update" ON moment_proposals FOR UPDATE USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
-CREATE POLICY "Moment proposals delete" ON moment_proposals FOR DELETE USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
+DROP POLICY IF EXISTS "Moment proposals view" ON public.moment_proposals;
+CREATE POLICY "Moment proposals view" ON public.moment_proposals FOR SELECT USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
+
+DROP POLICY IF EXISTS "Moment proposals insert" ON public.moment_proposals;
+CREATE POLICY "Moment proposals insert" ON public.moment_proposals FOR INSERT WITH CHECK (auth.uid() = brand_id);
+
+DROP POLICY IF EXISTS "Moment proposals update" ON public.moment_proposals;
+CREATE POLICY "Moment proposals update" ON public.moment_proposals FOR UPDATE USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
+
+DROP POLICY IF EXISTS "Moment proposals delete" ON public.moment_proposals;
+CREATE POLICY "Moment proposals delete" ON public.moment_proposals FOR DELETE USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
 
 -- 4.6 Messages & Notifications
-CREATE POLICY "Message view" ON messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
-CREATE POLICY "Message insert" ON messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
-CREATE POLICY "Message update" ON messages FOR UPDATE USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+DROP POLICY IF EXISTS "Message view" ON public.messages;
+CREATE POLICY "Message view" ON public.messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
-CREATE POLICY "Notification view" ON notifications FOR SELECT USING (auth.uid() = recipient_id);
-CREATE POLICY "Notification insert" ON notifications FOR INSERT WITH CHECK (true); -- System/Triggers invoke this
-CREATE POLICY "Notification update" ON notifications FOR UPDATE USING (auth.uid() = recipient_id);
+DROP POLICY IF EXISTS "Message insert" ON public.messages;
+CREATE POLICY "Message insert" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
+
+DROP POLICY IF EXISTS "Message update" ON public.messages;
+CREATE POLICY "Message update" ON public.messages FOR UPDATE USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+DROP POLICY IF EXISTS "Notification view" ON public.notifications;
+CREATE POLICY "Notification view" ON public.notifications FOR SELECT USING (auth.uid() = recipient_id);
+
+DROP POLICY IF EXISTS "Notification insert" ON public.notifications;
+CREATE POLICY "Notification insert" ON public.notifications FOR INSERT WITH CHECK (true); -- System/Triggers invoke this
+
+DROP POLICY IF EXISTS "Notification update" ON public.notifications;
+CREATE POLICY "Notification update" ON public.notifications FOR UPDATE USING (auth.uid() = recipient_id);
 
 -- 4.7 Feedback
-CREATE POLICY "Feedback view" ON submission_feedback FOR SELECT USING (
+DROP POLICY IF EXISTS "Feedback view" ON public.submission_feedback;
+CREATE POLICY "Feedback view" ON public.submission_feedback FOR SELECT USING (
     sender_id = auth.uid() OR
     EXISTS (SELECT 1 FROM public.campaign_proposals p WHERE p.id = proposal_id AND (p.influencer_id = auth.uid() OR EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = p.campaign_id AND c.brand_id = auth.uid()))) OR
     EXISTS (SELECT 1 FROM public.brand_proposals bp WHERE bp.id = brand_proposal_id AND (bp.influencer_id = auth.uid() OR bp.brand_id = auth.uid()))
 );
-CREATE POLICY "Feedback insert" ON submission_feedback FOR INSERT WITH CHECK (sender_id = auth.uid());
+
+DROP POLICY IF EXISTS "Feedback insert" ON public.submission_feedback;
+CREATE POLICY "Feedback insert" ON public.submission_feedback FOR INSERT WITH CHECK (sender_id = auth.uid());
 
 -- 4.8 Favorites
-CREATE POLICY "Favorites manage" ON favorites FOR ALL USING (auth.uid() = user_id);
-
+DROP POLICY IF EXISTS "Favorites manage" ON public.favorites;
+CREATE POLICY "Favorites manage" ON public.favorites FOR ALL USING (auth.uid() = user_id);
 
 -- ==========================================
 -- 5. STORAGE BUCKETS
@@ -538,6 +873,7 @@ INSERT INTO storage.buckets (id, name, public) VALUES
 ON CONFLICT (id) DO UPDATE SET public = true;
 
 -- Storage Policies
+-- (Already handled with DO block in previous snippet, ensuring idempotency here too)
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Public Access" ON storage.objects;
     DROP POLICY IF EXISTS "Authenticated Upload" ON storage.objects;
@@ -559,6 +895,23 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
 
 NOTIFY pgrst, 'reload schema';
+
+-- 7. NOTIFICATIONS (Functions for Triggers)
+-- 8.1 CAMPAIGN APPLICATION NOTIFICATION
+CREATE OR REPLACE FUNCTION notify_brand_on_campaign_application()
+RETURNS TRIGGER AS $$
+DECLARE
+    campaign_name TEXT;
+    brand_user_id UUID;
+    influencer_name TEXT;
+BEGIN
+    SELECT title, brand_id INTO campaign_name, brand_user_id
+    FROM campaigns WHERE id = NEW.campaign_id;
+    
+    SELECT display_name INTO influencer_name
+    FROM profiles WHERE id = NEW.influencer_id;
+    
+    INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
     VALUES (
         brand_user_id,
         NEW.influencer_id,
@@ -711,3 +1064,242 @@ CREATE TRIGGER on_message_created
     EXECUTE PROCEDURE notify_user_on_message();
 
 -- End of Master Schema V3.0
+
+-- ==========================================
+-- 8. DATA MIGRATION (Consolidated)
+-- ==========================================
+
+-- 8.1 Migrate Existing Users to Teams (Safe & Idempotent)
+DO $$
+DECLARE
+    user_record RECORD;
+    new_team_id UUID;
+    base_slug TEXT;
+    final_slug TEXT;
+    counter INT;
+    slug_prefix TEXT;
+BEGIN
+    -- Loop through ALL users (Brand & Influencer) who don't have a team yet
+    FOR user_record IN 
+        SELECT * FROM public.profiles 
+        WHERE id NOT IN (SELECT user_id FROM public.team_members)
+    LOOP
+        -- Determine slug prefix based on role
+        IF user_record.role = 'brand' THEN
+            slug_prefix := 'brand';
+        ELSE
+            slug_prefix := 'creator';
+        END IF;
+
+        -- Generate unique slug
+        base_slug := lower(regexp_replace(COALESCE(user_record.display_name, split_part(user_record.email, '@', 1)), '[^a-zA-Z0-9]', '', 'g'));
+        IF base_slug = '' THEN base_slug := slug_prefix; END IF;
+        
+        final_slug := base_slug;
+        counter := 1;
+        
+        WHILE EXISTS (SELECT 1 FROM public.teams WHERE slug = final_slug) LOOP
+            final_slug := base_slug || counter;
+            counter := counter + 1;
+        END LOOP;
+
+        -- Create Team
+        INSERT INTO public.teams (name, slug, logo_url, created_at, updated_at)
+        VALUES (
+            COALESCE(user_record.display_name, 'My Team'),
+            final_slug,
+            user_record.avatar_url,
+            user_record.created_at,
+            user_record.updated_at
+        )
+        RETURNING id INTO new_team_id;
+
+        -- Add Member as Owner
+        INSERT INTO public.team_members (team_id, user_id, role, created_at)
+        VALUES (
+            new_team_id,
+            user_record.id,
+            'owner',
+            user_record.created_at
+        );
+        
+        RAISE NOTICE 'Migrated user to team: % (Role: %)', user_record.email, user_record.role;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ==========================================
+-- 9. AGENCY TEAM SUPPORT MIGRATION
+-- ==========================================
+
+-- 9.1 Add team_id columns to all data tables
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id);
+ALTER TABLE public.brand_products ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id);
+ALTER TABLE public.life_moments ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id);
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS brand_team_id UUID REFERENCES public.teams(id);
+ALTER TABLE public.brand_proposals ADD COLUMN IF NOT EXISTS influencer_team_id UUID REFERENCES public.teams(id);
+ALTER TABLE public.campaign_proposals ADD COLUMN IF NOT EXISTS influencer_team_id UUID REFERENCES public.teams(id);
+ALTER TABLE public.moment_proposals ADD COLUMN IF NOT EXISTS brand_team_id UUID REFERENCES public.teams(id);
+ALTER TABLE public.moment_proposals ADD COLUMN IF NOT EXISTS influencer_team_id UUID REFERENCES public.teams(id);
+
+-- 9.2 Backfill team_id from current owners
+-- Campaigns: brand_id -> team owned by that brand
+UPDATE public.campaigns c
+SET team_id = tm.team_id
+FROM public.team_members tm
+WHERE c.brand_id = tm.user_id 
+  AND tm.role = 'owner'
+  AND c.team_id IS NULL;
+
+-- Products: brand_id -> team owned by that brand
+UPDATE public.brand_products p
+SET team_id = tm.team_id
+FROM public.team_members tm
+WHERE p.brand_id = tm.user_id 
+  AND tm.role = 'owner'
+  AND p.team_id IS NULL;
+
+-- Moments: influencer_id -> team owned by that creator
+UPDATE public.life_moments m
+SET team_id = tm.team_id
+FROM public.team_members tm
+WHERE m.influencer_id = tm.user_id 
+  AND tm.role = 'owner'
+  AND m.team_id IS NULL;
+
+-- Brand Proposals: backfill both sides
+UPDATE public.brand_proposals bp
+SET brand_team_id = btm.team_id,
+    influencer_team_id = itm.team_id
+FROM public.team_members btm, public.team_members itm
+WHERE bp.brand_id = btm.user_id AND btm.role = 'owner'
+  AND bp.influencer_id = itm.user_id AND itm.role = 'owner'
+  AND bp.brand_team_id IS NULL;
+
+-- Campaign Proposals
+UPDATE public.campaign_proposals cp
+SET influencer_team_id = tm.team_id
+FROM public.team_members tm
+WHERE cp.influencer_id = tm.user_id 
+  AND tm.role = 'owner'
+  AND cp.influencer_team_id IS NULL;
+
+-- Moment Proposals
+UPDATE public.moment_proposals mp
+SET brand_team_id = btm.team_id,
+    influencer_team_id = itm.team_id
+FROM public.team_members btm, public.team_members itm
+WHERE mp.brand_id = btm.user_id AND btm.role = 'owner'
+  AND mp.influencer_id = itm.user_id AND itm.role = 'owner'
+  AND mp.brand_team_id IS NULL;
+
+-- 9.3 Update RLS Policies to use Teams
+-- Campaigns
+DROP POLICY IF EXISTS "Brand manage campaigns" ON public.campaigns;
+DROP POLICY IF EXISTS "Team manage campaigns" ON public.campaigns;
+CREATE POLICY "Team manage campaigns" ON public.campaigns FOR ALL USING (
+    team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+-- Products
+DROP POLICY IF EXISTS "Brand manage products" ON public.brand_products;
+DROP POLICY IF EXISTS "Team manage products" ON public.brand_products;
+CREATE POLICY "Team manage products" ON public.brand_products FOR ALL USING (
+    team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+-- Moments
+DROP POLICY IF EXISTS "Influencer manage moments" ON public.life_moments;
+DROP POLICY IF EXISTS "Team manage moments" ON public.life_moments;
+CREATE POLICY "Team manage moments" ON public.life_moments FOR ALL USING (
+    team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+-- Proposals View (keep existing view policies for backward compatibility)
+-- Brand Proposals
+DROP POLICY IF EXISTS "Brand proposals insert" ON public.brand_proposals;
+DROP POLICY IF EXISTS "Team proposals insert" ON public.brand_proposals;
+CREATE POLICY "Team proposals insert" ON public.brand_proposals FOR INSERT WITH CHECK (
+    brand_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()) OR
+    influencer_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "Brand proposals update" ON public.brand_proposals;
+DROP POLICY IF EXISTS "Team proposals update" ON public.brand_proposals;
+CREATE POLICY "Team proposals update" ON public.brand_proposals FOR UPDATE USING (
+    brand_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()) OR
+    influencer_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+-- Campaign Proposals
+DROP POLICY IF EXISTS "Campaign proposals insert" ON public.campaign_proposals;
+DROP POLICY IF EXISTS "Team campaign proposals insert" ON public.campaign_proposals;
+CREATE POLICY "Team campaign proposals insert" ON public.campaign_proposals FOR INSERT WITH CHECK (
+    influencer_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "Campaign proposals update" ON public.campaign_proposals;
+DROP POLICY IF EXISTS "Team campaign proposals update" ON public.campaign_proposals;
+CREATE POLICY "Team campaign proposals update" ON public.campaign_proposals FOR UPDATE USING (
+    influencer_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = campaign_proposals.campaign_id AND c.team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()))
+);
+
+-- Moment Proposals
+DROP POLICY IF EXISTS "Moment proposals insert" ON public.moment_proposals;
+DROP POLICY IF EXISTS "Team moment proposals insert" ON public.moment_proposals;
+CREATE POLICY "Team moment proposals insert" ON public.moment_proposals FOR INSERT WITH CHECK (
+    brand_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "Moment proposals update" ON public.moment_proposals;
+DROP POLICY IF EXISTS "Team moment proposals update" ON public.moment_proposals;
+CREATE POLICY "Team moment proposals update" ON public.moment_proposals FOR UPDATE USING (
+    brand_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()) OR
+    influencer_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "Moment proposals delete" ON public.moment_proposals;
+DROP POLICY IF EXISTS "Team moment proposals delete" ON public.moment_proposals;
+CREATE POLICY "Team moment proposals delete" ON public.moment_proposals FOR DELETE USING (
+    brand_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()) OR
+    influencer_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ==========================================
+-- 11. MCN Proxy Support & Team Permissions
+-- ==========================================
+
+-- 1. Update RLS for life_moments to allow team members to INSERT/UPDATE for their team's influencers
+DROP POLICY IF EXISTS "Influencer manage moments" ON public.life_moments;
+DROP POLICY IF EXISTS "Team manage moments" ON public.life_moments;
+
+-- Allow SELECT for everyone (public moments) or own team's private moments
+CREATE POLICY "Public view moments" ON public.life_moments FOR SELECT USING (
+    is_private = false OR 
+    auth.uid() = influencer_id OR
+    team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()) OR 
+    EXISTS (SELECT 1 FROM public.team_members WHERE user_id = influencer_id AND team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()))
+);
+
+-- Allow INSERT if user is the influencer OR a member of the same team as the influencer
+CREATE POLICY "Team manage moments" ON public.life_moments FOR ALL USING (
+    auth.uid() = influencer_id OR
+    team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+);
+
+-- 2. Update RLS for campaign_applications to allow proxy application
+ALTER TABLE public.campaign_applications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Influencer manage applications" ON public.campaign_applications;
+DROP POLICY IF EXISTS "Team manage applications" ON public.campaign_applications;
+
+CREATE POLICY "Team manage applications" ON public.campaign_applications FOR ALL USING (
+    auth.uid() = applicant_id OR
+    EXISTS (SELECT 1 FROM public.team_members WHERE user_id = applicant_id AND team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()))
+);
+
+NOTIFY pgrst, 'reload schema';

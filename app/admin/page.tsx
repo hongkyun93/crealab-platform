@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Trash2, Shield, Users, ShoppingBag, Send, Briefcase, ExternalLink } from "lucide-react"
@@ -15,7 +15,7 @@ export default function AdminPage() {
         user, events, products, campaigns, brandProposals,
         deleteEvent, deleteProduct, deleteCampaign, deleteBrandProposal,
         isLoading
-    } = usePlatform()
+    } = useUnifiedProvider()
     const router = useRouter()
     const [activeTab, setActiveTab] = useState("events")
 

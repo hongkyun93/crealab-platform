@@ -9,6 +9,7 @@ import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-st
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
 import { cn, formatDateToMonth } from "@/lib/utils"
 import { AIPriceCalculator } from "@/components/ai-price-calculator"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -76,7 +77,8 @@ import SignatureCanvas from 'react-signature-canvas'
 import Link from "next/link"
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
 import { useEffect, useState, Suspense, useRef, useCallback } from "react"
-import { usePlatform, MOCK_BRAND_USER } from "@/components/providers/legacy-platform-hook"
+import { MOCK_BRAND_USER } from "@/components/providers/legacy-platform-hook"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -133,7 +135,7 @@ function BrandDashboardContent() {
         favorites, toggleFavorite,
 
         allEvents, fetchAllEvents, isAuthLoading, deleteMomentProposal // New: Public events & Moment deletion
-    } = usePlatform()
+    } = useUnifiedProvider()
 
     // AI Calculator State
     const [showCalculator, setShowCalculator] = useState(false)
@@ -341,9 +343,9 @@ function BrandDashboardContent() {
             try {
                 const { updateApplicationStatus } = await import('@/app/actions/proposal')
                 const result = await updateApplicationStatus(id.toString(), status)
-                if (result.error) alert(result.error)
+                if (result.error) toast.error(result.error)
                 else {
-                    alert("상태가 변경되었습니다.")
+                    toast.success("상태가 변경되었습니다.")
                     await refreshData()
                     if (status === 'accepted') {
                         // Switch to Active tab and open Chat (Workstation)
@@ -352,7 +354,7 @@ function BrandDashboardContent() {
                     }
                 }
             } catch (err) {
-                alert("상태 변경 중 오류가 발생했습니다.")
+                toast.error("상태 변경 중 오류가 발생했습니다.")
             }
         }
     }, [refreshData])
@@ -380,11 +382,11 @@ function BrandDashboardContent() {
             if (data.result) {
                 setGeneratedContract(data.result)
             } else {
-                alert("계약서 생성에 실패했습니다: " + (data.error || "알 수 없는 오류"))
+                toast.error("계약서 생성에 실패했습니다: " + (data.error || "알 수 없는 오류"))
             }
         } catch (e) {
             console.error(e)
-            alert("계약서 생성 중 오류가 발생했습니다.")
+            toast.error("계약서 생성 중 오류가 발생했습니다.")
         } finally {
             setIsGeneratingContract(false)
         }
@@ -432,7 +434,7 @@ function BrandDashboardContent() {
                 : "✅ [시스템 알림] 브랜드가 조건을 확정했습니다. 크리에이터님의 확정을 기다리고 있습니다.";
 
             await sendMessage(
-                chatProposal.influencer_id || chatProposal.influencerId || "influencer",
+                chatProposal.influencer_id || chatProposal.influencerId || "creator",
                 msgContent,
                 isCampaign ? pId : undefined,
                 !isCampaign ? pId : undefined
@@ -440,7 +442,7 @@ function BrandDashboardContent() {
 
             // 3. Notify Creator
             await sendNotification(
-                chatProposal.influencer_id || chatProposal.influencerId || "influencer",
+                chatProposal.influencer_id || chatProposal.influencerId || "creator",
                 isMutualConfirmed
                     ? "조건 협의가 완료되었습니다. 계약서를 작성해주세요."
                     : `${user?.name}님이 조건을 확정했습니다.`,
@@ -453,7 +455,7 @@ function BrandDashboardContent() {
 
         } catch (error) {
             console.error("Condition Confirmation Error:", error);
-            alert("조건 확정 중 오류가 발생했습니다.");
+            toast.error("조건 확정 중 오류가 발생했습니다.");
             setChatProposal(chatProposal); // Revert
         }
     };
@@ -464,7 +466,7 @@ function BrandDashboardContent() {
         const receiverId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id
 
         if (!receiverId) {
-            alert("수신자를 찾을 수 없습니다.")
+            toast.error("수신자를 찾을 수 없습니다.")
             return
         }
 
@@ -486,7 +488,7 @@ function BrandDashboardContent() {
         } catch (e) {
             console.error("Message send failed:", e)
             setChatMessage(msgContent)
-            alert("메시지 전송에 실패했습니다.")
+            toast.error("메시지 전송에 실패했습니다.")
         } finally {
             setIsSendingMessage(false)
         }
@@ -496,6 +498,9 @@ function BrandDashboardContent() {
     const [proposeModalOpen, setProposeModalOpen] = useState(false)
     const [selectedInfluencer, setSelectedInfluencer] = useState<any>(null)
     const [offerProduct, setOfferProduct] = useState("")
+    const [confirmStatusData, setConfirmStatusData] = useState<{ id: string, status: string } | null>(null)
+    const [confirmContractSend, setConfirmContractSend] = useState(false)
+
     const [productType, setProductType] = useState("gift") // gift, loan
     const [compensation, setCompensation] = useState("")
     const [hasIncentive, setHasIncentive] = useState(false)
@@ -521,12 +526,30 @@ function BrandDashboardContent() {
         if (!chatProposal || !generatedContract) return
         if (isSendingContract) return
         if (sigCanvas.current.isEmpty()) {
-            alert("서명을 입력해주세요.")
+            toast.error("서명을 입력해주세요.")
             return
         }
 
-        if (!confirm("서명과 함께 계약서를 발송하시겠습니까? (상대방이 서명하기 전까지는 수정하여 다시 보낼 수 있습니다)")) return
+        setConfirmContractSend(true)
+    }
 
+    const executeStatusChange = async () => {
+        if (!confirmStatusData) return
+
+        try {
+            await updateProposal(confirmStatusData.id, {
+                status: confirmStatusData.status
+            })
+            toast.success("상태가 변경되었습니다.")
+            setConfirmStatusData(null)
+        } catch (error) {
+            console.error('Status change error:', error)
+            toast.error("상태 변경에 실패했습니다.")
+        }
+    }
+
+
+    const executeContractSend = async () => {
         setIsSendingContract(true)
         try {
             const signatureData = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png')
@@ -578,12 +601,13 @@ function BrandDashboardContent() {
                 }
             }
 
-            alert("계약서가 성공적으로 발송되었습니다.")
+            toast.success("계약서가 성공적으로 발송되었습니다.")
         } catch (e) {
             console.error(e)
-            alert("계약서 발송 중 오류가 발생했습니다.")
+            toast.error("계약서 발송 중 오류가 발생했습니다.")
         } finally {
             setIsSendingContract(false)
+            setConfirmContractSend(false)
         }
     }
     const [selectedCampaignId, setSelectedCampaignId] = useState<string | number | null>(null)
@@ -604,7 +628,7 @@ function BrandDashboardContent() {
 
     const handleDownloadContract = () => {
         if (!generatedContract && !chatProposal?.contract_content) {
-            alert("계약서 내용이 없습니다.")
+            toast.error("계약서 내용이 없습니다.")
             return
         }
 
@@ -649,7 +673,7 @@ function BrandDashboardContent() {
     }
     const handleUpdateShipping = async () => {
         if (!trackingInput.trim()) {
-            alert("운송장 번호를 입력해주세요.")
+            toast.error("운송장 번호를 입력해주세요.")
             return
         }
         if (!chatProposal) return
@@ -686,11 +710,11 @@ function BrandDashboardContent() {
                     }
                 }
 
-                alert("발송 정보가 업데이트되었습니다.")
+                toast.success("발송 정보가 업데이트되었습니다.")
             }
         } catch (e) {
             console.error("Shipping update failed:", e)
-            alert("업데이트 중 오류가 발생했습니다.")
+            toast.error("업데이트 중 오류가 발생했습니다.")
         } finally {
             setIsUpdatingShipping(false)
         }
@@ -736,7 +760,7 @@ function BrandDashboardContent() {
 
         // 300MB limit check
         if (file.size > 300 * 1024 * 1024) {
-            alert("파일 크기는 300MB 이하여야 합니다.")
+            toast.error("파일 크기는 300MB 이하여야 합니다.")
             return
         }
 
@@ -783,7 +807,7 @@ function BrandDashboardContent() {
             // Detailed error message for the user
             const errorMessage = error?.message || "알 수 없는 오류"
             const errorCode = error?.code || error?.error || "UNKNOWN"
-            alert(`이미지 업로드 실패\n오류 코드: ${errorCode}\n내용: ${errorMessage}\n(잠시 후 다시 시도해보세요)`)
+            toast.error(`이미지 업로드 실패\n오류 코드: ${errorCode}\n내용: ${errorMessage}\n(잠시 후 다시 시도해보세요)`)
         } finally {
             setIsImageUploading(false)
             // Reset file input
@@ -906,12 +930,12 @@ function BrandDashboardContent() {
         if (isSubmitting) return
 
         if (!user) {
-            alert("세션이 만료되었습니다. 다시 로그인해주세요.")
+            toast.error("세션이 만료되었습니다. 다시 로그인해주세요.")
             return
         }
 
         if (!offerProduct || !compensation || !contentType) {
-            alert("필수 항목을 모두 입력해주세요.")
+            toast.error("필수 항목을 모두 입력해주세요.")
             return
         }
         setIsSubmitting(true)
@@ -963,7 +987,7 @@ function BrandDashboardContent() {
                 }
             } catch (err: any) {
                 console.warn("Proposal submission failed, retrying fallback...", err)
-                // ... fallback logic if needed, or rethrow
+                // ... existing fallback attempt ...
                 if (err?.code === '42703' || err?.message?.includes('column')) {
                     // ... existing fallback attempt ...
                     const fallbackData: any = { ...proposalData }
@@ -995,11 +1019,11 @@ function BrandDashboardContent() {
 
             // Helpful error message for Schema/Table issues
             if (error?.code === '42703') { // undefined_column
-                alert(`제안서 발송 실패: 데이터베이스 스키마와 일치하지 않는 필드가 있습니다.\n(${error.message})`)
-            } else if (error?.code === '23503') { // foreign_key_violation
-                alert(`제안서 발송 실패: 참조 데이터 오류 (이벤트 또는 사용자 ID가 유효하지 않음)\n(${error.message})`)
+                toast.error(`제안서 발송 실패: 데이터베이스 스키마와 일치하지 않는 필드가 있습니다.\n(${error.message})`)
+            } else if (error.code === '23503') {
+                toast.error(`제안서 발송 실패: 참조 데이터 오류 (이벤트 또는 사용자 ID가 유효하지 않음)\n(${error.message})`)
             } else {
-                alert(`제안서 발송에 실패했습니다: ${error?.message || "알 수 없는 오류"}`)
+                toast.error(`제안서 발송에 실패했습니다: ${error?.message || "알 수 없는 오류"}`)
             }
         } finally {
             clearInterval(progressInterval)
@@ -1045,11 +1069,11 @@ function BrandDashboardContent() {
 
     const handlePreview = () => {
         if (!newProductName || !newProductCategory) {
-            alert("제품명과 카테고리는 필수입니다.")
+            toast.error("제품명과 카테고리는 필수입니다.")
             return
         }
         if (isImageUploading) {
-            alert("이미지 업로드가 아직 완료되지 않았습니다.")
+            toast.error("이미지 업로드가 아직 완료되지 않았습니다.")
             return
         }
         setPreviewModalOpen(true)
@@ -1092,9 +1116,6 @@ function BrandDashboardContent() {
 
             console.log('[handleFinalSubmit] Result:', result)
 
-            // Temporary Debug Alert
-            // alert(`Debug: Submission Successful\nID: ${result?.id}\nTags: ${result?.tags}\nAccountTag: ${result?.accountTag}\nLink: ${result?.link}`)
-
 
             // Clear inputs
             setNewProductName("")
@@ -1114,10 +1135,12 @@ function BrandDashboardContent() {
             setPreviewModalOpen(false) // Close preview
             setProductModalOpen(false) // Close form
             console.log('[handleFinalSubmit] Success!')
-            alert(isEditing ? "제품이 성공적으로 수정되었습니다!" : "제품이 성공적으로 등록되었습니다!")
+            toast.success(isEditing ? "제품이 성공적으로 수정되었습니다!" : "제품이 성공적으로 등록되었습니다!")
+            setProductModalOpen(false);
+            refreshData()
         } catch (e: any) {
-            console.error("[handleFinalSubmit] Exception:", e)
-            alert(`제품 ${editingProductId ? '수정' : '등록'} 실패: ${e?.message || "알 수 없는 오류"}`)
+            console.error(e)
+            toast.error(`제품 ${editingProductId ? '수정' : '등록'} 실패: ${e?.message || "알 수 없는 오류"}`)
         } finally {
             setIsUploading(false)
         }
@@ -1135,10 +1158,10 @@ function BrandDashboardContent() {
                 phone: editPhone,
                 address: editAddress
             })
-            alert("프로필 정보가 저장되었습니다.")
+            toast.success("프로필 정보가 저장되었습니다.")
         } catch (e: any) {
             console.error("Save profile error:", e)
-            alert("저장 중 오류가 발생했습니다.")
+            toast.error("저장 중 오류가 발생했습니다.")
         } finally {
             setIsSaving(false)
         }
@@ -1473,10 +1496,11 @@ function BrandDashboardContent() {
                 // Assuming deleteBrandProposal is destructured from usePlatform()
                 await deleteBrandProposal(proposalId);
             }
-            alert("제안이 취소되었습니다.");
-        } catch (error) {
-            console.error("Cancel Error:", error);
-            alert("제안 취소 중 오류가 발생했습니다.");
+            toast.success("제안이 취소되었습니다.");
+            refreshData();
+        } catch (e) {
+            console.error(e);
+            toast.error("제안 취소 중 오류가 발생했습니다.");
         }
     };
 
@@ -2102,6 +2126,39 @@ function BrandDashboardContent() {
             <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
                 <DialogContent className="max-w-[1500px] w-[95vw] h-[90vh] max-h-[900px] p-0 gap-0 overflow-hidden flex flex-col bg-background border-0 shadow-2xl rounded-2xl">
                     <DialogTitle className="sr-only">Brand Workspace</DialogTitle>
+                    {/* Status Change Confirmation Dialog */}
+                    <AlertDialog open={!!confirmStatusData} onOpenChange={(open) => !open && setConfirmStatusData(null)}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>지원서 상태 변경</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    이 지원서를 {confirmStatusData?.status === 'accepted' ? '수락' : confirmStatusData?.status === 'hold' ? '보류' : '거절'}하시겠습니까?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setConfirmStatusData(null)}>취소</AlertDialogCancel>
+                                <AlertDialogAction onClick={executeStatusChange}>확인</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Contract Send Confirmation Dialog */}
+                    <AlertDialog open={confirmContractSend} onOpenChange={setConfirmContractSend}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>계약서 발송</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    서명과 함께 계약서를 발송하시겠습니까?
+                                    <br />
+                                    상대방이 서명하기 전까지는 수정하여 다시 보낼 수 있습니다.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setConfirmContractSend(false)}>취소</AlertDialogCancel>
+                                <AlertDialogAction onClick={executeContractSend}>발송하기</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                     <BrandWorkspaceLayout />
                 </DialogContent>
             </Dialog>

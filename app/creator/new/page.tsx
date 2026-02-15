@@ -6,88 +6,117 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Calendar, Plus, Package, Send, Sparkles, Loader2, Lock, Globe } from "lucide-react"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { ArrowLeft, Plus, Sparkles, Loader2, Lock, Globe, Package, Calendar, Send } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
+import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 
-const MONTHS = [
-    "1월", "2월", "3월", "4월",
-    "5월", "6월", "7월", "8월",
-    "9월", "10월", "11월", "12월"
-]
-
-const POPULAR_TAGS = [
-    "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
-    "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
-    "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
-    "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
-]
+// ... (imports remain same)
 
 export default function NewEventPage() {
     const router = useRouter()
-    const { addEvent } = usePlatform()
-    const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const { user, addEvent, supabase } = useUnifiedProvider()
+    const { effectiveUserId, isProxyMode, effectiveUser } = useEffectiveUser()
 
-    // Form States
+    // 1. Hooks (Must be at top level)
+    const [targetCreatorId, setTargetCreatorId] = useState<string>("")
+    const [teamMembers, setTeamMembers] = useState<{ id: string, name: string }[]>([])
+
+    // Set initial target creator if in proxy mode
+    useEffect(() => {
+        if (isProxyMode && effectiveUserId && user?.id !== effectiveUserId) {
+            setTargetCreatorId(effectiveUserId)
+        }
+    }, [isProxyMode, effectiveUserId, user])
+
     const [title, setTitle] = useState("")
-    const [isDateFlexible, setIsDateFlexible] = useState(false)
     const [eventYear, setEventYear] = useState("2026")
     const [eventMonth, setEventMonth] = useState("")
     const [postingYear, setPostingYear] = useState("2026")
     const [postingMonth, setPostingMonth] = useState("")
-    const [targetProduct, setTargetProduct] = useState("")
+    const [isDateFlexible, setIsDateFlexible] = useState(false)
     const [description, setDescription] = useState("")
     const [guide, setGuide] = useState("")
+    const [targetProduct, setTargetProduct] = useState("")
     const [isPrivate, setIsPrivate] = useState(false)
+    const [selectedTags, setSelectedTags] = useState<string[]>([])
+
+    // UI State
+    const [isGenerating, setIsGenerating] = useState(false)
     const [validationError, setValidationError] = useState<string | null>(null)
 
-    // Schedule Template State (Hidden but kept for type compatibility)
-    const [schedule, setSchedule] = useState({
-        product_delivery: "",
-        draft_submission: "",
-        shooting: "",
-        feedback: "",
-        upload: ""
-    })
+    // Constants
+    const MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}월`)
+    const POPULAR_TAGS = [
+        "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
+        "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
+        "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
+        "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
+    ]
 
-    const [isGenerating, setIsGenerating] = useState(false)
+    useEffect(() => {
+        const fetchTeamMembers = async () => {
+            if (user?.type === 'agency' || user?.type === 'mcn') {
+                const { data, error } = await supabase
+                    .from('team_members')
+                    .select(`
+                        id,
+                        user_id,
+                        role,
+                        users:user_id (
+                            email,
+                            raw_user_meta_data
+                        )
+                    `)
+                    .eq('team_id', user.teamId)
+
+                if (data) {
+                    const members = data.map((m: any) => ({
+                        id: m.id,
+                        user_id: m.user_id,
+                        name: m.users?.raw_user_meta_data?.name || m.users?.email,
+                        email: m.users?.email
+                    }))
+                    setTeamMembers(members)
+                }
+            }
+        }
+        if (user) fetchTeamMembers()
+    }, [user, supabase])
 
     const handleGenerateAI = async () => {
-        if (!title) {
-            alert("먼저 모먼트 제목을 입력해주세요!")
+        if (!title && !selectedTags.length) {
+            setValidationError("AI 작문을 위해 제목이나 태그를 먼저 선택해주세요.")
             return
         }
 
         setIsGenerating(true)
         try {
-            const response = await fetch("/api/generate-description", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+            const response = await fetch('/api/generate-description', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    prompt: title + (targetProduct ? ` (광고 가능 아이템: ${targetProduct})` : ""),
-                    category: selectedTags[0] || "일상"
-                }),
+                    title,
+                    tags: selectedTags,
+                    targetProduct
+                })
             })
 
             const data = await response.json()
-
-            if (!response.ok) {
-                if (data.error === "GEMINI_API_KEY not configured") {
-                    alert("서버에 GEMINI_API_KEY가 설정되지 않았습니다.")
-                } else {
-                    throw new Error(data.details || "AI 생성 실패")
-                }
-                return
+            if (data.description) {
+                setDescription(data.description)
             }
-
-            setDescription(data.result)
-        } catch (error: any) {
-            console.error("AI Error:", error)
-            alert(`AI 작문 실패: ${error.message}`)
+        } catch (error) {
+            console.error('AI Generation error:', error)
         } finally {
             setIsGenerating(false)
         }
@@ -104,6 +133,11 @@ export default function NewEventPage() {
     const handleSubmit = async () => {
         setValidationError(null)
 
+        if (!user) {
+            setValidationError("로그인 정보가 없습니다. 새로고침 후 다시 시도해주세요.")
+            return
+        }
+
         if (!title) {
             setValidationError("모먼트 제목을 입력해주세요.")
             return
@@ -119,6 +153,22 @@ export default function NewEventPage() {
         if (!description) {
             setValidationError("상세 설명을 입력해주세요.")
             return
+        }
+
+        // Determine effective creator ID
+        // If Proxy Mode: Use effectiveUserId (Creator)
+        // If Agency/MCN (Not Proxy): Use selected targetCreatorId
+        // If Creator (Self): Use user.id
+        let finalInfluencerId = user.id
+
+        if (isProxyMode) {
+            finalInfluencerId = effectiveUserId || user.id
+        } else if (user.type === 'agency' || user.type === 'mcn') {
+            if (!targetCreatorId) {
+                setValidationError("모먼트를 등록할 크리에이터를 선택해주세요.")
+                return
+            }
+            finalInfluencerId = targetCreatorId
         }
 
         const tags = [...selectedTags]
@@ -141,16 +191,20 @@ export default function NewEventPage() {
             postingDate: isDateFlexible ? "" : formatToDate(postingYear, postingMonth),
             isPrivate: isPrivate,
             dateFlexible: isDateFlexible,
-            schedule: schedule
+            schedule: {
+                product_delivery: "",
+                draft_submission: "",
+                shooting: "",
+                feedback: "",
+                upload: ""
+            },
+            influencerId: finalInfluencerId
         })
 
         if (success) {
-            alert("모먼트가 성공적으로 등록되었습니다!")
-            router.push("/creator")
+            router.push('/creator')
         } else {
-            // Fallback alert if addEvent fails silently (e.g. auth issue)
-            // Note: addEvent usually alerts on DB error, but might return false on !user
-            alert("모먼트 등록에 실패했습니다. 다시 시도해주세요. (로그인이 필요할 수 있습니다)")
+            setValidationError("모먼트 등록에 실패했습니다. 다시 시도해주세요.")
         }
     }
 
@@ -168,17 +222,50 @@ export default function NewEventPage() {
                         <div>
                             <h1 className="text-2xl font-bold tracking-tight">새 모먼트 만들기</h1>
                             <p className="text-muted-foreground">
-                                브랜드에게 제안받을 당신의 다음 라이프 모먼트를 등록하세요.
+                                브랜드에게 제안받을 {isProxyMode ? `${effectiveUser?.name}님의` : '당신의'} 다음 라이프 모먼트를 등록하세요.
                             </p>
                         </div>
                     </div>
 
-                    {/* Main Content Div - Form Removed */}
                     <div>
                         <div className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
 
                             <div className="space-y-2">
                                 <Label htmlFor="title">모먼트 제목</Label>
+                                {/* Only show creator selector if MCN is NOT in proxy mode */}
+                                {((user?.type === 'agency' || user?.type === 'mcn') && !isProxyMode) && (
+                                    <div className="mb-4 p-4 border rounded-lg bg-indigo-50/50 border-indigo-100">
+                                        <Label className="mb-2 block text-indigo-900 font-semibold">
+                                            어떤 크리에이터의 모먼트인가요?
+                                        </Label>
+                                        <Select value={targetCreatorId} onValueChange={setTargetCreatorId}>
+                                            <SelectTrigger className="bg-white border-indigo-200">
+                                                <SelectValue placeholder="크리에이터를 선택해주세요" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {teamMembers.map(member => (
+                                                    <SelectItem key={member.id} value={member.id}>
+                                                        {member.name} ({member.id.substring(0, 8)}...)
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-indigo-600 mt-2">
+                                            * 선택한 크리에이터의 이름으로 모먼트가 등록됩니다.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Show info badge if in proxy mode */}
+                                {isProxyMode && (
+                                    <div className="mb-4 p-3 border rounded-lg bg-blue-50/50 border-blue-100 flex items-center gap-2">
+                                        <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">Proxy Mode</span>
+                                        <span className="text-sm text-blue-800">
+                                            <strong>{effectiveUser?.name}</strong>님의 모먼트로 등록됩니다.
+                                        </span>
+                                    </div>
+                                )}
+
                                 <Input
                                     id="title"
                                     placeholder="예: 한남동으로 이사, 여름 다이어트 시작"
@@ -186,7 +273,7 @@ export default function NewEventPage() {
                                     onChange={(e) => setTitle(e.target.value)}
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    브랜드가 한눈에 알아볼 수 있는 직관적인 제목을 지어주세요. (예: 비행기에서 사용할 마스크팩 광고할 준비가 되었어요.)
+                                    브랜드가 한눈에 알아볼 수 있는 직관적인 제목을 지어주세요.
                                 </p>
                             </div>
 
@@ -209,6 +296,15 @@ export default function NewEventPage() {
                                     <Label className="flex items-center gap-2">
                                         <Calendar className="h-4 w-4" />
                                         모먼트 일정
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setEventYear(prev => prev === "2026" ? "2027" : "2026")}
+                                            className="h-6 px-2 text-xs ml-1 bg-background"
+                                        >
+                                            {eventYear}년 🔄
+                                        </Button>
                                     </Label>
                                     <div className="grid grid-cols-3 gap-2">
                                         {MONTHS.map((m) => {
@@ -228,7 +324,6 @@ export default function NewEventPage() {
                                     </div>
                                 </div>
 
-                                {/* Posting Date Picker */}
                                 <div className="space-y-4">
                                     <Label className="flex items-center gap-2">
                                         <Send className="h-4 w-4" />
@@ -276,20 +371,18 @@ export default function NewEventPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <Label>
-                                    관심 태그 (복수 선택 가능) <span className="text-xs text-muted-foreground ml-1 font-normal">*첫번째로 선택하는 태그는 카테고리로 저장됩니다</span>
-                                </Label>
+                                <Label>관심 카테고리 (복수 선택 가능)</Label>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                     {POPULAR_TAGS.map((tag) => (
                                         <button
-                                            type="button"
                                             key={tag}
+                                            type="button"
                                             onClick={() => toggleTag(tag)}
                                             className={`
                                 text-sm px-3 py-2.5 rounded-md border transition-all duration-200 text-left md:text-center
                                 ${selectedTags.includes(tag)
                                                     ? "bg-primary text-primary-foreground border-primary font-medium ring-2 ring-offset-2 ring-primary/20"
-                                                    : "bg-background hover:bg-muted/50 hover:border-primary/5 text-muted-foreground"
+                                                    : "bg-background hover:bg-muted/50 hover:border-primary/50 text-muted-foreground"
                                                 }
                             `}
                                         >
@@ -303,8 +396,6 @@ export default function NewEventPage() {
                                     </p>
                                 )}
                             </div>
-
-
 
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">

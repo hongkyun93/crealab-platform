@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
 import { ArrowLeft, Megaphone, Plus, Send, Package, Check, Upload, Loader2, X } from "lucide-react"
 import Link from "next/link"
 import {
@@ -18,13 +19,13 @@ import {
 
 import { useRouter } from "next/navigation"
 import { useState, useRef } from "react"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { createCampaign } from "@/app/actions/campaign"
 import { createClient } from "@/lib/supabase/client"
 
 export default function NewCampaignPage() {
     const router = useRouter()
-    const { refreshData, products, user } = usePlatform()
+    const { refreshData, products, user } = useUnifiedProvider()
     const [loading, setLoading] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string[]>([])
     const [postingYear, setPostingYear] = useState("2026")
@@ -68,7 +69,7 @@ export default function NewCampaignPage() {
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         if (isUploading) {
-            alert("이미지 업로드 중입니다. 잠시만 기다려주세요.")
+            toast.info("이미지 업로드 중입니다. 잠시만 기다려주세요.")
             return
         }
         setLoading(true)
@@ -81,10 +82,10 @@ export default function NewCampaignPage() {
         const result = await createCampaign(formData)
 
         if (result?.error) {
-            alert(result.error)
+            toast.error(result.error)
             setLoading(false)
         } else {
-            alert("캠페인이 성공적으로 등록되었습니다!")
+            toast.success("캠페인이 성공적으로 등록되었습니다!")
             await refreshData()
             router.push("/brand?view=dashboard")
         }
@@ -95,7 +96,7 @@ export default function NewCampaignPage() {
         if (!file) return
 
         if (file.size > 5 * 1024 * 1024) {
-            alert("파일 크기는 5MB 이하여야 합니다.")
+            toast.error("파일 크기는 5MB 이하여야 합니다.")
             return
         }
 
@@ -119,7 +120,8 @@ export default function NewCampaignPage() {
             setImage(publicUrl)
         } catch (error: any) {
             console.error("Image upload error:", error)
-            alert(`이미지 업로드 실패: ${error.message || "알 수 없는 오류"}`)
+            console.error(error)
+            toast.error(`이미지 업로드 실패: ${error.message || "알 수 없는 오류"}`)
         } finally {
             setIsUploading(false)
         }

@@ -10,25 +10,29 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
-import { ArrowLeft, CheckCircle2, DollarSign, Percent, Send, ExternalLink, Package, ImageIcon, Copy, Hash, AtSign, FileText } from "lucide-react"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { ArrowLeft, CheckCircle2, DollarSign, Percent, Send, ExternalLink, Package, ImageIcon, Copy, Hash, AtSign, FileText, Check, MessageCircle, Share2, ThumbsUp } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useState } from "react"
+import { toast } from "sonner"
+import type { Product } from "@/lib/types"
 
 interface ProductDetailViewProps {
-    productId: string
+    productId: string | null
     onBack: () => void
 }
 
 export function ProductDetailView({ productId, onBack }: ProductDetailViewProps) {
-    const { products, user, addProposal } = usePlatform()
-    const [isOpen, setIsOpen] = useState(false)
+    const { products, user, addProposal } = useUnifiedProvider()
+    const [isProposalOpen, setIsProposalOpen] = useState(false)
 
     // Form State
     const [cost, setCost] = useState("")
@@ -67,8 +71,7 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
             toId: product.brandId,
         })
 
-        setIsOpen(false)
-        setIsOpen(false)
+        setIsProposalOpen(false)
         onBack() // Go back to list after proposing
     }
 
@@ -118,11 +121,11 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-3">
-                            <Button size="lg" className="flex-1 text-lg h-14 shadow-lg shadow-primary/20 font-bold" onClick={() => setIsOpen(true)}>
+                            <Button size="lg" className="flex-1 text-lg h-14 shadow-lg shadow-primary/20 font-bold" onClick={() => setIsProposalOpen(true)}>
                                 <Send className="mr-2 h-5 w-5" /> 협업 제안하기
                             </Button>
 
-                            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                            <Dialog open={isProposalOpen} onOpenChange={setIsProposalOpen}>
                                 <DialogContent className="sm:max-w-md">
                                     <DialogHeader>
                                         <DialogTitle className="text-xl font-bold">협업 제안하기</DialogTitle>
@@ -153,7 +156,7 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
                                     </div>
 
                                     <DialogFooter>
-                                        <Button variant="outline" size="sm" onClick={() => setIsOpen(false)}>취소</Button>
+                                        <Button variant="outline" size="sm" onClick={() => setIsProposalOpen(false)}>취소</Button>
                                         <Button size="sm" onClick={handlePropose} className="font-bold">제안서 전송</Button>
                                     </DialogFooter>
                                 </DialogContent>

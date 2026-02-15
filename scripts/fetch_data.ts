@@ -22,7 +22,7 @@ async function main() {
     console.log(`Searching for ID: ${id}`)
 
     // 1. Try campaigns table
-    let { data: campaign, error } = await supabase
+    const { data: campaign, error } = await supabase
         .from('campaigns')
         .select('*')
         .eq('id', id)

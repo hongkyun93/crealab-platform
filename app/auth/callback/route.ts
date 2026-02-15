@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
                 // Priority: Use DB role if exists, otherwise use roleType hint or default to influencer
                 if (!userRole) {
-                    userRole = (roleType as any) || 'influencer'
+                    userRole = (roleType as any) || 'creator'
                     console.log(`[Auth Callback] Assigning role: ${userRole}`)
                     await supabase.from('profiles').update({ role: userRole }).eq('id', data.user.id)
                 }
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 
                 if (userRole === 'brand') {
                     next = isNewUser ? '/brand/settings' : '/brand'
-                } else if (userRole === 'influencer') {
+                } else if (userRole === 'creator') {
                     next = isNewUser ? '/creator?view=settings' : '/creator'
                 } else if (userRole === 'admin') {
                     next = '/admin'

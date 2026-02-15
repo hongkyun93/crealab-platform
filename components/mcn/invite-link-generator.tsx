@@ -1,0 +1,123 @@
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useAuth } from "@/components/providers/auth-provider"
+import { createClient } from "@/lib/supabase/client"
+import { Link2, Copy, Check } from "lucide-react"
+import { toast } from "sonner"
+
+import { useTeam } from "@/components/providers/team-provider"
+
+export function InviteLinkGenerator() {
+    const { user } = useAuth()
+    const { currentTeam } = useTeam()
+    const supabase = createClient()
+    const [inviteLink, setInviteLink] = useState('')
+    const [isGenerating, setIsGenerating] = useState(false)
+    const [isCopied, setIsCopied] = useState(false)
+
+    const generateInviteLink = async () => {
+        const teamId = currentTeam?.id || user?.teamId
+
+        if (!teamId) {
+            toast.error('팀 ID를 찾을 수 없습니다')
+            return
+        }
+
+        setIsGenerating(true)
+        try {
+            // Generate a unique invite code
+            const code = `${teamId.substring(0, 8)}-${Date.now().toString(36)}`
+
+            // Store in database (team_invitations table - needs to be created)
+            const { error } = await supabase
+                .from('team_invitations')
+                .insert({
+                    team_id: teamId,
+                    invite_code: code,
+                    created_by: user.id,
+                    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+                    role: 'creator' // Force role to creator
+                })
+
+            if (error) {
+                console.error('Database Error:', error)
+                throw new Error('데이터베이스 저장 실패: ' + error.message)
+            }
+
+            const link = `${window.location.origin}/join/${code}`
+            setInviteLink(link)
+            toast.success('크리에이터 초대 링크가 생성되었습니다')
+        } catch (error) {
+            console.error('Error generating invite link:', error)
+            toast.error('초대 링크 생성 중 오류가 발생했습니다')
+        } finally {
+            setIsGenerating(false)
+        }
+    }
+
+    const copyToClipboard = async () => {
+        try {
+            await navigator.clipboard.writeText(inviteLink)
+            setIsCopied(true)
+            toast.success('링크가 복사되었습니다')
+            setTimeout(() => setIsCopied(false), 2000)
+        } catch (error) {
+            toast.error('복사에 실패했습니다')
+        }
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Link2 className="h-5 w-5" />
+                    크리에이터 초대 링크
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                    크리에이터를 팀에 초대할 수 있는 링크를 생성하세요. (자동으로 크리에이터 권한이 부여됩니다)
+                </p>
+
+                <Button
+                    onClick={generateInviteLink}
+                    disabled={isGenerating}
+                    className="w-full"
+                >
+                    {isGenerating ? '생성 중...' : '새 초대 링크 생성'}
+                </Button>
+
+                {inviteLink && (
+                    <div className="space-y-2">
+                        <div className="flex gap-2">
+                            <Input
+                                value={inviteLink}
+                                readOnly
+                                className="font-mono text-sm"
+                            />
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={copyToClipboard}
+                            >
+                                {isCopied ? (
+                                    <Check className="h-4 w-4 text-green-600" />
+                                ) : (
+                                    <Copy className="h-4 w-4" />
+                                )}
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            이 링크는 7일 동안 유효합니다
+                        </p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}

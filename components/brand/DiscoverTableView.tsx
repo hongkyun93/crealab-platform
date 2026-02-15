@@ -20,6 +20,9 @@ interface DiscoverTableViewProps {
     user: any
 }
 
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { useState } from "react"
+
 export function DiscoverTableView({
     filteredEvents,
     favorites,
@@ -27,6 +30,7 @@ export function DiscoverTableView({
     deleteEvent,
     user
 }: DiscoverTableViewProps) {
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
     return (
         <div className="rounded-md border bg-card">
             <Table>
@@ -106,11 +110,9 @@ export function DiscoverTableView({
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                                onClick={() => {
-                                                    if (confirm("정말로 삭제하시겠습니까?")) deleteEvent(item.id);
-                                                }}
+                                                onClick={() => setConfirmDeleteId(item.id)}
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                <Trash2 className="h-4 w-4 text-red-500" />
                                             </Button>
                                         )}
                                     </TableCell>
@@ -126,6 +128,21 @@ export function DiscoverTableView({
                     )}
                 </TableBody>
             </Table>
+
+            <ConfirmDialog
+                open={!!confirmDeleteId}
+                onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+                title="정말 삭제하시겠습니까?"
+                description="삭제된 데이터는 복구할 수 없습니다."
+                onConfirm={() => {
+                    if (confirmDeleteId) {
+                        deleteEvent(confirmDeleteId)
+                        setConfirmDeleteId(null)
+                    }
+                }}
+                confirmText="삭제"
+                variant="destructive"
+            />
         </div>
     )
 }

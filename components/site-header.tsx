@@ -2,9 +2,11 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { usePlatform } from "@/components/providers/legacy-platform-hook"
-import { LogOut, Settings, User, Shield, Menu } from "lucide-react"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { LogOut, Settings, User, Shield, Menu, ChevronDown, Check, Plus, Briefcase } from "lucide-react"
 import { ModeToggle } from "@/components/ui/mode-toggle"
+import { TeamSwitcher } from "@/components/team-switcher"
+import { useTeam } from "@/components/providers/team-provider"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -22,11 +24,24 @@ import { useRouter, usePathname } from "next/navigation"
 import { Bell } from "lucide-react"
 
 export function SiteHeader() {
-    const { user, messages, logout, notifications, markAsRead } = usePlatform()
+    const { user, messages, logout, notifications, markAsRead, teams, currentTeam, switchTeam } = useUnifiedProvider()
+    const { isProxyMode, selectedMember } = useTeam() // Added useTeam hook
     const router = useRouter()
     const pathname = usePathname()
 
     const unreadNotifications = notifications?.filter(n => !n.is_read) || []
+
+    // Display logic for MCN proxy mode
+    const displayUserType = () => {
+        if (user?.type === 'mcn' && isProxyMode && selectedMember) {
+            return `크리에이터 (${selectedMember.profile?.display_name || selectedMember.profile?.email || 'Unknown'})`
+        }
+        return user?.type === 'brand' ? '브랜드'
+            : user?.type === 'creator' ? '크리에이터'
+                : user?.type === 'mcn' ? 'MCN'
+                    : user?.type === 'agency' ? '에이전시'
+                        : '관리자'
+    }
 
     const handleNotificationClick = async (n: any) => {
         if (!n.is_read) {
@@ -40,7 +55,7 @@ export function SiteHeader() {
             // If user is brand, go to Brand Dashboard
             // However, the notification is specific to the recipient.
 
-            if (user?.type === 'influencer') {
+            if (user?.type === 'creator') {
                 router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
             } else if (user?.type === 'brand') {
                 router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
@@ -50,7 +65,7 @@ export function SiteHeader() {
             router.push(`/brand?view=outbound&proposalId=${n.reference_id}`)
         } else if (n.type === 'new_message') {
             // Generic message redirect - ideally should link to chat
-            if (user?.type === 'influencer') {
+            if (user?.type === 'creator') {
                 router.push(`/creator?view=inbound&proposalId=${n.reference_id}`)
             } else if (user?.type === 'brand') {
                 router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
@@ -64,8 +79,9 @@ export function SiteHeader() {
     }
 
     const handleProfileClick = () => {
-        if (user?.type === 'brand') router.push('/brand?view=settings')
-        else router.push('/creator?view=settings')
+        if (user?.type === 'brand') router.push('/brand/settings')
+        else if (user?.type === 'mcn') router.push('/creator/settings')
+        else router.push('/creator/settings')
     }
 
     const isActive = (path: string) => pathname?.startsWith(path)
@@ -76,7 +92,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-6 flex items-center space-x-2">
                         <span className="font-bold text-xl tracking-tight">CreadyPick.</span>
-                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">v2.3</span>
+                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">v3.0</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link
@@ -95,12 +111,12 @@ export function SiteHeader() {
                             </Link>
                         )}
 
-                        {(!user || user.type === 'influencer' || user.type === 'admin') && (
+                        {(!user || user.type === 'creator' || user.type === 'mcn' || user.type === 'admin') && (
                             <Link
                                 href="/creator"
                                 className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
                             >
-                                크리에이터
+                                {user?.type === 'mcn' ? 'MCN 관리' : '크리에이터'}
                             </Link>
                         )}
 
@@ -134,9 +150,9 @@ export function SiteHeader() {
                                         <Link href="/brand" className="w-full">브랜드</Link>
                                     </DropdownMenuItem>
                                 )}
-                                {(!user || user.type === 'influencer' || user.type === 'admin') && (
+                                {(!user || user.type === 'creator' || user.type === 'mcn' || user.type === 'admin') && (
                                     <DropdownMenuItem asChild>
-                                        <Link href="/creator" className="w-full">크리에이터</Link>
+                                        <Link href="/creator" className="w-full">{user?.type === 'mcn' ? 'MCN 관리' : '크리에이터'}</Link>
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem asChild>
@@ -155,6 +171,53 @@ export function SiteHeader() {
                     <ModeToggle />
                     {user ? (
                         <div className="flex items-center gap-4">
+                            {/* Team Switcher - Hidden for Creators */}
+                            {teams && teams.length > 0 && user.type !== 'creator' && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm" className="hidden md:flex items-center gap-2 max-w-[200px]">
+                                            {currentTeam?.logo_url ? (
+                                                <img src={currentTeam.logo_url} alt={currentTeam.name} className="w-5 h-5 rounded-full object-cover" />
+                                            ) : (
+                                                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                                                    {currentTeam?.name?.[0] || <Briefcase className="h-3 w-3" />}
+                                                </div>
+                                            )}
+                                            <span className="truncate flex-1 text-left">{currentTeam?.name || "팀 선택"}</span>
+                                            <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-[240px]">
+                                        <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">팀 전환</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {teams.filter((t: any) => ['owner', 'admin', 'manager'].includes(t.my_role)).map((team: any) => (
+                                            <DropdownMenuItem key={team.id} onSelect={() => switchTeam(team.id)} className="cursor-pointer">
+                                                <div className="flex items-center gap-2 w-full">
+                                                    {team.logo_url ? (
+                                                        <img src={team.logo_url} alt={team.name} className="w-6 h-6 rounded-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                                                            {team.name?.[0]}
+                                                        </div>
+                                                    )}
+                                                    <span className={`truncate flex-1 ${team.id === currentTeam?.id ? "font-bold" : ""}`}>{team.name}</span>
+                                                    {team.id === currentTeam?.id && <Check className="ml-auto h-4 w-4 text-primary" />}
+                                                </div>
+                                            </DropdownMenuItem>
+                                        ))}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={() => router.push('/settings/team')} className="cursor-pointer">
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            팀 관리
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => router.push('/settings/team')} className="cursor-pointer">
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            새 팀 만들기
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+
                             {/* Notification Bell */}
                             <Popover>
                                 <PopoverTrigger asChild>
@@ -203,8 +266,12 @@ export function SiteHeader() {
                                     관리자 패널
                                 </Link>
                             )}
+
+                            {/* MCN Team Switcher */}
+                            {user.type === 'mcn' && <TeamSwitcher />}
+
                             <span className="text-sm text-muted-foreground hidden md:inline-block">
-                                환영합니다, <span className="text-primary font-bold mr-1">{user.type === 'brand' ? '브랜드' : user.type === 'influencer' ? '크리에이터' : '관리자'}</span> <span className="font-semibold text-foreground">{user.name}</span>님
+                                환영합니다, <span className="text-primary font-bold mr-1">{displayUserType()}</span> <span className="font-semibold text-foreground">{user.name}</span>님
                             </span>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -244,11 +311,8 @@ export function SiteHeader() {
                         </div>
                     ) : (
                         <div className="flex items-center gap-2 animate-in fade-in duration-300">
-                            <Button variant="ghost" size="sm" asChild className="hidden md:flex">
-                                <Link href="/login">로그인</Link>
-                            </Button>
-                            <Button size="sm" asChild>
-                                <Link href="/signup">무료로 시작하기</Link>
+                            <Button variant="default" size="sm" asChild>
+                                <Link href="/login">로그인 / 회원가입</Link>
                             </Button>
                         </div>
                     )}

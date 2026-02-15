@@ -24,7 +24,7 @@ export default function LoginPage() {
     const [id, setId] = useState("")
     const [password, setPassword] = useState("")
 
-    const handleSocialLogin = async (provider: 'google' | 'kakao', role: 'brand' | 'influencer') => {
+    const handleSocialLogin = async (provider: 'google' | 'kakao', role: 'brand' | 'creator') => {
         setIsLoading(true)
         setError("")
         try {
@@ -75,7 +75,7 @@ export default function LoginPage() {
             // Redirect based on user type
             if (user.type === "brand") {
                 router.push("/brand")
-            } else if (user.type === "influencer") {
+            } else if (user.type === "creator") {
                 router.push("/creator")
             } else if (user.type === "admin") {
                 router.push("/admin")
@@ -160,7 +160,7 @@ export default function LoginPage() {
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
-                                        <Button variant="outline" type="button" onClick={() => handleSocialLogin('google', 'influencer')}>
+                                        <Button variant="outline" type="button" onClick={() => handleSocialLogin('google', 'creator')}>
                                             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                                                 <path
                                                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -181,7 +181,7 @@ export default function LoginPage() {
                                             </svg>
                                             Google
                                         </Button>
-                                        <Button variant="outline" type="button" className="bg-[#FAE100] hover:bg-[#FAE100]/90 text-black border-none" onClick={() => handleSocialLogin('kakao', 'influencer')}>
+                                        <Button variant="outline" type="button" className="bg-[#FAE100] hover:bg-[#FAE100]/90 text-black border-none" onClick={() => handleSocialLogin('kakao', 'creator')}>
                                             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M12 3C6.48 3 2 6.48 2 10.77C2 13.56 3.82 16.03 6.62 17.38L5.68 20.91C5.6 21.2 5.92 21.43 6.16 21.28L10.64 18.25C11.08 18.29 11.54 18.32 12 18.32C17.52 18.32 22 14.84 22 10.55C22 6.26 17.52 3 12 3Z" />
                                             </svg>

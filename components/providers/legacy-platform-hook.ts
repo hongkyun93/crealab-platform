@@ -25,7 +25,7 @@ export type {
 export const MOCK_INFLUENCER_USER = {
     id: "guest_influencer",
     name: "게스트 크리에이터",
-    type: "influencer" as const,
+    type: "creator" as const,
     avatar: "👤",
     isMock: true
 }

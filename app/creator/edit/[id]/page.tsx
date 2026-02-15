@@ -23,6 +23,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useEvents } from "@/components/providers/event-provider"
 import { useAuth } from "@/components/providers/auth-provider"
+import { toast } from "sonner"
 
 const MONTHS = [
     "1월", "2월", "3월", "4월",
@@ -75,7 +76,7 @@ export default function EditEventPage() {
                     // Also allow if user.type is admin (optional, but good for support)
                     if (event.influencerId !== user.id && user.type !== 'admin') {
                         console.warn("[EditEvent] Permission denied: ownerId", event.influencerId, "currentUserId", user.id)
-                        alert("수정 권한이 없습니다.")
+                        toast.error("수정 권한이 없습니다.")
                         router.push("/creator")
                         return
                     }
@@ -144,11 +145,11 @@ export default function EditEventPage() {
 
     const handleSubmit = async () => {
         if (!title || !eventMonth || !description) {
-            alert("모든 필수 항목을 입력해주세요.")
+            toast.error("모든 필수 항목을 입력해주세요.")
             return
         }
         if (!postingMonth && !isDateFlexible) {
-            alert("업로드 시기를 선택해주세요.")
+            toast.error("업로드 시기를 선택해주세요.")
             return
         }
 
@@ -156,23 +157,28 @@ export default function EditEventPage() {
 
         const eventId = String(params.id)
 
-        const success = await updateEvent(eventId, {
-            category: selectedTags[0] || "기타",
-            event: title,
-            date: eventMonth, // Legacy support
-            description: description,
-            guide: guide,
-            tags: tags,
-            targetProduct: targetProduct || "미정",
-            eventDate: `${eventYear}년 ${eventMonth}`,
-            postingDate: isDateFlexible ? "" : `${postingYear}년 ${postingMonth}`,
-            dateFlexible: isDateFlexible,
-            isPrivate: isPrivate
-        })
+        try {
+            const success = await updateEvent(eventId, {
+                category: selectedTags[0] || "기타",
+                event: title,
+                date: eventMonth, // Legacy support
+                description: description,
+                guide: guide,
+                tags: tags,
+                targetProduct: targetProduct || "미정",
+                eventDate: `${eventYear}년 ${eventMonth}`,
+                postingDate: isDateFlexible ? "" : `${postingYear}년 ${postingMonth}`,
+                dateFlexible: isDateFlexible,
+                isPrivate: isPrivate
+            })
 
-        if (success) {
-            alert("모먼트가 성공적으로 수정되었습니다!")
-            router.push("/creator")
+            if (success) {
+                toast.success("모먼트가 성공적으로 수정되었습니다!")
+                router.push("/creator")
+            }
+        } catch (error) {
+            console.error("Failed to update event:", error)
+            toast.error("모먼트 수정에 실패했습니다.")
         }
     }
 

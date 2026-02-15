@@ -2,23 +2,28 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { SupabaseClient } from "@supabase/supabase-js"
 import type { User } from "@/lib/types"
+import { useRouter } from "next/navigation"
 
 // Auth Context Type
 interface AuthContextType {
     user: User | null
+    supabase: SupabaseClient
     isAuthChecked: boolean
     isInitialized: boolean
     login: (email: string, password: string) => Promise<User>
     logout: () => Promise<void>
     updateUser: (data: Partial<User>) => Promise<void>
-    switchRole: (newRole: 'brand' | 'influencer') => Promise<void>
+    switchRole: (newRole: 'brand' | 'creator') => Promise<void>
+    refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [supabase] = useState(() => createClient())
+    const router = useRouter()
     const [user, setUser] = useState<User | null>(null)
     const [isAuthChecked, setIsAuthChecked] = useState(false)
     const [isInitialized, setIsInitialized] = useState(false)
@@ -52,45 +57,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('*, influencer_details(*)')
+                .select('*')
                 .eq('id', sessionUser.id)
                 .single()
 
-            if (profile) {
-                let details = null
-                if (Array.isArray(profile.influencer_details)) {
-                    details = profile.influencer_details.length > 0 ? profile.influencer_details[0] : null
-                } else {
-                    details = profile.influencer_details
-                }
+            console.log('[AuthProvider] Raw profile from DB:', {
+                id: profile?.id,
+                email: profile?.email,
+                role: profile?.role,
+                onboarding_completed: profile?.onboarding_completed,
+                tags: profile?.tags
+            })
 
-                console.log('[AuthProvider] Fetched profile with details:', {
-                    hasDetails: !!details,
-                    tags: details?.tags,
-                    priceVideo: details?.price_video
-                })
+            if (profile) {
+                let teamId = undefined;
+                try {
+                    const { data: teamMember } = await supabase
+                        .from('team_members')
+                        .select('team_id')
+                        .eq('user_id', sessionUser.id)
+                        .maybeSingle()
+
+                    if (teamMember) teamId = teamMember.team_id
+                } catch (e) {
+                    console.warn('[AuthProvider] Team fetch error', e)
+                }
 
                 return {
                     id: sessionUser.id,
                     name: profile.display_name || profile.name || sessionUser.email?.split('@')[0] || "User",
-                    type: (profile.role as "brand" | "influencer" | "admin") || "influencer",
+                    email: profile.email || sessionUser.email,
+                    type: (profile.role as "brand" | "creator" | "admin" | "mcn" | "agency") || profile.user_type || "creator",
+                    role: profile.role,
+                    onboardingCompleted: profile.onboarding_completed || false,
                     avatar: profile.avatar_url,
                     bio: profile.bio,
                     website: profile.website,
-                    handle: details?.instagram_handle || undefined,
-                    followers: details?.followers_count || 0,
-                    tags: details?.tags || [],
+                    handle: profile.instagram_handle || profile.handle,
+                    followers: profile.followers_count || 0,
+                    tags: profile.tags || [],
                     phone: profile.phone,
                     address: profile.address,
-                    priceVideo: details?.price_video || 0,
-                    priceFeed: details?.price_feed || 0,
-                    secondaryRights: details?.secondary_rights || 0,
-                    usageRightsMonth: details?.usage_rights_month || 0,
-                    usageRightsPrice: details?.usage_rights_price || 0,
-                    autoDmMonth: details?.auto_dm_month || 0,
-                    autoDmPrice: details?.auto_dm_price || 0
+                    teamId: teamId,
+
+                    // Rate card fields from profiles
+                    priceVideo: profile.price_video || 0,
+                    priceFeed: profile.price_feed || 0,
+                    secondaryRights: profile.secondary_rights || false,
+                    usageRightsMonth: profile.usage_rights_month || 0,
+                    usageRightsPrice: profile.usage_rights_price || 0,
+                    autoDmMonth: profile.auto_dm_month || 0,
+                    autoDmPrice: profile.auto_dm_price || 0
                 }
             }
+
 
             if (error) {
                 console.warn('[AuthProvider] Profile fetch issue:', error.message)
@@ -103,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return {
             id: sessionUser.id,
             name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || "User",
-            type: (sessionUser.user_metadata?.role as "brand" | "influencer" | "admin") || "influencer",
+            type: (sessionUser.user_metadata?.role as "brand" | "creator" | "admin") || "creator",
             avatar: sessionUser.user_metadata?.avatar_url,
             tags: []
         }
@@ -156,6 +176,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (mounted) {
                     const fetchedUser = await fetchUserProfile(session.user)
                     setUser(fetchedUser)
+
+                    // Check if user needs onboarding (first login only)
+                    if (session?.user && fetchedUser) {
+                        console.log('[AuthProvider] Onboarding Check:', {
+                            pathname: window.location.pathname,
+                            onboardingCompleted: fetchedUser.onboardingCompleted,
+                            email: fetchedUser.email,
+                            type: fetchedUser.type
+                        });
+
+                        // Redirect to onboarding ONLY if not completed AND not already there
+                        const needsOnboarding = !fetchedUser.onboardingCompleted &&
+                            fetchedUser.type !== 'admin' &&
+                            fetchedUser.type !== 'mcn' &&
+                            fetchedUser.type !== 'creator' &&
+                            fetchedUser.type !== 'brand' &&
+                            fetchedUser.type !== 'agency';
+
+                        if (needsOnboarding && window.location.pathname !== '/onboarding') {
+                            console.log('[AuthProvider] Onboarding required - redirecting')
+                            router.push('/onboarding')
+                        }
+                        // After login/signup, redirect to appropriate dashboard
+                        else if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
+                            if (fetchedUser.type === 'brand' || fetchedUser.type === 'agency') {
+                                router.push('/brand')
+                            } else {
+                                // creator, mcn, admin go to creator dashboard
+                                router.push('/creator')
+                            }
+                        }
+                    }
                 }
             } else if (mounted) {
                 lastUserId.current = null
@@ -195,7 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return {
                     id: data.session.user.id,
                     name: data.session.user.user_metadata?.name || email.split('@')[0],
-                    type: (data.session.user.user_metadata?.role as "brand" | "influencer" | "admin") || "influencer"
+                    type: (data.session.user.user_metadata?.role as "brand" | "creator" | "admin") || "creator"
                 }
             }
         } catch (e) {
@@ -245,78 +297,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         try {
-            // Profile updates
-            const profileUpdates: any = {
+            // Consolidated profile updates
+            const updates: any = {
                 updated_at: new Date().toISOString(),
             }
-            if (data.name !== undefined) profileUpdates.display_name = data.name
-            if (data.bio !== undefined) profileUpdates.bio = data.bio
-            if (data.avatar !== undefined) profileUpdates.avatar_url = data.avatar
-            if (data.website !== undefined) profileUpdates.website = data.website
-            if (data.phone !== undefined) profileUpdates.phone = data.phone
-            if (data.address !== undefined) profileUpdates.address = data.address
 
-            console.log('[AuthProvider] Profile updates:', profileUpdates)
+            // Basic profile fields
+            if (data.name !== undefined) updates.display_name = data.name
+            if (data.bio !== undefined) updates.bio = data.bio
+            if (data.avatar !== undefined) updates.avatar_url = data.avatar
+            if (data.website !== undefined) updates.website = data.website
+            if (data.phone !== undefined) updates.phone = data.phone
+            if (data.address !== undefined) updates.address = data.address
 
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .upsert({
-                    id: user.id,
-                    ...profileUpdates
-                }, { onConflict: 'id' })
-
-            if (profileError) {
-                console.error('[AuthProvider] Profile update error:', profileError)
-                alert(`저장 실패 (Profile): ${profileError.message}`)
-                throw profileError
-            }
-
-            // Influencer details updates
-            if (user.type === 'influencer') {
-                const detailsUpdates: any = {
-                    id: user.id,
-                    updated_at: new Date().toISOString(),
-                }
-
-                if (data.tags !== undefined) detailsUpdates.tags = data.tags
-                if (data.handle !== undefined) detailsUpdates.instagram_handle = data.handle
+            // Creator specific fields (now in profiles)
+            if (user.type === 'creator') {
+                if (data.tags !== undefined) updates.tags = data.tags
+                if (data.handle !== undefined) updates.instagram_handle = data.handle // Note: check column name, usually it's just 'handle' or 'instagram_handle'
                 if (data.followers !== undefined) {
                     const count = typeof data.followers === 'string' ? parseInt(data.followers) : data.followers
-                    detailsUpdates.followers_count = isNaN(count) ? 0 : count
+                    updates.followers_count = isNaN(count) ? 0 : count
 
                     let tier = 'Nano'
                     if (count >= 1000000) tier = 'Mega'
                     else if (count >= 100000) tier = 'Macro'
                     else if (count >= 10000) tier = 'Micro'
-                    detailsUpdates.tier = tier
+                    updates.tier = tier
                 }
 
                 // Rate card fields
-                if (data.priceVideo !== undefined) detailsUpdates.price_video = data.priceVideo
-                if (data.priceFeed !== undefined) detailsUpdates.price_feed = data.priceFeed
-                if (data.secondaryRights !== undefined) detailsUpdates.secondary_rights = !!data.secondaryRights
-                if (data.usageRightsMonth !== undefined) detailsUpdates.usage_rights_month = data.usageRightsMonth
-                if (data.usageRightsPrice !== undefined) detailsUpdates.usage_rights_price = data.usageRightsPrice
-                if (data.autoDmMonth !== undefined) detailsUpdates.auto_dm_month = data.autoDmMonth
-                if (data.autoDmPrice !== undefined) detailsUpdates.auto_dm_price = data.autoDmPrice
+                if (data.priceVideo !== undefined) updates.price_video = data.priceVideo
+                if (data.priceFeed !== undefined) updates.price_feed = data.priceFeed
+                if (data.secondaryRights !== undefined) updates.secondary_rights = !!data.secondaryRights
+                if (data.usageRightsMonth !== undefined) updates.usage_rights_month = data.usageRightsMonth
+                if (data.usageRightsPrice !== undefined) updates.usage_rights_price = data.usageRightsPrice
+                if (data.autoDmMonth !== undefined) updates.auto_dm_month = data.autoDmMonth
+                if (data.autoDmPrice !== undefined) updates.auto_dm_price = data.autoDmPrice
+            }
 
-                console.log('[AuthProvider] Influencer details updates:', detailsUpdates)
+            console.log('[AuthProvider] Profile updates:', updates)
 
-                const { error: detailsError } = await supabase
-                    .from('influencer_details')
-                    .upsert(detailsUpdates, { onConflict: 'id' })
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: user.id,
+                    ...updates
+                }, { onConflict: 'id' })
 
-                if (detailsError) {
-                    console.warn('[AuthProvider] Influencer details error:', detailsError)
-                } else {
-                    console.log('[AuthProvider] Influencer details updated')
-                }
+            if (updateError) {
+                console.error('[AuthProvider] Profile update error:', updateError)
+                alert(`저장 실패 (Profile): ${updateError.message}`)
+                throw updateError
+            } else {
+                console.log('[AuthProvider] Profile updated successfully via consolidated table')
             }
 
             // Update local state
             const updatedUser = { ...user, ...data }
             setUser(updatedUser)
-            console.log('[AuthProvider] User updated successfully')
+            console.log('[AuthProvider] Local user state updated')
         } catch (error: any) {
             console.error('[AuthProvider] Update failed:', error)
             throw error
@@ -324,7 +363,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Switch role
-    const switchRole = async (newRole: 'brand' | 'influencer') => {
+    const switchRole = async (newRole: 'brand' | 'creator') => {
         if (!user) {
             alert("로그인 세션이 확인되지 않습니다.")
             return
@@ -368,15 +407,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    // Refresh session and user profile
+    const refreshSession = async () => {
+        console.log('[AuthProvider] Manual session refresh...')
+        try {
+            const { data: { session }, error } = await supabase.auth.refreshSession()
+            if (error) {
+                console.error('[AuthProvider] Session refresh error:', error)
+                throw error
+            }
+
+            if (session?.user) {
+                const fetchedUser = await fetchUserProfile(session.user)
+                if (fetchedUser) {
+                    setUser(fetchedUser)
+                    console.log('[AuthProvider] User profile refreshed:', fetchedUser.type)
+                }
+            }
+        } catch (error) {
+            console.error('[AuthProvider] Failed to refresh session:', error)
+        }
+    }
+
     return (
         <AuthContext.Provider value={{
             user,
+            supabase,
             isAuthChecked,
             isInitialized,
             login,
             logout,
             updateUser,
-            switchRole
+            switchRole,
+            refreshSession
         }}>
             {children}
         </AuthContext.Provider>
@@ -391,12 +454,14 @@ export function useAuth() {
         console.warn('useAuth used outside AuthProvider, returning fallback')
         return {
             user: null,
+            supabase: createClient(), // Fallback (rarely used, but keeps types happy)
             isAuthChecked: false,
             isInitialized: false,
             login: async () => { throw new Error('Auth not initialized') },
             logout: async () => { },
             updateUser: async () => { },
-            switchRole: async () => { }
+            switchRole: async () => { },
+            refreshSession: async () => { }
         }
     }
     return context

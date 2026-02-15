@@ -8,6 +8,7 @@ import { ProductProvider, useProducts } from "./product-provider"
 import { ProposalProvider, useProposals } from "./proposal-provider"
 import { MessageProvider, useMessages } from "./message-provider"
 import { FavoriteProvider, useFavorites } from "./favorite-provider"
+import { TeamProvider, useTeam } from "./team-provider"
 import { createClient } from "@/lib/supabase/client"
 
 // Unified Provider that combines all domain providers
@@ -26,12 +27,43 @@ function UnifiedProviderInner({ children }: { children: React.ReactNode }) {
     const { user } = useAuth()
 
     return (
-        <CampaignProvider userId={user?.id} userType={user?.type}>
-            <EventProvider userId={user?.id}>
-                <ProductProvider userId={user?.id}>
-                    <ProposalProvider userId={user?.id} userType={user?.type}>
-                        <MessageProvider userId={user?.id}>
-                            <FavoriteProvider userId={user?.id}>
+        <TeamProvider>
+            <TeamProviderConsumer>
+                {children}
+            </TeamProviderConsumer>
+        </TeamProvider>
+    )
+}
+
+// Consumer component that has access to team context
+function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
+    const { user } = useAuth()
+    const { currentTeam, selectedMember, isProxyMode } = useTeam()
+
+    // [MCN Proxy Support] 
+    // If in proxy mode, we act as the selected creator.
+    // Otherwise, we are the MCN admin.
+    const effectiveUserId = isProxyMode ? selectedMember?.user_id : user?.id
+
+    // Fallback to user's default team if currentTeam is not yet selected
+    // [MCN Support] MCN/Agency users see ALL events from ALL teams they belong to (Unified View)
+    // BUT if in proxy mode, we should see that creator's specific data content (which might be scoped to team?)
+    // Actually, normally we want to see the creator's data in the context of the current team.
+
+    // FIX: If 'ALL' is passed as teamId to mutations (like addEvent), it causes invalid UUID error.
+    // When in Proxy Mode (isProxyMode=true), we must use a specific team ID (currentTeam.id).
+    // Only use 'ALL' when in MCN Manager Mode (isProxyMode=false) for aggregation.
+    const activeTeamId = ((user?.type === 'mcn' || user?.type === 'agency') && !isProxyMode)
+        ? 'ALL'
+        : (currentTeam?.id || user?.teamId)
+
+    return (
+        <CampaignProvider userId={effectiveUserId} userType={user?.type} teamId={activeTeamId}>
+            <EventProvider userId={effectiveUserId} teamId={activeTeamId} isProxyMode={isProxyMode} userType={user?.type}>
+                <ProductProvider userId={effectiveUserId} teamId={activeTeamId}>
+                    <ProposalProvider userId={effectiveUserId} userType={user?.type}>
+                        <MessageProvider userId={effectiveUserId}>
+                            <FavoriteProvider userId={effectiveUserId}>
                                 {children}
                             </FavoriteProvider>
                         </MessageProvider>
@@ -55,9 +87,16 @@ export function useUnifiedProvider() {
     const proposals = useProposals()
     const messages = useMessages()
     const favorites = useFavorites()
-    const supabase = createClient()
+    const team = useTeam()
+    const supabase = auth.supabase
 
     return {
+        // Team (New)
+        teams: team.teams,
+        currentTeam: team.currentTeam,
+        createTeam: team.createTeam,
+        switchTeam: team.switchTeam,
+
         // Auth
         user: auth.user,
         isAuthChecked: auth.isAuthChecked,
@@ -93,10 +132,13 @@ export function useUnifiedProvider() {
         momentProposals: proposals.momentProposals, // [NEW]
         addMomentProposal: proposals.addMomentProposal, // [NEW]
         addProposal: proposals.addProposal,
+        createBrandProposal: proposals.createBrandProposal, // [NEW]
+        createMomentProposal: proposals.createMomentProposal, // [NEW]
         updateProposal: proposals.updateProposal,
         updateBrandProposal: proposals.updateBrandProposal,
         updateMomentProposal: proposals.updateMomentProposal, // [NEW]
         deleteBrandProposal: proposals.deleteBrandProposal,
+        deleteMomentProposal: proposals.deleteMomentProposal, // [NEW]
         refreshProposals: proposals.refreshProposals,
 
         // Messages

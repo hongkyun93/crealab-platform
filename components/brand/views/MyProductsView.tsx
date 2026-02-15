@@ -1,25 +1,30 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { Plus, ShoppingBag, ExternalLink, FileText, Pencil, Trash2, ImageIcon } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { toast } from "sonner"
 
 interface MyProductsViewProps {
-    myProducts: any[]
+    products: any[]
     setProductModalOpen: (open: boolean) => void
     handleViewGuide: (product: any) => void
     handleEditProduct: (product: any) => void
     deleteProduct: (id: string) => Promise<void>
 }
 
-export const MyProductsView = React.memo(function MyProductsView({
-    myProducts,
+export function MyProductsView({
+    products,
     setProductModalOpen,
     handleViewGuide,
     handleEditProduct,
     deleteProduct
 }: MyProductsViewProps) {
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between">
@@ -32,7 +37,7 @@ export const MyProductsView = React.memo(function MyProductsView({
                 </Button>
             </div>
 
-            {myProducts.length === 0 ? (
+            {(!products || products.length === 0) ? (
                 <Card className="p-12 text-center border-dashed">
                     <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
                         <ShoppingBag className="h-6 w-6 text-muted-foreground" />
@@ -43,7 +48,7 @@ export const MyProductsView = React.memo(function MyProductsView({
                 </Card>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {myProducts.map((p) => (
+                    {products.map((p) => (
                         <Card key={p.id} className="overflow-hidden flex flex-col h-full border-border/60 hover:shadow-md transition-all">
                             <div className="aspect-square bg-muted flex items-center justify-center text-4xl relative group">
                                 {p.image.startsWith('http') ? (
@@ -53,7 +58,7 @@ export const MyProductsView = React.memo(function MyProductsView({
                                 )}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                     <Button size="icon" variant="secondary" className="rounded-full h-10 w-10">
-                                        <ImageIcon className="h-5 w-5" />
+                                        {/* <ImageIcon className="h-5 w-5" /> */}
                                     </Button>
                                 </div>
                             </div>
@@ -107,19 +112,35 @@ export const MyProductsView = React.memo(function MyProductsView({
                                     variant="ghost"
                                     size="sm"
                                     className="h-8 px-2 text-xs gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                    onClick={() => {
-                                        if (confirm("정말로 이 제품을 삭제하시겠습니까?")) {
-                                            deleteProduct(p.id).catch(() => alert("삭제에 실패했습니다."));
-                                        }
-                                    }}
+                                    onClick={() => setConfirmDeleteId(p.id)}
                                 >
-                                    <Trash2 className="h-3 w-3" /> 삭제
+                                    <Trash2 className="h-4 w-4" />
                                 </Button>
                             </CardFooter>
                         </Card>
                     ))}
+
+                    <ConfirmDialog
+                        open={!!confirmDeleteId}
+                        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+                        title="제품 삭제"
+                        description="정말로 이 제품을 삭제하시겠습니까?"
+                        onConfirm={async () => {
+                            if (confirmDeleteId) {
+                                try {
+                                    await deleteProduct(confirmDeleteId)
+                                    toast.success("제품이 삭제되었습니다.")
+                                } catch (error) {
+                                    toast.error("삭제에 실패했습니다.")
+                                }
+                                setConfirmDeleteId(null)
+                            }
+                        }}
+                        confirmText="삭제"
+                        variant="destructive"
+                    />
                 </div>
             )}
         </div>
     )
-})
+}

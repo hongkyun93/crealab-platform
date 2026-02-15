@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "./auth-provider"
 import type { Favorite, FavoriteTargetType } from "@/lib/types"
 
 interface FavoriteContextType {
@@ -15,13 +15,13 @@ interface FavoriteContextType {
 const FavoriteContext = createContext<FavoriteContextType | undefined>(undefined)
 
 export function FavoriteProvider({ children, userId }: { children: React.ReactNode, userId?: string }) {
-    const [supabase] = useState(() => createClient())
+    const { supabase } = useAuth()
     const [favorites, setFavorites] = useState<Favorite[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const isFetching = useRef(false)
 
     // Fetch favorites
-    const fetchFavorites = async (targetUserId?: string) => {
+    const fetchFavorites = async (targetUserId?: string, signal?: AbortSignal) => {
         const id = targetUserId || userId
         if (!id || isFetching.current) return
 
@@ -29,22 +29,30 @@ export function FavoriteProvider({ children, userId }: { children: React.ReactNo
         setIsLoading(true)
 
         try {
-            console.log('[FavoriteProvider] Fetching favorites...')
+            // console.log('[FavoriteProvider] Fetching favorites...') // Reduced noise
 
             const { data, error } = await supabase
                 .from('favorites')
                 .select('*')
                 .eq('user_id', id)
                 .order('created_at', { ascending: false })
+                .abortSignal(signal || null as any)
 
             if (error) {
-                // Ignore AbortError and transient network errors
-                if (error.code === undefined && (
+                // Ignore known benign errors and cancellations
+                if (
+                    error.code === 'PGRST116' || // Result contains 0 rows
                     error.message?.includes('AbortError') ||
                     error.message?.includes('aborted') ||
                     error.message === 'Failed to fetch' ||
-                    error.message === 'Load failed'
-                )) {
+                    error.code === '20' // Abort code
+                ) {
+                    return
+                }
+
+                // Warn about missing table (42P01) silently-ish
+                if (error.code === '42P01') {
+                    console.warn('[FavoriteProvider] Favorites table missing (Migration required)')
                     return
                 }
 
@@ -54,9 +62,18 @@ export function FavoriteProvider({ children, userId }: { children: React.ReactNo
 
             if (data) {
                 setFavorites(data)
-                console.log('[FavoriteProvider] Loaded favorites:', data.length)
+                // console.log('[FavoriteProvider] Loaded favorites:', data.length)
             }
-        } catch (err) {
+        } catch (err: any) {
+            // Handle thrown AbortError from abortSignal
+            if (
+                err.name === 'AbortError' ||
+                err.message?.includes('AbortError') ||
+                err.message?.includes('aborted')
+            ) {
+                // Expected cancellation
+                return
+            }
             console.error('[FavoriteProvider] Exception:', err)
         } finally {
             isFetching.current = false
@@ -66,10 +83,17 @@ export function FavoriteProvider({ children, userId }: { children: React.ReactNo
 
     // Fetch on mount
     useEffect(() => {
+        const controller = new AbortController()
+        const signal = controller.signal
+
         if (userId) {
-            fetchFavorites(userId)
+            fetchFavorites(userId, signal)
         } else {
             setFavorites([])
+        }
+
+        return () => {
+            controller.abort()
         }
     }, [userId])
 
