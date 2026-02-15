@@ -95,31 +95,40 @@ export function useProductsSWR() {
  */
 export const productMutations = {
     /**
-     * Add a new product
+     * Add a new product (Team-based or User-based)
      */
     async addProduct(
-        userId: string,
-        newProduct: Omit<Product, "id" | "brandId" | "createdAt">
+        idOrUserId: string,
+        newProduct: Omit<Product, "id" | "brandId" | "createdAt">,
+        isTeamId: boolean = false
     ): Promise<void> {
-        console.log('[productMutations] Creating product:', newProduct)
+        console.log('[productMutations] Creating product:', { idOrUserId, isTeamId, newProduct })
+
+        const insertData: any = {
+            name: newProduct.name,
+            price: newProduct.price,
+            image_url: newProduct.image,
+            website_url: newProduct.link,
+            selling_points: newProduct.points,
+            required_shots: newProduct.shots,
+            category: newProduct.category,
+            description: newProduct.description,
+            content_guide: newProduct.contentGuide,
+            format_guide: newProduct.formatGuide,
+            tags: newProduct.tags,
+            account_tag: newProduct.accountTag
+        }
+
+        // Use team_id if isTeamId is true, otherwise use brand_id
+        if (isTeamId) {
+            insertData.team_id = idOrUserId
+        } else {
+            insertData.brand_id = idOrUserId
+        }
 
         const { data, error } = await supabase
             .from('brand_products')
-            .insert({
-                brand_id: userId,
-                name: newProduct.name,
-                price: newProduct.price,
-                image_url: newProduct.image,
-                website_url: newProduct.link,
-                selling_points: newProduct.points,
-                required_shots: newProduct.shots,
-                category: newProduct.category,
-                description: newProduct.description,
-                content_guide: newProduct.contentGuide,
-                format_guide: newProduct.formatGuide,
-                tags: newProduct.tags,
-                account_tag: newProduct.accountTag
-            })
+            .insert(insertData)
             .select()
             .single()
 
