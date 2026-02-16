@@ -142,7 +142,7 @@ export default function BrandSettingsPage() {
                                     <Label htmlFor="role">역할</Label>
                                     <Input
                                         id="role"
-                                        value={user?.type === 'brand' ? '브랜드' : user?.type === 'mcn' ? 'MCN' : user?.type === 'agency' ? '에이전시' : '크리에이터'}
+                                        value={user?.role === 'brand' ? '브랜드' : user?.role === 'mcn' ? 'MCN' : user?.role === 'agency' ? '에이전시' : '크리에이터'}
                                         disabled
                                         className="bg-muted"
                                     />

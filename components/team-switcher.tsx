@@ -21,7 +21,7 @@ export function TeamSwitcher() {
     const { selectedMember, teamMembers, switchToMember, isProxyMode, isLoading } = useTeam()
 
     // Only show for MCN users
-    if (!user || user.type !== 'mcn') {
+    if (!user || user.role !== 'mcn') {
         return null
     }
 

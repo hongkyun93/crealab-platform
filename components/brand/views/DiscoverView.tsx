@@ -253,7 +253,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between">
                                                 <h4 className="font-bold truncate">{item.influencer}</h4>
-                                                {user?.type === 'admin' && (
+                                                {user?.role === 'admin' && (
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"

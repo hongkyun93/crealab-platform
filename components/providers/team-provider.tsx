@@ -1,4 +1,3 @@
-
 "use client"
 
 import { createContext, useContext, useEffect, useState, useMemo } from "react"
@@ -121,7 +120,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
     // [MCN Proxy Support] Fetch members when team changes (for Switcher)
     useEffect(() => {
-        if (!currentTeam || user?.type !== 'mcn') {
+        if (!currentTeam || user?.role !== 'mcn') {
             setTeamMembers([])
             return
         }
@@ -183,14 +182,36 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
                 .from('team_members')
                 .select(`
                     *,
-                    profile:profiles(display_name, avatar_url, email)
+                    profile:profiles(
+                        display_name, 
+                        avatar_url, 
+                        email,
+                        instagram_handle,
+                        followers_count,
+                        tags,
+                        phone,
+                        bank_name,
+                        account_number,
+                        account_holder,
+                        price_video,
+                        price_feed,
+                        secondary_rights,
+                        usage_rights_month,
+                        usage_rights_price,
+                        auto_dm_month,
+                        auto_dm_price
+                    )
                 `)
                 .eq('team_id', teamId)
 
-            if (error) throw error
+            if (error) {
+                console.error('[DEBUG] Supabase error details:', JSON.stringify(error, null, 2))
+                throw error
+            }
             return data || []
         } catch (e) {
             console.error('Failed to fetch team members:', e)
+            console.error('[DEBUG] Full error object:', JSON.stringify(e, null, 2))
             return []
         }
     }
@@ -198,12 +219,23 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     // 5. Update Member Role
     const updateMemberRole = async (memberId: string, role: TeamRole): Promise<boolean> => {
         try {
-            const { error } = await supabase
+            console.log('[DEBUG] Updating role - RAW VALUES:', JSON.stringify({ memberId, role, currentTeamId: currentTeam?.id }))
+
+            const { data, error } = await supabase
                 .from('team_members')
                 .update({ role })
-                .eq('id', memberId)
+                .eq('id', memberId)  // UI passes member.id which is the team_members.id
+                .select()
+
+            console.log('[DEBUG] Update result:', JSON.stringify({ data, error, rowsAffected: data?.length }))
 
             if (error) throw error
+
+            if (!data || data.length === 0) {
+                console.error('[DEBUG] Update affected 0 rows - no matching member found')
+                return false
+            }
+
             return true
         } catch (e) {
             console.error('Failed to update member role:', e)
@@ -237,17 +269,24 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     // 7. Invite Member
     const inviteMember = async (teamId: string, email: string, role: TeamRole): Promise<boolean> => {
         try {
-            const { error } = await supabase
-                .from('team_invitations')
-                .insert({
-                    team_id: teamId,
-                    email,
-                    role,
-                    invited_by: user?.id,
-                    status: 'pending'
-                })
+            // Use RPC for secure invitation (bypasses RLS recursion issues)
+            const { data, error } = await supabase.rpc('invite_team_member', {
+                target_team_id: teamId,
+                target_email: email,
+                target_role: role
+            })
 
             if (error) throw error
+
+            const result = data as any
+            if (!result.success) {
+                console.error('Invite failed:', result.message)
+                // Optional: bubble up message? For now just return false/true as per interface
+                // Ideally interface should return {success: boolean, message?: string}
+                // But to minimize changes, we just log and return false.
+                return false
+            }
+
             return true
         } catch (e) {
             console.error('Failed to invite member:', e)

@@ -20,13 +20,13 @@ export default function AdminPage() {
     const [activeTab, setActiveTab] = useState("events")
 
     useEffect(() => {
-        if (!isLoading && (!user || user.type !== 'admin')) {
+        if (!isLoading && (!user || user.role !== 'admin')) {
             router.push("/")
         }
     }, [user, isLoading, router])
 
     if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading Admin Panel...</div>
-    if (!user || user.type !== 'admin') return null
+    if (!user || user.role !== 'admin') return null
 
     const handleDelete = async (type: string, id: string, name: string) => {
         if (confirm(`정말로 "${name}"을(를) 삭제하시겠습니까?`)) {

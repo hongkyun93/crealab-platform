@@ -134,7 +134,14 @@ export const productMutations = {
 
         if (error) {
             console.error('[productMutations] Create error:', error)
-            throw error
+            console.error('[productMutations] Error details:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            })
+            console.error('[productMutations] Insert data:', insertData)
+            throw new Error(`제품 등록 실패: ${error.message} (Code: ${error.code})`)
         }
 
         // Revalidate cache

@@ -33,13 +33,13 @@ export function SiteHeader() {
 
     // Display logic for MCN proxy mode
     const displayUserType = () => {
-        if (user?.type === 'mcn' && isProxyMode && selectedMember) {
+        if (user?.role === 'mcn' && isProxyMode && selectedMember) {
             return `크리에이터 (${selectedMember.profile?.display_name || selectedMember.profile?.email || 'Unknown'})`
         }
-        return user?.type === 'brand' ? '브랜드'
-            : user?.type === 'creator' ? '크리에이터'
-                : user?.type === 'mcn' ? 'MCN'
-                    : user?.type === 'agency' ? '에이전시'
+        return user?.role === 'brand' ? '브랜드'
+            : user?.role === 'creator' ? '크리에이터'
+                : user?.role === 'mcn' ? 'MCN'
+                    : user?.role === 'agency' ? '에이전시'
                         : '관리자'
     }
 
@@ -55,9 +55,9 @@ export function SiteHeader() {
             // If user is brand, go to Brand Dashboard
             // However, the notification is specific to the recipient.
 
-            if (user?.type === 'creator') {
+            if (user?.role === 'creator') {
                 router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
-            } else if (user?.type === 'brand') {
+            } else if (user?.role === 'brand') {
                 router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
             }
         } else if (n.type === 'application_received') {
@@ -65,9 +65,9 @@ export function SiteHeader() {
             router.push(`/brand?view=outbound&proposalId=${n.reference_id}`)
         } else if (n.type === 'new_message') {
             // Generic message redirect - ideally should link to chat
-            if (user?.type === 'creator') {
+            if (user?.role === 'creator') {
                 router.push(`/creator?view=inbound&proposalId=${n.reference_id}`)
-            } else if (user?.type === 'brand') {
+            } else if (user?.role === 'brand') {
                 router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
             }
         }
@@ -79,9 +79,9 @@ export function SiteHeader() {
     }
 
     const handleProfileClick = () => {
-        if (user?.type === 'brand') router.push('/brand/settings')
-        else if (user?.type === 'mcn') router.push('/creator/settings')
-        else router.push('/creator/settings')
+        if (user?.role === 'brand') router.push('/brand/settings')
+        else if (user?.role === 'mcn') router.push('/creator?view=settings')
+        else router.push('/creator?view=settings')
     }
 
     const isActive = (path: string) => pathname?.startsWith(path)
@@ -92,7 +92,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-6 flex items-center space-x-2">
                         <span className="font-bold text-xl tracking-tight">CreadyPick.</span>
-                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">v3.0</span>
+                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V3.1.0</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link
@@ -102,7 +102,7 @@ export function SiteHeader() {
                             서비스 소개
                         </Link>
 
-                        {(!user || user.type === 'brand' || user.type === 'admin') && (
+                        {(!user || user.role === 'brand' || user.role === 'admin') && (
                             <Link
                                 href="/brand"
                                 className={`transition-colors hover:text-foreground/80 ${isActive('/brand') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
@@ -111,12 +111,12 @@ export function SiteHeader() {
                             </Link>
                         )}
 
-                        {(!user || user.type === 'creator' || user.type === 'mcn' || user.type === 'admin') && (
+                        {(!user || user.role === 'creator' || user.role === 'mcn' || user.role === 'admin') && (
                             <Link
                                 href="/creator"
                                 className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
                             >
-                                {user?.type === 'mcn' ? 'MCN 관리' : '크리에이터'}
+                                {user?.role === 'mcn' ? 'MCN 관리' : '크리에이터'}
                             </Link>
                         )}
 
@@ -145,14 +145,14 @@ export function SiteHeader() {
                                 <DropdownMenuItem asChild>
                                     <Link href="/services" className="w-full">서비스 소개</Link>
                                 </DropdownMenuItem>
-                                {(!user || user.type === 'brand' || user.type === 'admin') && (
+                                {(!user || user.role === 'brand' || user.role === 'admin') && (
                                     <DropdownMenuItem asChild>
                                         <Link href="/brand" className="w-full">브랜드</Link>
                                     </DropdownMenuItem>
                                 )}
-                                {(!user || user.type === 'creator' || user.type === 'mcn' || user.type === 'admin') && (
+                                {(!user || user.role === 'creator' || user.role === 'mcn' || user.role === 'admin') && (
                                     <DropdownMenuItem asChild>
-                                        <Link href="/creator" className="w-full">{user?.type === 'mcn' ? 'MCN 관리' : '크리에이터'}</Link>
+                                        <Link href="/creator" className="w-full">{user?.role === 'mcn' ? 'MCN 관리' : '크리에이터'}</Link>
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem asChild>
@@ -172,7 +172,7 @@ export function SiteHeader() {
                     {user ? (
                         <div className="flex items-center gap-4">
                             {/* Team Switcher - Hidden for Creators */}
-                            {teams && teams.length > 0 && user.type !== 'creator' && (
+                            {teams && teams.length > 0 && user.role !== 'creator' && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" size="sm" className="hidden md:flex items-center gap-2 max-w-[200px]">
@@ -258,7 +258,7 @@ export function SiteHeader() {
                                 </PopoverContent>
                             </Popover>
 
-                            {user.type === 'admin' && (
+                            {user.role === 'admin' && (
                                 <Link
                                     href="/admin"
                                     className="text-xs font-bold bg-red-500 text-white px-3 py-1.5 rounded-full hover:bg-red-600 transition-colors"
@@ -268,7 +268,7 @@ export function SiteHeader() {
                             )}
 
                             {/* MCN Team Switcher */}
-                            {user.type === 'mcn' && <TeamSwitcher />}
+                            {user.role === 'mcn' && <TeamSwitcher />}
 
                             <span className="text-sm text-muted-foreground hidden md:inline-block">
                                 환영합니다, <span className="text-primary font-bold mr-1">{displayUserType()}</span> <span className="font-semibold text-foreground">{user.name}</span>님
@@ -288,7 +288,7 @@ export function SiteHeader() {
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>내 계정</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={() => router.push(user.type === 'brand' ? '/brand' : '/creator?view=profile')} className="cursor-pointer">
+                                    <DropdownMenuItem onSelect={() => router.push(user.role === 'brand' ? '/brand' : '/creator?view=profile')} className="cursor-pointer">
                                         <User className="mr-2 h-4 w-4" />
                                         프로필 보기
                                     </DropdownMenuItem>
@@ -296,7 +296,7 @@ export function SiteHeader() {
                                         <Settings className="mr-2 h-4 w-4" />
                                         프로필 설정
                                     </DropdownMenuItem>
-                                    {user.type === 'admin' && (
+                                    {user.role === 'admin' && (
                                         <DropdownMenuItem onSelect={() => router.push('/admin')} className="cursor-pointer font-bold text-red-600">
                                             <Shield className="mr-2 h-4 w-4" />
                                             관리자 패널

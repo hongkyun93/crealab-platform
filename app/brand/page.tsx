@@ -1168,9 +1168,9 @@ function BrandDashboardContent() {
     }
 
     const filteredEvents = getFilteredAndSortedEvents()
-    const myCampaigns = user?.type === 'admin' ? campaigns : campaigns.filter(c => c.brandId === user?.id)
-    const mySentProposals = user?.type === 'admin' ? brandProposals : brandProposals.filter(p => p.brand_id === user?.id)
-    const myProducts = user?.type === 'admin' ? products : products.filter(p => p.brandId === user?.id)
+    const myCampaigns = user?.role === 'admin' ? campaigns : campaigns.filter(c => c.brandId === user?.id)
+    const mySentProposals = user?.role === 'admin' ? brandProposals : brandProposals.filter(p => p.brand_id === user?.id)
+    const myProducts = user?.role === 'admin' ? products : products.filter(p => p.brandId === user?.id)
 
     // Filter items by type (moment/campaign/brand)
     const filterByType = (items: any[], type: 'all' | 'moment' | 'campaign' | 'brand') => {
@@ -1301,7 +1301,7 @@ function BrandDashboardContent() {
             case "my-products":
                 return (
                     <MyProductsView
-                        myProducts={myProducts}
+                        products={myProducts}
                         setProductModalOpen={setProductModalOpen}
                         handleViewGuide={handleViewGuide}
                         handleEditProduct={handleEditProduct}
@@ -1521,7 +1521,7 @@ function BrandDashboardContent() {
                             </div>
                             <div className="min-w-0">
                                 <h2 className="font-bold truncate">{user?.name || "브랜드"}</h2>
-                                <p className="text-xs text-muted-foreground truncate">{user?.type === 'brand' ? '브랜드 계정' : user?.type}</p>
+                                <p className="text-xs text-muted-foreground truncate">{user?.role === 'brand' ? '브랜드 계정' : user?.role}</p>
                             </div>
                         </div>
                         <nav className="space-y-1">

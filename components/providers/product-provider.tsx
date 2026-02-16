@@ -56,12 +56,12 @@ export function ProductProvider({ children, userId, teamId }: {
 
     // Wrapper functions to maintain API compatibility (Team-based or User-based)
     const addProduct = async (newProduct: Omit<Product, "id" | "brandId" | "createdAt">) => {
-        if (!teamId && !userId) {
-            throw new Error('Team ID or User ID required to create product')
+        if (!userId) {
+            throw new Error('User ID required to create product')
         }
-        const idToUse = teamId || userId!
-        const isTeam = !!teamId
-        await productMutations.addProduct(idToUse, newProduct, isTeam)
+        // Products are ALWAYS created by brands (individual users), never by teams
+        // Even if the brand is part of a team, products belong to the brand user
+        await productMutations.addProduct(userId, newProduct, false)
     }
 
     const updateProduct = async (id: string, updates: Partial<Product>) => {

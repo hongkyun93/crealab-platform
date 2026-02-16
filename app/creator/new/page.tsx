@@ -65,7 +65,7 @@ export default function NewEventPage() {
 
     useEffect(() => {
         const fetchTeamMembers = async () => {
-            if (user?.type === 'agency' || user?.type === 'mcn') {
+            if (user?.role === 'agency' || user?.role === 'mcn') {
                 const { data, error } = await supabase
                     .from('team_members')
                     .select(`
@@ -163,7 +163,7 @@ export default function NewEventPage() {
 
         if (isProxyMode) {
             finalInfluencerId = effectiveUserId || user.id
-        } else if (user.type === 'agency' || user.type === 'mcn') {
+        } else if (user.role === 'agency' || user.role === 'mcn') {
             if (!targetCreatorId) {
                 setValidationError("모먼트를 등록할 크리에이터를 선택해주세요.")
                 return
@@ -233,7 +233,7 @@ export default function NewEventPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="title">모먼트 제목</Label>
                                 {/* Only show creator selector if MCN is NOT in proxy mode */}
-                                {((user?.type === 'agency' || user?.type === 'mcn') && !isProxyMode) && (
+                                {((user?.role === 'agency' || user?.role === 'mcn') && !isProxyMode) && (
                                     <div className="mb-4 p-4 border rounded-lg bg-indigo-50/50 border-indigo-100">
                                         <Label className="mb-2 block text-indigo-900 font-semibold">
                                             어떤 크리에이터의 모먼트인가요?

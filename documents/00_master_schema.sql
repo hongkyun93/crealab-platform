@@ -42,11 +42,30 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   usage_rights_month integer DEFAULT 0, -- 2nd usage rights duration (months)
   usage_rights_price integer DEFAULT 0, -- 2nd usage rights price
   auto_dm_month integer DEFAULT 0, -- Auto DM duration (months)
-  auto_dm_price integer DEFAULT 0 -- Auto DM price
+  auto_dm_price integer DEFAULT 0, -- Auto DM price
+  
+  -- Bank Information
+  bank_name text,
+  account_number text,
+  account_holder text
 );
 
 -- Ensure user_type exists (for existing tables)
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS user_type text DEFAULT 'influencer';
+
+-- Ensure bank info columns exist (Migration for existing tables)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'bank_name') THEN
+        ALTER TABLE public.profiles ADD COLUMN bank_name text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'account_number') THEN
+        ALTER TABLE public.profiles ADD COLUMN account_number text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'account_holder') THEN
+        ALTER TABLE public.profiles ADD COLUMN account_holder text;
+    END IF;
+END $$;
 
 -- DEPRECATED: influencer_details (Merged into profiles)
 -- CREATE TABLE IF NOT EXISTS public.influencer_details ...
@@ -101,12 +120,22 @@ CREATE TABLE IF NOT EXISTS public.team_invitations (
     status TEXT DEFAULT 'pending',
     created_at TIMESTAMPTZ DEFAULT now(),
     expires_at TIMESTAMPTZ DEFAULT (now() + interval '7 days'),
+    invite_code TEXT DEFAULT substring(md5(random()::text) from 0 for 12),
     UNIQUE(team_id, email)
 );
+CREATE INDEX IF NOT EXISTS idx_team_invitations_code ON public.team_invitations(invite_code);
 
 CREATE INDEX IF NOT EXISTS idx_team_invitations_team_id ON public.team_invitations(team_id);
 CREATE INDEX IF NOT EXISTS idx_team_invitations_email ON public.team_invitations(email);
 CREATE INDEX IF NOT EXISTS idx_team_invitations_status ON public.team_invitations(status);
+
+-- Ensure 'invited_by' column exists (Migration for existing tables)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'team_invitations' AND column_name = 'invited_by') THEN
+        ALTER TABLE public.team_invitations ADD COLUMN invited_by UUID REFERENCES public.profiles(id);
+    END IF;
+END $$;
 
 -- 2.3 LIFE MOMENTS (Influencer Events)
 CREATE TABLE IF NOT EXISTS public.life_moments (
@@ -493,6 +522,37 @@ CREATE TABLE IF NOT EXISTS public.submission_feedback (
     )
 );
 
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email text,
+  display_name text,
+  avatar_url text,
+  role text, -- 'brand', 'creator', 'mcn', 'agency', 'admin'
+  phone text,
+  instagram_handle text,
+  description text,
+  is_mock boolean DEFAULT false,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  
+  -- Merged from influencer_details
+  followers_count integer DEFAULT 0,
+  tier text,
+  tags text[] DEFAULT '{}',
+  price_video integer DEFAULT 0, -- Short-form video price
+  price_feed integer DEFAULT 0, -- Feed post price
+  secondary_rights boolean DEFAULT false, -- Secondary usage rights availability
+  usage_rights_month integer DEFAULT 0, -- 2nd usage rights duration (months)
+  usage_rights_price integer DEFAULT 0, -- 2nd usage rights price
+  auto_dm_month integer DEFAULT 0, -- Auto DM duration (months)
+  auto_dm_price integer DEFAULT 0, -- Auto DM price
+  
+  -- Bank Info
+  bank_name text,
+  account_number text,
+  account_holder text
+);
+
 -- 2.12 FAVORITES
 CREATE TABLE IF NOT EXISTS public.favorites (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -506,84 +566,52 @@ CREATE TABLE IF NOT EXISTS public.favorites (
 -- ==========================================
 -- 3. FUNCTIONS & TRIGGERS
 -- ==========================================
+-- 5. Triggers for User Creation (Updated: No autocreate team, role based)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = public, extensions
 AS $$
 DECLARE
-  preferred_role text; -- Changed from user_role to text
-  new_team_id uuid;
-  base_slug text;
-  final_slug text;
-  counter int;
+  preferred_role text;
   user_name text;
 BEGIN
   -- 1. Determine Role
-  -- Check metadata 'role_type' or 'role' (fallback)
-  IF new.raw_user_meta_data->>'role_type' = 'brand' OR new.raw_user_meta_data->>'role' = 'brand' THEN
-    preferred_role := 'brand';
-  ELSE
-    preferred_role := 'influencer';
-  END IF;
+  -- Check metadata first. If missing, leave as NULL to trigger onboarding.
+  preferred_role := new.raw_user_meta_data->>'role';
+  
+  -- OLD LOGIC: Default to 'creator'
+  -- IF preferred_role IS NULL OR preferred_role = '' THEN
+  --     preferred_role := 'creator';
+  -- END IF;
 
   -- 2. Determine Name
-  user_name := COALESCE(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1));
+  user_name := new.raw_user_meta_data->>'name';
   IF user_name IS NULL OR user_name = '' THEN
-      user_name := 'User';
+      user_name := split_part(new.email, '@', 1);
   END IF;
 
   -- 3. Insert Profile
   INSERT INTO public.profiles (id, email, display_name, role)
   VALUES (
-    new.id, 
-    new.email, 
-    user_name, 
+    new.id,
+    new.email,
+    user_name,
     preferred_role
   )
   ON CONFLICT (id) DO UPDATE
-  SET 
+  SET
     email = EXCLUDED.email,
     display_name = COALESCE(EXCLUDED.display_name, public.profiles.display_name);
-    
-  -- 4. Create Team (For everyone)
-    
-    -- Generate Slug
-    base_slug := lower(regexp_replace(user_name, '[^a-zA-Z0-9]', '', 'g'));
-    IF base_slug IS NULL OR base_slug = '' THEN base_slug := 'team'; END IF;
-    
-    final_slug := base_slug;
-    counter := 1;
-    
-    -- Ensure unique slug
-    WHILE EXISTS (SELECT 1 FROM public.teams WHERE slug = final_slug) LOOP
-        final_slug := base_slug || counter;
-        counter := counter + 1;
-    END LOOP;
 
-    -- Insert Team
-    INSERT INTO public.teams (name, slug, logo_url)
-    VALUES (
-        user_name,
-        final_slug,
-        new.raw_user_meta_data->>'avatar_url'
-    )
-    RETURNING id INTO new_team_id;
-
-    -- Insert Team Member (Owner)
-    INSERT INTO public.team_members (team_id, user_id, role)
-    VALUES (
-        new_team_id,
-        new.id,
-        'owner'
-    );
+  -- 4. Create Team (DISABLED: No longer creating teams automatically)
+  -- Logic removed to prevent confusion. Teams are now created explicitly by MCN/Agencies.
 
   RETURN new;
 EXCEPTION
-    WHEN OTHERS THEN
-        -- Log error (visible in Supabase logs) then raise
-        RAISE WARNING 'Error in handle_new_user: %', SQLERRM;
-        RAISE; -- Re-raise to fail the transaction (signup failure is better than partial state)
+  WHEN OTHERS THEN
+      RAISE WARNING 'Error in handle_new_user: %', SQLERRM;
+      RAISE;
 END;
 $$;
 
@@ -619,7 +647,7 @@ CREATE TRIGGER on_team_created
 -- ==========================================
 -- Enable RLS on All Tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.influencer_details ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.influencer_details ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brand_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.life_moments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
@@ -701,13 +729,32 @@ CREATE POLICY "Owners and admins can add members" ON public.team_members
     public.is_team_owner_or_admin(team_id, auth.uid())
   );
 
+
+DROP POLICY IF EXISTS "Managers can update team members" ON public.team_members;
+CREATE POLICY "Managers can update team members" ON public.team_members
+  FOR UPDATE USING (
+    public.is_team_owner_or_admin(team_id, auth.uid())
+  );
+
+
+
 -- Team Invitations RLS
 ALTER TABLE public.team_invitations ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Members view team invitations" ON public.team_invitations;
-CREATE POLICY "Members view team invitations" ON public.team_invitations
+DROP POLICY IF EXISTS "View own invitations" ON public.team_invitations;
+CREATE POLICY "View own invitations" ON public.team_invitations
   FOR SELECT USING (
-    team_id IN (SELECT public.get_user_team_ids(auth.uid()))
+    email = (auth.jwt() ->> 'email')
+  );
+
+DROP POLICY IF EXISTS "Team members view invitations" ON public.team_invitations;
+CREATE POLICY "Team members view invitations" ON public.team_invitations
+  FOR SELECT USING (
+    team_id IN (
+      SELECT team_id FROM public.team_members WHERE user_id = auth.uid()
+      UNION
+      SELECT id FROM public.teams WHERE created_by = auth.uid()
+    )
   );
 
 DROP POLICY IF EXISTS "Managers create invitations" ON public.team_invitations;
@@ -717,7 +764,7 @@ CREATE POLICY "Managers create invitations" ON public.team_invitations
       SELECT 1 FROM public.team_members
       WHERE team_id = team_invitations.team_id
       AND user_id = auth.uid()
-      AND role IN ('owner', 'manager')
+      AND role IN ('owner', 'manager', 'admin')
     )
   );
 
@@ -728,7 +775,7 @@ CREATE POLICY "Managers update invitations" ON public.team_invitations
       SELECT 1 FROM public.team_members
       WHERE team_id = team_invitations.team_id
       AND user_id = auth.uid()
-      AND role IN ('owner', 'manager')
+      AND role IN ('owner', 'manager', 'admin')
     )
   );
 
@@ -739,10 +786,11 @@ CREATE POLICY "Managers delete invitations" ON public.team_invitations
       SELECT 1 FROM public.team_members
       WHERE team_id = team_invitations.team_id
       AND user_id = auth.uid()
-      AND role IN ('owner', 'manager')
+      AND role IN ('owner', 'manager', 'admin')
     )
   );
 
+-- 4.6 Profiles (Advanced Access)
 DROP POLICY IF EXISTS "Public profiles" ON public.profiles;
 CREATE POLICY "Public profiles" ON public.profiles FOR SELECT USING (true);
 
@@ -750,36 +798,47 @@ DROP POLICY IF EXISTS "Self insert profiles" ON public.profiles;
 CREATE POLICY "Self insert profiles" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Self update profiles" ON public.profiles;
-CREATE POLICY "Self update profiles" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Self update profiles" ON public.profiles 
+FOR UPDATE USING (
+  -- Self
+  auth.uid() = id
+  OR
+  -- Team managers can update profiles of team members (MCN support)
+  EXISTS (
+    SELECT 1 FROM public.team_members tm_target
+    JOIN public.team_members tm_auth ON tm_target.team_id = tm_auth.team_id
+    WHERE tm_target.user_id = profiles.id
+    AND tm_auth.user_id = auth.uid()
+    AND tm_auth.role IN ('owner', 'admin', 'manager')
+  )
+);
 
-DROP POLICY IF EXISTS "Public influencer_details" ON public.influencer_details;
-CREATE POLICY "Public influencer_details" ON public.influencer_details FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Self insert details" ON public.influencer_details;
-CREATE POLICY "Self insert details" ON public.influencer_details FOR INSERT WITH CHECK (auth.uid() = id);
-
-DROP POLICY IF EXISTS "Self update details" ON public.influencer_details;
-CREATE POLICY "Self update details" ON public.influencer_details FOR UPDATE USING (auth.uid() = id);
-
-DROP POLICY IF EXISTS "Self view instagram" ON public.instagram_accounts;
-CREATE POLICY "Self view instagram" ON public.instagram_accounts FOR SELECT USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Self manage instagram" ON public.instagram_accounts;
-CREATE POLICY "Self manage instagram" ON public.instagram_accounts FOR ALL USING (auth.uid() = user_id);
-
--- 4.2 Brand Products
-DROP POLICY IF EXISTS "Public brand_products" ON public.brand_products;
-CREATE POLICY "Public brand_products" ON public.brand_products FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Brand manage products" ON public.brand_products;
-CREATE POLICY "Brand manage products" ON public.brand_products FOR ALL USING (auth.uid() = brand_id);
-
--- 4.3 Life Moments
+-- 4.3 Life Moments (MCN Support)
 DROP POLICY IF EXISTS "Public life_moments" ON public.life_moments;
-CREATE POLICY "Public life_moments" ON public.life_moments FOR SELECT USING (is_private = false OR auth.uid() = influencer_id);
+CREATE POLICY "Public life_moments" ON public.life_moments FOR SELECT USING (
+    is_private = false OR 
+    auth.uid() = influencer_id OR
+    -- Allow team members to view private moments of their creators
+    EXISTS (
+        SELECT 1 FROM public.team_members tm_target
+        JOIN public.team_members tm_auth ON tm_target.team_id = tm_auth.team_id
+        WHERE tm_target.user_id = life_moments.influencer_id
+        AND tm_auth.user_id = auth.uid()
+    )
+);
 
 DROP POLICY IF EXISTS "Influencer manage moments" ON public.life_moments;
-CREATE POLICY "Influencer manage moments" ON public.life_moments FOR ALL USING (auth.uid() = influencer_id);
+CREATE POLICY "Influencer manage moments" ON public.life_moments FOR ALL USING (
+    auth.uid() = influencer_id OR
+    -- Allow team members to manage moments (MCN support)
+    EXISTS (
+        SELECT 1 FROM public.team_members tm_target
+        JOIN public.team_members tm_auth ON tm_target.team_id = tm_auth.team_id
+        WHERE tm_target.user_id = life_moments.influencer_id
+        AND tm_auth.user_id = auth.uid()
+        AND tm_auth.role IN ('owner', 'admin', 'manager')
+    )
+);
 
 -- 4.4 Campaigns
 DROP POLICY IF EXISTS "Public campaigns" ON public.campaigns;
@@ -787,6 +846,21 @@ CREATE POLICY "Public campaigns" ON public.campaigns FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Brand manage campaigns" ON public.campaigns;
 CREATE POLICY "Brand manage campaigns" ON public.campaigns FOR ALL USING (auth.uid() = brand_id);
+
+-- 4.4b Campaign Applications (MCN Support)
+ALTER TABLE public.campaign_applications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Team manage applications" ON public.campaign_applications;
+CREATE POLICY "Team manage applications" ON public.campaign_applications FOR ALL USING (
+    auth.uid() = influencer_id OR
+    -- Allow team members to manage applications
+    EXISTS (
+        SELECT 1 FROM public.team_members tm_target
+        JOIN public.team_members tm_auth ON tm_target.team_id = tm_auth.team_id
+        WHERE tm_target.user_id = campaign_applications.influencer_id
+        AND tm_auth.user_id = auth.uid()
+    )
+);
 
 -- 4.5 Proposals (Unified Logic: Involved Parties Only)
 -- Brand Proposals
@@ -1278,6 +1352,7 @@ DROP POLICY IF EXISTS "Influencer manage moments" ON public.life_moments;
 DROP POLICY IF EXISTS "Team manage moments" ON public.life_moments;
 
 -- Allow SELECT for everyone (public moments) or own team's private moments
+DROP POLICY IF EXISTS "Public view moments" ON public.life_moments;
 CREATE POLICY "Public view moments" ON public.life_moments FOR SELECT USING (
     is_private = false OR 
     auth.uid() = influencer_id OR
@@ -1298,8 +1373,386 @@ DROP POLICY IF EXISTS "Influencer manage applications" ON public.campaign_applic
 DROP POLICY IF EXISTS "Team manage applications" ON public.campaign_applications;
 
 CREATE POLICY "Team manage applications" ON public.campaign_applications FOR ALL USING (
-    auth.uid() = applicant_id OR
-    EXISTS (SELECT 1 FROM public.team_members WHERE user_id = applicant_id AND team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()))
+    auth.uid() = influencer_id OR
+    EXISTS (SELECT 1 FROM public.team_members WHERE user_id = influencer_id AND team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()))
 );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ==========================================
+-- 14. TEAM CREATION PERMISSIONS (Consolidated)
+-- ==========================================
+
+-- 1. Check if policy exists, if not create
+-- Allow authenticated users to CREATE a team
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'teams' AND policyname = 'Authenticated users can create teams'
+    ) THEN
+        CREATE POLICY "Authenticated users can create teams" ON public.teams
+        FOR INSERT 
+        TO authenticated 
+        WITH CHECK (true);
+    END IF;
+END $$;
+
+-- ==========================================
+-- 13. RECURSION FIXES (Consolidated)
+-- ==========================================
+
+-- 1. Helper Function (SECURITY DEFINER)
+-- Bypasses RLS to get the list of teams the current user belongs to.
+CREATE OR REPLACE FUNCTION public.get_my_team_ids()
+RETURNS TABLE(team_id UUID)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT tm.team_id 
+    FROM public.team_members tm
+    WHERE tm.user_id = auth.uid();
+END;
+$$;
+
+-- 2. Fix 'teams' Table Policies
+ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own teams" ON public.teams;
+
+-- New Policy: Use the function instead of direct table access
+CREATE POLICY "Users can view their own teams" ON public.teams
+    FOR SELECT 
+    TO authenticated 
+    USING (
+        created_by = auth.uid() 
+        OR 
+        id IN (SELECT * FROM public.get_my_team_ids())
+    );
+
+-- 3. Fix 'team_members' Table Policies
+ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "View members of own team" ON public.team_members;
+
+-- New Policy: Use the function instead of direct table access
+CREATE POLICY "View members of own team" ON public.team_members
+    FOR SELECT
+    TO authenticated
+    USING (
+        team_id IN (SELECT * FROM public.get_my_team_ids())
+        OR
+        -- Also allow if you are the creator of the team for the TeamContext logic 
+        EXISTS (
+            SELECT 1 FROM public.teams t
+            WHERE t.id = public.team_members.team_id
+            AND t.created_by = auth.uid()
+        )
+    );
+
+-- ==========================================
+-- 12. INVITATION LOGIC (Consolidated)
+-- ==========================================
+
+-- 1. Function to get invitations for the current user (based on Email)
+-- (Removed duplicate get_my_invitations function)
+
+-- 2. Function to Accept Invitation
+CREATE OR REPLACE FUNCTION public.accept_invitation(invitation_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    invite_record RECORD;
+    current_email TEXT;
+    user_uid UUID;
+    is_member BOOLEAN;
+BEGIN
+    current_email := auth.jwt() ->> 'email';
+    user_uid := auth.uid();
+
+    -- Fetch the invitation securely
+    SELECT * INTO invite_record
+    FROM public.team_invitations
+    WHERE id = invitation_id
+    AND email = current_email
+    AND status = 'pending'
+    AND expires_at > now();
+
+    IF invite_record.id IS NULL THEN
+        RAISE EXCEPTION 'Invalid or expired invitation';
+    END IF;
+
+    -- Add user to team
+    -- 2. Check if already a member of THIS team
+    SELECT EXISTS (SELECT 1 FROM public.team_members WHERE team_id = invite_record.team_id AND user_id = user_uid) INTO is_member;
+    
+    IF is_member THEN
+        -- Already member, just mark accepted
+        UPDATE public.team_invitations
+        SET status = 'accepted'
+        WHERE id = invitation_id;
+        RETURN TRUE;
+    END IF;
+
+    -- 3. Leave ANY other teams (Enforce single team membership)
+    DELETE FROM public.team_members WHERE user_id = user_uid;
+
+    -- 4. Add to new team
+    INSERT INTO public.team_members (team_id, user_id, role)
+    VALUES (invite_record.team_id, user_uid, invite_record.role);
+
+    -- 5. Mark invitation as accepted
+    UPDATE public.team_invitations
+    SET status = 'accepted'
+    WHERE id = invitation_id;
+    
+    RETURN TRUE;
+END;
+$$;
+
+-- ==========================================
+-- 15. INVITATION LINK SUPPORT (Consolidated)
+-- ==========================================
+
+-- Add invite_code column if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'team_invitations' AND column_name = 'invite_code') THEN
+        ALTER TABLE public.team_invitations ADD COLUMN invite_code text;
+        CREATE INDEX idx_team_invitaions_code ON public.team_invitations(invite_code);
+    END IF;
+END $$;
+
+-- Create trigger to auto-generate invite_code
+CREATE OR REPLACE FUNCTION generate_invite_code()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.invite_code IS NULL THEN
+        -- If email exists, use it for uniqueness. Otherwise, use team_id + timestamp
+        IF NEW.email IS NOT NULL THEN
+            NEW.invite_code := substring(md5(random()::text || NEW.email || now()::text) from 1 for 12);
+        ELSE
+            NEW.invite_code := substring(md5(random()::text || NEW.team_id::text || now()::text) from 1 for 12);
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS ensure_invite_code ON public.team_invitations;
+CREATE TRIGGER ensure_invite_code
+BEFORE INSERT ON public.team_invitations
+FOR EACH ROW
+EXECUTE FUNCTION generate_invite_code();
+
+-- Backfill existing NULL invite codes
+UPDATE public.team_invitations
+SET invite_code = substring(md5(random()::text || id::text || email) from 1 for 12)
+WHERE invite_code IS NULL;
+
+
+-- RPC: Get Invitation Info (Public Access)
+CREATE OR REPLACE FUNCTION public.get_invitation_by_code(code text)
+RETURNS TABLE (
+    valid boolean,
+    team_id uuid,
+    team_name text,
+    inviter_name text,
+    inviter_avatar text,
+    error_message text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    invite_record RECORD;
+    team_record RECORD;
+    inviter_record RECORD;
+BEGIN
+    -- 1. Find invitation
+    SELECT * INTO invite_record FROM public.team_invitations WHERE invite_code = code AND status = 'pending';
+    
+    IF invite_record.id IS NULL THEN
+        RETURN QUERY SELECT false, null::uuid, null::text, null::text, null::text, '유효하지 않은 초대 코드입니다.'::text;
+        RETURN;
+    END IF;
+
+    -- 2. Check expiration
+    IF invite_record.expires_at < now() THEN
+        RETURN QUERY SELECT false, null::uuid, null::text, null::text, null::text, '만료된 초대 코드입니다.'::text;
+        RETURN;
+    END IF;
+
+    -- 3. Get Team Info
+    SELECT * INTO team_record FROM public.teams WHERE id = invite_record.team_id;
+
+    -- 4. Get Inviter Info
+    SELECT * INTO inviter_record FROM public.profiles WHERE id = invite_record.invited_by;
+
+    RETURN QUERY SELECT 
+        true, 
+        team_record.id, 
+        team_record.name, 
+        COALESCE(inviter_record.display_name, inviter_record.email), 
+        inviter_record.avatar_url,
+        null::text;
+END;
+$$;
+
+-- RPC: Join Team with Code
+CREATE OR REPLACE FUNCTION public.join_team_with_code(code text)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    invite_record RECORD;
+    current_user_id UUID;
+    is_member BOOLEAN;
+BEGIN
+    current_user_id := auth.uid();
+    IF current_user_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'message', '로그인이 필요합니다.');
+    END IF;
+
+    -- 1. Find invitation
+    SELECT * INTO invite_record FROM public.team_invitations WHERE invite_code = code AND status = 'pending';
+    
+    IF invite_record.id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'message', '유효하지 않거나 만료된 초대입니다.');
+    END IF;
+
+    -- 2. Check if already member of THIS team
+    SELECT EXISTS (SELECT 1 FROM public.team_members WHERE team_id = invite_record.team_id AND user_id = current_user_id) INTO is_member;
+    
+    IF is_member THEN
+        RETURN jsonb_build_object('success', true, 'message', 'Already a member');
+    END IF;
+
+    -- 3. Leave ANY other teams (Enforce single team membership)
+    DELETE FROM public.team_members WHERE user_id = current_user_id;
+
+    -- 4. Add to new team
+    INSERT INTO public.team_members (team_id, user_id, role)
+    VALUES (invite_record.team_id, current_user_id, invite_record.role);
+
+    -- 5. Update Invitation Status
+    UPDATE public.team_invitations 
+    SET status = 'accepted' 
+    WHERE id = invite_record.id;
+
+    RETURN jsonb_build_object('success', true, 'team_id', invite_record.team_id);
+END;
+$$;
+
+-- RPC: Invite Team Member (Secure & Robust)
+CREATE OR REPLACE FUNCTION public.invite_team_member(
+    target_team_id UUID,
+    target_email TEXT,
+    target_role TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    current_user_id UUID;
+    is_authorized BOOLEAN;
+    existing_member_id UUID;
+    existing_invite_id UUID;
+BEGIN
+    current_user_id := auth.uid();
+    
+    -- 1. Check Permissions
+    -- 1. Check Permissions
+    -- Allow if user is owner/manager/admin in team_members OR if user created the team (fallback)
+    SELECT EXISTS (
+        SELECT 1 FROM public.team_members 
+        WHERE team_id = target_team_id 
+        AND user_id = current_user_id 
+        AND role IN ('owner', 'manager', 'admin')
+    ) OR EXISTS (
+        SELECT 1 FROM public.teams
+        WHERE id = target_team_id
+        AND created_by = current_user_id
+    ) INTO is_authorized;
+
+    IF NOT is_authorized THEN
+        RETURN jsonb_build_object('success', false, 'message', '초대 권한이 없습니다.');
+    END IF;
+
+    -- 2. Check if already a member
+    SELECT id INTO existing_member_id FROM public.profiles WHERE email = target_email;
+    
+    IF existing_member_id IS NOT NULL THEN
+        IF EXISTS (SELECT 1 FROM public.team_members WHERE team_id = target_team_id AND user_id = existing_member_id) THEN
+            RETURN jsonb_build_object('success', false, 'message', '이미 팀 멤버입니다.');
+        END IF;
+    END IF;
+
+    -- 3. Check if already invited
+    SELECT id INTO existing_invite_id FROM public.team_invitations 
+    WHERE team_id = target_team_id AND email = target_email AND status = 'pending';
+
+    IF existing_invite_id IS NOT NULL THEN
+        RETURN jsonb_build_object('success', false, 'message', '이미 대기 중인 초대가 있습니다.');
+    END IF;
+
+    -- 4. Create Invitation
+    INSERT INTO public.team_invitations (team_id, email, role, invited_by, status)
+    VALUES (target_team_id, target_email, target_role, current_user_id, 'pending');
+
+    RETURN jsonb_build_object('success', true, 'message', '초대가 발송되었습니다.');
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN jsonb_build_object('success', false, 'message', '오류 발생: ' || SQLERRM);
+END;
+$$;
+
+-- RPC: Get My Invitations
+-- Used in onboarding to show pending invites
+DROP FUNCTION IF EXISTS public.get_my_invitations();
+CREATE OR REPLACE FUNCTION public.get_my_invitations()
+RETURNS TABLE (
+    id UUID,
+    team_id UUID,
+    team_name TEXT,
+    role TEXT,
+    created_at TIMESTAMPTZ,
+    inviter_name TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    current_email TEXT;
+BEGIN
+    current_email := auth.jwt() ->> 'email';
+    
+    RETURN QUERY
+    SELECT 
+        ti.id,
+        ti.team_id,
+        t.name as team_name,
+        ti.role,
+        ti.created_at,
+        p.display_name as inviter_name
+    FROM public.team_invitations ti
+    JOIN public.teams t ON ti.team_id = t.id
+    LEFT JOIN public.profiles p ON ti.invited_by = p.id
+    WHERE ti.email = current_email
+    AND ti.status = 'pending'
+    AND ti.expires_at > now();
+END;
+$$;

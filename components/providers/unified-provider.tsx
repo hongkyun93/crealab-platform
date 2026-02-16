@@ -53,15 +53,15 @@ function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
     // FIX: If 'ALL' is passed as teamId to mutations (like addEvent), it causes invalid UUID error.
     // When in Proxy Mode (isProxyMode=true), we must use a specific team ID (currentTeam.id).
     // Only use 'ALL' when in MCN Manager Mode (isProxyMode=false) for aggregation.
-    const activeTeamId = ((user?.type === 'mcn' || user?.type === 'agency') && !isProxyMode)
+    const activeTeamId = ((user?.role === 'mcn' || user?.role === 'agency') && !isProxyMode)
         ? 'ALL'
         : (currentTeam?.id || user?.teamId)
 
     return (
-        <CampaignProvider userId={effectiveUserId} userType={user?.type} teamId={activeTeamId}>
-            <EventProvider userId={effectiveUserId} teamId={activeTeamId} isProxyMode={isProxyMode} userType={user?.type}>
+        <CampaignProvider userId={effectiveUserId} userType={user?.role} teamId={activeTeamId}>
+            <EventProvider userId={effectiveUserId} teamId={activeTeamId} isProxyMode={isProxyMode} userType={user?.role}>
                 <ProductProvider userId={effectiveUserId} teamId={activeTeamId}>
-                    <ProposalProvider userId={effectiveUserId} userType={user?.type}>
+                    <ProposalProvider userId={effectiveUserId} userType={user?.role}>
                         <MessageProvider userId={effectiveUserId}>
                             <FavoriteProvider userId={effectiveUserId}>
                                 {children}

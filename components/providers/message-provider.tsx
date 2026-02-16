@@ -85,13 +85,18 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     receiverId: msg.receiver_id,
                     proposalId: msg.proposal_id,
                     brandProposalId: msg.brand_proposal_id,
-                    content: msg.content,
+                    content: msg.content || '',
                     timestamp: msg.created_at,
                     read: msg.is_read || false,
                     senderName: msg.sender?.display_name || 'User',
                     senderAvatar: msg.sender?.avatar_url,
                     receiverName: msg.receiver?.display_name || 'User',
-                    receiverAvatar: msg.receiver?.avatar_url
+                    receiverAvatar: msg.receiver?.avatar_url,
+                    // File attachment fields
+                    fileUrl: msg.file_url,
+                    fileName: msg.file_name,
+                    fileSize: msg.file_size,
+                    fileType: msg.file_type
                 }))
 
                 setMessages(formatted)
@@ -176,19 +181,25 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         const interval = setInterval(() => {
             fetchMessages(userId)
             fetchNotifications(userId)
-        }, 10000) // Every 10 seconds
+        }, 2000) // Every 2 seconds for near real-time updates
 
         return () => clearInterval(interval)
     }, [userId])
 
     // Send message
-    const sendMessage = async (receiverId: string, content: string, proposalId?: string, brandProposalId?: string) => {
+    const sendMessage = async (
+        receiverId: string,
+        content: string,
+        file?: { url: string; name: string; size: number; type: string },
+        proposalId?: string,
+        brandProposalId?: string
+    ) => {
         if (!userId) {
             throw new Error('User ID required')
         }
 
         try {
-            console.log('[MessageProvider] Sending message:', { receiverId, proposalId, brandProposalId })
+            console.log('[MessageProvider] Sending message:', { receiverId, proposalId, brandProposalId, hasFile: !!file })
 
             const { error } = await supabase
                 .from('messages')
@@ -197,7 +208,11 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     receiver_id: receiverId,
                     proposal_id: proposalId,
                     brand_proposal_id: brandProposalId,
-                    content,
+                    content: content || '',
+                    file_url: file?.url,
+                    file_name: file?.name,
+                    file_size: file?.size,
+                    file_type: file?.type,
                     is_read: false
                 })
 

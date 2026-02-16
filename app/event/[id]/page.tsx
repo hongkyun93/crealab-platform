@@ -486,9 +486,9 @@ ${u.name}의 담당자입니다.
                                     ) : (
                                         // Brand View / Visitor View
                                         <>
-                                            {momentProposals.find(p => p.moment_id === event.id && (user?.type === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id)) ? (
+                                            {momentProposals.find(p => p.moment_id === event.id && (user?.role === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id)) ? (
                                                 (() => {
-                                                    const prop = momentProposals.find(p => p.moment_id === event.id && (user?.type === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id))!;
+                                                    const prop = momentProposals.find(p => p.moment_id === event.id && (user?.role === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id))!;
                                                     return (
                                                         <Card className="border-primary/50 bg-primary/5 shadow-sm">
                                                             <CardHeader className="p-4 pb-2">
@@ -974,7 +974,7 @@ ${u.name}의 담당자입니다.
                         {Array.from({ length: 20 }).map((_, i) => (
                             <div key={i} className="w-[300px] h-[300px] flex items-center justify-center -rotate-45">
                                 <span className="text-xl font-black text-slate-900 whitespace-nowrap">
-                                    {user?.name} ({user?.handle || user?.type})<br />
+                                    {user?.name} ({user?.handle || user?.role})<br />
                                     CreadyPick Security
                                 </span>
                             </div>

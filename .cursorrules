@@ -1,0 +1,9 @@
+
+# User-Defined Rules
+
+1. **Permission Required for Deletion/Change**: Do not delete or significantly change existing features without explicit user permission.
+2. **Preserve Original Functionality**: When simplifying or refactoring UI code, ensure ALL original functionality and fields are preserved unless explicitly instructed to remove them.
+3. **Respect User Intent**: Prioritize user's existing implementation over "clean code" or "simplification" if it risks losing features.
+4. **No Guesswork in Debugging**: When an error occurs, read the code thoroughly to find the exact root cause. Do NOT make changes based on guesses. If the cause cannot be identified after deep analysis, explicitly state "I cannot find the cause" instead of trying random fixes.
+5. **Browser Verification**: Do NOT use the browser tool unless explicitly requested by the user. Rely on code analysis and manual user verification unless told otherwise.
+6. **Analyze First, Edit Later**: When the user asks a question, provide a precise answer with the root cause and a proposed solution plan. Do NOT edit code immediately. Explain the cause and the plan ("If we proceed, the plan is..."), then wait for permission.

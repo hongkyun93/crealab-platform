@@ -67,7 +67,7 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
     useEffect(() => {
         const fetchTeamMembers = async () => {
             // Only fetch if Agency/MCN
-            if (user?.type === 'agency' || user?.type === 'mcn') {
+            if (user?.role === 'agency' || user?.role === 'mcn') {
                 const supabase = createClient()
                 // Assuming user has teamId (we added it to type)
                 // If not, we might need to fetch it or rely on a wrapper that provides it.
@@ -209,8 +209,8 @@ ${appealMessage || '없음'}
                 return
             }
 
-            const effectiveCreatorId = (user?.type === 'agency' || user?.type === 'mcn') ? targetCreatorId : user?.id
-            if ((user?.type === 'agency' || user?.type === 'mcn') && !targetCreatorId) {
+            const effectiveCreatorId = (user?.role === 'agency' || user?.role === 'mcn') ? targetCreatorId : user?.id
+            if ((user?.role === 'agency' || user?.role === 'mcn') && !targetCreatorId) {
                 alert("지원을 대행할 크리에이터를 선택해주세요.")
                 setIsSubmitting(false)
                 return

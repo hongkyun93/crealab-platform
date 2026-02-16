@@ -105,7 +105,7 @@ export function DiscoverTableView({
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {user?.type === 'admin' && (
+                                        {user?.role === 'admin' && (
                                             <Button
                                                 variant="ghost"
                                                 size="icon"

@@ -28,7 +28,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight, LayoutGrid, List, Banknote, Table as TableIcon, Menu } from "lucide-react"
+import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight, LayoutGrid, List, Banknote, Table as TableIcon, Menu, Building2 } from "lucide-react"
 import Link from "next/link"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
@@ -95,9 +95,10 @@ import { TeamMembersCard } from "@/components/mcn/team-members-card"
 import { TeamStatistics } from "@/components/mcn/team-statistics"
 import { InviteLinkGenerator } from "@/components/mcn/invite-link-generator"
 import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
-import { Building2, Users as UsersIcon } from "lucide-react"
+import { Users as UsersIcon } from "lucide-react"
 import { CampaignCardD } from "@/components/creator/campaign-cards/CampaignCardD"
 import { CampaignCardE } from "@/components/creator/campaign-cards/CampaignCardE"
+import { SettingsView } from "@/components/creator/views/SettingsView"
 import { CampaignListRow } from "@/components/creator/CampaignListRow"
 
 const POPULAR_TAGS = [
@@ -155,11 +156,15 @@ function InfluencerDashboardContent() {
     // MCN Proxy Mode Support
     const { effectiveUser, isProxyMode, actualUser } = useEffectiveUser()
     // Treat 'agency' same as 'mcn' for dashboard logic
-    const isMCN = user?.type === 'mcn' || user?.type === 'agency'
+    const isMCN = user?.role === 'mcn' || user?.role === 'agency'
 
     const router = useRouter()
     const searchParams = useSearchParams()
     const initialView = searchParams.get('view') || "dashboard"
+
+    // State definitions moved up to avoid ReferenceError
+    // MCN/Agency: If no teams, show "Waiting for Team" state
+    const { teams } = useUnifiedProvider()
 
     // State definitions moved up to avoid ReferenceError
     const [currentView, setCurrentView] = useState(initialView)
@@ -167,6 +172,7 @@ function InfluencerDashboardContent() {
     const [chatProposal, setChatProposal] = useState<any>(null)
     const [isChatOpen, setIsChatOpen] = useState(false)
     const [chatMessage, setChatMessage] = useState("")
+    // ... (rest of state definitions)
     const [generatedContract, setGeneratedContract] = useState("")
     const [isGeneratingContract, setIsGeneratingContract] = useState(false)
     const [isAddEventOpen, setIsAddEventOpen] = useState(false)
@@ -231,9 +237,39 @@ function InfluencerDashboardContent() {
     const [targetCreatorId, setTargetCreatorId] = useState<string>("")
     const [teamMembers, setTeamMembers] = useState<any[]>([])
 
+    // Check if user is MCN but has no teams (and not loading)
+    // MOVED HERE: After all hooks are declared to prevent "Rendered fewer hooks than expected" error
+    if (isMCN && !isLoading && isInitialized && teams && teams.length === 0) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-muted/20">
+                <div className="text-center max-w-md p-8 bg-background border rounded-2xl shadow-sm space-y-6">
+                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+                        <Building2 className="w-8 h-8" />
+                    </div>
+                    <div className="space-y-2">
+                        <h2 className="text-2xl font-bold">소속된 팀이 없습니다</h2>
+                        <p className="text-muted-foreground">
+                            아직 소속된 MCN/Agency 팀이 없습니다.<br />
+                            관리자에게 초대를 요청하거나, 직접 팀을 만들어보세요.
+                        </p>
+                    </div>
+                    <div className="pt-2 flex flex-col gap-3">
+                        <div className="p-4 bg-muted rounded-lg text-sm break-all">
+                            내 이메일: <span className="font-mono font-bold">{user?.email}</span>
+                        </div>
+                        {/* Option to create team if they changed their mind? */}
+                        <Button onClick={() => router.push('/onboarding')} variant="outline">
+                            온보딩 다시하기 (팀 생성)
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     useEffect(() => {
         const fetchTeamMembers = async () => {
-            if (user?.type === 'agency' || user?.type === 'mcn') {
+            if (user?.role === 'agency' || user?.role === 'mcn') {
                 const { data, error } = await supabase
                     .from('team_members')
                     .select(`
@@ -1265,26 +1301,7 @@ function InfluencerDashboardContent() {
         }
     }
 
-    // Profile Edit States
-    const [editName, setEditName] = useState("")
-    const [editBio, setEditBio] = useState("")
-    const [editHandle, setEditHandle] = useState("")
-    const [editFollowers, setEditFollowers] = useState<string>("")
-    const [editPhone, setEditPhone] = useState("")
-    const [editAddress, setEditAddress] = useState("")
-    const [selectedTags, setSelectedTags] = useState<string[]>([])
-
-    const [editPriceVideo, setEditPriceVideo] = useState("")
-    const [editPriceFeed, setEditPriceFeed] = useState("")
-    const [editSecondaryRights, setEditSecondaryRights] = useState(false)
-
-    // Extended Rate Card (V1.6.21)
-    const [editUsageRightsMonth, setEditUsageRightsMonth] = useState("")
-    const [editUsageRightsPrice, setEditUsageRightsPrice] = useState("")
-    const [editAutoDmMonth, setEditAutoDmMonth] = useState("")
-    const [editAutoDmPrice, setEditAutoDmPrice] = useState("")
-
-    const [isSaving, setIsSaving] = useState(false)
+    // Profile Edit States - REMOVED (Moved to SettingsView)
 
     // Apply Modal States
     const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false)
@@ -1296,7 +1313,7 @@ function InfluencerDashboardContent() {
     const [desiredCost, setDesiredCost] = useState("")
 
 
-    const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+
 
     // Shipping States
     const [shippingName, setShippingName] = useState("")
@@ -1655,32 +1672,11 @@ function InfluencerDashboardContent() {
         )}
     </TabsContent>
 
-    {/* Sync Profile Data to Edit Form */ }
-    useEffect(() => {
-        if (displayUser) {
-            setEditName(displayUser.name || "")
-            setEditBio(displayUser.bio || "")
-            setEditHandle(displayUser.handle || "")
-            setEditFollowers(displayUser.followers?.toString() || "")
-            setEditPhone(displayUser.phone || "")
-            setEditAddress(displayUser.address || "")
-            setEditPriceVideo(displayUser.priceVideo?.toString() || "")
-            setEditPriceFeed(displayUser.priceFeed?.toString() || "")
-            setEditSecondaryRights(!!displayUser.secondaryRights)
-
-            // Extended Rate Card Initialization
-            setEditUsageRightsMonth(displayUser.usageRightsMonth?.toString() || "")
-            setEditUsageRightsPrice(displayUser.usageRightsPrice?.toString() || "")
-            setEditAutoDmMonth(displayUser.autoDmMonth?.toString() || "")
-            setEditAutoDmPrice(displayUser.autoDmPrice?.toString() || "")
-
-            setSelectedTags(displayUser.tags || [])
-        }
-    }, [displayUser, currentView])
+    // Sync Profile Data to Edit Form - REMOVED (Moved to SettingsView)
 
     // Onboarding Check: Automatically show settings if crucial info is missing
     useEffect(() => {
-        if (user && !isLoading && user.type === 'creator') {
+        if (user && !isLoading && user.role === 'creator') {
             // Only force settings if name or handle is truly missing
             const isMissingInfo = !user.handle || !user.name
             if (isMissingInfo && currentView !== 'settings' && initialView !== 'settings' && currentView !== 'profile') {
@@ -1723,7 +1719,7 @@ function InfluencerDashboardContent() {
     useEffect(() => {
         if (!isAuthLoading && !user) {
             router.push('/')
-        } else if (user && user.type === 'brand' && user.id !== 'guest_influencer') {
+        } else if (user && user.role === 'brand' && user.id !== 'guest_influencer') {
             router.push('/brand')
         }
     }, [isAuthLoading, user, router])
@@ -1743,35 +1739,7 @@ function InfluencerDashboardContent() {
 
 
 
-    const handleSaveProfile = async () => {
-        setIsSaving(true)
-        try {
-            await updateUser({
-                name: editName,
-                bio: editBio,
-                handle: editHandle,
-                followers: parseInt(editFollowers) || 0,
-                tags: selectedTags,
-                phone: editPhone,
-                address: editAddress,
-                priceVideo: parseInt(editPriceVideo) || 0,
-                priceFeed: parseInt(editPriceFeed) || 0,
-                secondaryRights: editSecondaryRights ? 1 : 0,
-
-                // Extended Rate Card Persistence
-                usageRightsMonth: parseInt(editUsageRightsMonth) || 0,
-                usageRightsPrice: parseInt(editUsageRightsPrice) || 0,
-                autoDmMonth: parseInt(editAutoDmMonth) || 0,
-                autoDmPrice: parseInt(editAutoDmPrice) || 0
-            })
-            setShowSuccessDialog(true)
-        } catch (e) {
-            console.error("Save profile error:", e)
-            alert("프로필 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
-        } finally {
-            setIsSaving(false)
-        }
-    }
+    // handleSaveProfile - REMOVED (Moved to SettingsView)
 
 
     const handleStatusUpdate = async (proposalId: string, status: string) => {
@@ -2586,338 +2554,7 @@ function InfluencerDashboardContent() {
                     </div>
                 )
             case "settings":
-                return (
-                    <div className="space-y-6">
-                        <h1 className="text-3xl font-bold tracking-tight">프로필 설정</h1>
-                        <Card className="max-w-2xl">
-                            <CardHeader>
-                                <CardTitle>기본 정보</CardTitle>
-                                <CardDescription>브랜드에게 보여질 나의 프로필 정보를 수정합니다.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="flex flex-col items-center justify-center mb-6">
-                                    <Label className="mb-2">프로필 이미지</Label>
-                                    <AvatarUpload
-                                        uid={user?.id || "creator"}
-                                        url={user?.avatar}
-                                        onUpload={async (url) => {
-                                            await updateUser({ avatar: url })
-                                        }}
-                                        size={120}
-                                    />
-                                    <p className="text-xs text-muted-foreground mt-2">클릭하여 이미지 변경</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">활동명 (닉네임)</Label>
-                                    <Input
-                                        id="name"
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        onBlur={(e) => setEditName(e.target.value)}
-                                        autoComplete="off"
-                                        placeholder="이름을 입력하세요"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="handle">핸들 (ID)</Label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-2.5 text-muted-foreground">@</span>
-                                        <Input
-                                            id="handle"
-                                            value={editHandle.replace(/^@/, '')} // Display without @
-                                            onChange={(e) => {
-                                                // Always save with @ internally
-                                                const val = e.target.value.replace(/[^a-zA-Z0-9_.]/g, '') // Basic sanitization
-                                                setEditHandle(`@${val}`)
-                                            }}
-                                            onBlur={(e) => {
-                                                const val = e.target.value.replace(/[^a-zA-Z0-9_.]/g, '')
-                                                setEditHandle(`@${val}`)
-                                            }}
-                                            autoComplete="off"
-                                            placeholder="username"
-                                            className="pl-8"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="followers">팔로워 수</Label>
-                                    <div className="flex gap-2 items-center">
-                                        <Input
-                                            id="followers"
-                                            type="number"
-                                            value={editFollowers}
-                                            onChange={(e) => setEditFollowers(e.target.value)}
-                                            onBlur={(e) => setEditFollowers(e.target.value)}
-                                            autoComplete="off"
-                                            placeholder="Ex: 10000"
-                                            className="max-w-[200px]"
-                                        />
-                                        <span className="text-sm text-muted-foreground">명</span>
-                                        {editFollowers && (
-                                            <Badge variant="secondary" className="ml-2">
-                                                {(() => {
-                                                    const count = parseInt(editFollowers) || 0
-                                                    if (count <= 1000) return "스타터 (0~1천)"
-                                                    if (count <= 10000) return "나노 (1천~1만)"
-                                                    if (count <= 100000) return "마이크로 (1~10만)"
-                                                    if (count <= 300000) return "그로잉 (10~30만)"
-                                                    if (count <= 500000) return "미드 (30~50만)"
-                                                    if (count <= 1000000) return "매크로 (50~100만)"
-                                                    return "메가 (>100만)"
-                                                })()}
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        인스타그램, 유튜브 등 주요 채널의 팔로워 수를 입력해주세요.
-                                    </p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">연락처</Label>
-                                    <Input
-                                        id="phone"
-                                        value={editPhone}
-                                        onChange={(e) => setEditPhone(e.target.value)}
-                                        onBlur={(e) => setEditPhone(e.target.value)}
-                                        autoComplete="off"
-                                        placeholder="010-0000-0000"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="address">주소 (제품 수령)</Label>
-                                    <Input
-                                        id="address"
-                                        value={editAddress}
-                                        onChange={(e) => setEditAddress(e.target.value)}
-                                        onBlur={(e) => setEditAddress(e.target.value)}
-                                        autoComplete="off"
-                                        placeholder="서울시 강남구..."
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="bio">한줄 소개</Label>
-                                    <Textarea
-                                        id="bio"
-                                        value={editBio}
-                                        onChange={(e) => setEditBio(e.target.value)}
-                                        onBlur={(e) => setEditBio(e.target.value)}
-                                        autoComplete="off"
-                                        placeholder="나를 표현하는 멋진 한마디를 적어주세요."
-                                    />
-                                </div>
-
-                                <div className="space-y-4 pt-4 border-t">
-                                    <h3 className="text-lg font-semibold">소셜 계정 연결</h3>
-                                    <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-lg flex items-center justify-center text-white">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-instagram"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-sm">Instagram 비즈니스 계정</p>
-                                                <p className="text-xs text-muted-foreground">인사이트(도달수, 팔로워) 연동을 위해 필요합니다.</p>
-                                            </div>
-                                        </div >
-                                        <Button variant="outline" size="sm" onClick={() => {
-                                            alert("Facebook App ID가 설정되지 않아 실제 연결은 되지 않습니다. (구현 완료)");
-                                            // In real implementation: call useInstagram().login()
-                                        }}>
-                                            연결하기
-                                        </Button>
-                                    </div >
-                                </div >
-
-                                <div className="space-y-4 pt-4 border-t">
-                                    <h3 className="text-lg font-semibold">예상 단가표 (Rate Card)</h3>
-                                    <p className="text-sm text-muted-foreground">브랜드에게 제안하고 싶은 콘텐츠 제작 단가를 입력해주세요. (협의 가능)</p>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="price-video">숏폼 영상 (Reels/Shorts)</Label>
-                                            <div className="relative">
-                                                <Input
-                                                    id="price-video"
-                                                    type="number"
-                                                    value={editPriceVideo}
-                                                    onChange={(e) => setEditPriceVideo(e.target.value)}
-                                                    className="pr-8"
-                                                    placeholder="예: 150000"
-                                                />
-                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                                            </div>
-                                            <p className="text-[10px] text-muted-foreground">
-                                                60초 이내의 숏폼 영상 제작 단가입니다.
-                                            </p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="price-feed">피드 게시물 (Photo/Carousel)</Label>
-                                            <div className="relative">
-                                                <Input
-                                                    id="price-feed"
-                                                    type="number"
-                                                    value={editPriceFeed}
-                                                    onChange={(e) => setEditPriceFeed(e.target.value)}
-                                                    className="pr-8"
-                                                    placeholder="예: 100000"
-                                                />
-                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                                            </div>
-                                            <p className="text-[10px] text-muted-foreground">
-                                                이미지 및 캐러셀 형태의 피드 게시물 단가입니다.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Extended Rate Card Section (Row 2) */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* 2차 활용 (Usage Rights) */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="secondary-rights-price">2차 활용권 (Secondary Rights)</Label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="relative">
-                                                    <Input
-                                                        id="secondary-rights-month"
-                                                        type="number"
-                                                        value={editUsageRightsMonth}
-                                                        onChange={(e) => setEditUsageRightsMonth(e.target.value)}
-                                                        className="pr-8"
-                                                        placeholder="기간"
-                                                    />
-                                                    <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">개월</span>
-                                                </div>
-                                                <div className="relative">
-                                                    <Input
-                                                        id="secondary-rights-price"
-                                                        type="number"
-                                                        value={editUsageRightsPrice}
-                                                        onChange={(e) => setEditUsageRightsPrice(e.target.value)}
-                                                        className="pr-8"
-                                                        placeholder="비용"
-                                                    />
-                                                    <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">원</span>
-                                                </div>
-                                            </div>
-                                            <p className="text-[10px] text-muted-foreground">
-                                                브랜드가 콘텐츠를 광고 소재로 활용할 수 있는 기간과 비용을 설정하세요.
-                                            </p>
-                                        </div>
-
-                                        {/* 자동 DM (Auto DM) */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="auto-dm-price">자동 DM (Auto Reply)</Label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="relative">
-                                                    <Input
-                                                        id="auto-dm-month"
-                                                        type="number"
-                                                        value={editAutoDmMonth}
-                                                        onChange={(e) => setEditAutoDmMonth(e.target.value)}
-                                                        className="pr-8"
-                                                        placeholder="기간"
-                                                    />
-                                                    <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">개월</span>
-                                                </div>
-                                                <div className="relative">
-                                                    <Input
-                                                        id="auto-dm-price"
-                                                        type="number"
-                                                        value={editAutoDmPrice}
-                                                        onChange={(e) => setEditAutoDmPrice(e.target.value)}
-                                                        className="pr-8"
-                                                        placeholder="비용"
-                                                    />
-                                                    <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">원</span>
-                                                </div>
-                                            </div>
-                                            <p className="text-[10px] text-muted-foreground">
-                                                게시물 댓글에 대해 자동으로 DM을 발송하는 기간과 추가 비용을 설정하세요.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div >
-                                <div className="space-y-2">
-                                    <Label>관심 태그 (전문 분야)</Label>
-                                    <div className="flex flex-wrap gap-2 pt-2">
-                                        {POPULAR_TAGS.map(tag => (
-                                            <Button
-                                                key={tag}
-                                                type="button"
-                                                variant={selectedTags.includes(tag) ? "default" : "outline"}
-                                                size="sm"
-                                                onClick={() => toggleTag(tag)}
-                                                className={`rounded-full transition-all ${selectedTags.includes(tag) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                            >
-                                                {tag}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground pt-1">
-                                        선택된 태그: {selectedTags.length > 0 ? selectedTags.join(", ") : "없음"}
-                                    </p>
-                                </div>
-                            </CardContent >
-                            <CardFooter>
-                                <Button onClick={handleSaveProfile} disabled={isSaving}>
-                                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    저장하기
-                                </Button>
-                            </CardFooter>
-                        </Card >
-
-                        <Card className="max-w-2xl border-red-100 bg-red-50/10">
-                            <CardHeader>
-                                <CardTitle className="text-red-600 flex items-center gap-2">
-                                    계정 유형 전환
-                                </CardTitle>
-                                <CardDescription>
-                                    브랜드 계정으로 전환하시겠습니까? 계정 유형을 변경하면 브랜드 전용 대시보드를 사용하게 됩니다.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-xs text-muted-foreground mb-4">
-                                    * 전환 후에도 기존 크리에이터 정보는 유지되지만, 대시보드 인터페이스가 브랜드용으로 변경됩니다.
-                                </p>
-                                <Button
-                                    variant="outline"
-                                    className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
-                                    onClick={async () => {
-                                        setConfirmDialog({
-                                            open: true,
-                                            title: "계정 유형 전환",
-                                            description: "브랜드 계정으로 전환하시겠습니까? 계정 유형을 변경하면 브랜드 전용 대시보드를 사용하게 됩니다.",
-                                            onConfirm: async () => {
-                                                await switchRole('brand');
-                                            },
-                                            variant: "destructive"
-                                        })
-                                    }}
-                                >
-                                    브랜드 계정으로 전환하기
-                                </Button>
-                            </CardContent>
-                        </Card>
-
-                        <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>저장 완료</DialogTitle>
-                                    <DialogDescription>
-                                        프로필 정보가 성공적으로 업데이트되었습니다.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter>
-                                    <Button onClick={() => {
-                                        setShowSuccessDialog(false)
-                                        setCurrentView("dashboard")
-                                    }}>
-                                        확인
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </div >
-                )
+                return <SettingsView />
             case "discover-products":
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -3169,7 +2806,7 @@ function InfluencerDashboardContent() {
 
         const effectiveCreatorId = effectiveUserId
 
-        if ((user?.type === 'agency' || user?.type === 'mcn') && !effectiveCreatorId) {
+        if ((user?.role === 'agency' || user?.role === 'mcn') && !effectiveCreatorId) {
             toast.error("지원을 대행할 크리에이터를 선택해주세요.")
             return
         }

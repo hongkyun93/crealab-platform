@@ -74,12 +74,14 @@ export default function LoginPage() {
             // Redirect based on user type
             // Redirect based on user type using window.location.href to force a hard reload
             // This prevents "stuck" loading states caused by client-side router waiting for heavy dashboard data
-            if (user.type === "brand") {
-                window.location.href = "/brand"
-            } else if (user.type === "creator") {
-                window.location.href = "/creator"
-            } else if (user.type === "admin") {
-                window.location.href = "/admin"
+            if (user.role === 'brand') {
+                router.push('/brand')
+            } else if (user.role === 'mcn') {
+                router.push('/creator') // MCN goes to creator dashboard
+            } else if (user.role === 'agency') {
+                router.push('/brand') // Agency goes to brand dashboard
+            } else {
+                router.push('/creator')
             }
         } catch (err: any) {
             setError(err.message || "로그인에 실패했습니다.")

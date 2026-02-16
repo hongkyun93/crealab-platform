@@ -25,11 +25,14 @@ import {
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
+
 
 export default function TeamSettingsPage() {
     const { user } = useUnifiedProvider()
     const router = useRouter()
     const { currentTeam, createTeam, fetchTeamMembers, updateMemberRole, removeMember, inviteMember, fetchInvitations, cancelInvitation } = useTeam()
+    const supabase = createClient()
     const [members, setMembers] = useState<TeamMember[]>([])
     const [invitations, setInvitations] = useState<TeamInvitation[]>([])
     const [isLoading, setIsLoading] = useState(false)
@@ -55,7 +58,7 @@ export default function TeamSettingsPage() {
     useEffect(() => {
         // Use a small timeout to allow user data to populate
         const timer = setTimeout(() => {
-            if (user?.type === 'creator') {
+            if (user?.role === 'creator') {
                 router.replace('/creator')
                 toast.error("권한이 없습니다.")
             }
@@ -109,6 +112,9 @@ export default function TeamSettingsPage() {
     }
 
     const handleUpdateRole = async (memberId: string, newRole: TeamRole) => {
+        console.log('[UI DEBUG] handleUpdateRole called with:', { memberId, newRole })
+        console.log('[UI DEBUG] Current members:', members)
+
         const success = await updateMemberRole(memberId, newRole)
         if (success) {
             alert("역할이 변경되었습니다!")
@@ -217,9 +223,44 @@ export default function TeamSettingsPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <Button onClick={handleInviteMember} className="w-full md:w-auto">
-                                    초대 보내기
-                                </Button>
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <Button onClick={handleInviteMember} className="flex-1 md:flex-none" variant="outline">
+                                        초대 링크 보내기
+                                    </Button>
+                                    <Button
+                                        onClick={async () => {
+                                            if (!inviteEmail) {
+                                                toast.error("이메일을 입력해주세요")
+                                                return
+                                            }
+
+                                            try {
+                                                const { data, error } = await supabase.rpc('add_team_member_direct', {
+                                                    target_email: inviteEmail,
+                                                    target_role: inviteRole
+                                                })
+
+                                                if (error) throw error
+
+                                                const result = data as any
+                                                if (result.success) {
+                                                    toast.success(result.message || "팀원이 추가되었습니다!")
+                                                    setInviteEmail("")
+                                                    loadTeamData()
+                                                } else {
+                                                    toast.error(result.message || "추가 실패")
+                                                }
+                                            } catch (err: any) {
+                                                console.error('Direct add error:', err)
+                                                toast.error("팀원 추가 중 오류가 발생했습니다")
+                                            }
+                                        }}
+                                        disabled={!inviteEmail}
+                                        className="flex-1 md:flex-none bg-green-600 hover:bg-green-700"
+                                    >
+                                        바로 추가 ⚡
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -305,14 +346,28 @@ export default function TeamSettingsPage() {
                                                     <span className="font-medium">{invitation.email}</span>
                                                     <span className="text-xs text-muted-foreground uppercase">{invitation.role}</span>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-muted-foreground hover:text-destructive"
-                                                    onClick={() => handleCancelInvitation(invitation.id)}
-                                                >
-                                                    취소
-                                                </Button>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="bg-white"
+                                                        onClick={() => {
+                                                            const link = `${window.location.origin}/join/${invitation.invite_code || invitation.id}` // Fallback to ID if code missing (legacy)
+                                                            navigator.clipboard.writeText(link)
+                                                            toast.success("초대 링크가 복사되었습니다.")
+                                                        }}
+                                                    >
+                                                        링크 복사
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-muted-foreground hover:text-destructive"
+                                                        onClick={() => handleCancelInvitation(invitation.id)}
+                                                    >
+                                                        취소
+                                                    </Button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

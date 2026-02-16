@@ -14,6 +14,11 @@ export interface Message {
     receiverAvatar?: string
     influencer_avatar?: string
     isMock?: boolean
+    // File attachment fields
+    fileUrl?: string
+    fileName?: string
+    fileSize?: number
+    fileType?: string
 }
 
 export interface Notification {

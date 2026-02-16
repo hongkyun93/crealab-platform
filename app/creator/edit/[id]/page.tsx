@@ -73,8 +73,8 @@ export default function EditEventPage() {
 
                 if (user) {
                     // Strict ID check is best. Name check is flaky.
-                    // Also allow if user.type is admin (optional, but good for support)
-                    if (event.influencerId !== user.id && user.type !== 'admin') {
+                    // Also allow if user.role is admin (optional, but good for support)
+                    if (event.influencerId !== user.id && user.role !== 'admin') {
                         console.warn("[EditEvent] Permission denied: ownerId", event.influencerId, "currentUserId", user.id)
                         toast.error("수정 권한이 없습니다.")
                         router.push("/creator")

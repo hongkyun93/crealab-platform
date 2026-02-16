@@ -14,7 +14,8 @@ interface AuthContextType {
     isInitialized: boolean
     login: (email: string, password: string) => Promise<User>
     logout: () => Promise<void>
-    updateUser: (data: Partial<User>) => Promise<void>
+    updateUser: (data: Partial<User>, targetId?: string) => Promise<void>
+    updateProfile: (data: Partial<User>, targetId?: string) => Promise<void>
     switchRole: (newRole: 'brand' | 'creator') => Promise<void>
     refreshSession: () => Promise<void>
 }
@@ -83,12 +84,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     console.warn('[AuthProvider] Team fetch error', e)
                 }
 
+                // [REFACTOR] user_type removed. Using role as primary.
+                // If role is missing in DB (legacy data), fallback to user_type if present, otherwise NULL (to trigger onboarding)
+                const role = (profile.role || profile.user_type) as any
+
                 return {
                     id: sessionUser.id,
                     name: profile.display_name || profile.name || sessionUser.email?.split('@')[0] || "User",
                     email: profile.email || sessionUser.email,
-                    type: (profile.role as "brand" | "creator" | "admin" | "mcn" | "agency") || profile.user_type || "creator",
-                    role: profile.role,
+                    role: role, // Mapped directly
                     onboardingCompleted: profile.onboarding_completed || false,
                     avatar: profile.avatar_url,
                     bio: profile.bio,
@@ -107,7 +111,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     usageRightsMonth: profile.usage_rights_month || 0,
                     usageRightsPrice: profile.usage_rights_price || 0,
                     autoDmMonth: profile.auto_dm_month || 0,
-                    autoDmPrice: profile.auto_dm_price || 0
+                    autoDmPrice: profile.auto_dm_price || 0,
+
+                    // Bank Info
+                    bankName: profile.bank_name,
+                    accountNumber: profile.account_number,
+                    accountHolder: profile.account_holder
                 }
             }
 
@@ -123,10 +132,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return {
             id: sessionUser.id,
             name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || "User",
-            type: (sessionUser.user_metadata?.role as "brand" | "creator" | "admin") || "creator",
+            email: sessionUser.email,
+            role: sessionUser.user_metadata?.role as "brand" | "creator" | "admin", // No default fallback
             avatar: sessionUser.user_metadata?.avatar_url,
             tags: []
-        }
+        } as User
     }
 
     // Auth initialization and listener
@@ -150,9 +160,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (session?.user && mounted) {
                 console.log('[AuthProvider] User found:', session.user.id)
+                // FORCE DATABASE FETCH: Do not trust local storage or metadata for role
                 const fetchedUser = await fetchUserProfile(session.user)
+
                 if (fetchedUser) {
                     setUser(fetchedUser)
+
+                    // STRICT REDIRECT LOGIC
+                    const currentPath = window.location.pathname
+
+                    if (!fetchedUser.role) {
+                        // Case 1: Role is NULL -> MUST go to Onboarding
+                        if (currentPath !== '/onboarding') {
+                            console.log('[AuthProvider] Role is NULL -> Redirecting to /onboarding')
+                            router.replace('/onboarding')
+                        }
+                    } else {
+                        // Case 2: Role exists -> MUST NOT be on Onboarding or Login
+                        if (currentPath === '/onboarding' || currentPath === '/login' || currentPath === '/signup') {
+                            const target = fetchedUser.role === 'brand' || fetchedUser.role === 'agency' ? '/brand' : '/creator'
+                            console.log(`[AuthProvider] Role is ${fetchedUser.role} -> Redirecting to ${target}`)
+                            router.replace(target)
+                        }
+                    }
                 }
             } else if (mounted) {
                 console.log('[AuthProvider] No session found, clearing user')
@@ -183,16 +213,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             pathname: window.location.pathname,
                             onboardingCompleted: fetchedUser.onboardingCompleted,
                             email: fetchedUser.email,
-                            type: fetchedUser.type
+                            role: fetchedUser.role
                         });
 
                         // Redirect to onboarding ONLY if not completed AND not already there
                         const needsOnboarding = !fetchedUser.onboardingCompleted &&
-                            fetchedUser.type !== 'admin' &&
-                            fetchedUser.type !== 'mcn' &&
-                            fetchedUser.type !== 'creator' &&
-                            fetchedUser.type !== 'brand' &&
-                            fetchedUser.type !== 'agency';
+                            fetchedUser.role !== 'admin' &&
+                            fetchedUser.role !== 'mcn' &&
+                            fetchedUser.role !== 'creator' &&
+                            fetchedUser.role !== 'brand' &&
+                            fetchedUser.role !== 'agency';
 
                         if (needsOnboarding && window.location.pathname !== '/onboarding') {
                             console.log('[AuthProvider] Onboarding required - redirecting')
@@ -200,7 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         }
                         // After login/signup, redirect to appropriate dashboard
                         else if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
-                            if (fetchedUser.type === 'brand' || fetchedUser.type === 'agency') {
+                            if (fetchedUser.role === 'brand' || fetchedUser.role === 'agency') {
                                 router.push('/brand')
                             } else {
                                 // creator, mcn, admin go to creator dashboard
@@ -244,11 +274,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data.session?.user) {
-                return {
-                    id: data.session.user.id,
-                    name: data.session.user.user_metadata?.name || email.split('@')[0],
-                    type: (data.session.user.user_metadata?.role as "brand" | "creator" | "admin") || "creator"
-                }
+                // Strict Login: Fetch profile from DB to get real role
+                const profile = await fetchUserProfile(data.session.user)
+                return profile
             }
         } catch (e) {
             console.error("[AuthProvider] Login error:", e)
@@ -287,12 +315,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
-    // Update user profile
-    const updateUser = async (data: Partial<User>) => {
-        console.log('[AuthProvider] Updating user:', user?.id, data)
+    // Generic Profile Update Function (Exposed)
+    const updateProfile = async (data: Partial<User>, targetId?: string) => {
+        // Default to current user if no targetId provided
+        const idToUpdate = targetId || user?.id
+        console.log('[AuthProvider] Updating profile:', idToUpdate, data)
 
-        if (!user) {
-            console.error('[AuthProvider] No user to update')
+        if (!idToUpdate) {
+            console.error('[AuthProvider] No user ID to update')
             return
         }
 
@@ -310,10 +340,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (data.phone !== undefined) updates.phone = data.phone
             if (data.address !== undefined) updates.address = data.address
 
-            // Creator specific fields (now in profiles)
-            if (user.type === 'creator') {
+            // Determine role/type for logic (If updating self, use local user.type, else fetch or assume creator)
+            // For now, if targetId is different, we assume we are updating a creator as MCN
+            const isUpdatingSelf = idToUpdate === user?.id
+            const targetType = isUpdatingSelf ? user?.role : 'creator'
+
+            // Creator specific fields
+            if (targetType === 'creator') {
                 if (data.tags !== undefined) updates.tags = data.tags
-                if (data.handle !== undefined) updates.instagram_handle = data.handle // Note: check column name, usually it's just 'handle' or 'instagram_handle'
+                if (data.handle !== undefined) updates.instagram_handle = data.handle
                 if (data.followers !== undefined) {
                     const count = typeof data.followers === 'string' ? parseInt(data.followers) : data.followers
                     updates.followers_count = isNaN(count) ? 0 : count
@@ -332,35 +367,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (data.usageRightsMonth !== undefined) updates.usage_rights_month = data.usageRightsMonth
                 if (data.usageRightsPrice !== undefined) updates.usage_rights_price = data.usageRightsPrice
                 if (data.autoDmMonth !== undefined) updates.auto_dm_month = data.autoDmMonth
+                if (data.autoDmMonth !== undefined) updates.auto_dm_month = data.autoDmMonth
                 if (data.autoDmPrice !== undefined) updates.auto_dm_price = data.autoDmPrice
+
+                // Bank Info
+                if (data.bankName !== undefined) updates.bank_name = data.bankName
+                if (data.accountNumber !== undefined) updates.account_number = data.accountNumber
+                if (data.accountHolder !== undefined) updates.account_holder = data.accountHolder
             }
 
-            console.log('[AuthProvider] Profile updates:', updates)
+            console.log('[AuthProvider] Profile updates payload:', updates)
 
             const { error: updateError } = await supabase
                 .from('profiles')
                 .upsert({
-                    id: user.id,
+                    id: idToUpdate,
                     ...updates
                 }, { onConflict: 'id' })
 
             if (updateError) {
-                console.error('[AuthProvider] Profile update error:', updateError)
-                alert(`저장 실패 (Profile): ${updateError.message}`)
+                console.error('[AuthProvider] Profile update error:', JSON.stringify(updateError, null, 2))
+                alert(`저장 실패 (Profile): ${updateError.message || JSON.stringify(updateError)}`)
                 throw updateError
-            } else {
-                console.log('[AuthProvider] Profile updated successfully via consolidated table')
             }
 
-            // Update local state
-            const updatedUser = { ...user, ...data }
-            setUser(updatedUser)
-            console.log('[AuthProvider] Local user state updated')
+            console.log('[AuthProvider] Profile updated successfully')
+
+            // Only update local state if we updated ourselves
+            if (isUpdatingSelf && user) {
+                const updatedUser = { ...user, ...data }
+                setUser(updatedUser)
+                console.log('[AuthProvider] Local user state updated')
+            } else {
+                // If we updated someone else (proxy), we might want to trigger a refresh if the UI depends on it
+                // For now, the caller (SettingsView) usually handles the UI state or re-fetch
+                console.log('[AuthProvider] Proxy update completed - Local user state unchanged')
+            }
+
         } catch (error: any) {
             console.error('[AuthProvider] Update failed:', error)
             throw error
         }
     }
+
+    // Legacy alias (for backward compatibility), but now supports targetId
+    const updateUser = updateProfile
 
     // Switch role
     const switchRole = async (newRole: 'brand' | 'creator') => {
@@ -396,7 +447,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Update local state
-            setUser(prev => prev ? { ...prev, type: newRole } : null)
+            setUser(prev => prev ? { ...prev, role: newRole } : null)
 
             alert("계정 유형이 성공적으로 변경되었습니다. 새로운 대시보드로 이동합니다.")
             window.location.href = newRole === 'brand' ? '/brand' : '/creator'
@@ -421,7 +472,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const fetchedUser = await fetchUserProfile(session.user)
                 if (fetchedUser) {
                     setUser(fetchedUser)
-                    console.log('[AuthProvider] User profile refreshed:', fetchedUser.type)
+                    console.log('[AuthProvider] User profile refreshed:', fetchedUser.role)
                 }
             }
         } catch (error) {
@@ -437,7 +488,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isInitialized,
             login,
             logout,
-            updateUser,
+            updateUser, // Kept for compatibility
+            updateProfile, // New exposed function
             switchRole,
             refreshSession
         }}>
@@ -460,6 +512,7 @@ export function useAuth() {
             login: async () => { throw new Error('Auth not initialized') },
             logout: async () => { },
             updateUser: async () => { },
+            updateProfile: async () => { },
             switchRole: async () => { },
             refreshSession: async () => { }
         }

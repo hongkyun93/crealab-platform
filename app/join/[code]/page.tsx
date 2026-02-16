@@ -26,48 +26,42 @@ export default function JoinTeamPage() {
     // Check invitation validity
     useEffect(() => {
         const checkInvitation = async () => {
-            if (!code) return
+            if (!code) {
+                setError("잘못된 초대 링크입니다.")
+                setIsValid(false)
+                setIsLoading(false)
+                return
+            }
 
             setIsLoading(true)
             try {
-                // 1. Fetch invitation
-                const { data: invite, error: inviteError } = await supabase
-                    .from('team_invitations')
-                    .select('*, profiles:created_by(id, display_name, email, avatar_url)') // Assuming created_by is the MCN user
-                    .eq('invite_code', code)
-                    .single()
+                // 1. Fetch invitation via RPC (Public Access)
+                const { data, error: rpcError } = await supabase.rpc('get_invitation_by_code', { code })
 
-                if (inviteError || !invite) {
-                    setError("유효하지 않거나 만료된 초대 링크입니다.")
-                    setIsValid(false)
-                    return
-                }
+                if (rpcError) throw rpcError
 
-                // 2. Check expiration
-                if (new Date(invite.expires_at) < new Date()) {
-                    setError("이미 만료된 초대 링크입니다.")
+                // Ensure data is array (RPC returning TABLE returns array of objects)
+                // Since we assume code is unique (it should be), we take first item.
+                const result = Array.isArray(data) ? data[0] : data
+
+                if (!result || !result.valid) {
+                    setError(result?.error_message || "유효하지 않거나 만료된 초대 링크입니다.")
                     setIsValid(false)
                     return
                 }
 
                 // 3. Set Team Info
-                // Assuming team_id corresponds to the MCN's profile ID if they are the owner
-                // Or we fetch team profile if 'teams' table exists. 
-                // Based on previous analysis, MCN User ID often acts as Team ID.
-                // Let's use the profile of the creator (MCN) as the Team Name source.
-
-                const mcnProfile = invite.profiles
                 setTeamInfo({
-                    id: invite.team_id,
-                    name: mcnProfile?.display_name || mcnProfile?.email || "Unknown Team",
-                    owner: mcnProfile?.display_name,
-                    avatar: mcnProfile?.avatar_url
+                    id: result.team_id,
+                    name: result.team_name,
+                    owner: result.inviter_name,
+                    avatar: result.inviter_avatar || result.team_avatar // Assuming function returns this if available
                 })
                 setIsValid(true)
 
             } catch (err) {
                 console.error("Invitation Check Error:", err)
-                setError("치명적인 오류가 발생했습니다.")
+                setError("초대 정보를 불러올 수 없습니다.")
             } finally {
                 setIsLoading(false)
             }
@@ -88,10 +82,10 @@ export default function JoinTeamPage() {
             return
         }
 
-        if (user.type !== 'creator') {
+        if (user.role !== 'creator') {
             // Optional: Allow only creators? Or anyone?
             // MCN joining another MCN? Probably not.
-            if (user.type === 'mcn' || user.type === 'brand') {
+            if (user.role === 'mcn' || user.role === 'brand') {
                 toast.error("크리에이터 계정만 팀에 합류할 수 있습니다.")
                 return
             }
