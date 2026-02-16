@@ -666,30 +666,48 @@ ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 
 -- Helper function to get user's team IDs without RLS recursion
 CREATE OR REPLACE FUNCTION public.get_user_team_ids(target_user_id UUID)
-RETURNS TABLE(team_id UUID)
-LANGUAGE sql
+RETURNS SETOF UUID
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 STABLE
 AS $$
-  SELECT team_id FROM public.team_members WHERE user_id = target_user_id;
+BEGIN
+    -- Disable RLS for this function execution
+    -- This prevents infinite recursion when RLS policy calls this function
+    SET LOCAL row_security = off;
+    
+    -- Return team IDs without triggering RLS
+    RETURN QUERY 
+    SELECT team_id 
+    FROM public.team_members 
+    WHERE user_id = target_user_id;
+END;
 $$;
 
 -- Helper function to check if user is owner/admin of a team (prevents RLS recursion)
 CREATE OR REPLACE FUNCTION public.is_team_owner_or_admin(target_team_id UUID, target_user_id UUID)
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 STABLE
 AS $$
-  SELECT EXISTS (
-    SELECT 1 
-    FROM public.team_members 
-    WHERE team_id = target_team_id 
-    AND user_id = target_user_id 
-    AND role IN ('owner', 'admin')
-  );
+DECLARE
+    user_role TEXT;
+BEGIN
+    -- Disable RLS to prevent recursion
+    SET LOCAL row_security = off;
+    
+    -- Get user's role in the team
+    SELECT role INTO user_role
+    FROM public.team_members
+    WHERE team_id = target_team_id AND user_id = target_user_id
+    LIMIT 1;
+    
+    -- Check if user is owner or admin
+    RETURN (user_role = 'owner' OR user_role = 'admin');
+END;
 $$;
 
 DROP POLICY IF EXISTS "Members can view their teams" ON public.teams;
