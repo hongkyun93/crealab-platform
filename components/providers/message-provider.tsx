@@ -9,7 +9,7 @@ interface MessageContextType {
     notifications: Notification[]
     submissionFeedback: SubmissionFeedback[]
     isLoading: boolean
-    sendMessage: (receiverId: string, content: string, proposalId?: string, brandProposalId?: string) => Promise<void>
+    sendMessage: (receiverId: string, content: string, file?: { url: string; name: string; size: number; type: string }, proposalId?: string, brandProposalId?: string) => Promise<void>
     sendNotification: (recipientId: string, type: string, content: string, referenceId?: string) => Promise<void>
     sendSubmissionFeedback: (proposalId: string | undefined, brandProposalId: string | undefined, content: string) => Promise<void>
     fetchSubmissionFeedback: (proposalId?: string, brandProposalId?: string) => Promise<SubmissionFeedback[]>
@@ -166,24 +166,42 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         }
     }
 
-    // Polling for new messages
+    // Delayed loading for messages and notifications to avoid blocking page render
     useEffect(() => {
         if (!userId) {
             setMessages([])
             setNotifications([])
             setSubmissionFeedback([])
+            setIsLoading(false)
             return
         }
 
-        fetchMessages(userId)
-        fetchNotifications(userId)
+        // Set loading immediately to prevent stale "loaded" state
+        setIsLoading(true)
+        window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '메시지/알림 불러오는 중...', type: 'loading' } }))
 
+        // Delay message loading to allow page to render first
+        // This prevents MessageProvider from blocking the entire page
+        const timer = setTimeout(() => {
+            Promise.all([
+                fetchMessages(userId),
+                fetchNotifications(userId)
+            ]).finally(() => {
+                setIsLoading(false)
+                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '메시지/알림 로드 완료', type: 'success' } }))
+            })
+        }, 500) // Load after 500ms - page renders immediately
+
+        // Polling for updates after initial load
         const interval = setInterval(() => {
             fetchMessages(userId)
             fetchNotifications(userId)
         }, 2000) // Every 2 seconds for near real-time updates
 
-        return () => clearInterval(interval)
+        return () => {
+            clearTimeout(timer)
+            clearInterval(interval)
+        }
     }, [userId])
 
     // Send message

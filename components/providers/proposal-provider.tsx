@@ -31,6 +31,15 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     const [isLoading, setIsLoading] = useState(false)
     const isFetching = useRef(false)
 
+    // Log Proposal Loading
+    useEffect(() => {
+        if (isLoading) {
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '제안서 데이터 불러오는 중...', type: 'loading' } }))
+        } else {
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '제안서 로드 완료', type: 'success' } }))
+        }
+    }, [isLoading])
+
     // [NEW] Optimistic Add
     const addMomentProposal = (proposal: MomentProposal) => {
         setMomentProposals(prev => [proposal, ...prev])
@@ -45,6 +54,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
         try {
             console.log(`[ProposalProvider] Fetching campaign proposals. User: ${id}, Type: ${userType}`)
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '캠페인 제안 데이터 불러오는 중...', type: 'loading' } }))
 
             let query = supabase
                 .from('campaign_proposals')
@@ -94,6 +104,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             }
 
             if (data) {
+                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `캠페인 제안 ${data.length}건 로드 완료`, type: 'success' } }))
                 const mapped: Proposal[] = data.map((p: any) => {
                     return {
                         id: p.id,
@@ -377,14 +388,23 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             console.log('[ProposalProvider] Creating proposal:', proposal)
             const targetInfluencerId = proposal.influencerId || userId
 
+            // [AUDIT FIX] Fetch team_id for relevant user to ensure visibility
+            const { data: teamMember } = await supabase
+                .from('team_members')
+                .select('team_id')
+                .eq('user_id', userId)
+                .single()
+            const myTeamId = teamMember?.team_id
+
             // Distinguish between Campaign Application and Product Proposal
             if (proposal.campaignId) {
                 // Campaign Proposal (Insert into campaign_proposals)
                 const { data, error } = await supabase
                     .from('campaign_proposals')
                     .insert({
-                        influencer_id: targetInfluencerId,
                         campaign_id: proposal.campaignId,
+                        influencer_id: targetInfluencerId,
+                        influencer_team_id: myTeamId, // [FIX]
                         price_offer: proposal.cost,
                         message: proposal.message,
                         status: 'applied',
@@ -405,6 +425,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .from('moment_proposals')
                     .insert({
                         brand_id: userId,
+                        brand_team_id: myTeamId, // [FIX]
                         influencer_id: proposal.toId, // Creator ID
                         moment_id: proposal.momentId,
                         message: proposal.message,
@@ -430,28 +451,22 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
                 if (error) throw error
             } else if (proposal.productId) {
-                // Brand Product Proposal (Insert into brand_proposals)
+                // Brand Product Proposal (Insert into brand_proposals as Creator Application)
                 const { data, error } = await supabase
                     .from('brand_proposals')
                     .insert({
                         influencer_id: userId,
+                        influencer_team_id: myTeamId, // [FIX]
                         brand_id: proposal.toId,
                         product_id: proposal.productId,
                         product_name: "Brand Product",
                         message: proposal.message || proposal.requestDetails,
-                        status: 'offered', // Default applied status for direct proposal is 'offered' or 'applied'? logic says 'applied'.
-                        // But wait, if creator proposes to brand product, it's 'applied' from creator side.
-                        // Ideally we should use 'applied' if creator initiates.
-                        // Let's stick to 'applied' for now as per logic.
-
-                        // New Fields
+                        status: 'offered',
                         motivation: proposal.motivation,
                         content_plan: proposal.content_plan,
                         portfolio_links: proposal.portfolioLinks,
                         instagram_handle: proposal.instagramHandle,
                         insight_screenshot: proposal.insightScreenshot,
-
-                        // Default fields for brand_proposal
                         product_type: 'ad',
                         compensation_amount: proposal.cost?.toString(),
                     })
@@ -661,9 +676,26 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         // The previous implementation utilized direct insert to 'brand_proposals'
         // We will try to rely on direct insert here for maximum compatibility with legacy code
         try {
+            // [AUDIT FIX] Fetch team_id
+            const { data: teamMember } = await supabase
+                .from('team_members')
+                .select('team_id')
+                .eq('user_id', userId)
+                .single()
+            const myTeamId = teamMember?.team_id
+
+            const payload = { ...proposal }
+
+            // Inject team_id based on role
+            if (userId && payload.brand_id === userId) {
+                payload.brand_team_id = myTeamId
+            } else if (userId && payload.influencer_id === userId) {
+                payload.influencer_team_id = myTeamId
+            }
+
             const { data, error } = await supabase
                 .from('brand_proposals')
-                .insert(proposal)
+                .insert(payload)
                 .select()
                 .single()
 
@@ -680,9 +712,26 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     // [NEW] Create Moment Proposal (Snake case wrapper)
     const createMomentProposal = async (proposal: any) => {
         try {
+            // [AUDIT FIX] Fetch team_id
+            const { data: teamMember } = await supabase
+                .from('team_members')
+                .select('team_id')
+                .eq('user_id', userId)
+                .single()
+            const myTeamId = teamMember?.team_id
+
+            const payload = { ...proposal }
+
+            // Inject team_id based on role
+            if (userId && payload.brand_id === userId) {
+                payload.brand_team_id = myTeamId
+            } else if (userId && payload.influencer_id === userId) {
+                payload.influencer_team_id = myTeamId
+            }
+
             const { data, error } = await supabase
                 .from('moment_proposals')
-                .insert(proposal)
+                .insert(payload)
                 .select()
                 .single()
 

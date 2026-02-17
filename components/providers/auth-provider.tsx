@@ -143,19 +143,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         let mounted = true
 
+        // Failsafe timeout to prevent infinite loading if auth check hangs
+        const timer = setTimeout(() => {
+            if (!isAuthChecked && mounted) {
+                console.warn("[AuthProvider] Auth check timed out, forcing render")
+                setIsAuthChecked(true)
+                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '인증 확인 시간 초과 (강제 진행)', type: 'error' } }))
+            }
+        }, 3000)
+
         const initAuth = async () => {
             console.log('[AuthProvider] Initializing auth...')
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '인증 시스템 초기화 시작', type: 'loading' } }))
 
-            // Retry logic for session
             let session = null
-            for (let i = 0; i < 5; i++) {
+            // Optimized for dev: Reduce retries to prevent long hangs
+            for (let i = 0; i < 2; i++) {
                 const result = await supabase.auth.getSession()
                 session = result.data.session
                 if (session?.user) {
                     console.log(`[AuthProvider] Session found on attempt ${i + 1}`)
+                    window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `세션 발견 (시도: ${i + 1})`, type: 'success' } }))
                     break
                 }
-                if (i < 4) await new Promise(resolve => setTimeout(resolve, 50))
+                if (i < 1) await new Promise(resolve => setTimeout(resolve, 50))
             }
 
             if (session?.user && mounted) {
@@ -246,13 +257,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (mounted) setIsAuthChecked(true)
         })
 
-        // Failsafe timeout
-        const timer = setTimeout(() => {
-            if (!isAuthChecked && mounted) {
-                console.warn("[AuthProvider] Auth check timed out, forcing render")
-                setIsAuthChecked(true)
-            }
-        }, 10000)
+        // Failsafe timeout: Reduced for faster automation recovery (Cleanup managed via primary useEffect)
 
         return () => {
             mounted = false
@@ -469,11 +474,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (session?.user) {
+                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '사용자 프로필 불러오는 중...', type: 'loading' } }))
                 const fetchedUser = await fetchUserProfile(session.user)
                 if (fetchedUser) {
                     setUser(fetchedUser)
+                    window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `${fetchedUser.name}님 환영합니다 (${fetchedUser.role})`, type: 'success' } }))
                     console.log('[AuthProvider] User profile refreshed:', fetchedUser.role)
                 }
+            } else {
+                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '게스트 모드로 시작', type: 'info' } }))
             }
         } catch (error) {
             console.error('[AuthProvider] Failed to refresh session:', error)

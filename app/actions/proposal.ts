@@ -20,14 +20,21 @@ export async function submitCampaignApplication(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '로그인이 필요합니다.' }
 
-    // Check if already applied? (Optional but good UX)
-    // For now, let's just insert.
+    // [AUDIT FIX] Fetch user's team_id to ensure visibility
+    const { data: teamMember } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id)
+        .single()
+
+    const influencerTeamId = teamMember?.team_id
 
     const { error } = await supabase
         .from('campaign_proposals')
         .insert({
             campaign_id: campaignId,
             influencer_id: user.id,
+            influencer_team_id: influencerTeamId, // [FIX] Set team_id
             message: data.message,
             price_offer: data.price,
             motivation: data.motivation,
@@ -35,7 +42,7 @@ export async function submitCampaignApplication(
             portfolio_links: data.portfolio_links,
             instagram_handle: data.instagram_handle,
             insight_screenshot: data.insight_screenshot,
-            status: 'applied' // Initial status
+            status: 'applied'
         })
 
     if (error) {
@@ -50,11 +57,6 @@ export async function submitCampaignApplication(
 
 export async function updateApplicationStatus(proposalId: string, status: 'accepted' | 'rejected' | 'hold') {
     const supabase = await createClient()
-
-    // Auth check should ideally verify brand ownership of the campaign, 
-    // but simplified RLS usually handles "update if I own the related campaign" 
-    // or we check it here. 
-    // For speed, assuming RLS or simple update.
 
     const { error } = await supabase
         .from('campaign_proposals')
@@ -75,21 +77,31 @@ export async function submitDirectProposal(data: any) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '로그인이 필요합니다.' }
 
-    // Ensure brand_id matches current user to prevent spoofing
+    // [AUDIT FIX] Fetch user's team_id
+    const { data: teamMember } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id)
+        .single()
+
+    const brandTeamId = teamMember?.team_id
+
     const proposalData = {
         ...data,
         brand_id: user.id,
-        status: 'offered' // Force status
+        brand_team_id: brandTeamId, // [FIX] Set brand_team_id
+        status: 'offered'
     }
 
     // Check if it's a Moment Proposal
     if (data.event_id) {
         const momentProposalData = {
             brand_id: user.id,
+            brand_team_id: brandTeamId, // [FIX] Set brand_team_id
             influencer_id: data.influencer_id,
             moment_id: data.event_id,
             message: data.message,
-            price_offer: data.compensation_amount ? parseInt(data.compensation_amount.replace(/[^0-9]/g, '')) : 0, // Clean price
+            price_offer: data.compensation_amount ? parseInt(data.compensation_amount.replace(/[^0-9]/g, '')) : 0,
             status: 'offered',
             conditions: {
                 group: 'moment_proposal',
@@ -98,7 +110,7 @@ export async function submitDirectProposal(data: any) {
                 has_incentive: data.has_incentive,
                 incentive_detail: data.incentive_detail,
                 content_type: data.content_type,
-                product_url: data.product_url, // [NEW] Save product URL
+                product_url: data.product_url,
                 desired_date: data.desired_date,
                 date_flexible: data.date_flexible,
                 video_guide: data.video_guide,

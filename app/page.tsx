@@ -1,6 +1,6 @@
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
-/** Version 1.1 - Added Moment Details & Fixed Image Load Loop */
+/** Version 3.1.0 - Performance Optimization & Runtime Monitor */
 import { Sparkles, Target, Zap } from "lucide-react"
 import Link from "next/link"
 
@@ -31,12 +31,12 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
               <Button size="lg" asChild className="h-12 px-8 text-lg w-full sm:w-auto">
                 <Link href="/signup?role=brand">
-                  브랜드로 시작하기
+                  브랜드로 회원가입
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild className="h-12 px-8 text-lg w-full sm:w-auto">
                 <Link href="/signup?role=creator">
-                  크리에이터로 시작하기
+                  크리에이터로 회원가입
                 </Link>
               </Button>
             </div>

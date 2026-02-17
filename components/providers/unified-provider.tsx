@@ -13,6 +13,16 @@ import { createClient } from "@/lib/supabase/client"
 
 // Unified Provider that combines all domain providers
 export function UnifiedProvider({ children }: { children: React.ReactNode }) {
+    // Global Event Listener for Runtime Logs
+    React.useEffect(() => {
+        const handleLog = (e: any) => {
+            // This will be caught by RuntimeMonitor
+            window.dispatchEvent(new CustomEvent('runtime-log', { detail: e.detail }))
+        }
+        window.addEventListener('app-log', handleLog)
+        return () => window.removeEventListener('app-log', handleLog)
+    }, [])
+
     return (
         <AuthProvider>
             <UnifiedProviderInner>
@@ -57,8 +67,17 @@ function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
         ? 'ALL'
         : (currentTeam?.id || user?.teamId)
 
+    // [FIX] Campaign Visibility Logic
+    // Brands/MCN: See campaigns belonging to their active team.
+    // Creators (Influencers): See ALL public campaigns (Explore mode) regardless of their team affiliation.
+    // Proxy Mode: If MCN is proxying a Creator, they should see what the Creator sees (Public Campaigns).
+    // Therefore, do NOT pass teamId filter to CampaignProvider for creators OR when in proxy mode.
+    const campaignTeamId = (user?.role === 'creator' || isProxyMode)
+        ? undefined
+        : activeTeamId
+
     return (
-        <CampaignProvider userId={effectiveUserId} userType={user?.role} teamId={activeTeamId}>
+        <CampaignProvider userId={effectiveUserId} userType={user?.role} teamId={campaignTeamId}>
             <EventProvider userId={effectiveUserId} teamId={activeTeamId} isProxyMode={isProxyMode} userType={user?.role}>
                 <ProductProvider userId={effectiveUserId} teamId={activeTeamId}>
                     <ProposalProvider userId={effectiveUserId} userType={user?.role}>
@@ -90,7 +109,7 @@ export function useUnifiedProvider() {
     const team = useTeam()
     const supabase = auth.supabase
 
-    return {
+    return React.useMemo(() => ({
         // Team (New)
         teams: team.teams,
         currentTeam: team.currentTeam,
@@ -114,11 +133,11 @@ export function useUnifiedProvider() {
 
         // Events
         events: events.events,
-        allEvents: events.allEvents, // New: Public events
+        allEvents: events.allEvents,
         addEvent: events.addEvent,
         updateEvent: events.updateEvent,
         deleteEvent: events.deleteEvent,
-        fetchAllEvents: events.fetchAllEvents, // New: Function to fetch all events
+        fetchAllEvents: events.fetchAllEvents,
 
         // Products
         products: products.products,
@@ -129,16 +148,16 @@ export function useUnifiedProvider() {
         // Proposals
         campaignProposals: proposals.campaignProposals,
         brandProposals: proposals.brandProposals,
-        momentProposals: proposals.momentProposals, // [NEW]
-        addMomentProposal: proposals.addMomentProposal, // [NEW]
+        momentProposals: proposals.momentProposals,
+        addMomentProposal: proposals.addMomentProposal,
         addProposal: proposals.addProposal,
-        createBrandProposal: proposals.createBrandProposal, // [NEW]
-        createMomentProposal: proposals.createMomentProposal, // [NEW]
+        createBrandProposal: proposals.createBrandProposal,
+        createMomentProposal: proposals.createMomentProposal,
         updateProposal: proposals.updateProposal,
         updateBrandProposal: proposals.updateBrandProposal,
-        updateMomentProposal: proposals.updateMomentProposal, // [NEW]
+        updateMomentProposal: proposals.updateMomentProposal,
         deleteBrandProposal: proposals.deleteBrandProposal,
-        deleteMomentProposal: proposals.deleteMomentProposal, // [NEW]
+        deleteMomentProposal: proposals.deleteMomentProposal,
         refreshProposals: proposals.refreshProposals,
 
         // Messages
@@ -156,27 +175,37 @@ export function useUnifiedProvider() {
         toggleFavorite: favorites.toggleFavorite,
         isFavorited: favorites.isFavorited,
 
-        // Supabase client for direct database access
-        supabase: supabase,
+        supabase,
 
         // Loading states
         isAuthLoading: !auth.isAuthChecked,
-        isLoading: (() => {
-            const loadingState = {
-                campaigns: campaigns.isLoading,
-                events: events.isLoading,
-                products: products.isLoading,
-                proposals: proposals.isLoading,
-                messages: messages.isLoading,
-                favorites: favorites.isLoading
-            }
-            if (Object.values(loadingState).some(Boolean)) {
-                console.log('[UnifiedProvider] Loading Status:', loadingState)
-            }
-            return Object.values(loadingState).some(Boolean)
-        })(),
 
-        // Refresh functions
+        isCoreLoading: [
+            campaigns.isLoading,
+            events.isLoading,
+            proposals.isLoading,
+        ].some(Boolean),
+
+        isLoading: [
+            !auth.isAuthChecked,
+            campaigns.isLoading,
+            events.isLoading,
+            products.isLoading,
+            proposals.isLoading,
+            messages.isLoading,
+            favorites.isLoading
+        ].some(Boolean),
+
+        loadingStates: [
+            { name: '인증 시스템', isLoading: !auth.isAuthChecked },
+            { name: '캠페인 데이터', isLoading: campaigns.isLoading },
+            { name: '이벤트 데이터', isLoading: events.isLoading },
+            { name: '제품 데이터', isLoading: products.isLoading },
+            { name: '제안서 데이터', isLoading: proposals.isLoading },
+            { name: '메시지 시스템', isLoading: messages.isLoading },
+            { name: '즐겨찾기', isLoading: favorites.isLoading },
+        ],
+
         refreshData: async () => {
             await Promise.all([
                 campaigns.refreshCampaigns(),
@@ -188,28 +217,14 @@ export function useUnifiedProvider() {
                 favorites.refreshFavorites()
             ])
         },
-
-        resetData: async () => {
-            console.log('[UnifiedProvider] Resetting all data...')
-
-            // Clear all SWR cache
-            // We can import useSWRConfig to get mutate, but we need it inside the component
-            // For now, let's just trigger refreshes with empty data if possible, or reload page.
-            // Actually, the best way to clear SWR is to use the cache provider, but a hard reload 
-            // is often done in logout. 
-            // However, the user says "internal cache remains".
-
-            // Let's at least clear the states we control
-            // Modular providers don't expose a 'reset' method yet.
-            // We should add reset methods to them or rely on them clearing when userId becomes null.
-
-            // Current implementation of modular providers:
-            // They watch `userId`. If `userId` becomes null, do they clear data?
-            // Let's check CampaignProvider.tsx again.
-            // It says: useEffect(() => { if (userId) fetchCampaigns(userId) }, [userId])
-            // It does NOT clear data if userId is null. THIS IS THE BUG.
-
-            // We need to update all providers to clear data when userId is undefined.
-        }
-    }
+    }), [
+        auth.user, auth.isAuthChecked, auth.isInitialized,
+        campaigns.campaigns, campaigns.isLoading,
+        events.events, events.isLoading,
+        products.products, products.isLoading,
+        proposals.campaignProposals, proposals.brandProposals, proposals.momentProposals, proposals.isLoading,
+        messages.messages, messages.notifications, messages.isLoading,
+        favorites.favorites, favorites.isLoading,
+        team.teams, team.currentTeam
+    ])
 }

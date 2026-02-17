@@ -98,13 +98,14 @@ export const productMutations = {
      * Add a new product (Team-based or User-based)
      */
     async addProduct(
-        idOrUserId: string,
+        userId: string,
         newProduct: Omit<Product, "id" | "brandId" | "createdAt">,
-        isTeamId: boolean = false
+        teamId?: string
     ): Promise<void> {
-        console.log('[productMutations] Creating product:', { idOrUserId, isTeamId, newProduct })
+        console.log('[productMutations] Creating product:', { userId, teamId, newProduct })
 
         const insertData: any = {
+            brand_id: userId, // Always required
             name: newProduct.name,
             price: newProduct.price,
             image_url: newProduct.image,
@@ -119,11 +120,9 @@ export const productMutations = {
             account_tag: newProduct.accountTag
         }
 
-        // Use team_id if isTeamId is true, otherwise use brand_id
-        if (isTeamId) {
-            insertData.team_id = idOrUserId
-        } else {
-            insertData.brand_id = idOrUserId
+        // Add team_id if provided
+        if (teamId) {
+            insertData.team_id = teamId
         }
 
         const { data, error } = await supabase

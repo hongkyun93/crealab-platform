@@ -29,6 +29,7 @@ export default function MessagePage() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const scrollRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
     const { uploadFile, uploading } = useFileUpload()
 
     const displayUser = user || MOCK_INFLUENCER_USER
@@ -214,6 +215,12 @@ export default function MessagePage() {
         const fileToUpload = selectedFile
         setMessageInput("") // Optimistic clear
         setSelectedFile(null) // Clear file
+
+        // Reset textarea height to prevent invisible line breaks after send
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'
+            textareaRef.current.style.height = '24px'
+        }
 
         try {
             // Upload file first if exists
@@ -553,6 +560,7 @@ export default function MessagePage() {
                                                 </Button>
                                                 <div className="flex-1 py-1.5">
                                                     <textarea
+                                                        ref={textareaRef}
                                                         value={messageInput}
                                                         onChange={(e) => setMessageInput(e.target.value)}
                                                         onCompositionStart={() => setIsComposing(true)}

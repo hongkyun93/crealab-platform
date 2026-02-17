@@ -24,8 +24,17 @@ export function ProductProvider({ children, userId, teamId }: {
     teamId?: string
 }) {
     const { supabase } = useAuth()
-    // Use SWR hook for data fetching (filtered by team for brands)
-    const { products, isLoading, revalidate } = useProductsSWR(teamId)
+    // Use SWR hook for data fetching
+    const { products, isLoading, revalidate } = useProductsSWR()
+
+    // Log Product Loading
+    useEffect(() => {
+        if (isLoading) {
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '제품 데이터 불러오는 중...', type: 'loading' } }))
+        } else if (products) {
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `제품 로드 완료 (${products.length}건)`, type: 'success' } }))
+        }
+    }, [isLoading])
 
     // Setup Realtime subscription for live updates
     useEffect(() => {
@@ -59,9 +68,8 @@ export function ProductProvider({ children, userId, teamId }: {
         if (!userId) {
             throw new Error('User ID required to create product')
         }
-        // Products are ALWAYS created by brands (individual users), never by teams
-        // Even if the brand is part of a team, products belong to the brand user
-        await productMutations.addProduct(userId, newProduct, false)
+        // Products belong to the brand user AND the team (if exists)
+        await productMutations.addProduct(userId, newProduct, teamId)
     }
 
     const updateProduct = async (id: string, updates: Partial<Product>) => {

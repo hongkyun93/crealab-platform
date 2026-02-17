@@ -64,6 +64,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
+import { DebugMonitor } from "@/components/debug-monitor"
 import { CalendarView } from "@/components/dashboard/calendar-view"
 import dynamic from 'next/dynamic'
 
@@ -143,7 +144,7 @@ function AIPlanModal({ isOpen, onOpenChange, planContent }: { isOpen: boolean; o
 
 function InfluencerDashboardContent() {
     const {
-        user, updateUser, campaigns, events, isLoading, notifications, resetData, refreshData,
+        user, updateUser, campaigns, events, isLoading, notifications, resetData,
         brandProposals, momentProposals, updateBrandProposal, // [NEW] Added momentProposals
         sendNotification,
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
@@ -530,12 +531,6 @@ function InfluencerDashboardContent() {
     useEffect(() => {
         setWorkspaceSubTab('all')
     }, [workspaceTab])
-
-    // Force data refresh on mount to avoid stale data from navigation
-    useEffect(() => {
-        console.log('[CreatorDashboard] Forcing data refresh on mount')
-        refreshData()
-    }, []) // Stable refresh once on mount
 
     // Refs for auto-scrolling
     const workspaceChatRef = useRef<HTMLDivElement>(null)
@@ -1724,17 +1719,14 @@ function InfluencerDashboardContent() {
         }
     }, [isAuthLoading, user, router])
 
-    // Loading State
-    if (isAuthLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-muted/30">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-                    <p className="text-muted-foreground font-medium animate-pulse">데이터를 불러오는 중입니다...</p>
-                </div>
-            </div>
-        )
-    }
+    // Get unified provider data
+    const {
+        isLoading: isDataLoading,
+        loadingStates,
+        refreshData: refreshAllData
+    } = useUnifiedProvider()
+
+    // Show content immediately, monitor loading in corner
     // if (!user) return null // Allow guest view
 
 

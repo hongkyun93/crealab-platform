@@ -48,6 +48,8 @@ import { createClient } from "@/lib/supabase/server";
 
 import { Toaster } from "@/components/ui/sonner";
 
+import { RuntimeMonitor } from "@/components/dev/RuntimeMonitor";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -73,6 +75,7 @@ export default async function RootLayout({
             {children}
             <SiteFooter />
             <Toaster />
+            <RuntimeMonitor />
           </ThemeProvider>
         </UnifiedProvider>
       </body>

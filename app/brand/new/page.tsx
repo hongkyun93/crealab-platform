@@ -79,6 +79,11 @@ export default function NewCampaignPage() {
             formData.append("image", image)
         }
 
+        // [FIX] Add teamId for proper RLS visibility
+        if (user?.teamId) {
+            formData.append("teamId", user.teamId)
+        }
+
         const result = await createCampaign(formData)
 
         if (result?.error) {

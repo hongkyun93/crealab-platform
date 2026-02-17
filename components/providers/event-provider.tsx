@@ -42,6 +42,15 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
 
     const isLoading = isUserLoading || isPublicLoading
 
+    // Log Event Loading
+    useEffect(() => {
+        if (isLoading) {
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '이벤트 데이터 불러오는 중...', type: 'loading' } }))
+        } else if (userEvents || publicEvents) {
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `이벤트 로드 완료 (${userEvents?.length || 0}건)`, type: 'success' } }))
+        }
+    }, [isLoading])
+
     // Setup Realtime subscription for live updates
     useEffect(() => {
 
@@ -83,7 +92,11 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
             return false
         }
         // If teamId is missing, allow creating with just userId (team_id will be null)
-        return eventMutations.addEvent(teamId, userId!, newEvent)
+        // If teamId is 'ALL' (MCN View), do not save 'ALL' to DB. Save as null (or let RLS handle it).
+        // Ideally, we should fetch the creator's team_id, but for now, null is safer than invalid UUID.
+        const effectiveTeamId = teamId === 'ALL' ? undefined : teamId
+
+        return eventMutations.addEvent(effectiveTeamId, userId!, newEvent)
     }
 
     const updateEvent = async (id: string, updates: Partial<InfluencerEvent>): Promise<boolean> => {
@@ -91,7 +104,8 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
             console.error('[EventProvider] Team ID or User ID required to update event')
             return false
         }
-        return eventMutations.updateEvent(teamId, userId, id, updates)
+        const effectiveTeamId = teamId === 'ALL' ? undefined : teamId
+        return eventMutations.updateEvent(effectiveTeamId, userId, id, updates)
     }
 
     const deleteEvent = async (id: string): Promise<boolean> => {
@@ -99,7 +113,8 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
             console.error('[EventProvider] Team ID or User ID required to delete event')
             return false
         }
-        return eventMutations.deleteEvent(teamId, userId, id)
+        const effectiveTeamId = teamId === 'ALL' ? undefined : teamId
+        return eventMutations.deleteEvent(effectiveTeamId, userId, id)
     }
 
     const refreshEvents = async (targetUserId?: string) => {

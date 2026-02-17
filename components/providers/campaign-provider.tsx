@@ -38,6 +38,7 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
         try {
             const id = targetUserId || userId
             console.log(`[CampaignProvider] Fetching campaigns. User: ${id}, Type: ${userType}, Team: ${teamId}`)
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `캠페인 데이터 불러오는 중... (팀: ${teamId || 'ALL'})`, type: 'loading' } }))
 
             let query = supabase
                 .from('campaigns')
@@ -48,16 +49,13 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
                 .order('created_at', { ascending: false })
                 .abortSignal(signal || null as any)
 
-            // Filter by team_id if available (Team-based), otherwise fall back to brand_id
+            // Filter by team_id if available (Team-based)
             // [MCN Support] If teamId is 'ALL', fetch all campaigns accessible via RLS
             if (teamId && teamId !== 'ALL') {
                 query = query.eq('team_id', teamId)
-            } else if (userType === 'brand' && (!teamId || teamId !== 'ALL')) {
-                // Only filter by brand_id if NOT in Unified View (ALL)
-                // If Unified View, RLS returns all campaigns for all managed brands
-                query = query.eq('brand_id', id)
             }
-            // Influencers see all campaigns
+            // RLS automatically filters by team_id, so no need for brand_id filter
+            // Creators/Influencers see all public campaigns via RLS
 
             const { data, error } = await query
 
@@ -80,6 +78,7 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
             }
 
             if (data) {
+                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `캠페인 ${data.length}건 로드 완료`, type: 'success' } }))
                 const mapped: Campaign[] = data.map((c: any) => ({
                     id: c.id,
                     brandId: c.brand_id,

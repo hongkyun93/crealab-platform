@@ -140,11 +140,10 @@ function BrandDashboardContent() {
     // AI Calculator State
     const [showCalculator, setShowCalculator] = useState(false)
 
-    // Force data refresh on mount to avoid stale data from navigation
+    // Fetch public events for discovery on mount
     useEffect(() => {
-        refreshData()
-        fetchAllEvents() // New: Fetch public events for discovery
-    }, []) // Stable refresh once on mount
+        fetchAllEvents() // Fetch public events for discovery
+    }, [])
 
     const displayUser = user
 
@@ -1168,9 +1167,12 @@ function BrandDashboardContent() {
     }
 
     const filteredEvents = getFilteredAndSortedEvents()
-    const myCampaigns = user?.role === 'admin' ? campaigns : campaigns.filter(c => c.brandId === user?.id)
-    const mySentProposals = user?.role === 'admin' ? brandProposals : brandProposals.filter(p => p.brand_id === user?.id)
-    const myProducts = user?.role === 'admin' ? products : products.filter(p => p.brandId === user?.id)
+
+    // [FIXED] Removed redundant filters - Provider and RLS already filter correctly by team_id
+    // The page-level brandId filter was causing campaigns to not display
+    const myCampaigns = campaigns  // Already filtered by RLS (team_id) and Provider
+    const mySentProposals = brandProposals  // Already filtered by RLS
+    const myProducts = products  // Already filtered by RLS
 
     // Filter items by type (moment/campaign/brand)
     const filterByType = (items: any[], type: 'all' | 'moment' | 'campaign' | 'brand') => {

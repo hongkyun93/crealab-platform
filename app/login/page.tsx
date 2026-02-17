@@ -104,16 +104,7 @@ export default function LoginPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="mb-6 text-center">
-                            <Button
-                                variant="destructive"
-                                size="lg"
-                                className="w-full h-12 text-lg font-bold animate-pulse shadow-xl border-2 border-red-500"
-                                onClick={() => router.push('/login_test')}
-                            >
-                                🚀 개발용 로그인 바로가기 (CLICK ME)
-                            </Button>
-                        </div>
+
 
                         <form onSubmit={handleLogin} className="space-y-4">
                             <div className="space-y-2">
@@ -142,6 +133,52 @@ export default function LoginPage() {
                                     {error}
                                 </div>
                             )}
+
+                            {/* Quick Dev Login Buttons */}
+                            {process.env.NODE_ENV === 'development' && (
+                                <div className="space-y-2 p-3 bg-muted rounded-lg border-2 border-dashed">
+                                    <p className="text-xs font-semibold text-muted-foreground mb-2">⚡ 빠른 로그인 (개발용)</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs"
+                                            onClick={() => {
+                                                setId('creator1@creadypick.com')
+                                                setPassword('12341234')
+                                            }}
+                                        >
+                                            크리에이터
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs"
+                                            onClick={() => {
+                                                setId('employee1@creadypick.com')
+                                                setPassword('12341234')
+                                            }}
+                                        >
+                                            직원
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs"
+                                            onClick={() => {
+                                                setId('voib@brand.com')
+                                                setPassword('12341234')
+                                            }}
+                                        >
+                                            브랜드
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
                             <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
                                 {isLoading ? "로그인 중..." : "로그인하기"}
                             </Button>

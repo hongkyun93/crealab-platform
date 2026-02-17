@@ -78,8 +78,16 @@ export function FavoriteProvider({ children, userId }: { children: React.ReactNo
         } finally {
             isFetching.current = false
             setIsLoading(false)
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '즐겨찾기 데이터 로드 완료', type: 'success' } }))
         }
     }
+
+    // Log Favorite Loading
+    useEffect(() => {
+        if (isLoading) {
+            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '즐겨찾기 불러오는 중...', type: 'loading' } }))
+        }
+    }, [isLoading])
 
     // Fetch on mount
     useEffect(() => {
