@@ -25,7 +25,7 @@ import { createClient } from "@/lib/supabase/client"
 
 export default function NewCampaignPage() {
     const router = useRouter()
-    const { refreshData, products, user } = useUnifiedProvider()
+    const { refreshData, products, user, currentTeam } = useUnifiedProvider()
     const [loading, setLoading] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string[]>([])
     const [postingYear, setPostingYear] = useState("2026")
@@ -80,8 +80,8 @@ export default function NewCampaignPage() {
         }
 
         // [FIX] Add teamId for proper RLS visibility
-        if (user?.teamId) {
-            formData.append("teamId", user.teamId)
+        if (currentTeam?.id) {
+            formData.append("teamId", currentTeam.id)
         }
 
         const result = await createCampaign(formData)
