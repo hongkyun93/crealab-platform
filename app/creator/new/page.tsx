@@ -24,7 +24,7 @@ import { useUnifiedProvider } from "@/components/providers/unified-provider"
 
 export default function NewEventPage() {
     const router = useRouter()
-    const { user, addEvent, supabase } = useUnifiedProvider()
+    const { user, addEvent, supabase, currentTeam } = useUnifiedProvider()
     const { effectiveUserId, isProxyMode, effectiveUser } = useEffectiveUser()
 
     // 1. Hooks (Must be at top level)
@@ -198,320 +198,313 @@ export default function NewEventPage() {
                 feedback: "",
                 upload: ""
             },
-            schedule: {
-                product_delivery: "",
-                draft_submission: "",
-                shooting: "",
-                feedback: "",
-                upload: ""
-            },
-            influencerId: finalInfluencerId,
-            teamId: user.teamId // [FIX] Pass teamId for RLS validation
+            influencerId: finalInfluencerId
+        })
 
-        if(success) {
-                router.push('/creator')
-            } else {
-                setValidationError("모먼트 등록에 실패했습니다. 다시 시도해주세요.")
-            }
+        if (success) {
+            router.push('/creator')
+        } else {
+            setValidationError("모먼트 등록에 실패했습니다. 다시 시도해주세요.")
         }
+    }
 
     return (
-            <div className="min-h-screen bg-muted/30">
-                <SiteHeader />
-                <main className="container py-8 max-w-[1920px] px-6 md:px-8">
-                    <div className="mx-auto max-w-2xl">
-                        <div className="mb-8 flex items-center gap-4">
-                            <Button variant="ghost" size="icon" asChild>
-                                <Link href="/creator">
-                                    <ArrowLeft className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                            <div>
-                                <h1 className="text-2xl font-bold tracking-tight">새 모먼트 만들기</h1>
-                                <p className="text-muted-foreground">
-                                    브랜드에게 제안받을 {isProxyMode ? `${effectiveUser?.name}님의` : '당신의'} 다음 라이프 모먼트를 등록하세요.
+        <div className="min-h-screen bg-muted/30">
+            <SiteHeader />
+            <main className="container py-8 max-w-[1920px] px-6 md:px-8">
+                <div className="mx-auto max-w-2xl">
+                    <div className="mb-8 flex items-center gap-4">
+                        <Button variant="ghost" size="icon" asChild>
+                            <Link href="/creator">
+                                <ArrowLeft className="h-4 w-4" />
+                            </Link>
+                        </Button>
+                        <div>
+                            <h1 className="text-2xl font-bold tracking-tight">새 모먼트 만들기</h1>
+                            <p className="text-muted-foreground">
+                                브랜드에게 제안받을 {isProxyMode ? `${effectiveUser?.name}님의` : '당신의'} 다음 라이프 모먼트를 등록하세요.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
+
+                            <div className="space-y-2">
+                                <Label htmlFor="title">모먼트 제목</Label>
+                                {/* Only show creator selector if MCN is NOT in proxy mode */}
+                                {((user?.role === 'agency' || user?.role === 'mcn') && !isProxyMode) && (
+                                    <div className="mb-4 p-4 border rounded-lg bg-indigo-50/50 border-indigo-100">
+                                        <Label className="mb-2 block text-indigo-900 font-semibold">
+                                            어떤 크리에이터의 모먼트인가요?
+                                        </Label>
+                                        <Select value={targetCreatorId} onValueChange={setTargetCreatorId}>
+                                            <SelectTrigger className="bg-white border-indigo-200">
+                                                <SelectValue placeholder="크리에이터를 선택해주세요" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {teamMembers.map(member => (
+                                                    <SelectItem key={member.id} value={member.id}>
+                                                        {member.name} ({member.id.substring(0, 8)}...)
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-indigo-600 mt-2">
+                                            * 선택한 크리에이터의 이름으로 모먼트가 등록됩니다.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Show info badge if in proxy mode */}
+                                {isProxyMode && (
+                                    <div className="mb-4 p-3 border rounded-lg bg-blue-50/50 border-blue-100 flex items-center gap-2">
+                                        <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">Proxy Mode</span>
+                                        <span className="text-sm text-blue-800">
+                                            <strong>{effectiveUser?.name}</strong>님의 모먼트로 등록됩니다.
+                                        </span>
+                                    </div>
+                                )}
+
+                                <Input
+                                    id="title"
+                                    placeholder="예: 한남동으로 이사, 여름 다이어트 시작"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    브랜드가 한눈에 알아볼 수 있는 직관적인 제목을 지어주세요.
                                 </p>
                             </div>
-                        </div>
 
-                        <div>
-                            <div className="space-y-8 rounded-xl border bg-card p-6 shadow-sm md:p-8">
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="title">모먼트 제목</Label>
-                                    {/* Only show creator selector if MCN is NOT in proxy mode */}
-                                    {((user?.role === 'agency' || user?.role === 'mcn') && !isProxyMode) && (
-                                        <div className="mb-4 p-4 border rounded-lg bg-indigo-50/50 border-indigo-100">
-                                            <Label className="mb-2 block text-indigo-900 font-semibold">
-                                                어떤 크리에이터의 모먼트인가요?
-                                            </Label>
-                                            <Select value={targetCreatorId} onValueChange={setTargetCreatorId}>
-                                                <SelectTrigger className="bg-white border-indigo-200">
-                                                    <SelectValue placeholder="크리에이터를 선택해주세요" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {teamMembers.map(member => (
-                                                        <SelectItem key={member.id} value={member.id}>
-                                                            {member.name} ({member.id.substring(0, 8)}...)
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <p className="text-xs text-indigo-600 mt-2">
-                                                * 선택한 크리에이터의 이름으로 모먼트가 등록됩니다.
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {/* Show info badge if in proxy mode */}
-                                    {isProxyMode && (
-                                        <div className="mb-4 p-3 border rounded-lg bg-blue-50/50 border-blue-100 flex items-center gap-2">
-                                            <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">Proxy Mode</span>
-                                            <span className="text-sm text-blue-800">
-                                                <strong>{effectiveUser?.name}</strong>님의 모먼트로 등록됩니다.
-                                            </span>
-                                        </div>
-                                    )}
-
+                            <div className="space-y-4">
+                                <Label>광고 가능 아이템</Label>
+                                <div className="relative">
+                                    <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        id="title"
-                                        placeholder="예: 한남동으로 이사, 여름 다이어트 시작"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
+                                        placeholder="광고 진행이 가능한 제품이나 브랜드를 입력해주세요 (예: 로봇청소기, 립스틱)"
+                                        className="pl-9"
+                                        value={targetProduct}
+                                        onChange={(e) => setTargetProduct(e.target.value)}
                                     />
-                                    <p className="text-xs text-muted-foreground">
-                                        브랜드가 한눈에 알아볼 수 있는 직관적인 제목을 지어주세요.
-                                    </p>
                                 </div>
+                            </div>
 
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Event Date Picker */}
                                 <div className="space-y-4">
-                                    <Label>광고 가능 아이템</Label>
-                                    <div className="relative">
-                                        <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="광고 진행이 가능한 제품이나 브랜드를 입력해주세요 (예: 로봇청소기, 립스틱)"
-                                            className="pl-9"
-                                            value={targetProduct}
-                                            onChange={(e) => setTargetProduct(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Event Date Picker */}
-                                    <div className="space-y-4">
-                                        <Label className="flex items-center gap-2">
-                                            <Calendar className="h-4 w-4" />
-                                            모먼트 일정
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setEventYear(prev => prev === "2026" ? "2027" : "2026")}
-                                                className="h-6 px-2 text-xs ml-1 bg-background"
-                                            >
-                                                {eventYear}년 🔄
-                                            </Button>
-                                        </Label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {MONTHS.map((m) => {
-                                                const isSelected = eventMonth === m
-                                                return (
-                                                    <Button
-                                                        key={`event-${m}`}
-                                                        type="button"
-                                                        variant={isSelected ? "default" : "outline"}
-                                                        className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
-                                                        onClick={() => setEventMonth(m)}
-                                                    >
-                                                        {m}
-                                                    </Button>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <Label className="flex items-center gap-2">
-                                            <Send className="h-4 w-4" />
-                                            콘텐츠 업로드 시기
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
-                                                className="h-6 px-2 text-xs ml-1 bg-background"
-                                            >
-                                                {postingYear}년 🔄
-                                            </Button>
-                                        </Label>
-                                        <div className={`grid grid-cols-3 gap-2 ${isDateFlexible ? 'opacity-50 pointer-events-none' : ''}`}>
-                                            {MONTHS.map((m) => {
-                                                const isSelected = postingMonth === m
-                                                return (
-                                                    <Button
-                                                        key={`posting-${m}`}
-                                                        type="button"
-                                                        variant={isSelected ? "default" : "outline"}
-                                                        className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
-                                                        onClick={() => setPostingMonth(m)}
-                                                    >
-                                                        {m}
-                                                    </Button>
-                                                )
-                                            })}
-                                        </div>
-                                        <div className="flex items-center space-x-2 pt-2">
-                                            <Checkbox
-                                                id="date-flexible"
-                                                checked={isDateFlexible}
-                                                onCheckedChange={(checked) => setIsDateFlexible(checked as boolean)}
-                                            />
-                                            <label
-                                                htmlFor="date-flexible"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-muted-foreground"
-                                            >
-                                                업로드 일정 협의 가능
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <Label>관심 카테고리 (복수 선택 가능)</Label>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                        {POPULAR_TAGS.map((tag) => (
-                                            <button
-                                                key={tag}
-                                                type="button"
-                                                onClick={() => toggleTag(tag)}
-                                                className={`
-                                text-sm px-3 py-2.5 rounded-md border transition-all duration-200 text-left md:text-center
-                                ${selectedTags.includes(tag)
-                                                        ? "bg-primary text-primary-foreground border-primary font-medium ring-2 ring-offset-2 ring-primary/20"
-                                                        : "bg-background hover:bg-muted/50 hover:border-primary/50 text-muted-foreground"
-                                                    }
-                            `}
-                                            >
-                                                {tag}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    {selectedTags.length > 0 && (
-                                        <p className="text-xs text-primary font-medium">
-                                            {selectedTags.length}개 선택됨: {selectedTags.join(", ")}
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="description">상세 설명</Label>
+                                    <Label className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4" />
+                                        모먼트 일정
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={handleGenerateAI}
-                                            disabled={isGenerating}
-                                            className="h-7 text-xs gap-1.5 border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
+                                            onClick={() => setEventYear(prev => prev === "2026" ? "2027" : "2026")}
+                                            className="h-6 px-2 text-xs ml-1 bg-background"
                                         >
-                                            {isGenerating ? (
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : (
-                                                <Sparkles className="h-3 w-3 text-yellow-500" />
-                                            )}
-                                            AI 작문 도우미
+                                            {eventYear}년 🔄
                                         </Button>
+                                    </Label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {MONTHS.map((m) => {
+                                            const isSelected = eventMonth === m
+                                            return (
+                                                <Button
+                                                    key={`event-${m}`}
+                                                    type="button"
+                                                    variant={isSelected ? "default" : "outline"}
+                                                    className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
+                                                    onClick={() => setEventMonth(m)}
+                                                >
+                                                    {m}
+                                                </Button>
+                                            )
+                                        })}
                                     </div>
-                                    <Textarea
-                                        id="description"
-                                        placeholder="어떤 상황이고 어떤 제품이 필요한지 자세히 적어주세요.&#10;예: 25평 아파트로 이사하게 되었습니다. 거실 커튼과 조명을 바꾸고 싶은데..."
-                                        className="min-h-[150px] resize-y"
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                    />
-                                    <p className="text-xs text-muted-foreground text-right mt-1">
-                                        * AI가 생성한 내용은 자유롭게 수정 가능합니다.
-                                    </p>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <Label htmlFor="guide">제작 가이드</Label>
-                                        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Optional</span>
-                                    </div>
-                                    <Textarea
-                                        id="guide"
-                                        placeholder="브랜드에게 제안할 콘텐츠의 방향성이나 촬영 구도를 미리 적어주세요.&#10;예:&#10;1. 비포/애프터 컷 필수 포함&#10;2. 자연광에서 제품 텍스처 강조&#10;3. 실사용 1주일 후기 위주"
-                                        className="min-h-[120px] resize-y bg-muted/20"
-                                        value={guide}
-                                        onChange={(e) => setGuide(e.target.value)}
-                                    />
-                                    <p className="text-xs text-primary/80 font-medium">
-                                        ✨ 꿀팁: 가이드를 작성하면 브랜드로부터 광고 제안을 받을 확률이 높아져요!
-                                    </p>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <Label>공개 범위 설정</Label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div
-                                            className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${!isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
-                                            onClick={() => setIsPrivate(false)}
+                                <div className="space-y-4">
+                                    <Label className="flex items-center gap-2">
+                                        <Send className="h-4 w-4" />
+                                        콘텐츠 업로드 시기
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
+                                            className="h-6 px-2 text-xs ml-1 bg-background"
                                         >
-                                            <Globe className={`h-5 w-5 mt-0.5 ${!isPrivate ? "text-primary" : "text-muted-foreground"}`} />
-                                            <div>
-                                                <div className={`font-medium ${!isPrivate ? "text-primary" : "text-foreground"}`}>전체 공개 (Public)</div>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    브랜드가 내 모먼트를 검색하고 제안을 보낼 수 있습니다.
-                                                </p>
-                                            </div>
-                                            {!isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
-                                        </div>
-
-                                        <div
-                                            className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
-                                            onClick={() => setIsPrivate(true)}
+                                            {postingYear}년 🔄
+                                        </Button>
+                                    </Label>
+                                    <div className={`grid grid-cols-3 gap-2 ${isDateFlexible ? 'opacity-50 pointer-events-none' : ''}`}>
+                                        {MONTHS.map((m) => {
+                                            const isSelected = postingMonth === m
+                                            return (
+                                                <Button
+                                                    key={`posting-${m}`}
+                                                    type="button"
+                                                    variant={isSelected ? "default" : "outline"}
+                                                    className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
+                                                    onClick={() => setPostingMonth(m)}
+                                                >
+                                                    {m}
+                                                </Button>
+                                            )
+                                        })}
+                                    </div>
+                                    <div className="flex items-center space-x-2 pt-2">
+                                        <Checkbox
+                                            id="date-flexible"
+                                            checked={isDateFlexible}
+                                            onCheckedChange={(checked) => setIsDateFlexible(checked as boolean)}
+                                        />
+                                        <label
+                                            htmlFor="date-flexible"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-muted-foreground"
                                         >
-                                            <Lock className={`h-5 w-5 mt-0.5 ${isPrivate ? "text-primary" : "text-muted-foreground"}`} />
-                                            <div>
-                                                <div className={`font-medium ${isPrivate ? "text-primary" : "text-foreground"}`}>나만 보기 (Private)</div>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    다른 사람에게 노출되지 않으며, 개인 일정 관리용으로 저장됩니다.
-                                                </p>
-                                            </div>
-                                            {isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
-                                        </div>
+                                            업로드 일정 협의 가능
+                                        </label>
                                     </div>
                                 </div>
-
                             </div>
 
-
-                            {/* Schedule Template Section Removed */}
-
-                            <div className="flex justify-end gap-4 pt-4 mt-6 relative z-50 pb-20">
-                                <Button variant="outline" asChild type="button">
-                                    <Link href="/creator">취소</Link>
-                                </Button>
-                                {validationError && (
-                                    <div className="absolute bottom-full mb-2 right-0 text-sm text-red-500 font-medium bg-red-50 px-3 py-1 rounded-md animate-in slide-in-from-bottom-1 fade-in">
-                                        ⚠️ {validationError}
-                                    </div>
+                            <div className="space-y-3">
+                                <Label>관심 카테고리 (복수 선택 가능)</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    {POPULAR_TAGS.map((tag) => (
+                                        <button
+                                            key={tag}
+                                            type="button"
+                                            onClick={() => toggleTag(tag)}
+                                            className={`
+                                text-sm px-3 py-2.5 rounded-md border transition-all duration-200 text-left md:text-center
+                                ${selectedTags.includes(tag)
+                                                    ? "bg-primary text-primary-foreground border-primary font-medium ring-2 ring-offset-2 ring-primary/20"
+                                                    : "bg-background hover:bg-muted/50 hover:border-primary/50 text-muted-foreground"
+                                                }
+                            `}
+                                        >
+                                            {tag}
+                                        </button>
+                                    ))}
+                                </div>
+                                {selectedTags.length > 0 && (
+                                    <p className="text-xs text-primary font-medium">
+                                        {selectedTags.length}개 선택됨: {selectedTags.join(", ")}
+                                    </p>
                                 )}
-                                <Button
-                                    size="lg"
-                                    className="w-full md:w-auto cursor-pointer"
-                                    onClick={handleSubmit}
-                                    type="button"
-                                    disabled={false}
-                                >
-                                    <Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기
-                                </Button>
                             </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="description">상세 설명</Label>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleGenerateAI}
+                                        disabled={isGenerating}
+                                        className="h-7 text-xs gap-1.5 border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
+                                    >
+                                        {isGenerating ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                            <Sparkles className="h-3 w-3 text-yellow-500" />
+                                        )}
+                                        AI 작문 도우미
+                                    </Button>
+                                </div>
+                                <Textarea
+                                    id="description"
+                                    placeholder="어떤 상황이고 어떤 제품이 필요한지 자세히 적어주세요.&#10;예: 25평 아파트로 이사하게 되었습니다. 거실 커튼과 조명을 바꾸고 싶은데..."
+                                    className="min-h-[150px] resize-y"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground text-right mt-1">
+                                    * AI가 생성한 내용은 자유롭게 수정 가능합니다.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="guide">제작 가이드</Label>
+                                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Optional</span>
+                                </div>
+                                <Textarea
+                                    id="guide"
+                                    placeholder="브랜드에게 제안할 콘텐츠의 방향성이나 촬영 구도를 미리 적어주세요.&#10;예:&#10;1. 비포/애프터 컷 필수 포함&#10;2. 자연광에서 제품 텍스처 강조&#10;3. 실사용 1주일 후기 위주"
+                                    className="min-h-[120px] resize-y bg-muted/20"
+                                    value={guide}
+                                    onChange={(e) => setGuide(e.target.value)}
+                                />
+                                <p className="text-xs text-primary/80 font-medium">
+                                    ✨ 꿀팁: 가이드를 작성하면 브랜드로부터 광고 제안을 받을 확률이 높아져요!
+                                </p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label>공개 범위 설정</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div
+                                        className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${!isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                                        onClick={() => setIsPrivate(false)}
+                                    >
+                                        <Globe className={`h-5 w-5 mt-0.5 ${!isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                                        <div>
+                                            <div className={`font-medium ${!isPrivate ? "text-primary" : "text-foreground"}`}>전체 공개 (Public)</div>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                브랜드가 내 모먼트를 검색하고 제안을 보낼 수 있습니다.
+                                            </p>
+                                        </div>
+                                        {!isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
+                                    </div>
+
+                                    <div
+                                        className={`relative flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${isPrivate ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                                        onClick={() => setIsPrivate(true)}
+                                    >
+                                        <Lock className={`h-5 w-5 mt-0.5 ${isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                                        <div>
+                                            <div className={`font-medium ${isPrivate ? "text-primary" : "text-foreground"}`}>나만 보기 (Private)</div>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                다른 사람에게 노출되지 않으며, 개인 일정 관리용으로 저장됩니다.
+                                            </p>
+                                        </div>
+                                        {isPrivate && <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary" />}
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+                        {/* Schedule Template Section Removed */}
+
+                        <div className="flex justify-end gap-4 pt-4 mt-6 relative z-50 pb-20">
+                            <Button variant="outline" asChild type="button">
+                                <Link href="/creator">취소</Link>
+                            </Button>
+                            {validationError && (
+                                <div className="absolute bottom-full mb-2 right-0 text-sm text-red-500 font-medium bg-red-50 px-3 py-1 rounded-md animate-in slide-in-from-bottom-1 fade-in">
+                                    ⚠️ {validationError}
+                                </div>
+                            )}
+                            <Button
+                                size="lg"
+                                className="w-full md:w-auto cursor-pointer"
+                                onClick={handleSubmit}
+                                type="button"
+                                disabled={false}
+                            >
+                                <Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기
+                            </Button>
                         </div>
                     </div>
-                </main >
-            </div >
-        )
-    }
+                </div>
+            </main >
+        </div >
+    )
+}
