@@ -50,31 +50,24 @@ function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
     const { user } = useAuth()
     const { currentTeam, selectedMember, isProxyMode } = useTeam()
 
-    // [MCN Proxy Support] 
-    // If in proxy mode, we act as the selected creator.
-    // Otherwise, we are the MCN admin.
-    const effectiveUserId = isProxyMode ? selectedMember?.user_id : user?.id
+    // [PERFORMANCE OPTIMIZATION] Use useMemo to prevent cascade re-renders
+    // This enables parallel provider loading instead of waterfall
+    const effectiveUserId = React.useMemo(() =>
+        isProxyMode ? selectedMember?.user_id : user?.id,
+        [isProxyMode, selectedMember?.user_id, user?.id]  // Primitive dependencies
+    )
 
-    // Fallback to user's default team if currentTeam is not yet selected
-    // [MCN Support] MCN/Agency users see ALL events from ALL teams they belong to (Unified View)
-    // BUT if in proxy mode, we should see that creator's specific data content (which might be scoped to team?)
-    // Actually, normally we want to see the creator's data in the context of the current team.
+    const activeTeamId = React.useMemo(() =>
+        ((user?.role === 'mcn' || user?.role === 'agency') && !isProxyMode)
+            ? 'ALL'
+            : (currentTeam?.id || user?.teamId),
+        [user?.role, user?.teamId, isProxyMode, currentTeam?.id]  // Primitive dependencies
+    )
 
-    // FIX: If 'ALL' is passed as teamId to mutations (like addEvent), it causes invalid UUID error.
-    // When in Proxy Mode (isProxyMode=true), we must use a specific team ID (currentTeam.id).
-    // Only use 'ALL' when in MCN Manager Mode (isProxyMode=false) for aggregation.
-    const activeTeamId = ((user?.role === 'mcn' || user?.role === 'agency') && !isProxyMode)
-        ? 'ALL'
-        : (currentTeam?.id || user?.teamId)
-
-    // [FIX] Campaign Visibility Logic
-    // Brands/MCN: See campaigns belonging to their active team.
-    // Creators (Influencers): See ALL public campaigns (Explore mode) regardless of their team affiliation.
-    // Proxy Mode: If MCN is proxying a Creator, they should see what the Creator sees (Public Campaigns).
-    // Therefore, do NOT pass teamId filter to CampaignProvider for creators OR when in proxy mode.
-    const campaignTeamId = (user?.role === 'creator' || isProxyMode)
-        ? undefined
-        : activeTeamId
+    const campaignTeamId = React.useMemo(() =>
+        (user?.role === 'creator' || isProxyMode) ? undefined : activeTeamId,
+        [user?.role, isProxyMode, activeTeamId]
+    )
 
     return (
         <CampaignProvider userId={effectiveUserId} userType={user?.role} teamId={campaignTeamId}>

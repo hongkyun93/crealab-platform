@@ -135,7 +135,7 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
         return () => {
             controller.abort()
         }
-    }, [userId, teamId])
+    }, [userId, teamId]) // Keep as-is, but Provider will only re-mount when primitive values change
 
     // Add campaign
     const addCampaign = async (newCampaign: Omit<Campaign, "id" | "date" | "matchScore">) => {

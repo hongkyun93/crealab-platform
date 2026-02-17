@@ -360,7 +360,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         return () => {
             controller.abort()
         }
-    }, [userId])
+    }, [userId]) // Primitive value enables parallel loading with other providers
 
     // Refresh all proposals
     const refreshProposals = async (targetUserId?: string) => {
