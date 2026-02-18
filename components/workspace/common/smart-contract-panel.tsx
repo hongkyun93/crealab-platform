@@ -52,7 +52,7 @@ export function SmartContractPanel({ proposal, userType, onSign, isSigning }: Sm
                         표준 광고 거래 계약서
                     </CardTitle>
                     <CardDescription>
-                        CreadyPick 표준 안심 계약 (제 2026-{(proposal.id || "").slice(0, 8)}호)
+                        CreadyPick 표준 안심 계약 (제 2026-{String(proposal.id || "").slice(0, 8)}호)
                     </CardDescription>
                 </div>
                 {isFullySigned && (
@@ -172,7 +172,7 @@ export function SmartContractPanel({ proposal, userType, onSign, isSigning }: Sm
                                 className={cn("gap-2 min-w-[140px]", hasRead ? "bg-indigo-600 hover:bg-indigo-700" : "bg-gray-400")}
                             >
                                 {isSigning ? "처리중..." : "서명하기"}
-                                <Filesignature className="w-4 h-4" />
+                                <FileSignature className="w-4 h-4" />
                             </Button>
                         )
                     )}

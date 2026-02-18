@@ -79,7 +79,7 @@ const ReadonlyProposalDialog = dynamic(() => import("@/components/proposal/reado
 const SignatureCanvasDynamic = dynamic(() => import('react-signature-canvas'), {
     ssr: false,
     loading: () => <div className="w-full h-48 bg-muted/30 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center text-sm text-muted-foreground">서명 영역 로딩 중...</div>
-})
+}) as any
 
 // View Components
 import { DashboardView } from "@/components/creator/views/DashboardView"
@@ -1749,7 +1749,7 @@ function InfluencerDashboardContent() {
 
         try {
             console.log(`[handleStatusUpdate] Updating proposal ${proposalId} to ${status}`)
-            const success = await updateBrandProposal(proposalId, status)
+            const success = await updateBrandProposal(proposalId, { status })
             if (!success) {
                 setIsUpdatingStatus(false)
                 return
@@ -1839,7 +1839,7 @@ function InfluencerDashboardContent() {
             onConfirm: async () => {
                 try {
                     // Update status to rejected
-                    await updateBrandProposal(proposal.id, 'rejected')
+                    await updateBrandProposal(proposal.id, { status: 'rejected' })
 
                     // UI Update
                     setChatProposal((prev: any) => prev ? { ...prev, status: 'rejected' } : prev)
@@ -1972,13 +1972,6 @@ function InfluencerDashboardContent() {
 
 
 
-    const toggleTag = (tag: string) => {
-        setSelectedTags(prev =>
-            prev.includes(tag)
-                ? prev.filter(t => t !== tag)
-                : [...prev, tag]
-        )
-    }
 
     const renderContent = () => {
         switch (currentView) {
@@ -2007,7 +2000,7 @@ function InfluencerDashboardContent() {
                                         <h2 className="text-2xl font-bold">{displayUser?.name}</h2>
                                         {displayUser?.handle && <span className="text-primary font-medium">{displayUser.handle}</span>}
                                     </div>
-                                    <p className="text-muted-foreground">{displayUser?.bio || "아직 소개글이 없습니다."}</p>
+                                    <p className="text-muted-foreground">{(displayUser as any)?.bio || "아직 소개글이 없습니다."}</p>
                                 </div>
 
 
@@ -2506,7 +2499,7 @@ function InfluencerDashboardContent() {
                                                 <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                                                     <Banknote className="h-3.5 w-3.5 text-blue-500" />
                                                     <span className="text-muted-foreground shrink-0">예상 단가:</span>
-                                                    <span className="font-bold text-blue-600">{formatPriceRange(user?.price_video || 0)}</span>
+                                                    <span className="font-bold text-blue-600">{formatPriceRange(user?.priceVideo || 0)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -3162,7 +3155,6 @@ function InfluencerDashboardContent() {
                         open={isCampaignDetailOpen}
                         onOpenChange={setIsCampaignDetailOpen}
                         campaign={selectedCampaign}
-                        onApply={handleApplyClick}
                     />
 
                     <CreatorProposalDialog
@@ -3256,7 +3248,7 @@ function InfluencerDashboardContent() {
                     <div className="py-4">
                         <div className="border-2 border-dashed border-slate-300 rounded-xl bg-muted/30 overflow-hidden relative group">
                             <SignatureCanvasDynamic
-                                ref={sigCanvas}
+                                ref={sigCanvas as any}
                                 penColor="black"
                                 canvasProps={{
                                     className: "w-full h-48 cursor-crosshair active:cursor-none",

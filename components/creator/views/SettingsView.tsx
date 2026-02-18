@@ -403,7 +403,7 @@ export function SettingsView() {
             {/* Creator Specific Fields (Show if effectiveUser type/role is creator) */}
             {/* Note: In proxy mode, effectiveUser always has type='creator'. If checking role, use profile data if available */}
             {/* Since we fetch profile tags above, we can rely on that or effectiveUser logic. For simplicity, assume MCN manages creators or Creator manages self. */}
-            {(effectiveUser?.type === 'creator' || effectiveUser?.role === 'creator' || isProxyMode) && (
+            {(effectiveUser?.role === 'creator' || isProxyMode) && (
                 <>
                     {/* Social Channels - Option A Style */}
                     <Card>

@@ -420,7 +420,7 @@ function InfluencerGridStyle() {
                         {Array.from({ length: 5 }).map((_, j) => (
                             <Avatar key={j} className="inline-block border-2 border-white w-8 h-8 cursor-pointer hover:z-10 hover:scale-110 transition-transform"><AvatarImage src={`https://i.pravatar.cc/150?u=${c.id}${j}`} /><AvatarFallback>U</AvatarFallback></Avatar>
                         ))}
-                        <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-gray-500">+{c.selected_count - 5}</div>
+                        <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-gray-500">+{((c.selected_count ?? 0) - 5)}</div>
                     </div>
                     <div className="flex gap-2">
                         <Button className="flex-1 h-8 text-xs" variant="secondary">콘텐츠 검수</Button>

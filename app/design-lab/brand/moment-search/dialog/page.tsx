@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle2, X, Calendar, MapPin, Tag, Heart, Eye, MessageSquare, Share2, MoreHorizontal, Clock, AlertCircle, FileText, Send, DollarSign, Briefcase, Camera, Video, Image as ImageIcon, Sparkles, User, Globe, Lock, ArrowRight, Instagram, Youtube, ChevronLeft } from "lucide-react"
+import { CheckCircle2, X, Calendar, MapPin, Tag, Heart, Eye, MessageSquare, Share2, MoreHorizontal, Clock, AlertCircle, FileText, Send, DollarSign, Briefcase, Camera, Video, Image as ImageIcon, Sparkles, User, Globe, Lock, ArrowRight, Instagram, Youtube, ChevronLeft, Package } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 

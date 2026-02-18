@@ -152,7 +152,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
 
             // Load schedule if exists
             if (event.schedule) {
-                setSchedule(event.schedule)
+                setSchedule(event.schedule as any)
             }
 
             // Parse Event Date

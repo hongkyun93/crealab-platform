@@ -2,7 +2,7 @@
 // This file re-exports all types for easy importing
 
 // User & Auth
-export type { User, UserType, AuthState } from './user'
+export type { User } from './user'
 
 // Campaign
 export type { Campaign, CampaignFormData } from './campaign'
@@ -42,7 +42,5 @@ export type {
 export type {
     Team,
     TeamMember,
-    TeamRole,
-    TeamWithMembers,
-    TeamMemberWithProfile
+    TeamRole
 } from './team'

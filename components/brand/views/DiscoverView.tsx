@@ -329,7 +329,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                             </p>
                                         </div>
                                         <div className="flex flex-wrap gap-1">
-                                            {item.tags.slice(0, 3).map(t => (
+                                            {item.tags.slice(0, 3).map((t: string) => (
                                                 <span key={t} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">#{t}</span>
                                             ))}
                                         </div>

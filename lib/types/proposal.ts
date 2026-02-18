@@ -1,5 +1,5 @@
 // Proposal and Contract Types
-export type ProposalType = 'brand_invite' | 'brand_offer' | 'creator_apply'
+export type ProposalType = 'brand_invite' | 'brand_offer' | 'creator_apply' | 'campaign_apply'
 export type DealType = 'ad' | 'gonggu'
 export type ProposalStatus = 'applied' | 'accepted' | 'rejected' | 'negotiating' | 'pending' | 'hold' | 'offered' | 'cancelled' | 'completed'
 export type ContractStatus = 'draft' | 'sent' | 'signed' | 'negotiating' | 'rejected'
@@ -112,6 +112,17 @@ export interface Proposal {
     brand_avatar?: string // [FIX] Snake case for compatibility
     channel_name?: string
     channel_url?: string
+
+    // [FIX] Fields used in conditions-panel (missing from original type)
+    desired_date?: string // Legacy alias for condition_upload_date
+    compensation_amount?: string // Legacy string amount field
+    date_final?: string // Legacy alias for condition_final_submission_date
+    has_incentive?: boolean
+    incentive_detail?: string
+    incentive?: string // Legacy incentive string
+    content_type?: string
+    contentType?: string // camelCase alias
+    secondaryUsage?: string // camelCase alias for condition_secondary_usage_period
 }
 
 export interface BrandProposal {
