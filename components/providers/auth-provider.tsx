@@ -145,16 +145,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let mounted = true
 
         // Failsafe timeout to prevent infinite loading if auth check hangs
-        // 10s gives enough time for slow networks to recover session from cookies
+        // 15s gives enough time for slow networks to recover session from cookies
         const timer = setTimeout(() => {
             if (!isAuthChecked && mounted) {
                 console.warn("[AuthProvider] Auth check timed out, forcing render")
-                mounted = false // Prevent stale setUser calls from completing initAuth
+                // NOTE: Do NOT set mounted=false here - initAuth may still complete
                 setIsAuthChecked(true)
                 setIsInitialized(true)
                 window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '인증 확인 시간 초과 (강제 진행)', type: 'error' } }))
             }
-        }, 10000)
+        }, 15000)
 
         const initAuth = async () => {
             console.log('[AuthProvider] Initializing auth...')
@@ -196,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } catch (e) {
                 console.error('[AuthProvider] initAuth error:', e)
             } finally {
+                clearTimeout(timer) // Cancel the failsafe timeout since initAuth completed
                 if (mounted) {
                     setIsAuthChecked(true)
                     setIsInitialized(true) // initAuth complete → isInitialized now means "DB fetch done"

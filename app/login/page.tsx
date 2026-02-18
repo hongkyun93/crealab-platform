@@ -63,23 +63,17 @@ export default function LoginPage() {
         }
     }
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const doLogin = async (email: string, pw: string) => {
         setIsLoading(true)
         setError("")
-
         try {
-            const user = await login(id, password)
-
-            // Redirect based on user type
-            // Redirect based on user type using window.location.href to force a hard reload
-            // This prevents "stuck" loading states caused by client-side router waiting for heavy dashboard data
+            const user = await login(email, pw)
             if (user.role === 'brand') {
                 router.push('/brand')
             } else if (user.role === 'mcn') {
-                router.push('/creator') // MCN goes to creator dashboard
+                router.push('/creator')
             } else if (user.role === 'agency') {
-                router.push('/brand') // Agency goes to brand dashboard
+                router.push('/brand')
             } else {
                 router.push('/creator')
             }
@@ -87,6 +81,11 @@ export default function LoginPage() {
             setError(err.message || "로그인에 실패했습니다.")
             setIsLoading(false)
         }
+    }
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault()
+        await doLogin(id, password)
     }
 
     return (
@@ -144,10 +143,7 @@ export default function LoginPage() {
                                             variant="outline"
                                             size="sm"
                                             className="text-xs"
-                                            onClick={() => {
-                                                setId('creator1@creadypick.com')
-                                                setPassword('12341234')
-                                            }}
+                                            onClick={() => doLogin('creator1@creadypick.com', '12341234')}
                                         >
                                             크리에이터
                                         </Button>
@@ -156,10 +152,7 @@ export default function LoginPage() {
                                             variant="outline"
                                             size="sm"
                                             className="text-xs"
-                                            onClick={() => {
-                                                setId('employee1@creadypick.com')
-                                                setPassword('12341234')
-                                            }}
+                                            onClick={() => doLogin('employee1@creadypick.com', '12341234')}
                                         >
                                             직원
                                         </Button>
@@ -168,10 +161,7 @@ export default function LoginPage() {
                                             variant="outline"
                                             size="sm"
                                             className="text-xs"
-                                            onClick={() => {
-                                                setId('voib@brand.com')
-                                                setPassword('12341234')
-                                            }}
+                                            onClick={() => doLogin('voib@brand.com', '12341234')}
                                         >
                                             브랜드
                                         </Button>
