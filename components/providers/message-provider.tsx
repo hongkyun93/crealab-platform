@@ -166,7 +166,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         }
     }
 
-    // Delayed loading for messages and notifications to avoid blocking page render
+    // Initial load + Realtime subscription (replaces 2-second polling)
     useEffect(() => {
         if (!userId) {
             setMessages([])
@@ -180,8 +180,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         setIsLoading(true)
         window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '메시지/알림 불러오는 중...', type: 'loading' } }))
 
-        // Delay message loading to allow page to render first
-        // This prevents MessageProvider from blocking the entire page
+        // Initial load after 500ms to allow page to render first
         const timer = setTimeout(() => {
             Promise.all([
                 fetchMessages(userId),
@@ -190,17 +189,69 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 setIsLoading(false)
                 window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '메시지/알림 로드 완료', type: 'success' } }))
             })
-        }, 500) // Load after 500ms - page renders immediately
+        }, 500)
 
-        // Polling for updates after initial load
-        const interval = setInterval(() => {
-            fetchMessages(userId)
-            fetchNotifications(userId)
-        }, 2000) // Every 2 seconds for near real-time updates
+        // [PERF] Realtime subscriptions instead of 2-second polling
+        // Only re-fetch when actual DB changes occur (INSERT/UPDATE on relevant rows)
+        const messagesChannel = supabase
+            .channel(`messages-realtime-${userId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `receiver_id=eq.${userId}`
+                },
+                () => {
+                    // Skip fetch if tab is hidden — will catch up on visibility change
+                    if (!document.hidden) fetchMessages(userId)
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `sender_id=eq.${userId}`
+                },
+                () => {
+                    if (!document.hidden) fetchMessages(userId)
+                }
+            )
+            .subscribe()
+
+        const notificationsChannel = supabase
+            .channel(`notifications-realtime-${userId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `recipient_id=eq.${userId}`
+                },
+                () => {
+                    if (!document.hidden) fetchNotifications(userId)
+                }
+            )
+            .subscribe()
+
+        // Catch up when tab becomes visible again
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                fetchMessages(userId)
+                fetchNotifications(userId)
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange)
 
         return () => {
             clearTimeout(timer)
-            clearInterval(interval)
+            supabase.removeChannel(messagesChannel)
+            supabase.removeChannel(notificationsChannel)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
         }
     }, [userId])
 

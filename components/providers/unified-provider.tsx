@@ -9,6 +9,7 @@ import { ProposalProvider, useProposals } from "./proposal-provider"
 import { MessageProvider, useMessages } from "./message-provider"
 import { FavoriteProvider, useFavorites } from "./favorite-provider"
 import { TeamProvider, useTeam } from "./team-provider"
+import { SocialChannelsProvider, useSocialChannels } from "./social-channels-provider"
 import { createClient } from "@/lib/supabase/client"
 
 // Unified Provider that combines all domain providers
@@ -76,7 +77,9 @@ function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
                     <ProposalProvider userId={effectiveUserId} userType={user?.role}>
                         <MessageProvider userId={effectiveUserId}>
                             <FavoriteProvider userId={effectiveUserId}>
-                                {children}
+                                <SocialChannelsProvider>
+                                    {children}
+                                </SocialChannelsProvider>
                             </FavoriteProvider>
                         </MessageProvider>
                     </ProposalProvider>
@@ -87,7 +90,7 @@ function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
 }
 
 // Re-export all hooks for convenience
-export { useAuth, useCampaigns, useEvents, useProducts, useProposals, useMessages, useFavorites }
+export { useAuth, useCampaigns, useEvents, useProducts, useProposals, useMessages, useFavorites, useSocialChannels }
 
 // Legacy compatibility: Export a hook that provides all providers at once
 // This helps with gradual migration from old usePlatform hook
@@ -173,20 +176,19 @@ export function useUnifiedProvider() {
         // Loading states
         isAuthLoading: !auth.isAuthChecked,
 
+        // isCoreLoading: auth + critical data only (campaigns + proposals)
+        // events/products/messages/favorites load in background without blocking UI
         isCoreLoading: [
+            !auth.isAuthChecked,
             campaigns.isLoading,
-            events.isLoading,
             proposals.isLoading,
         ].some(Boolean),
 
+        // isLoading: same as isCoreLoading — do NOT block on messages/products/favorites
         isLoading: [
             !auth.isAuthChecked,
             campaigns.isLoading,
-            events.isLoading,
-            products.isLoading,
             proposals.isLoading,
-            messages.isLoading,
-            favorites.isLoading
         ].some(Boolean),
 
         loadingStates: [

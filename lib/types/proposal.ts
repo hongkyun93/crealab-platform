@@ -110,6 +110,9 @@ export interface Proposal {
     followers?: number
     campaign?: any // Related campaign data
     brand_avatar?: string // [FIX] Snake case for compatibility
+    channel_name?: string
+    channel_url?: string
+}
 
 export interface BrandProposal {
     id: string
@@ -171,8 +174,14 @@ export interface BrandProposal {
     influencer_condition_confirmed?: boolean
 
     // Condition Fields
-    // Condition Fields (Already defined above)
-
+    price_offer?: number
+    special_terms?: string
+    condition_product_receipt_date?: string
+    condition_draft_submission_date?: string
+    condition_final_submission_date?: string
+    condition_upload_date?: string
+    condition_secondary_usage_period?: string
+    condition_maintenance_period?: string
 
     // Content Submission
     content_submission_url?: string
@@ -192,6 +201,8 @@ export interface BrandProposal {
     // Product Card
     product_url?: string
     product?: any
+    channel_name?: string
+    channel_url?: string
 }
 
 export interface MomentProposal {
@@ -252,9 +263,12 @@ export interface MomentProposal {
     // [Added] Confirmations
     brand_condition_confirmed?: boolean
     influencer_condition_confirmed?: boolean
+    special_terms?: string
 
     // [Added] Submissions
     content_submission_url?: string
     content_submission_status?: string
     content_submission_date?: string
+    channel_name?: string
+    channel_url?: string
 }

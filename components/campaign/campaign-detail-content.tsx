@@ -209,27 +209,27 @@ export function CampaignDetailContent({
                         </div>
                     </div>
 
-                    {/* Compact Info Grid (2-3-3 Layout in 8 Cols) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-8 gap-4">
-                        {/* Col 1: Recruitment Info (25%) */}
-                        <div className="bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3 lg:col-span-2">
+                    {/* Compact Info Grid (Equal Width Layout) */}
+                    <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto pb-4 md:pb-0 -mx-5 px-5 md:mx-0 md:px-0 scrollbar-hide snap-x snap-mandatory">
+                        {/* Col 1: Recruitment Info */}
+                        <div className="min-w-[85vw] md:min-w-0 shrink-0 snap-center bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3">
                             <div className="flex items-center gap-2 text-sm font-bold text-foreground pb-2 border-b border-border/50">
                                 <Users className="h-4 w-4 text-muted-foreground" />
-                                모집 정보
+                                <span className="whitespace-nowrap">모집 정보</span>
                             </div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">모집 인원</span>
-                                    <span className="font-bold text-foreground">{campaign.recruitment_count || 0}명</span>
+                                    <span className="text-muted-foreground whitespace-nowrap">모집 인원</span>
+                                    <span className="font-bold text-foreground whitespace-nowrap">{campaign.recruitment_count || 0}명</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">팔로워</span>
-                                    <span className="font-medium text-foreground">
+                                    <span className="text-muted-foreground whitespace-nowrap">팔로워</span>
+                                    <span className="font-medium text-foreground whitespace-nowrap">
                                         {campaign.min_followers ? `${Number(campaign.min_followers).toLocaleString()}~` : '제한없음'}
                                     </span>
                                 </div>
                                 <div className="flex flex-col gap-1 pt-1">
-                                    <span className="text-xs text-muted-foreground/70">원하는 스타일</span>
+                                    <span className="text-xs text-muted-foreground/70 whitespace-nowrap">원하는 스타일</span>
                                     <span className="text-xs bg-background p-1.5 rounded border border-border text-foreground line-clamp-2">
                                         {campaign.target || '특별한 제한 없음'}
                                     </span>
@@ -237,55 +237,55 @@ export function CampaignDetailContent({
                             </div>
                         </div>
 
-                        {/* Col 2: Timeline (37.5%) */}
-                        <div className="bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3 lg:col-span-3">
+                        {/* Col 2: Timeline */}
+                        <div className="min-w-[85vw] md:min-w-0 shrink-0 snap-center bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3">
                             <div className="flex items-center gap-2 text-sm font-bold text-foreground pb-2 border-b border-border/50">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                                진행 일정
+                                <span className="whitespace-nowrap">진행 일정</span>
                             </div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground">모집 마감</span>
-                                    <span className="font-bold text-foreground">
+                                    <span className="text-muted-foreground whitespace-nowrap">모집 마감</span>
+                                    <span className="font-bold text-foreground whitespace-nowrap">
                                         {campaign.recruitment_deadline ? new Date(campaign.recruitment_deadline).toLocaleDateString() : '미정'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">선정 발표</span>
-                                    <span className="font-medium text-foreground">{campaign.selection_announcement_date || '-'}</span>
+                                    <span className="text-muted-foreground whitespace-nowrap">선정 발표</span>
+                                    <span className="font-medium text-foreground whitespace-nowrap">{campaign.selection_announcement_date || '-'}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">콘텐츠 업로드</span>
-                                    <span className="font-medium text-foreground">
+                                    <span className="text-muted-foreground whitespace-nowrap">콘텐츠 업로드</span>
+                                    <span className="font-medium text-foreground whitespace-nowrap">
                                         {campaign.posting_date || campaign.postingDate || '협의'}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Col 3: Benefit & Channels (37.5%) */}
-                        <div className="bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3 md:col-span-2 lg:col-span-3">
+                        {/* Col 3: Benefit & Channels */}
+                        <div className="min-w-[85vw] md:min-w-0 shrink-0 snap-center bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3">
                             <div className="flex items-center gap-2 text-sm font-bold text-foreground pb-2 border-b border-border/50">
                                 <Gift className="h-4 w-4 text-muted-foreground" />
-                                혜택 및 채널
+                                <span className="whitespace-nowrap">혜택 및 채널</span>
                             </div>
                             <div className="space-y-3 text-sm">
                                 <div>
-                                    <span className="text-xs text-muted-foreground block mb-1">제공 혜택</span>
-                                    <div className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded inline-block">
+                                    <span className="text-xs text-muted-foreground block mb-1 whitespace-nowrap">제공 혜택</span>
+                                    <div className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded inline-block whitespace-nowrap">
                                         {campaign.budget || '협의'}
                                     </div>
                                 </div>
                                 <div>
-                                    <span className="text-xs text-muted-foreground block mb-1">진행 채널</span>
+                                    <span className="text-xs text-muted-foreground block mb-1 whitespace-nowrap">진행 채널</span>
                                     <div className="flex flex-wrap gap-1">
                                         {campaign.channels && campaign.channels.length > 0 ? (
                                             campaign.channels.map((ch: string) => (
-                                                <Badge key={ch} variant="secondary" className="px-1.5 py-0.5 h-6 text-xs bg-background border border-border font-normal text-foreground">
+                                                <Badge key={ch} variant="secondary" className="px-1.5 py-0.5 h-6 text-xs bg-background border border-border font-normal text-foreground whitespace-nowrap">
                                                     {getChannelIcon(ch)} {getChannelLabel(ch)}
                                                 </Badge>
                                             ))
-                                        ) : <span className="text-xs text-muted-foreground">무관</span>}
+                                        ) : <span className="text-xs text-muted-foreground whitespace-nowrap">무관</span>}
                                     </div>
                                 </div>
                             </div>

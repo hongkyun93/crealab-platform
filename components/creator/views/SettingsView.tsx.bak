@@ -1,0 +1,365 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useUnifiedProvider, useSocialChannels } from "@/components/providers/unified-provider"
+import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
+import { AvatarUpload } from "@/components/ui/avatar-upload"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Save, Loader2, Lock, Plus, Edit2, Trash2, Instagram, Youtube } from "lucide-react"
+import { toast } from "sonner"
+
+const PROFILE_CATEGORIES = [
+    "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
+    "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
+    "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
+    "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
+]
+
+const REGIONS = [
+    "전국", "서울", "경기", "인천", "부산", "대구", "대전",
+    "광주", "울산", "세종", "강원", "충북", "충남",
+    " 전북", "전남", "경북", "경남", "제주"
+]
+
+export function SettingsView() {
+    const { user, updateUser, isLoading } = useUnifiedProvider()
+    const { effectiveUser, effectiveUserId, isProxyMode } = useEffectiveUser()
+    const { channels, fetchChannels, createChannel, deleteChannel, setPrimaryChannel } = useSocialChannels()
+
+    // Form State
+    const [name, setName] = useState("")
+    const [bio, setBio] = useState("")
+    const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const [primaryRegion, setPrimaryRegion] = useState("")
+
+    // Bank Info
+    const [bankName, setBankName] = useState("")
+    const [accountNumber, setAccountNumber] = useState("")
+    const [accountHolder, setAccountHolder] = useState("")
+
+    // Contact Info
+    const [phone, setPhone] = useState("")
+    const [address, setAddress] = useState("")
+
+    // Rate Card (Extended - 5 fields)
+    const [priceVideo, setPriceVideo] = useState("")
+    const [priceFeed, setPriceFeed] = useState("")
+    const [priceStory, setPriceStory] = useState("")
+    const [priceUsageRights, setPriceUsageRights] = useState("")
+    const [priceAutoDm, setPriceAutoDm] = useState("")
+
+    // Initialize state from effectiveUser
+    useEffect(() => {
+        if (effectiveUser) {
+            setName(effectiveUser.name || "")
+            setBio(effectiveUser.bio || "")
+            setSelectedTags(effectiveUser.tags || [])
+            setPrimaryRegion(effectiveUser.primaryRegion || "")
+
+            setBankName(effectiveUser.bankName || "")
+            setAccountNumber(effectiveUser.accountNumber || "")
+            setAccountHolder(effectiveUser.accountHolder || "")
+
+            setPhone(effectiveUser.phone || "")
+            setAddress(effectiveUser.address || "")
+
+            // Extended Rate Card (5 fields)
+            setPriceVideo(effectiveUser.priceVideo?.toString() || "")
+            setPriceFeed(effectiveUser.priceFeed?.toString() || "")
+            setPriceStory(effectiveUser.priceStory?.toString() || "")
+            setPriceUsageRights(effectiveUser.priceUsageRights?.toString() || "")
+            setPriceAutoDm(effectiveUser.priceAutoDm?.toString() || "")
+        }
+    }, [effectiveUser])
+
+    // Load social channels
+    useEffect(() => {
+        if (effectiveUserId) {
+            fetchChannels(effectiveUserId)
+        }
+    }, [effectiveUserId, fetchChannels])
+
+    const toggleTag = (tag: string) => {
+        if (selectedTags.includes(tag)) {
+            setSelectedTags(prev => prev.filter(t => t !== tag))
+        } else {
+            if (selectedTags.length >= 5) {
+                toast.error("최대 5개까지 선택 가능합니다.")
+                return
+            }
+            setSelectedTags(prev => [...prev, tag])
+        }
+    }
+
+    const handleSave = async () => {
+        if (!effectiveUserId) return
+
+        try {
+            await updateUser({
+                name,
+                bio,
+                tags: selectedTags,
+                primaryRegion, // NEW
+                // Bank Info
+                bankName,
+                accountNumber,
+                accountHolder,
+                phone,
+                address,
+                // Extended Rate Card (5 fields)
+                priceVideo: priceVideo ? parseInt(priceVideo) : 0,
+                priceFeed: priceFeed ? parseInt(priceFeed) : 0,
+                priceStory: priceStory ? parseInt(priceStory) : 0,
+                priceUsageRights: priceUsageRights ? parseInt(priceUsageRights) : 0,
+                priceAutoDm: priceAutoDm ? parseInt(priceAutoDm) : 0,
+            }, effectiveUserId) // Pass effectiveUserId to update the correct profile
+
+            toast.success("프로필 정보가 저장되었습니다.")
+        } catch (error) {
+            console.error("Failed to save settings:", error)
+            toast.error("저장에 실패했습니다.")
+        }
+    }
+
+    if (isLoading) {
+        return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+    }
+
+    return (
+        <div className="space-y-6 max-w-4xl mx-auto">
+            {/* Proxy Mode Indicator */}
+            {isProxyMode && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                        <Lock className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-blue-900">관리자 모드 (Proxy Mode)</h3>
+                        <p className="text-xs text-blue-700">
+                            현재 <strong>{effectiveUser?.name}</strong>님의 프로필을 수정하고 있습니다.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>기본 정보</CardTitle>
+                    <CardDescription>
+                        {isProxyMode ? '크리에이터의 기본 정보를 관리합니다.' : '나를 표현하는 매력적인 프로필 사진과 소개를 등록해보세요.'}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8">
+                    {/* Profile Image */}
+                    <div className="flex flex-col items-center justify-center">
+                        <Label className="mb-4">프로필 이미지</Label>
+                        <AvatarUpload
+                            uid={effectiveUserId || "default"}
+                            url={effectiveUser?.avatar}
+                            onUpload={async (url) => {
+                                await updateUser({ avatar: url }, effectiveUserId)
+                            }}
+                            size={120}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">이름 (활동명)</Label>
+                            <Input
+                                id="name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="활동명 입력"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="handle">인스타그램 ID</Label>
+                            <Input
+                                id="handle"
+                                value={handle}
+                                onChange={(e) => setHandle(e.target.value)}
+                                placeholder="@username"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>활동 카테고리 / 태그 (최대 5개)</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {/* Standardizing Tags: Use PROFILE_CATEGORIES */}
+                            {PROFILE_CATEGORIES.map(tag => (
+                                <Badge
+                                    key={tag}
+                                    variant={selectedTags.includes(tag) ? "default" : "outline"}
+                                    className="cursor-pointer px-3 py-1.5 text-sm hover:bg-primary/90"
+                                    onClick={() => toggleTag(tag)}
+                                >
+                                    {tag}
+                                </Badge>
+                            ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            선택된 태그: {selectedTags.join(", ")}
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="bio">자기소개</Label>
+                        <Textarea
+                            id="bio"
+                            value={bio}
+                            onChange={(e) => setBio(e.target.value)}
+                            placeholder="브랜드에게 어필할 수 있는 소개글을 작성해주세요."
+                            className="min-h-[100px]"
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Creator Specific Fields (Show if effectiveUser type/role is creator) */}
+            {/* Note: In proxy mode, effectiveUser always has type='creator'. If checking role, use profile data if available */}
+            {/* Since we fetch profile tags above, we can rely on that or effectiveUser logic. For simplicity, assume MCN manages creators or Creator manages self. */}
+            {(effectiveUser?.type === 'creator' || effectiveUser?.role === 'creator' || isProxyMode) && (
+                <>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>활동 정보 & 정산 정보</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-8">
+                            {/* Follower Count */}
+                            <div className="space-y-2">
+                                <Label htmlFor="followers">팔로워 수</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        id="followers"
+                                        type="number"
+                                        value={followers}
+                                        onChange={(e) => setFollowers(e.target.value)}
+                                        className="max-w-[200px]"
+                                        placeholder="예: 15000"
+                                    />
+                                    <span className="text-sm text-muted-foreground">명</span>
+                                </div>
+                            </div>
+
+                            {/* Rate Card - Simple Version */}
+                            <div className="space-y-4 pt-4 border-t">
+                                <h3 className="text-base font-semibold">예상 단가표 (Rate Card)</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>숏폼 영상 (Reels/Shorts)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                type="number"
+                                                value={priceVideo}
+                                                onChange={(e) => setPriceVideo(e.target.value)}
+                                                className="pr-8"
+                                                placeholder="0"
+                                            />
+                                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>피드 게시물 (Photo/Carousel)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                type="number"
+                                                value={priceFeed}
+                                                onChange={(e) => setPriceFeed(e.target.value)}
+                                                className="pr-8"
+                                                placeholder="0"
+                                            />
+                                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Bank Info */}
+                            <div className="space-y-4 pt-4 border-t">
+                                <h3 className="text-base font-semibold">정산 계좌 정보</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>은행명</Label>
+                                        <Input
+                                            value={bankName}
+                                            onChange={(e) => setBankName(e.target.value)}
+                                            placeholder="예: 카카오뱅크"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>계좌번호</Label>
+                                        <Input
+                                            value={accountNumber}
+                                            onChange={(e) => setAccountNumber(e.target.value)}
+                                            placeholder="하이픈(-) 포함"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>예금주</Label>
+                                        <Input
+                                            value={accountHolder}
+                                            onChange={(e) => setAccountHolder(e.target.value)}
+                                            placeholder="실명 입력"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>연락처 & 배송 정보</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label>연락처 (휴대폰)</Label>
+                                    <Input
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
+                                        placeholder="010-0000-0000"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>웹사이트 / 링크</Label>
+                                    <div className="relative">
+                                        <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            className="pl-9"
+                                            value={website}
+                                            onChange={(e) => setWebsite(e.target.value)}
+                                            placeholder="https://"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>제품 배송지 주소</Label>
+                                <Input
+                                    value={address}
+                                    onChange={(e) => setAddress(e.target.value)}
+                                    placeholder="도로명 주소 입력"
+                                />
+                            </div>
+                        </CardContent>
+                        <CardFooter className="flex justify-end pt-6">
+                            <Button onClick={handleSave} className="w-full md:w-auto gap-2" size="lg">
+                                <Save className="h-4 w-4" />
+                                {isProxyMode ? '크리에이터 프로필 저장' : '설정 저장하기'}
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                </>
+            )}
+        </div>
+    )
+}

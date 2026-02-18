@@ -27,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
 interface BrandProductDetailViewProps {
@@ -39,7 +40,8 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
     const [isOpen, setIsOpen] = useState(false)
 
     // Form State (Matching ApplyDialog)
-    const [instagramHandle, setInstagramHandle] = useState("")
+    const [channelName, setChannelName] = useState("instagram")
+    const [channelUrl, setChannelUrl] = useState("")
     const [motivation, setMotivation] = useState("")
     const [contentPlan, setContentPlan] = useState("")
     const [portfolioLinks, setPortfolioLinks] = useState("")
@@ -56,7 +58,7 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
     // Pre-fill handle
     useEffect(() => {
         if (user?.handle) {
-            setInstagramHandle(user.handle)
+            setChannelUrl(user.handle)
         }
     }, [user])
 
@@ -84,9 +86,9 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
                         .select(`
                             id,
                             user_id,
-                            users:user_id (
-                                email,
-                                raw_user_meta_data
+                            profile:profiles!team_members_user_id_fkey (
+                                display_name,
+                                email
                             )
                         `)
                         .eq('team_id', data.team_id)
@@ -95,8 +97,8 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
                         setTeamMembers(members.map((m: any) => ({
                             id: m.id,
                             user_id: m.user_id,
-                            name: m.users?.raw_user_meta_data?.name || m.users?.email,
-                            email: m.users?.email
+                            name: m.profile?.display_name || m.profile?.email || 'Unknown',
+                            email: m.profile?.email
                         })))
                     }
                 }
@@ -159,8 +161,8 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
             return
         }
 
-        if (!instagramHandle || !motivation || !contentPlan) {
-            alert("활동 계정, 지원 동기, 콘텐츠 제작 계획은 필수 입력 항목입니다.")
+        if (!channelUrl || !motivation || !contentPlan) {
+            alert("활동 채널/계정, 지원 동기, 콘텐츠 제작 계획은 필수 입력 항목입니다.")
             return
         }
 
@@ -188,7 +190,7 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
             // This ensures backward compatibility while providing all info.
             const formattedMessage = `
 [지원 정보]
-- 활동 계정: ${instagramHandle}
+- 활동 채널: ${channelName} (${channelUrl})
 - 희망 원고료: ${desiredCost || '제시 없음'}
 - 포트폴리오: ${portfolioLinks || '없음'}
 - 인사이트 첨부: ${insightUrl ? '첨부됨' : '없음'}
@@ -222,23 +224,19 @@ ${appealMessage || '없음'}
                 type: "creator_apply",
                 dealType: "ad",
                 productId: product.id,
+                productName: product.name, // [FIX] pass actual product name
                 cost: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
-                commission: 0, // Not used in new form
+                commission: 0,
                 requestDetails: formattedMessage,
                 status: "applied",
                 fromId: effectiveCreatorId,
                 toId: product.brandId,
-                // We pass these purely so valid types don't complain, 
-                // but if the DB doesn't have them, they might be ignored by the provider or cause error depending on implementation.
-                // The 'addProposal' implementation in provider calls supabase.insert(proposal).
-                // If columns don't exist, it might error.
-                // Safest bet is relying on 'requestDetails' (mapped to message usually).
-                // UPDATED: Now passing structured fields as ProposalProvider supports them.
                 motivation: motivation,
                 content_plan: contentPlan,
-                portfolioLinks: portfolioLinks ? [portfolioLinks] : [], // passing as array
-                instagramHandle: instagramHandle,
-                insightScreenshot: insightUrl || undefined, // Fix: null -> undefined
+                portfolioLinks: portfolioLinks ? [portfolioLinks] : [],
+                channel_name: channelName,
+                channel_url: channelUrl,
+                insightScreenshot: insightUrl || undefined,
             })
 
             setIsOpen(false)
@@ -330,15 +328,52 @@ ${appealMessage || '없음'}
                                                     </Select>
                                                 </div>
                                             )}
-                                            {/* Instagram Handle */}
-                                            <div className="space-y-2">
-                                                <Label htmlFor="handle">활동 계정 (인스타그램 ID) <span className="text-red-500">*</span></Label>
-                                                <Input
-                                                    id="handle"
-                                                    value={instagramHandle}
-                                                    onChange={(e) => setInstagramHandle(e.target.value)}
-                                                    placeholder="@example_id"
-                                                />
+                                            {/* Channel Selection */}
+                                            <div className="space-y-4">
+                                                <Label>진행 채널 선택 <span className="text-red-500">*</span></Label>
+                                                <Tabs defaultValue="instagram" onValueChange={(val) => {
+                                                    setChannelName(val)
+                                                    // Optional: Reset or update pre-filled URL based on channel if using profile data
+                                                }} className="w-full">
+                                                    <TabsList className="grid w-full grid-cols-5 bg-background border h-12 p-1">
+                                                        <TabsTrigger value="instagram" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 data-[state=active]:border-purple-200 border border-transparent rounded-md text-xs font-medium transition-all">
+                                                            Instagram
+                                                        </TabsTrigger>
+                                                        <TabsTrigger value="youtube" className="data-[state=active]:bg-red-100 data-[state=active]:text-red-700 data-[state=active]:border-red-200 border border-transparent rounded-md text-xs font-medium transition-all">
+                                                            YouTube
+                                                        </TabsTrigger>
+                                                        <TabsTrigger value="tiktok" className="data-[state=active]:bg-stone-100 data-[state=active]:text-stone-900 data-[state=active]:border-stone-200 border border-transparent rounded-md text-xs font-medium transition-all">
+                                                            TikTok
+                                                        </TabsTrigger>
+                                                        <TabsTrigger value="blog" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 data-[state=active]:border-green-200 border border-transparent rounded-md text-xs font-medium transition-all">
+                                                            Blog
+                                                        </TabsTrigger>
+                                                        <TabsTrigger value="other" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 data-[state=active]:border-blue-200 border border-transparent rounded-md text-xs font-medium transition-all">
+                                                            기타
+                                                        </TabsTrigger>
+                                                    </TabsList>
+                                                </Tabs>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="channelUrl" className="text-xs text-muted-foreground">
+                                                        {channelName === 'instagram' && '인스타그램 프로필 주소 또는 ID'}
+                                                        {channelName === 'youtube' && '유튜브 채널 주소'}
+                                                        {channelName === 'tiktok' && '틱톡 프로필 주소'}
+                                                        {channelName === 'blog' && '블로그 주소'}
+                                                        {channelName === 'other' && '채널/포트폴리오 주소'}
+                                                    </Label>
+                                                    <Input
+                                                        id="channelUrl"
+                                                        value={channelUrl}
+                                                        onChange={(e) => setChannelUrl(e.target.value)}
+                                                        placeholder={
+                                                            channelName === 'instagram' ? "https://instagram.com/userid" :
+                                                                channelName === 'youtube' ? "https://youtube.com/@channel" :
+                                                                    "https://..."
+                                                        }
+                                                        className="bg-muted/30"
+                                                    />
+                                                </div>
                                             </div>
 
                                             {/* Motivation */}

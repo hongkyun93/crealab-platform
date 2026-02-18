@@ -35,6 +35,10 @@ export function DetailsModal({
 }: DetailsModalProps) {
     if (!data) return null
 
+    // DEBUG: Check what data we're receiving
+    console.log('[DetailsModal] Received data:', data)
+    console.log('[DetailsModal] data.id:', data.id)
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">

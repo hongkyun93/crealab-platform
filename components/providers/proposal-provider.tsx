@@ -1,6 +1,7 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react"
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react"
+import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
 import { useAuth } from "./auth-provider"
 import type { Proposal, BrandProposal, MomentProposal } from "@/lib/types"
 
@@ -57,7 +58,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '캠페인 제안 데이터 불러오는 중...', type: 'loading' } }))
 
             let query = supabase
-                .from('campaign_proposals')
+                .from('campaign_applications')
                 .select(`
                     *,
                     campaigns(id, title, product_name, category, budget, brand_id, profiles(display_name, avatar_url)),
@@ -69,7 +70,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (userType === 'brand') {
                 // If Brand, join on campaigns and filter by brand_id
                 query = supabase
-                    .from('campaign_proposals')
+                    .from('campaign_applications')
                     .select(`
                         *,
                         campaigns!inner(id, title, product_name, category, budget, brand_id, profiles(display_name, avatar_url)),
@@ -125,6 +126,19 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         product_name: p.campaigns?.product_name,
                         brand_avatar: p.campaigns?.profiles?.avatar_url,
                         cost: p.price_offer,
+                        // [FIX] Condition fields were missing from campaign_applications mapping
+                        price_offer: p.price_offer,
+                        special_terms: p.special_terms,
+                        brand_condition_confirmed: p.brand_condition_confirmed,
+                        influencer_condition_confirmed: p.influencer_condition_confirmed,
+                        condition_product_receipt_date: p.condition_product_receipt_date,
+                        condition_draft_submission_date: p.condition_draft_submission_date,
+                        condition_final_submission_date: p.condition_final_submission_date,
+                        condition_upload_date: p.condition_upload_date,
+                        condition_secondary_usage_period: p.condition_secondary_usage_period,
+                        has_incentive: p.has_incentive,
+                        incentive_detail: p.incentive_detail,
+                        content_type: p.content_type,
                         message: p.message,
                         status: p.status,
                         date: new Date(p.created_at).toISOString().split('T')[0],
@@ -252,7 +266,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 delivery_status: p.delivery_status,
                 brand_condition_confirmed: p.brand_condition_confirmed,
                 influencer_condition_confirmed: p.influencer_condition_confirmed,
+                // [FIX] Condition fields were missing from mappedBrand
+                price_offer: p.price_offer,
+                special_terms: p.special_terms,
                 condition_product_receipt_date: p.condition_product_receipt_date,
+                condition_draft_submission_date: p.condition_draft_submission_date,
+                condition_final_submission_date: p.condition_final_submission_date,
+                condition_upload_date: p.condition_upload_date,
+                condition_secondary_usage_period: p.condition_secondary_usage_period,
                 content_submission_url: p.content_submission_url,
                 content_submission_status: p.content_submission_status,
                 product_url: p.products?.image_url,
@@ -281,10 +302,24 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 desired_date: p.desired_date || p.conditions?.desired_date,
                 date_flexible: p.date_flexible || p.conditions?.date_flexible,
                 video_guide: p.video_guide || p.conditions?.video_guide,
+                // [FIX] price_offer and condition fields were missing from mappedMoment
+                price_offer: p.price_offer,
+                special_terms: p.special_terms || p.conditions?.special_terms,
+                condition_product_receipt_date: p.condition_product_receipt_date || p.conditions?.condition_product_receipt_date,
                 condition_draft_submission_date: p.condition_draft_submission_date || p.conditions?.condition_draft_submission_date,
                 condition_final_submission_date: p.condition_final_submission_date || p.conditions?.condition_final_submission_date,
                 condition_upload_date: p.condition_upload_date || p.conditions?.condition_upload_date,
                 condition_secondary_usage_period: p.condition_secondary_usage_period || p.conditions?.condition_secondary_usage_period,
+                brand_condition_confirmed: p.brand_condition_confirmed,
+                influencer_condition_confirmed: p.influencer_condition_confirmed,
+                // Contract
+                contract_content: p.contract_content,
+                contract_status: p.contract_status,
+                brand_signature: p.brand_signature,
+                influencer_signature: p.influencer_signature,
+                delivery_status: p.delivery_status,
+                content_submission_url: p.content_submission_url,
+                content_submission_status: p.content_submission_status,
 
                 created_at: p.created_at,
                 updated_at: p.updated_at,
@@ -362,6 +397,172 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         }
     }, [userId]) // Primitive value enables parallel loading with other providers
 
+    // [NEW] Realtime subscription for brand_proposals and moment_proposals
+    // This ensures that when a brand updates conditions, the creator sees the changes immediately
+    useEffect(() => {
+        if (!userId) return
+
+        const channel = supabase
+            .channel(`proposal-updates-${userId}`)
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'brand_proposals',
+                    filter: `influencer_id=eq.${userId}`
+                },
+                (payload: any) => {
+                    console.log('[ProposalProvider] Realtime brand_proposal update:', payload.new.id)
+                    // Update brandProposals local state
+                    setBrandProposals(prev => prev.map(p =>
+                        p.id === payload.new.id ? { ...p, ...payload.new } : p
+                    ))
+                    // Also update workspace store if this proposal is currently open
+                    const currentProposal = useWorkspaceStore.getState().proposal
+                    if (currentProposal && currentProposal.id === payload.new.id) {
+                        useWorkspaceStore.getState().updateProposal(payload.new)
+                    }
+                }
+            )
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'moment_proposals',
+                    filter: `influencer_id=eq.${userId}`
+                },
+                (payload: any) => {
+                    console.log('[ProposalProvider] Realtime moment_proposal update:', payload.new.id)
+                    // Update momentProposals local state
+                    setMomentProposals(prev => prev.map(p =>
+                        p.id === payload.new.id ? { ...p, ...payload.new } : p
+                    ))
+                    // Update brandProposals (merged view) as well
+                    setBrandProposals(prev => prev.map(p =>
+                        p.id === payload.new.id ? { ...p, ...payload.new } : p
+                    ))
+                    // Also update workspace store if this proposal is currently open
+                    const currentProposal = useWorkspaceStore.getState().proposal
+                    if (currentProposal && currentProposal.id === payload.new.id) {
+                        useWorkspaceStore.getState().updateProposal(payload.new)
+                    }
+                }
+            )
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'campaign_applications',
+                    filter: `influencer_id=eq.${userId}`
+                },
+                (payload: any) => {
+                    console.log('[ProposalProvider] Realtime campaign_application update:', payload.new.id)
+                    // Update campaignProposals local state
+                    setCampaignProposals(prev => prev.map(p =>
+                        p.id === payload.new.id ? { ...p, ...payload.new } : p
+                    ))
+                    // Also update workspace store if this proposal is currently open
+                    const currentProposal = useWorkspaceStore.getState().proposal
+                    if (currentProposal && currentProposal.id === payload.new.id) {
+                        useWorkspaceStore.getState().updateProposal(payload.new)
+                    }
+                }
+            )
+            .subscribe((status) => {
+                console.log('[ProposalProvider] Realtime subscription status:', status)
+            })
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [userId])
+
+    // [NEW] Realtime subscription for brand-side: when creator updates influencer_condition_confirmed etc.
+    // The existing subscription uses influencer_id=eq.userId (creator's perspective).
+    // This subscription uses brand_id=eq.userId so brands see creator updates in real-time.
+    useEffect(() => {
+        if (!userId) return
+
+        const channel = supabase
+            .channel(`brand-side-updates-${userId}`)
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'brand_proposals',
+                    filter: `brand_id=eq.${userId}`
+                },
+                (payload: any) => {
+                    console.log('[ProposalProvider] Brand-side brand_proposal update:', payload.new.id)
+                    setBrandProposals(prev => prev.map(p =>
+                        p.id === payload.new.id ? { ...p, ...payload.new } : p
+                    ))
+                    const currentProposal = useWorkspaceStore.getState().proposal
+                    if (currentProposal && currentProposal.id === payload.new.id) {
+                        useWorkspaceStore.getState().updateProposal(payload.new)
+                    }
+                }
+            )
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'moment_proposals',
+                    filter: `brand_id=eq.${userId}`
+                },
+                (payload: any) => {
+                    console.log('[ProposalProvider] Brand-side moment_proposal update:', payload.new.id)
+                    setMomentProposals(prev => prev.map(p =>
+                        p.id === payload.new.id ? { ...p, ...payload.new } : p
+                    ))
+                    setBrandProposals(prev => prev.map(p =>
+                        p.id === payload.new.id ? { ...p, ...payload.new } : p
+                    ))
+                    const currentProposal = useWorkspaceStore.getState().proposal
+                    if (currentProposal && currentProposal.id === payload.new.id) {
+                        useWorkspaceStore.getState().updateProposal(payload.new)
+                    }
+                }
+            )
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'campaign_applications',
+                    // campaign_applications에는 brand_id 컬럼이 없음
+                    // 필터 없이 구독하되 campaignProposals 목록에 있는 ID만 처리
+                },
+                (payload: any) => {
+                    console.log('[ProposalProvider] Brand-side campaign_application update:', payload.new.id)
+                    // campaignProposals에 이 ID가 있는지 확인 (브랜드 소유 proposal인지 검증)
+                    setCampaignProposals(prev => {
+                        const isOurs = prev.some(p => p.id === payload.new.id)
+                        if (!isOurs) return prev // 브랜드 소유가 아니면 무시
+                        return prev.map(p =>
+                            p.id === payload.new.id ? { ...p, ...payload.new } : p
+                        )
+                    })
+                    const currentProposal = useWorkspaceStore.getState().proposal
+                    if (currentProposal && currentProposal.id === payload.new.id) {
+                        useWorkspaceStore.getState().updateProposal(payload.new)
+                    }
+                }
+            )
+            .subscribe((status) => {
+                console.log('[ProposalProvider] Brand-side realtime status:', status)
+            })
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [userId])
+
     // Refresh all proposals
     const refreshProposals = async (targetUserId?: string) => {
         const id = targetUserId || userId
@@ -400,7 +601,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (proposal.campaignId) {
                 // Campaign Proposal (Insert into campaign_proposals)
                 const { data, error } = await supabase
-                    .from('campaign_proposals')
+                    .from('campaign_applications')
                     .insert({
                         campaign_id: proposal.campaignId,
                         influencer_id: targetInfluencerId,
@@ -411,7 +612,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         motivation: proposal.motivation,
                         content_plan: proposal.content_plan,
                         portfolio_links: proposal.portfolioLinks,
-                        instagram_handle: proposal.instagramHandle,
+                        channel_name: proposal.channel_name,
+                        channel_url: proposal.channel_url,
+                        instagram_handle: proposal.instagramHandle || (proposal.channel_name === 'instagram' ? proposal.channel_url : undefined),
                         insight_screenshot: proposal.insightScreenshot
                     })
                     .select()
@@ -452,6 +655,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 if (error) throw error
             } else if (proposal.productId) {
                 // Brand Product Proposal (Insert into brand_proposals as Creator Application)
+                if (!proposal.toId) {
+                    throw new Error('brand_id(toId) is required for brand product proposal')
+                }
                 const { data, error } = await supabase
                     .from('brand_proposals')
                     .insert({
@@ -459,13 +665,15 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         influencer_team_id: myTeamId, // [FIX]
                         brand_id: proposal.toId,
                         product_id: proposal.productId,
-                        product_name: "Brand Product",
+                        product_name: (proposal as any).productName || "Brand Product",
                         message: proposal.message || proposal.requestDetails,
                         status: 'offered',
                         motivation: proposal.motivation,
                         content_plan: proposal.content_plan,
                         portfolio_links: proposal.portfolioLinks,
-                        instagram_handle: proposal.instagramHandle,
+                        instagram_handle: proposal.instagramHandle || (proposal.channel_name === 'instagram' ? proposal.channel_url : undefined),
+                        channel_name: proposal.channel_name,
+                        channel_url: proposal.channel_url,
                         insight_screenshot: proposal.insightScreenshot,
                         product_type: 'ad',
                         compensation_amount: proposal.cost?.toString(),
@@ -479,12 +687,16 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             await fetchCampaignProposals(userId)
             await fetchBrandProposals(userId)
         } catch (error: any) {
-            console.error('[ProposalProvider] Add error:', error)
+            console.error('[ProposalProvider] Add error (full):', JSON.stringify(error, null, 2))
+            console.error('[ProposalProvider] Add error message:', error?.message)
+            console.error('[ProposalProvider] Add error code:', error?.code)
+            console.error('[ProposalProvider] Add error details:', error?.details)
+            console.error('[ProposalProvider] Add error hint:', error?.hint)
             throw error
         }
     }
 
-    // Update creator proposal (campaign_proposals)
+    // Update creator proposal (campaign_applications)
     const updateProposal = async (id: string | number, updates: Partial<Proposal>): Promise<boolean> => {
         try {
             console.log('[ProposalProvider] Updating campaign proposal:', id, updates)
@@ -501,8 +713,23 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
             if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
 
+            // [FIX] Condition fields (previously missing from campaign_applications whitelist)
+            if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
+            if ((updates as any).product_name) dbUpdates.product_name = (updates as any).product_name
+            if ((updates as any).special_terms !== undefined) dbUpdates.special_terms = (updates as any).special_terms
+            if ((updates as any).has_incentive !== undefined) dbUpdates.has_incentive = (updates as any).has_incentive
+            if ((updates as any).incentive_detail !== undefined) dbUpdates.incentive_detail = (updates as any).incentive_detail
+            if ((updates as any).content_type) dbUpdates.content_type = (updates as any).content_type
+            if ((updates as any).condition_product_receipt_date) dbUpdates.condition_product_receipt_date = (updates as any).condition_product_receipt_date
+            if ((updates as any).condition_draft_submission_date) dbUpdates.condition_draft_submission_date = (updates as any).condition_draft_submission_date
+            if ((updates as any).condition_final_submission_date) dbUpdates.condition_final_submission_date = (updates as any).condition_final_submission_date
+            if ((updates as any).condition_upload_date) dbUpdates.condition_upload_date = (updates as any).condition_upload_date
+            if ((updates as any).condition_secondary_usage_period) dbUpdates.condition_secondary_usage_period = (updates as any).condition_secondary_usage_period
+            if ((updates as any).brand_condition_confirmed !== undefined) dbUpdates.brand_condition_confirmed = (updates as any).brand_condition_confirmed
+            if ((updates as any).influencer_condition_confirmed !== undefined) dbUpdates.influencer_condition_confirmed = (updates as any).influencer_condition_confirmed
+
             const { error } = await supabase
-                .from('campaign_proposals')
+                .from('campaign_applications')
                 .update(dbUpdates)
                 .eq('id', id)
 
@@ -529,6 +756,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             console.log('[ProposalProvider] Updating brand proposal:', id, updates)
 
             const dbUpdates: any = {}
+            // Status & Logistics
             if (updates.status) dbUpdates.status = updates.status
             if (updates.contract_status) dbUpdates.contract_status = updates.contract_status
             if (updates.contract_content) dbUpdates.contract_content = updates.contract_content
@@ -539,6 +767,20 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.influencer_condition_confirmed !== undefined) dbUpdates.influencer_condition_confirmed = updates.influencer_condition_confirmed
             if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
             if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
+            // [FIX] Conditions - were missing from whitelist, causing brand edits to not persist to DB
+            if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
+            if (updates.compensation_amount !== undefined) dbUpdates.compensation_amount = updates.compensation_amount
+            if (updates.product_name) dbUpdates.product_name = updates.product_name
+            if (updates.special_terms !== undefined) dbUpdates.special_terms = updates.special_terms
+            if (updates.has_incentive !== undefined) dbUpdates.has_incentive = updates.has_incentive
+            if (updates.incentive_detail !== undefined) dbUpdates.incentive_detail = updates.incentive_detail
+            if (updates.content_type) dbUpdates.content_type = updates.content_type
+            // Dates
+            if (updates.condition_product_receipt_date) dbUpdates.condition_product_receipt_date = updates.condition_product_receipt_date
+            if (updates.condition_draft_submission_date) dbUpdates.condition_draft_submission_date = updates.condition_draft_submission_date
+            if (updates.condition_final_submission_date) dbUpdates.condition_final_submission_date = updates.condition_final_submission_date
+            if (updates.condition_upload_date) dbUpdates.condition_upload_date = updates.condition_upload_date
+            if (updates.condition_secondary_usage_period) dbUpdates.condition_secondary_usage_period = updates.condition_secondary_usage_period
 
             const { error } = await supabase
                 .from('brand_proposals')
@@ -585,6 +827,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.incentive_detail !== undefined) dbUpdates.incentive_detail = updates.incentive_detail
             if (updates.content_type) dbUpdates.content_type = updates.content_type
             if (updates.message) dbUpdates.message = updates.message
+            if (updates.special_terms !== undefined) dbUpdates.special_terms = updates.special_terms
 
             // Dates
             if (updates.condition_product_receipt_date) dbUpdates.condition_product_receipt_date = updates.condition_product_receipt_date

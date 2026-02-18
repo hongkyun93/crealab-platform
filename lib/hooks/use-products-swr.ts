@@ -57,6 +57,7 @@ async function fetchProducts(): Promise<Product[]> {
         formatGuide: p.format_guide,
         tags: p.tags || [],
         accountTag: p.account_tag,
+        channels: p.channels || [],
         createdAt: p.created_at,
         isMock: p.is_mock || false
     }))
@@ -117,7 +118,8 @@ export const productMutations = {
             content_guide: newProduct.contentGuide,
             format_guide: newProduct.formatGuide,
             tags: newProduct.tags,
-            account_tag: newProduct.accountTag
+            account_tag: newProduct.accountTag,
+            channels: newProduct.channels || []
         }
 
         // Add team_id if provided
@@ -167,6 +169,7 @@ export const productMutations = {
         if (updates.formatGuide !== undefined) dbUpdates.format_guide = updates.formatGuide
         if (updates.tags) dbUpdates.tags = updates.tags
         if (updates.accountTag !== undefined) dbUpdates.account_tag = updates.accountTag
+        if (updates.channels !== undefined) dbUpdates.channels = updates.channels
 
         const { error } = await supabase
             .from('brand_products')

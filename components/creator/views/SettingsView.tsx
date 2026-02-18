@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { useUnifiedProvider, useSocialChannels } from "@/components/providers/unified-provider"
 import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,8 +10,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { AvatarUpload } from "@/components/ui/avatar-upload"
 import { Badge } from "@/components/ui/badge"
-import { Save, Loader2, Link as LinkIcon, Lock } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Save, Loader2, Lock, Plus, Edit2, Trash2, Instagram, Youtube, Globe, Pencil, Music2, BookOpen } from "lucide-react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 const PROFILE_CATEGORIES = [
     "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
@@ -20,16 +23,152 @@ const PROFILE_CATEGORIES = [
     "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
 ]
 
+const REGIONS = [
+    "전국", "서울", "경기", "인천", "부산", "대구", "대전",
+    "광주", "울산", "세종", "강원", "충북", "충남",
+    " 전북", "전남", "경북", "경남", "제주"
+]
+
+function SocialChannelCard({ channel, userId }: { channel: any, userId: string }) {
+    const { updateChannel, deleteChannel, setPrimaryChannel } = useSocialChannels()
+    const [followersInput, setFollowersInput] = useState(channel.followersCount?.toLocaleString() || "0")
+    const [handleInput, setHandleInput] = useState(channel.handle || "")
+
+    // Sync with external updates (optimistic)
+    useEffect(() => {
+        setFollowersInput(channel.followersCount?.toLocaleString() || "0")
+        setHandleInput(channel.handle || "")
+    }, [channel.followersCount, channel.handle])
+
+    const handleSave = async () => {
+        const numeric = parseInt(followersInput.replace(/,/g, "")) || 0
+        await updateChannel(channel.id, {
+            followersCount: numeric,
+            handle: handleInput
+        })
+    }
+
+    const togglePublic = async () => {
+        await updateChannel(channel.id, { isPublic: !channel.isPublic })
+    }
+
+    // Styles
+    let gradientClass = "from-slate-700 to-slate-800"
+    let icon = <div className="h-10 w-10 mb-4 text-2xl">🌐</div>
+
+    if (channel.platform === 'instagram') {
+        gradientClass = "from-purple-600 via-pink-600 to-orange-600"
+        icon = <Instagram className="h-10 w-10 mb-4" />
+    } else if (channel.platform === 'youtube') {
+        gradientClass = "from-red-600 to-red-700"
+        icon = <Youtube className="h-10 w-10 mb-4" />
+    } else if (channel.platform === 'tiktok') {
+        gradientClass = "from-black via-slate-900 to-slate-800"
+        icon = <Music2 className="h-10 w-10 mb-4" />
+    } else if (channel.platform === 'blog') {
+        gradientClass = "from-green-500 to-green-600"
+        icon = <BookOpen className="h-10 w-10 mb-4" />
+    }
+
+    const isMain = channel.isPrimary
+
+    return (
+        <div className={cn(
+            "relative group rounded-2xl transition-all duration-300",
+            isMain ? "ring-4 ring-primary ring-offset-2 scale-[1.02]" : "hover:scale-[1.02]"
+        )}>
+            <div className={`bg-gradient-to-br ${gradientClass} rounded-2xl p-6 text-white shadow-lg h-full`}>
+                {/* Top Actions */}
+                <div className="absolute top-4 right-4 flex gap-2 z-10">
+                    <button
+                        onClick={handleSave}
+                        className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/30 text-white hover:text-white/80 transition-colors"
+                        title="저장하기"
+                    >
+                        <Save className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => deleteChannel(channel.id)}
+                        className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/30 text-red-300 hover:text-red-100 transition-colors"
+                        title="채널 삭제"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </button>
+                </div>
+
+                {/* Header icon */}
+                <div className="flex items-start justify-between mb-4">
+                    {icon}
+                </div>
+
+                {/* Inline Handle Input */}
+                <div className="mb-2 pr-12">
+                    <Input
+                        value={handleInput}
+                        onChange={(e) => setHandleInput(e.target.value)}
+                        className="bg-transparent border-none text-white font-bold text-xl h-auto p-0 focus-visible:ring-0 placeholder:text-white/50 w-full"
+                        placeholder="채널명/ID"
+                    />
+                </div>
+
+                {/* Inline Followers Input */}
+                <div className="bg-black/20 rounded-lg p-3 mb-4 backdrop-blur-sm flex items-center gap-2">
+                    <span className="text-white/90 text-sm font-medium whitespace-nowrap flex-shrink-0">👥 팔로워</span>
+                    <Input
+                        value={followersInput}
+                        onChange={(e) => setFollowersInput(e.target.value)}
+                        className="bg-transparent border-none text-white font-bold text-lg h-8 p-0 focus-visible:ring-0 placeholder:text-white/50 w-full text-right flex-1 min-w-0"
+                        placeholder="0"
+                    />
+                </div>
+
+                {/* Footer Controls */}
+                <div className="flex items-center justify-between mt-auto pt-2">
+                    {/* Public Toggle */}
+                    <button
+                        onClick={togglePublic}
+                        className="flex items-center gap-2 hover:bg-white/10 px-2 py-1 rounded-full transition-colors"
+                        title="공개/비공개 전환"
+                    >
+                        <div className={cn("w-2.5 h-2.5 rounded-full transition-colors", channel.isPublic ? "bg-green-400 animate-pulse" : "bg-gray-400")} />
+                        <span className="text-xs text-white/80 font-medium">{channel.isPublic ? '공개' : '비공개'}</span>
+                    </button>
+
+                    {isMain ? (
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-8 text-xs bg-white/20 text-white border-none shadow-sm backdrop-blur-sm cursor-default hover:bg-white/20"
+                        >
+                            <span className="text-sm mr-1">👑</span>
+                            메인 채널
+                        </Button>
+                    ) : (
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-8 text-xs bg-white/20 hover:bg-white/40 text-white border-none shadow-sm backdrop-blur-sm"
+                            onClick={() => setPrimaryChannel(channel.id)}
+                        >
+                            메인채널로 설정
+                        </Button>
+                    )}
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export function SettingsView() {
     const { user, updateUser, isLoading } = useUnifiedProvider()
     const { effectiveUser, effectiveUserId, isProxyMode } = useEffectiveUser()
+    const { channels, fetchChannels, createChannel, deleteChannel, setPrimaryChannel, updateChannel } = useSocialChannels()
 
     // Form State
     const [name, setName] = useState("")
-    const [handle, setHandle] = useState("")
     const [bio, setBio] = useState("")
-    const [followers, setFollowers] = useState("")
     const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const [primaryRegion, setPrimaryRegion] = useState("")
 
     // Bank Info
     const [bankName, setBankName] = useState("")
@@ -40,21 +179,30 @@ export function SettingsView() {
     const [phone, setPhone] = useState("")
     const [address, setAddress] = useState("")
 
-    // Rate Card (Simple Version)
+    // Rate Card (Extended - 5 fields)
     const [priceVideo, setPriceVideo] = useState("")
     const [priceFeed, setPriceFeed] = useState("")
+    const [priceStory, setPriceStory] = useState("")
+    const [usageRightsMonth, setUsageRightsMonth] = useState("")
+    const [usageRightsPrice, setUsageRightsPrice] = useState("")
+    const [autoDmMonth, setAutoDmMonth] = useState("")
+    const [autoDmPrice, setAutoDmPrice] = useState("")
 
-    // Social Links
-    const [website, setWebsite] = useState("")
+    // Add Channel State
+    const [isAddChannelOpen, setIsAddChannelOpen] = useState(false)
+    const [newChannelPlatform, setNewChannelPlatform] = useState<string>("instagram")
+    const [newChannelHandle, setNewChannelHandle] = useState("")
+    const [newChannelFollowers, setNewChannelFollowers] = useState("")
+
+
 
     // Initialize state from effectiveUser
     useEffect(() => {
         if (effectiveUser) {
             setName(effectiveUser.name || "")
-            setHandle(effectiveUser.handle || "")
             setBio(effectiveUser.bio || "")
-            setFollowers(effectiveUser.followers?.toString() || "")
             setSelectedTags(effectiveUser.tags || [])
+            setPrimaryRegion(effectiveUser.primaryRegion || "")
 
             setBankName(effectiveUser.bankName || "")
             setAccountNumber(effectiveUser.accountNumber || "")
@@ -63,11 +211,23 @@ export function SettingsView() {
             setPhone(effectiveUser.phone || "")
             setAddress(effectiveUser.address || "")
 
+            // Extended Rate Card (5 fields)
             setPriceVideo(effectiveUser.priceVideo?.toString() || "")
             setPriceFeed(effectiveUser.priceFeed?.toString() || "")
-            setWebsite(effectiveUser.website || "")
+            setPriceStory(effectiveUser.priceStory?.toString() || "")
+            setUsageRightsMonth(effectiveUser.usageRightsMonth?.toString() || "")
+            setUsageRightsPrice(effectiveUser.usageRightsPrice?.toString() || "")
+            setAutoDmMonth(effectiveUser.autoDmMonth?.toString() || "")
+            setAutoDmPrice(effectiveUser.autoDmPrice?.toString() || "")
         }
     }, [effectiveUser])
+
+    // Load social channels
+    useEffect(() => {
+        if (effectiveUserId) {
+            fetchChannels(effectiveUserId)
+        }
+    }, [effectiveUserId, fetchChannels])
 
     const toggleTag = (tag: string) => {
         if (selectedTags.includes(tag)) {
@@ -81,26 +241,56 @@ export function SettingsView() {
         }
     }
 
+    const handleAddChannel = async () => {
+        if (!effectiveUserId) return
+        if (!newChannelHandle) {
+            toast.error("채널 핸들(ID)을 입력해주세요")
+            return
+        }
+
+        try {
+            await createChannel({
+                userId: effectiveUserId,
+                platform: newChannelPlatform as any,
+                handle: newChannelHandle,
+                followersCount: newChannelFollowers ? parseInt(newChannelFollowers.replace(/,/g, "")) : 0,
+                isPrimary: channels.length === 0, // First channel is primary by default
+                isPublic: true
+            })
+            setIsAddChannelOpen(false)
+            setNewChannelHandle("")
+            setNewChannelFollowers("")
+            setNewChannelPlatform("instagram")
+        } catch (error) {
+            console.error("Failed to add channel", error)
+        }
+    }
+
+
+
     const handleSave = async () => {
         if (!effectiveUserId) return
 
         try {
             await updateUser({
                 name,
-                handle,
                 bio,
                 tags: selectedTags,
-                followers: followers ? parseInt(followers) : 0,
+                primaryRegion, // NEW
                 // Bank Info
                 bankName,
                 accountNumber,
                 accountHolder,
                 phone,
                 address,
-                website,
-                // Rate Card
+                // Extended Rate Card (5 fields)
                 priceVideo: priceVideo ? parseInt(priceVideo) : 0,
                 priceFeed: priceFeed ? parseInt(priceFeed) : 0,
+                priceStory: priceStory ? parseInt(priceStory) : 0,
+                usageRightsMonth: usageRightsMonth ? parseInt(usageRightsMonth) : 0,
+                usageRightsPrice: usageRightsPrice ? parseInt(usageRightsPrice) : 0,
+                autoDmMonth: autoDmMonth ? parseInt(autoDmMonth) : 0,
+                autoDmPrice: autoDmPrice ? parseInt(autoDmPrice) : 0,
             }, effectiveUserId) // Pass effectiveUserId to update the correct profile
 
             toast.success("프로필 정보가 저장되었습니다.")
@@ -154,7 +344,7 @@ export function SettingsView() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label htmlFor="name">이름 (활동명)</Label>
+                            <Label htmlFor="name">크레디픽 활동명</Label>
                             <Input
                                 id="name"
                                 value={name}
@@ -163,13 +353,17 @@ export function SettingsView() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="handle">인스타그램 ID</Label>
-                            <Input
-                                id="handle"
-                                value={handle}
-                                onChange={(e) => setHandle(e.target.value)}
-                                placeholder="@username"
-                            />
+                            <Label htmlFor="primaryRegion">주요 활동 지역</Label>
+                            <Select value={primaryRegion} onValueChange={setPrimaryRegion}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="지역 선택" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {REGIONS.map(region => (
+                                        <SelectItem key={region} value={region}>{region}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
@@ -211,29 +405,112 @@ export function SettingsView() {
             {/* Since we fetch profile tags above, we can rely on that or effectiveUser logic. For simplicity, assume MCN manages creators or Creator manages self. */}
             {(effectiveUser?.type === 'creator' || effectiveUser?.role === 'creator' || isProxyMode) && (
                 <>
+                    {/* Social Channels - Option A Style */}
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="flex items-center gap-2">
+                                        📱 소셜 채널
+                                        <Badge className="bg-purple-600">New</Badge>
+                                    </CardTitle>
+                                    <CardDescription>연결된 채널을 통해 브랜드에게 더 많은 정보를 제공하세요</CardDescription>
+                                </div>
+
+                                <Dialog open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button className="gap-2" variant="outline">
+                                            <Plus className="h-4 w-4" />
+                                            채널 추가
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>소셜 채널 추가</DialogTitle>
+                                            <DialogDescription>
+                                                활동 중인 소셜 미디어 채널을 추가하여 브랜드에게 어필하세요.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="grid gap-4 py-4">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="platform">플랫폼</Label>
+                                                <Select value={newChannelPlatform} onValueChange={setNewChannelPlatform}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="플랫폼 선택" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="instagram">Instagram</SelectItem>
+                                                        <SelectItem value="youtube">YouTube</SelectItem>
+                                                        <SelectItem value="blog">Naver Blog</SelectItem>
+                                                        <SelectItem value="tiktok">TikTok</SelectItem>
+                                                        <SelectItem value="other">기타 (Web)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="handle">계정/핸들 (ID)</Label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">
+                                                        {newChannelPlatform === 'instagram' || newChannelPlatform === 'tiktok' ? '@' : ''}
+                                                    </span>
+                                                    <Input
+                                                        id="handle"
+                                                        value={newChannelHandle}
+                                                        onChange={(e) => setNewChannelHandle(e.target.value)}
+                                                        className={newChannelPlatform === 'instagram' || newChannelPlatform === 'tiktok' ? 'pl-7' : ''}
+                                                        placeholder={newChannelPlatform === 'youtube' ? '채널명 입력' : 'username'}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="channelFollowers">팔로워/구독자 수</Label>
+                                                <Input
+                                                    id="channelFollowers"
+                                                    type="number"
+                                                    value={newChannelFollowers}
+                                                    onChange={(e) => setNewChannelFollowers(e.target.value)}
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setIsAddChannelOpen(false)}>취소</Button>
+                                            <Button onClick={handleAddChannel}>추가하기</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {channels.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground bg-slate-50 rounded-xl border border-dashed">
+                                    <p>연결된 소셜 채널이 없습니다.</p>
+                                    <p className="text-sm mt-1">인스타그램, 유튜브 등 활동 중인 채널을 추가해보세요.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {channels.map((channel) => (
+                                        <SocialChannelCard
+                                            key={channel.id}
+                                            channel={channel}
+                                            userId={effectiveUserId!}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Edit Channel Dialog */}
+
+
                     <Card>
                         <CardHeader>
                             <CardTitle>활동 정보 & 정산 정보</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-8">
-                            {/* Follower Count */}
-                            <div className="space-y-2">
-                                <Label htmlFor="followers">팔로워 수</Label>
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        id="followers"
-                                        type="number"
-                                        value={followers}
-                                        onChange={(e) => setFollowers(e.target.value)}
-                                        className="max-w-[200px]"
-                                        placeholder="예: 15000"
-                                    />
-                                    <span className="text-sm text-muted-foreground">명</span>
-                                </div>
-                            </div>
-
-                            {/* Rate Card - Simple Version */}
-                            <div className="space-y-4 pt-4 border-t">
+                            {/* Rate Card - Extended Version (5 fields) */}
+                            <div className="space-y-4">
                                 <h3 className="text-base font-semibold">예상 단가표 (Rate Card)</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -260,6 +537,69 @@ export function SettingsView() {
                                                 placeholder="0"
                                             />
                                             <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>스토리 (Story)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                type="number"
+                                                value={priceStory}
+                                                onChange={(e) => setPriceStory(e.target.value)}
+                                                className="pr-8"
+                                                placeholder="0"
+                                            />
+                                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>2차 활용권</Label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    value={usageRightsMonth}
+                                                    onChange={(e) => setUsageRightsMonth(e.target.value)}
+                                                    className="pr-8"
+                                                    placeholder="기간"
+                                                />
+                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
+                                            </div>
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    value={usageRightsPrice}
+                                                    onChange={(e) => setUsageRightsPrice(e.target.value)}
+                                                    className="pr-8"
+                                                    placeholder="비용"
+                                                />
+                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>자동 DM 발송</Label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    value={autoDmMonth}
+                                                    onChange={(e) => setAutoDmMonth(e.target.value)}
+                                                    className="pr-8"
+                                                    placeholder="기간"
+                                                />
+                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
+                                            </div>
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    value={autoDmPrice}
+                                                    onChange={(e) => setAutoDmPrice(e.target.value)}
+                                                    className="pr-8"
+                                                    placeholder="비용"
+                                                />
+                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -298,32 +638,21 @@ export function SettingsView() {
                         </CardContent>
                     </Card>
 
+
+
                     <Card>
                         <CardHeader>
                             <CardTitle>연락처 & 배송 정보</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label>연락처 (휴대폰)</Label>
-                                    <Input
-                                        value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
-                                        placeholder="010-0000-0000"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>웹사이트 / 링크</Label>
-                                    <div className="relative">
-                                        <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            className="pl-9"
-                                            value={website}
-                                            onChange={(e) => setWebsite(e.target.value)}
-                                            placeholder="https://"
-                                        />
-                                    </div>
-                                </div>
+                            <div className="space-y-2">
+                                <Label>연락처 (휴대폰)</Label>
+                                <Input
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    placeholder="010-0000-0000"
+                                    className="max-w-md"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>제품 배송지 주소</Label>

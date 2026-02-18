@@ -11,7 +11,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { cn, formatDateToMonth } from "@/lib/utils"
-import { AIPriceCalculator } from "@/components/ai-price-calculator"
+import dynamic from 'next/dynamic'
+// [PERF Plan B] AIPriceCalculator is only shown in a specific tab. Dynamic import removes it from initial bundle.
+const AIPriceCalculator = dynamic(() => import('@/components/ai-price-calculator').then(m => m.AIPriceCalculator), {
+    ssr: false,
+    loading: () => <div className="w-full h-32 bg-muted/30 rounded-xl flex items-center justify-center text-sm text-muted-foreground">AI 가격 계산기 로딩 중...</div>
+})
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     DropdownMenu,
@@ -73,7 +78,11 @@ import {
     Menu,
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import SignatureCanvas from 'react-signature-canvas'
+// [PERF Plan B] SignatureCanvas is only needed when the signature modal opens.
+const SignatureCanvas = dynamic(() => import('react-signature-canvas'), {
+    ssr: false,
+    loading: () => <div className="w-full h-48 bg-muted/30 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center text-sm text-muted-foreground">서명 영역 로딩 중...</div>
+}) as any
 import Link from "next/link"
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
 import { useEffect, useState, Suspense, useRef, useCallback } from "react"
@@ -108,6 +117,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { AvatarUpload } from "@/components/ui/avatar-upload"
+import { ChannelSelector } from "@/components/shared/ChannelSelector"
 
 // Brand View Components
 import { BrandProfileView } from "@/components/brand/views/BrandProfileView"
@@ -127,13 +137,14 @@ const POPULAR_TAGS = [
 function BrandDashboardContent() {
 
     const {
-        events, user, resetData, isLoading, campaigns, deleteCampaign,
+        events, user, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages,
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
         updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
         switchRole, campaignProposals, updateCampaignStatus, updateProposal, notifications, sendNotification, refreshData,
         favorites, toggleFavorite,
-
+        createMomentProposal, // [FIX] was missing from destructure
+        momentProposals, // [FIX] needed for chatProposal sync
         allEvents, fetchAllEvents, isAuthLoading, deleteMomentProposal // New: Public events & Moment deletion
     } = useUnifiedProvider()
 
@@ -208,7 +219,13 @@ function BrandDashboardContent() {
             const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
             const pId = chatProposal.id.toString()
             console.log('[Brand] Fetching feedback for:', pId, 'isCampaign:', isCampaign)
-            fetchSubmissionFeedback(pId, !isCampaign)
+            // [FIX] fetchSubmissionFeedback(proposalId?: string, brandProposalId?: string)
+            // campaign → proposalId, brand/moment → brandProposalId
+            if (isCampaign) {
+                fetchSubmissionFeedback(pId, undefined)
+            } else {
+                fetchSubmissionFeedback(undefined, pId)
+            }
         }
     }, [chatProposal])
 
@@ -263,6 +280,19 @@ function BrandDashboardContent() {
         }
     }, [contextSubmissionFeedback, isChatOpen, activeProposalTab])
 
+    // [FIX] Sync chatProposal when brandProposals, campaignProposals, or momentProposals updates
+    useEffect(() => {
+        if (chatProposal?.id) {
+            const updatedBrand = brandProposals.find((p: any) => p.id === chatProposal.id);
+            const updatedCampaign = campaignProposals.find((p: any) => p.id === chatProposal.id);
+            const updatedMoment = (momentProposals as any[])?.find((p: any) => p.id === chatProposal.id);
+            const updated = updatedBrand || updatedCampaign || updatedMoment;
+            if (updated) {
+                setChatProposal(updated);
+            }
+        }
+    }, [brandProposals, campaignProposals, momentProposals]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // [New] Sync Workspace Store
     useEffect(() => {
         if (chatProposal) {
@@ -302,29 +332,29 @@ function BrandDashboardContent() {
         setIsSendingFeedback(true)
         try {
             const isCampaign = !!chatProposal?.campaignId || (chatProposal as any).type === 'creator_apply'
-            const isBrandProposal = !isCampaign;
-            const success = await sendSubmissionFeedback(
-                chatProposal.id.toString(),
-                isBrandProposal,
-                user!.id,
+            const pId = chatProposal.id.toString()
+            // [FIX] sendSubmissionFeedback(proposalId, brandProposalId, content) - 3 args
+            // [FIX] sendSubmissionFeedback returns void, use try/catch instead of if(success)
+            await sendSubmissionFeedback(
+                isCampaign ? pId : undefined,
+                isCampaign ? undefined : pId,
                 feedbackMsg
             )
-
-            if (success) {
-                setFeedbackMsg("")
-                setIsSendingFeedback(false)
-                await fetchSubmissionFeedback(chatProposal.id.toString(), isBrandProposal)
-
-                // 🔔 Send notification to influencer
-                await sendNotification(
-                    chatProposal.influencer_id,
-                    `${user?.name}님이 피드백을 남겼습니다.`,
-                    'feedback_received',
-                    chatProposal.id.toString()
-                )
+            setFeedbackMsg("")
+            setIsSendingFeedback(false)
+            if (isCampaign) {
+                await fetchSubmissionFeedback(pId, undefined)
             } else {
-                setIsSendingFeedback(false)
+                await fetchSubmissionFeedback(undefined, pId)
             }
+
+            // 🔔 Send notification to influencer
+            await sendNotification(
+                chatProposal.influencer_id,
+                `${user?.name}님이 피드백을 남겼습니다.`,
+                'feedback_received',
+                chatProposal.id.toString()
+            )
         } catch (e) {
             console.error("Feedback error:", e)
         }
@@ -332,9 +362,15 @@ function BrandDashboardContent() {
 
     // Effect to fetch feedback when work tab is visited
     useEffect(() => {
-        if (activeProposalTab === 'work' && chatProposal?.id) { // Only fetch feedback if we have a valid proposal ID
+        if (activeProposalTab === 'work' && chatProposal?.id) {
             const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
-            fetchSubmissionFeedback(chatProposal.id.toString(), !isCampaign)
+            const pId = chatProposal.id.toString()
+            // [FIX] correct signature
+            if (isCampaign) {
+                fetchSubmissionFeedback(pId, undefined)
+            } else {
+                fetchSubmissionFeedback(undefined, pId)
+            }
         }
     }, [activeProposalTab, chatProposal, fetchSubmissionFeedback])
     const handleStatusUpdate = useCallback(async (id: string | number, status: 'accepted' | 'rejected' | 'hold') => {
@@ -477,12 +513,13 @@ function BrandDashboardContent() {
             // Determine if it's a Campaign Application (proposals table) or Direct Offer (brand_proposals table)
             const isCampaignProposal = (chatProposal as any)?.type === 'creator_apply' || !!(chatProposal as any)?.campaignId
 
+            // sendMessage signature: (receiverId, content, file?, proposalId?, brandProposalId?)
             if (isCampaignProposal) {
                 // For Campaign Applications -> proposals table
-                await sendMessage(receiverId, msgContent, chatProposal.id?.toString(), undefined)
+                await sendMessage(receiverId, msgContent, undefined, chatProposal.id?.toString(), undefined)
             } else {
                 // For Direct Offers -> brand_proposals table
-                await sendMessage(receiverId, msgContent, undefined, chatProposal.id?.toString())
+                await sendMessage(receiverId, msgContent, undefined, undefined, chatProposal.id?.toString())
             }
         } catch (e) {
             console.error("Message send failed:", e)
@@ -537,7 +574,7 @@ function BrandDashboardContent() {
 
         try {
             await updateProposal(confirmStatusData.id, {
-                status: confirmStatusData.status
+                status: confirmStatusData.status as any
             })
             toast.success("상태가 변경되었습니다.")
             setConfirmStatusData(null)
@@ -726,6 +763,7 @@ function BrandDashboardContent() {
     const [newProductFormatGuide, setNewProductFormatGuide] = useState("")
     const [newProductAccountTag, setNewProductAccountTag] = useState("")
     const [newProductHashtags, setNewProductHashtags] = useState("")
+    const [newProductChannels, setNewProductChannels] = useState<string[]>([])
 
     // Preview Modal State
     const [previewModalOpen, setPreviewModalOpen] = useState(false) // Store as string, split on save
@@ -1061,7 +1099,9 @@ function BrandDashboardContent() {
         setNewProductContentGuide(product.contentGuide || "")
         setNewProductFormatGuide(product.formatGuide || "")
         setNewProductAccountTag(product.accountTag || "")
-        setNewProductHashtags(product.tags ? product.tags.join(" ") : "")
+        const tagsStr = product.tags ? product.tags.join(" ") : ""
+        setNewProductHashtags(tagsStr)
+        setNewProductChannels(product.channels || [])
         setProductModalOpen(true)
     }, [])
 
@@ -1101,7 +1141,8 @@ function BrandDashboardContent() {
                 contentGuide: newProductContentGuide,
                 formatGuide: newProductFormatGuide,
                 accountTag: newProductAccountTag,
-                tags: newProductHashtags.split(/[\s,]+/).filter(tag => tag.trim() !== "").map(tag => tag.startsWith('#') ? tag : `#${tag}`)
+                tags: newProductHashtags.split(/[\s,]+/).filter(tag => tag.trim() !== "").map(tag => tag.startsWith('#') ? tag : `#${tag}`),
+                channels: newProductChannels
             }
 
             console.log('[handleFinalSubmit] Product data prepared:', productData)
@@ -1129,6 +1170,7 @@ function BrandDashboardContent() {
             setNewProductFormatGuide("")
             setNewProductAccountTag("")
             setNewProductHashtags("")
+            setNewProductChannels([])
             setEditingProductId(null)
 
             setPreviewModalOpen(false) // Close preview
@@ -1261,13 +1303,13 @@ function BrandDashboardContent() {
                         setSelectedTag={setSelectedTag}
                         handlePresetClick={handlePresetClick}
                         favorites={favorites}
-                        toggleFavorite={toggleFavorite}
+                        toggleFavorite={toggleFavorite as any}
                         priceFilter={priceFilter}
                         setPriceFilter={setPriceFilter}
                         POPULAR_TAGS={POPULAR_TAGS}
                         PRICE_FILTER_RANGES={PRICE_FILTER_RANGES}
                         user={user}
-                        deleteEvent={deleteEvent}
+                        deleteEvent={deleteEvent as any}
                     />
                 )
             case "my-campaigns":
@@ -1275,10 +1317,10 @@ function BrandDashboardContent() {
                     <MyCampaignsView
                         myCampaigns={myCampaigns}
                         campaignProposals={campaignProposals}
-                        selectedCampaignId={selectedCampaignId}
+                        selectedCampaignId={selectedCampaignId as any}
                         setSelectedCampaignId={setSelectedCampaignId}
                         deleteCampaign={deleteCampaign}
-                        updateCampaignStatus={updateCampaignStatus}
+                        updateCampaignStatus={updateCampaignStatus as any}
                         refreshData={refreshData}
                     />
                 )
@@ -1292,7 +1334,7 @@ function BrandDashboardContent() {
                         setWorkspaceTab={setWorkspaceTab}
                         setChatProposal={setChatProposal}
                         setIsChatOpen={setIsChatOpen}
-                        handleStatusUpdate={handleStatusUpdate}
+                        handleStatusUpdate={handleStatusUpdate as any}
                         onViewProposal={(proposal) => {
                             setReadonlyProposal(proposal)
                             setShowReadonlyProposalDialog(true)
@@ -1471,7 +1513,7 @@ function BrandDashboardContent() {
                         setEditBio={setEditBio}
                         handleSaveProfile={handleSaveProfile}
                         updateUser={updateUser}
-                        switchRole={switchRole}
+                        switchRole={switchRole as any}
                     />
                 )
             default:
@@ -1807,6 +1849,11 @@ function BrandDashboardContent() {
                     setNewProductLink("")
                     setNewProductPoints("")
                     setNewProductShots("")
+                    setNewProductContentGuide("")
+                    setNewProductFormatGuide("")
+                    setNewProductAccountTag("")
+                    setNewProductHashtags("")
+                    setNewProductChannels([])
                 }
             }}>
                 <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-background">
@@ -1960,6 +2007,13 @@ function BrandDashboardContent() {
                                 </div>
                             </div>
                         </div>
+
+                        <ChannelSelector
+                            selected={newProductChannels}
+                            onChange={setNewProductChannels}
+                            label="추천 채널"
+                            description="이 제품에 적합한 SNS 채널"
+                        />
 
                         {/* Right Column: Detailed Guide */}
                         <div className="space-y-6">
@@ -2177,7 +2231,7 @@ function BrandDashboardContent() {
                     <div className="py-4">
                         <div className="border-2 border-dashed border-slate-300 rounded-xl bg-muted/30 overflow-hidden relative group">
                             <SignatureCanvas
-                                ref={sigCanvas}
+                                ref={sigCanvas as any}
                                 penColor="black"
                                 canvasProps={{
                                     className: "w-full h-48 cursor-crosshair active:cursor-none",

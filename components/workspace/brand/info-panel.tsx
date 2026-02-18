@@ -16,7 +16,7 @@ import { SmartContractPanel } from '../common/smart-contract-panel';
 export function InfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateBrandProposal, updateMomentProposal } = useUnifiedProvider();
+    const { updateBrandProposal, updateMomentProposal, updateProposal } = useUnifiedProvider();
 
     // Helper to determine stage status
     const getStageStatus = (stageId: string) => {
@@ -34,40 +34,60 @@ export function InfoPanel() {
 
         const payload: any = {};
 
-        // Map UI fields to DB columns
+        // price_offer: ConditionsPanel sends both price_offer and cost
         if (updates.price_offer !== undefined) {
             payload.price_offer = updates.price_offer;
-            // [COMPAT] Keep compensation_amount in sync as string
             payload.compensation_amount = `${updates.price_offer}`;
         } else if (updates.cost !== undefined) {
-            // Fallback for older calls
             payload.price_offer = updates.cost;
             payload.compensation_amount = `${updates.cost}`;
         }
-        if (updates.productName !== undefined) payload.product_name = updates.productName; // [FIX] ID-1056 Adding product name mapping
-        if (updates.specialTerms !== undefined) payload.special_terms = updates.specialTerms;
-        if (updates.dateReceived !== undefined) payload.condition_product_receipt_date = updates.dateReceived;
-        if (updates.dateDraft !== undefined) payload.condition_draft_submission_date = updates.dateDraft;
-        if (updates.dateDraft !== undefined) payload.condition_draft_submission_date = updates.dateDraft;
-        if (updates.dateFinal !== undefined) payload.condition_final_submission_date = updates.dateFinal;
-        if (updates.dateUpload !== undefined) payload.condition_upload_date = updates.dateUpload;
 
-        // [Added] Additional Fields (Incentive, Content, Usage)
-        if (updates.incentive_detail !== undefined) {
-            payload.incentive_detail = updates.incentive_detail;
-            payload.has_incentive = updates.has_incentive;
-        }
+        // product_name: ConditionsPanel sends both product_name and productName
+        if (updates.product_name !== undefined) payload.product_name = updates.product_name;
+        else if (updates.productName !== undefined) payload.product_name = updates.productName;
+
+        // special_terms: ConditionsPanel sends both special_terms and specialTerms
+        if (updates.special_terms !== undefined) payload.special_terms = updates.special_terms;
+        else if (updates.specialTerms !== undefined) payload.special_terms = updates.specialTerms;
+
+        // Dates
+        if (updates.condition_product_receipt_date !== undefined) payload.condition_product_receipt_date = updates.condition_product_receipt_date;
+        else if (updates.dateReceived !== undefined) payload.condition_product_receipt_date = updates.dateReceived;
+
+        if (updates.condition_draft_submission_date !== undefined) payload.condition_draft_submission_date = updates.condition_draft_submission_date;
+        else if (updates.dateDraft !== undefined) payload.condition_draft_submission_date = updates.dateDraft;
+
+        if (updates.condition_final_submission_date !== undefined) payload.condition_final_submission_date = updates.condition_final_submission_date;
+        else if (updates.dateFinal !== undefined) payload.condition_final_submission_date = updates.dateFinal;
+
+        if (updates.condition_upload_date !== undefined) payload.condition_upload_date = updates.condition_upload_date;
+        else if (updates.dateUpload !== undefined) payload.condition_upload_date = updates.dateUpload;
+
+        // Incentive, Content, Usage
+        if (updates.incentive_detail !== undefined) payload.incentive_detail = updates.incentive_detail;
+        if (updates.has_incentive !== undefined) payload.has_incentive = updates.has_incentive;
         if (updates.content_type !== undefined) payload.content_type = updates.content_type;
         if (updates.condition_secondary_usage_period !== undefined) payload.condition_secondary_usage_period = updates.condition_secondary_usage_period;
 
         console.log('[InfoPanel] Saving conditions:', payload);
 
-        // [FIX] ID-1057 Distinguish Moment vs Brand Proposal
-        // If it has moment_id (or event_id acting as moment_id), it's a Moment Proposal
+        // [FIX] 3-way proposal type routing
+        // 1. moment_id/event_id → moment_proposals
+        // 2. campaignId/campaign_id → campaign_applications
+        // 3. else → brand_proposals
+        let success = false;
         if ((proposal as any).moment_id || (proposal as any).event_id) {
-            await updateMomentProposal(proposal.id, payload);
+            success = await updateMomentProposal(proposal.id, payload);
+        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            success = await updateProposal(proposal.id, payload);
         } else {
-            await updateBrandProposal(proposal.id, payload);
+            success = await updateBrandProposal(proposal.id, payload);
+        }
+
+        // [NEW] Immediately update workspace store so brand UI reflects changes without refresh
+        if (success) {
+            useWorkspaceStore.getState().updateProposal(payload);
         }
     };
 
@@ -145,6 +165,64 @@ export function InfoPanel() {
                             userRole="brand"
                             onSave={handleConditionSave}
                         />
+                        {/* [RESTORED] Propose / Finalize Buttons for Brand */}
+                        {proposal && (
+                            <div className="mt-4 flex justify-end gap-2">
+                                {proposal.status === 'applied' && (
+                                    <CtaButton onClick={async () => {
+                                        if (!confirm('현재 조건으로 협업을 제안하시겠습니까?')) return;
+
+                                        const updates = { status: 'offered' as const };
+                                        let success = false;
+                                        if ((proposal as any).moment_id || (proposal as any).event_id) {
+                                            success = await updateMomentProposal(proposal.id, updates);
+                                        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                            success = await updateProposal(proposal.id, updates);
+                                        } else {
+                                            success = await updateBrandProposal(proposal.id, updates);
+                                        }
+                                        if (success) {
+                                            useWorkspaceStore.getState().updateProposal(updates);
+                                        }
+                                    }}>
+                                        협업 제안하기
+                                    </CtaButton>
+                                )}
+
+                                {/* brand_condition_confirmed가 이미 true면 버튼 숨김 */}
+                                {(proposal.status === 'negotiating' || proposal.status === 'offered') && !proposal.brand_condition_confirmed && (
+                                    <CtaButton onClick={async () => {
+                                        if (!confirm('조건을 확정하고 계약서 작성 단계로 이동하시겠습니까?')) return;
+
+                                        const updates = {
+                                            contract_status: 'draft' as const,
+                                            brand_condition_confirmed: true
+                                        };
+                                        let success = false;
+                                        if ((proposal as any).moment_id || (proposal as any).event_id) {
+                                            success = await updateMomentProposal(proposal.id, updates);
+                                        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                            success = await updateProposal(proposal.id, updates);
+                                        } else {
+                                            success = await updateBrandProposal(proposal.id, updates);
+                                        }
+                                        // [FIX] 로컬 스토어 즉시 반영 (DB 업데이트 후 UI 갱신)
+                                        if (success) {
+                                            useWorkspaceStore.getState().updateProposal(updates);
+                                        }
+                                    }}>
+                                        조건 확정 및 계약서 발송
+                                    </CtaButton>
+                                )}
+                                {/* 이미 확정된 경우 표시 */}
+                                {proposal.brand_condition_confirmed && (
+                                    <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                        ✓ 조건 확정 완료
+                                        {!proposal.influencer_condition_confirmed && ' · 크리에이터 수락 대기 중'}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </StageCard>
 
                     {/* Stage 2: Contract */}

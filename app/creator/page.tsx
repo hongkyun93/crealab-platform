@@ -37,7 +37,7 @@ import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout";
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store";
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
-import SignatureCanvas from 'react-signature-canvas'
+
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -75,6 +75,11 @@ const CampaignDetailDialog = dynamic(() => import("@/components/dialogs/Campaign
 const DetailsModal = dynamic(() => import("@/components/dialogs/DetailsModal").then(m => ({ default: m.DetailsModal })))
 const ProductGuideDialog = dynamic(() => import("@/components/dialogs/ProductGuideDialog").then(m => ({ default: m.ProductGuideDialog })))
 const ReadonlyProposalDialog = dynamic(() => import("@/components/proposal/readonly-proposal-dialog").then(m => ({ default: m.ReadonlyProposalDialog })))
+// [PERF Plan B] SignatureCanvas is only needed when the signature modal opens.
+const SignatureCanvasDynamic = dynamic(() => import('react-signature-canvas'), {
+    ssr: false,
+    loading: () => <div className="w-full h-48 bg-muted/30 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center text-sm text-muted-foreground">서명 영역 로딩 중...</div>
+})
 
 // View Components
 import { DashboardView } from "@/components/creator/views/DashboardView"
@@ -144,14 +149,14 @@ function AIPlanModal({ isOpen, onOpenChange, planContent }: { isOpen: boolean; o
 
 function InfluencerDashboardContent() {
     const {
-        user, updateUser, campaigns, events, isLoading, notifications, resetData,
+        user, updateUser, campaigns, events, isLoading, notifications,
         brandProposals, momentProposals, updateBrandProposal, // [NEW] Added momentProposals
         sendNotification,
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
         messages, sendMessage,
         deleteEvent, campaignProposals, updateProposal, addProposal,
         products, switchRole, updateEvent, supabase,
-        favorites, toggleFavorite, isInitialized, isAuthLoading
+        favorites, toggleFavorite, isInitialized, isAuthLoading, refreshData
     } = useUnifiedProvider()
 
     // MCN Proxy Mode Support
@@ -277,19 +282,19 @@ function InfluencerDashboardContent() {
                         id,
                         user_id,
                         role,
-                        users:user_id (
-                            email,
-                            raw_user_meta_data
+                        profile:profiles!team_members_user_id_fkey (
+                            display_name,
+                            email
                         )
                     `)
-                    .eq('team_id', user.teamId) // Assuming teamId is available on user object
+                    .eq('team_id', user.teamId)
 
                 if (data) {
                     const members = data.map((m: any) => ({
                         id: m.id,
                         user_id: m.user_id,
-                        name: m.users?.raw_user_meta_data?.name || m.users?.email,
-                        email: m.users?.email
+                        name: m.profile?.display_name || m.profile?.email || 'Unknown',
+                        email: m.profile?.email
                     }))
                     setTeamMembers(members)
                 }
@@ -370,7 +375,7 @@ function InfluencerDashboardContent() {
                     let error = null
 
                     // Update the correct table based on proposal type
-                    if (proposal.moment_id) {
+                    if ((proposal as any).moment_id) {
                         // Moment proposal
                         const result = await supabase
                             .from('moment_proposals')
@@ -428,7 +433,7 @@ function InfluencerDashboardContent() {
                     let error = null
 
                     // Update the correct table based on proposal type
-                    if (proposal.moment_id) {
+                    if ((proposal as any).moment_id) {
                         // Moment proposal
                         const result = await supabase
                             .from('moment_proposals')
@@ -476,7 +481,7 @@ function InfluencerDashboardContent() {
             variant: 'destructive',
             onConfirm: async () => {
                 try {
-                    const proposal = allOutboundProposals.find((p: any) => p.id === proposalId)
+                    const proposal = (brandProposals as any[]).find((p: any) => p.id === proposalId)
 
                     if (!proposal) {
                         toast.error('제안을 찾을 수 없습니다.')
@@ -527,6 +532,20 @@ function InfluencerDashboardContent() {
         }
     }, [searchParams, brandProposals, chatProposal])
 
+    // [SYNC] Sync chatProposal when brandProposals/campaignProposals/momentProposals updates
+    // (e.g., when brand updates conditions, creator workspace reflects changes in real-time)
+    useEffect(() => {
+        if (chatProposal?.id) {
+            const updatedBrand = brandProposals?.find((p: any) => p.id === chatProposal.id);
+            const updatedCampaign = campaignProposals?.find((p: any) => p.id === chatProposal.id);
+            const updatedMoment = (momentProposals as any[])?.find((p: any) => p.id === chatProposal.id);
+            const updated = updatedBrand || updatedCampaign || updatedMoment;
+            if (updated) {
+                setChatProposal(updated);
+            }
+        }
+    }, [brandProposals, campaignProposals, momentProposals]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Reset sub-tab when main tab changes
     useEffect(() => {
         setWorkspaceSubTab('all')
@@ -548,7 +567,11 @@ function InfluencerDashboardContent() {
             const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
             const pId = chatProposal.id.toString()
             console.log('[Creator] Fetching feedback for:', pId, 'isCampaign:', isCampaign)
-            fetchSubmissionFeedback(pId, !isCampaign)
+            if (isCampaign) {
+                fetchSubmissionFeedback(pId, undefined)
+            } else {
+                fetchSubmissionFeedback(undefined, pId)
+            }
         }
     }, [chatProposal, isChatOpen])
     const workFeedbackChatRef = useRef<HTMLDivElement>(null)
@@ -651,7 +674,7 @@ function InfluencerDashboardContent() {
 
     // Filter events (Admins see all, users see theirs)
     const { displayEvents, activeMoments, myMoments, pastMoments, myEvents, upcomingMoments } = useMemo(() => {
-        const display = displayUser?.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
+        const display = (displayUser as any)?.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
 
         // Date-based filtering for refined UI
         const today = new Date()
@@ -1472,19 +1495,17 @@ function InfluencerDashboardContent() {
             const isCampaign = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
             const isBrandProposal = !isCampaign
 
-            const success = await sendSubmissionFeedback(
+            await sendSubmissionFeedback(
                 isCampaign ? chatProposal.id.toString() : undefined,
                 isBrandProposal ? chatProposal.id.toString() : undefined,
                 feedbackInput.trim()
             )
-
-            if (success) { // sendSubmissionFeedback returns void/promise<void> usually, wait, check impl
-                setFeedbackInput("")
-                await fetchSubmissionFeedback(
-                    isCampaign ? chatProposal.id.toString() : undefined,
-                    isBrandProposal ? chatProposal.id.toString() : undefined
-                )
-            }
+            // [FIX] sendSubmissionFeedback returns void, no truthiness check needed
+            setFeedbackInput("")
+            await fetchSubmissionFeedback(
+                isCampaign ? chatProposal.id.toString() : undefined,
+                isBrandProposal ? chatProposal.id.toString() : undefined
+            )
         } catch (e) {
             console.error("Failed to send feedback:", e)
         } finally {
@@ -1938,10 +1959,11 @@ function InfluencerDashboardContent() {
             // Determine if it's a Campaign Application (proposals table) or Direct Offer (brand_proposals table)
             const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
 
+            // sendMessage signature: (receiverId, content, file?, proposalId?, brandProposalId?)
             if (isCampaignProposal) {
-                await sendMessage(receiverId, msgContent, chatProposal.id?.toString(), undefined)
+                await sendMessage(receiverId, msgContent, undefined, chatProposal.id?.toString(), undefined)
             } else {
-                await sendMessage(receiverId, msgContent, undefined, chatProposal.id?.toString())
+                await sendMessage(receiverId, msgContent, undefined, undefined, chatProposal.id?.toString())
             }
         } catch (e) {
             console.error("Message send failed:", e)
@@ -3264,7 +3286,7 @@ function InfluencerDashboardContent() {
                     </DialogHeader>
                     <div className="py-4">
                         <div className="border-2 border-dashed border-slate-300 rounded-xl bg-muted/30 overflow-hidden relative group">
-                            <SignatureCanvas
+                            <SignatureCanvasDynamic
                                 ref={sigCanvas}
                                 penColor="black"
                                 canvasProps={{

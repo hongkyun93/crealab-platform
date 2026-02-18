@@ -24,6 +24,7 @@ export interface InfluencerEvent {
     dateFlexible?: boolean
     schedule?: EventSchedule
     createdAt?: string
+    channels?: string[]
 }
 
 export interface EventSchedule {

@@ -12,21 +12,21 @@ import { Calendar, FileText, Gift, Megaphone, Send, User, X, CheckCircle2, Insta
 import { createClient } from "@/lib/supabase/client"
 import { useState, useRef } from "react"
 import { CampaignDetailContent } from "@/components/campaign/campaign-detail-content"
+import { CampaignApplicationDialog } from "@/components/dialogs/CampaignApplicationDialog"
 
 interface CampaignDetailDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     campaign: any
-    onApply: (campaign: any) => void
 }
 
 export function CampaignDetailDialog({
     open,
     onOpenChange,
-    campaign,
-    onApply
+    campaign
 }: CampaignDetailDialogProps) {
     const [isImageUploading, setIsImageUploading] = useState(false)
+    const [showApplicationDialog, setShowApplicationDialog] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
@@ -100,48 +100,56 @@ export function CampaignDetailDialog({
     const getChannelIcon = (id: string) => CHANNELS.find(c => c.id === id)?.icon || ""
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="p-0 gap-0 bg-white border-0 shadow-2xl 
+        <>
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="p-0 gap-0 bg-white border-0 shadow-2xl 
                 w-full h-[100dvh] max-w-none rounded-none 
                 md:h-[90vh] md:max-w-6xl md:rounded-xl overflow-hidden flex flex-col md:block">
-                <DialogTitle className="sr-only">{campaign.product || "캠페인 상세 정보"}</DialogTitle>
+                    <DialogTitle className="sr-only">{campaign.product || "캠페인 상세 정보"}</DialogTitle>
 
-                <CampaignDetailContent
-                    campaign={campaign}
-                    onImageUpload={async (file) => {
-                        // Create a fake event to reuse the existing handler logic or just call upload logic directly
-                        // We will extract the upload logic to be cleaner or just wrap it here.
-                        // Ideally we should refactor handleImageUpload to take a File, but the existing one takes an Event.
-                        // Let's quickly wrap it.
-                        const dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(file);
+                    <CampaignDetailContent
+                        campaign={campaign}
+                        onImageUpload={async (file) => {
+                            // Create a fake event to reuse the existing handler logic or just call upload logic directly
+                            // We will extract the upload logic to be cleaner or just wrap it here.
+                            // Ideally we should refactor handleImageUpload to take a File, but the existing one takes an Event.
+                            // Let's quickly wrap it.
+                            const dataTransfer = new DataTransfer();
+                            dataTransfer.items.add(file);
 
-                        // Create a synthetic event
-                        const event = {
-                            target: {
-                                files: dataTransfer.files
-                            }
-                        } as unknown as React.ChangeEvent<HTMLInputElement>;
+                            // Create a synthetic event
+                            const event = {
+                                target: {
+                                    files: dataTransfer.files
+                                }
+                            } as unknown as React.ChangeEvent<HTMLInputElement>;
 
-                        await handleImageUpload(event);
-                    }}
-                    renderAction={() => (
-                        <Button
-                            onClick={() => {
-                                onOpenChange(false);
-                                onApply(campaign);
-                            }}
-                            className="w-full h-14 text-lg font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5"
-                        >
-                            <Send className="h-5 w-5 mr-2" />
-                            협업 제안하기
-                        </Button>
-                    )}
-                    isUploading={isImageUploading}
-                    onClose={() => onOpenChange(false)}
-                />
-            </DialogContent >
-        </Dialog >
+                            await handleImageUpload(event);
+                        }}
+                        renderAction={() => (
+                            <Button
+                                onClick={() => {
+                                    setShowApplicationDialog(true);
+                                }}
+                                className="w-full h-14 text-lg font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5"
+                            >
+                                <Send className="h-5 w-5 mr-2" />
+                                협업 제안하기
+                            </Button>
+                        )}
+                        isUploading={isImageUploading}
+                        onClose={() => onOpenChange(false)}
+                    />
+                </DialogContent>
+            </Dialog>
+
+            {/* Campaign Application Dialog */}
+            <CampaignApplicationDialog
+                open={showApplicationDialog}
+                onOpenChange={setShowApplicationDialog}
+                campaign={campaign}
+            />
+        </>
     )
 }
 

@@ -132,7 +132,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             // The MCN admin is usually an 'owner'. 
             // We might want to filter only 'creator' role? 
             // For now, let's keep all except self to match legacy behavior.
-            setTeamMembers(members.filter(m => m.user_id !== user.id))
+            setTeamMembers(members.filter(m => m.user_id !== user.id && m.role === 'creator'))
         }
 
         loadMembers()

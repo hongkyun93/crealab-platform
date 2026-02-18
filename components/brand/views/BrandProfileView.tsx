@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AvatarUpload } from "@/components/ui/avatar-upload"
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/providers/auth-provider"
 
 interface BrandProfileViewProps {
     user: any
@@ -49,7 +49,7 @@ export const BrandProfileView = React.memo(function BrandProfileView({
     switchRole
 }: BrandProfileViewProps) {
     const { supabase } = useUnifiedProvider()
-    const router = useRouter()
+    const { logout } = useAuth()
     const [confirmSwitch, setConfirmSwitch] = useState(false)
 
     return (
@@ -132,8 +132,7 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                         title="계정 전환"
                         description="정말로 크리에이터 계정으로 전환하시겠습니까? (로그아웃 됩니다)"
                         onConfirm={async () => {
-                            await supabase.auth.signOut()
-                            router.push("/")
+                            await logout()
                         }}
                         confirmText="전환"
                     />

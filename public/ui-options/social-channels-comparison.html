@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소셜 채널 관리 - UI 옵션 비교</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .option-container { scroll-snap-align: start; }
+        
+        /* 그라데이션 */
+        .gradient-instagram { background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%); }
+        .gradient-youtube { background: linear-gradient(135deg, #ff0000 0%, #990000 100%); }
+        .gradient-tiktok { background: linear-gradient(135deg, #000000 0%, #00f2ea 100%); }
+        .gradient-blog { background: linear-gradient(135deg, #22c55e 0%, #059669 100%); }
+        
+        /* 글래스모피즘 */
+        .glass { 
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* 애니메이션 */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .float-animation { animation: float 3s ease-in-out infinite; }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-4xl font-bold text-white mb-2 text-center">소셜 채널 UI 디자인 옵션</h1>
+        <p class="text-gray-400 text-center mb-12">세 가지 스타일 중 원하는 디자인을 선택하세요</p>
+        
+        <!-- 옵션 네비게이션 -->
+        <div class="flex justify-center gap-4 mb-8">
+            <button onclick="scrollToOption(1)" class="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition">
+                옵션 A: 카드 스타일
+            </button>
+            <button onclick="scrollToOption(2)" class="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition">
+                옵션 B: 리스트 스타일
+            </button>
+            <button onclick="scrollToOption(3)" class="px-6 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition">
+                옵션 C: 그리드 스타일
+            </button>
+        </div>
+
+        <!-- 옵션 A: 카드 스타일 (Glassmorphism) -->
+        <div id="option1" class="option-container mb-20 p-8 rounded-2xl glass">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-2">옵션 A: 프리미엄 카드 스타일</h2>
+                    <p class="text-gray-400">Glassmorphism + 그라데이션 카드</p>
+                </div>
+                <span class="px-4 py-2 bg-purple-600 rounded-lg text-white font-medium">추천 ⭐</span>
+            </div>
+            
+            <!-- 실제 UI Preview -->
+            <div class="bg-gray-900 rounded-xl p-8">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-2xl font-bold text-white">소셜 채널 관리</h3>
+                    <button class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition flex items-center gap-2">
+                        <span>+</span> 채널 추가
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Instagram Card -->
+                    <div class="gradient-instagram rounded-2xl p-6 relative overflow-hidden group hover:scale-105 transition-transform duration-300">
+                        <div class="absolute top-4 right-4 flex gap-2">
+                            <span class="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-bold">메인</span>
+                            <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">✏️</button>
+                            <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">🗑️</button>
+                        </div>
+                        <div class="text-4xl mb-4">📸</div>
+                        <h4 class="text-2xl font-bold text-white mb-2">@honggildong</h4>
+                        <p class="text-white/80 text-lg mb-4">👥 1.2만 팔로워</p>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                            <span class="text-white font-medium">브랜드에게 공개</span>
+                        </div>
+                    </div>
+
+                    <!-- YouTube Card -->
+                    <div class="gradient-youtube rounded-2xl p-6 relative overflow-hidden group hover:scale-105 transition-transform duration-300">
+                        <div class="absolute top-4 right-4 flex gap-2">
+                            <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">✏️</button>
+                            <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">🗑️</button>
+                        </div>
+                        <div class="text-4xl mb-4">📺</div>
+                        <h4 class="text-2xl font-bold text-white mb-2">홍길동 채널</h4>
+                        <p class="text-white/80 text-lg mb-4">👥 3.5만 구독자</p>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                            <span class="text-white font-medium">브랜드에게 공개</span>
+                        </div>
+                    </div>
+
+                    <!-- Blog Card -->
+                    <div class="gradient-blog rounded-2xl p-6 relative overflow-hidden group hover:scale-105 transition-transform duration-300 opacity-70">
+                        <div class="absolute top-4 right-4 flex gap-2">
+                            <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">✏️</button>
+                            <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">🗑️</button>
+                        </div>
+                        <div class="text-4xl mb-4">📝</div>
+                        <h4 class="text-2xl font-bold text-white mb-2">honggil.blog.me</h4>
+                        <p class="text-white/80 text-lg mb-4">📊 통계 비공개</p>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-red-400 rounded-full"></div>
+                            <span class="text-white font-medium">🔒 비공개</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-purple-900/30 rounded-lg border border-purple-500/30">
+                <p class="text-purple-300"><strong>장점:</strong> 시각적으로 매우 임팩트있고, 플랫폼별 아이덴티티가 명확함. 프리미엄한 느낌의 glassmorphism과 hover 효과로 인터랙티브함</p>
+                <p class="text-purple-300 mt-2"><strong>단점:</strong> 채널이 많아질 경우 스크롤이 길어짐. 정보 밀도가 낮음</p>
+            </div>
+        </div>
+
+        <!-- 옵션 B: 리스트 스타일 -->
+        <div id="option2" class="option-container mb-20 p-8 rounded-2xl glass">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-2">옵션 B: 컴팩트 리스트 스타일</h2>
+                    <p class="text-gray-400">효율성 중심 + 높은 정보 밀도</p>
+                </div>
+                <span class="px-4 py-2 bg-blue-600 rounded-lg text-white font-medium">실용적 💼</span>
+            </div>
+            
+            <!-- 실제 UI Preview -->
+            <div class="bg-white rounded-xl p-8">
+                <!-- Tabs -->
+                <div class="flex gap-4 mb-8 border-b border-gray-200">
+                    <button class="px-4 py-2 text-gray-500 hover:text-gray-700">기본 정보</button>
+                    <button class="px-4 py-2 text-gray-500 hover:text-gray-700">Rate Card</button>
+                    <button class="px-4 py-2 text-blue-600 border-b-2 border-blue-600 font-medium">소셜 채널</button>
+                </div>
+
+                <h3 class="text-xl font-bold text-gray-900 mb-6">연결된 채널</h3>
+
+                <div class="space-y-4">
+                    <!-- Instagram Row -->
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50/30 transition">
+                        <div class="flex items-center gap-4 flex-1">
+                            <div class="w-12 h-12 rounded-full gradient-instagram flex items-center justify-center text-white text-xl">
+                                📸
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold text-gray-900">@honggildong</h4>
+                                    <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">메인</span>
+                                </div>
+                                <p class="text-sm text-gray-500">👥 1.2만 팔로워</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                                <span class="ml-2 text-sm text-gray-700">브랜드 공개</span>
+                            </label>
+                            <button class="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm font-medium">수정</button>
+                            <button class="px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm font-medium">삭제</button>
+                        </div>
+                    </div>
+
+                    <!-- YouTube Row -->
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50/30 transition">
+                        <div class="flex items-center gap-4 flex-1">
+                            <div class="w-12 h-12 rounded-full gradient-youtube flex items-center justify-center text-white text-xl">
+                                📺
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-gray-900">홍길동 채널</h4>
+                                <p class="text-sm text-gray-500">👥 3.5만 구독자</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                                <span class="ml-2 text-sm text-gray-700">브랜드 공개</span>
+                            </label>
+                            <button class="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm font-medium">수정</button>
+                            <button class="px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm font-medium">삭제</button>
+                        </div>
+                    </div>
+
+                    <!-- Blog Row -->
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50/30 transition">
+                        <div class="flex items-center gap-4 flex-1">
+                            <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl">
+                                📝
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-gray-900">honggil.blog.me</h4>
+                                <p class="text-sm text-gray-500">📊 통계 비공개</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                                <span class="ml-2 text-sm text-gray-700">비공개</span>
+                            </label>
+                            <button class="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm font-medium">수정</button>
+                            <button class="px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm font-medium">삭제</button>
+                        </div>
+                    </div>
+
+                    <!-- Add New -->
+                    <div class="p-6 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-400 hover:bg-blue-50/20 cursor-pointer transition">
+                        <div class="text-3xl mb-2">➕</div>
+                        <p class="text-gray-600 font-medium">새 채널 추가</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-blue-900/30 rounded-lg border border-blue-500/30">
+                <p class="text-blue-300"><strong>장점:</strong> 정보 밀도가 높고 한눈에 많은 채널을 볼 수 있음. 토글 스위치로 공개/비공개 빠르게 변경 가능. 실용적이고 깔끔함</p>
+                <p class="text-blue-300 mt-2"><strong>단점:</strong> 시각적 임팩트는 옵션 A보다 약함. 플랫폼 아이덴티티가 덜 도드라짐</p>
+            </div>
+        </div>
+
+        <!-- 옵션 C: 그리드 대시보드 스타일 -->
+        <div id="option3" class="option-container mb-20 p-8 rounded-2xl glass">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-2">옵션 C: 대시보드 그리드 스타일</h2>
+                    <p class="text-gray-400">통계 중심 + 네온 악센트</p>
+                </div>
+                <span class="px-4 py-2 bg-green-600 rounded-lg text-white font-medium">프로페셔널 📊</span>
+            </div>
+            
+            <!-- 실제 UI Preview -->
+            <div class="bg-gray-900 rounded-xl p-8">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h3 class="text-2xl font-bold text-white">소셜 채널</h3>
+                        <p class="text-gray-400 mt-1">3개 연결됨 • 총 47.2K 팔로워</p>
+                    </div>
+                    <button class="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg text-white font-medium hover:shadow-lg hover:shadow-cyan-500/50 transition flex items-center gap-2">
+                        <span class="text-xl">+</span> 채널 추가
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Instagram Card -->
+                    <div class="bg-gray-800 rounded-xl p-6 border border-purple-500/30 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="w-10 h-10 rounded-lg gradient-instagram flex items-center justify-center text-white text-xl">
+                                📸
+                            </div>
+                            <span class="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded font-medium flex items-center gap-1">
+                                ⭐ 메인
+                            </span>
+                        </div>
+                        <h4 class="text-white font-bold mb-1">@honggildong</h4>
+                        <div class="flex items-end gap-2 mb-4">
+                            <span class="text-3xl font-bold text-white">12K</span>
+                            <span class="text-green-400 text-sm mb-1">↑ 2.3%</span>
+                        </div>
+                        <div class="flex items-center gap-2 mb-4 text-sm">
+                            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            <span class="text-green-400">브랜드 공개</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm transition">수정</button>
+                            <button class="px-3 py-2 bg-gray-700 hover:bg-red-600 rounded text-white text-sm transition">🗑️</button>
+                        </div>
+                    </div>
+
+                    <!-- YouTube Card -->
+                    <div class="bg-gray-800 rounded-xl p-6 border border-red-500/30 hover:border-red-500 hover:shadow-lg hover:shadow-red-500/30 transition-all">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="w-10 h-10 rounded-lg gradient-youtube flex items-center justify-center text-white text-xl">
+                                📺
+                            </div>
+                        </div>
+                        <h4 class="text-white font-bold mb-1">홍길동 채널</h4>
+                        <div class="flex items-end gap-2 mb-4">
+                            <span class="text-3xl font-bold text-white">35K</span>
+                            <span class="text-green-400 text-sm mb-1">↑ 5.1%</span>
+                        </div>
+                        <div class="flex items-center gap-2 mb-4 text-sm">
+                            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            <span class="text-green-400">브랜드 공개</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm transition">수정</button>
+                            <button class="px-3 py-2 bg-gray-700 hover:bg-red-600 rounded text-white text-sm transition">🗑️</button>
+                        </div>
+                    </div>
+
+                    <!-- Blog Card -->
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-600 hover:border-gray-500 hover:shadow-lg transition-all opacity-60">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center text-white text-xl">
+                                📝
+                            </div>
+                        </div>
+                        <h4 class="text-white font-bold mb-1">honggil.blog.me</h4>
+                        <div class="flex items-end gap-2 mb-4">
+                            <span class="text-2xl font-bold text-gray-400">- -</span>
+                        </div>
+                        <div class="flex items-center gap-2 mb-4 text-sm">
+                            <div class="w-2 h-2 bg-red-400 rounded-full"></div>
+                            <span class="text-red-400">🔒 비공개</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm transition">수정</button>
+                            <button class="px-3 py-2 bg-gray-700 hover:bg-red-600 rounded text-white text-sm transition">🗑️</button>
+                        </div>
+                    </div>
+
+                    <!-- Add New -->
+                    <div class="bg-gray-800/50 rounded-xl p-6 border-2 border-dashed border-gray-600 hover:border-cyan-500 hover:bg-gray-800 cursor-pointer transition-all flex flex-col items-center justify-center">
+                        <div class="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center text-3xl text-gray-400 mb-3 hover:bg-gradient-to-r hover:from-blue-600 hover:to-cyan-600 hover:text-white transition-all">
+                            +
+                        </div>
+                        <p class="text-gray-400 font-medium">채널 추가</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-green-900/30 rounded-lg border border-green-500/30">
+                <p class="text-green-300"><strong>장점:</strong> 통계와 성장률 같은 데이터를 한눈에 볼 수 있음. 프로페셔널하고 대시보드같은 느낌. 네온 glow 효과로 모던함</p>
+                <p class="text-green-300 mt-2"><strong>단점:</strong> 데이터 중심이라 디자인이 복잡할 수 있음. 통계가 없는 채널은 상대적으로 초라해 보임</p>
+            </div>
+        </div>
+
+        <!-- 비교 표 -->
+        <div class="glass rounded-2xl p-8">
+            <h2 class="text-3xl font-bold text-white mb-8 text-center">빠른 비교</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="px-6 py-4 text-white font-bold">특징</th>
+                            <th class="px-6 py-4 text-purple-400 font-bold">옵션 A: 카드</th>
+                            <th class="px-6 py-4 text-blue-400 font-bold">옵션 B: 리스트</th>
+                            <th class="px-6 py-4 text-green-400 font-bold">옵션 C: 그리드</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-300">
+                        <tr class="border-b border-gray-800">
+                            <td class="px-6 py-4 font-medium">시각적 임팩트</td>
+                            <td class="px-6 py-4">⭐⭐⭐⭐⭐</td>
+                            <td class="px-6 py-4">⭐⭐⭐</td>
+                            <td class="px-6 py-4">⭐⭐⭐⭐</td>
+                        </tr>
+                        <tr class="border-b border-gray-800">
+                            <td class="px-6 py-4 font-medium">정보 밀도</td>
+                            <td class="px-6 py-4">⭐⭐</td>
+                            <td class="px-6 py-4">⭐⭐⭐⭐⭐</td>
+                            <td class="px-6 py-4">⭐⭐⭐⭐</td>
+                        </tr>
+                        <tr class="border-b border-gray-800">
+                            <td class="px-6 py-4 font-medium">사용 편의성</td>
+                            <td class="px-6 py-4">⭐⭐⭐⭐</td>
+                            <td class="px-6 py-4">⭐⭐⭐⭐⭐</td>
+                            <td class="px-6 py-4">⭐⭐⭐⭐</td>
+                        </tr>
+                        <tr class="border-b border-gray-800">
+                            <td class="px-6 py-4 font-medium">확장성</td>
+                            <td class="px-6 py-4">⭐⭐⭐</td>
+                            <td class="px-6 py-4">⭐⭐⭐⭐⭐</td>
+                            <td class="px-6 py-4">⭐⭐⭐⭐</td>
+                        </tr>
+                        <tr class="border-b border-gray-800">
+                            <td class="px-6 py-4 font-medium">구현 난이도</td>
+                            <td class="px-6 py-4">중</td>
+                            <td class="px-6 py-4">쉬움</td>
+                            <td class="px-6 py-4">중상</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-medium">추천 사용자</td>
+                            <td class="px-6 py-4">비주얼 중시 크리에이터</td>
+                            <td class="px-6 py-4">효율성 중시 파워 유저</td>
+                            <td class="px-6 py-4">데이터 중시 프로</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function scrollToOption(num) {
+            document.getElementById('option' + num).scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+    </script>
+</body>
+</html>

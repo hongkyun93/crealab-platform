@@ -1,20 +1,37 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
+    // 인증 검증: 로그인된 사용자만 사용 가능
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // req.json()은 한 번만 호출 (catch 블록에서 재호출 불가)
+    let body: { messages?: any[]; proposal?: any; brandName?: string; influencerName?: string } = {};
     try {
-        const { messages, proposal, brandName, influencerName } = await req.json();
+        body = await req.json();
+    } catch {
+        return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    const { messages, proposal, brandName, influencerName } = body;
+
+    try {
         const apiKey = process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
             console.warn("API Key missing, using fallback contract.");
-            return NextResponse.json({ result: getFallbackContract(brandName, influencerName, proposal) });
+            return NextResponse.json({ result: getFallbackContract(brandName ?? "광고주", influencerName ?? "크리에이터", proposal ?? {}) });
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        const historyText = messages.map((m: any) => `${m.senderName}: ${m.content}`).join("\n");
+        const historyText = (messages ?? []).map((m: any) => `${m.senderName}: ${m.content}`).join("\n");
 
         const systemPrompt = `
 당신은 대한민국 법률에 정통한 법률 전문가이자 인플루언서 마케팅 계약 전문가입니다.
@@ -25,8 +42,8 @@ export async function POST(req: Request) {
 - 을(크리에이터): ${influencerName}
 
 [상품 정보]
-- 상품명: ${proposal.product_name || proposal.productName}
-- 캠페인 성격: ${proposal.product_type === 'gift' ? '제품 협찬' : '제품 대여'}
+- 상품명: ${proposal?.product_name || proposal?.productName}
+- 캠페인 성격: ${proposal?.product_type === 'gift' ? '제품 협찬' : '제품 대여'}
 
 [대화 요약 및 주요 합의 내용 파악]
 다음은 두 당사자 간의 대화 내용입니다:
@@ -50,9 +67,7 @@ ${historyText}
 
     } catch (error: any) {
         console.error("Contract Generation Failed (Using Fallback):", error);
-        // Fallback Template
-        const { brandName, influencerName, proposal } = await req.json().catch(() => ({}));
-        return NextResponse.json({ result: getFallbackContract(brandName || "광고주", influencerName || "크리에이터", proposal || {}) });
+        return NextResponse.json({ result: getFallbackContract(brandName ?? "광고주", influencerName ?? "크리에이터", proposal ?? {}) });
     }
 }
 

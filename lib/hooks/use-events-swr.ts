@@ -249,7 +249,8 @@ export const eventMutations = {
                     date_flexible: newEvent.dateFlexible || false,
                     status: newEvent.status || 'recruiting',
                     is_private: newEvent.isPrivate || false,
-                    schedule: newEvent.schedule
+                    schedule: newEvent.schedule,
+                    channels: newEvent.channels || []
                 })
                 .select()
                 .single()
@@ -301,6 +302,7 @@ export const eventMutations = {
             if (updates.status) dbUpdates.status = updates.status
             if (updates.isPrivate !== undefined) dbUpdates.is_private = updates.isPrivate
             if (updates.schedule) dbUpdates.schedule = updates.schedule
+            if (updates.channels !== undefined) dbUpdates.channels = updates.channels
 
             const { error } = await supabase
                 .from('life_moments')

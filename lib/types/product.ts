@@ -20,6 +20,7 @@ export interface Product {
     accountTag?: string
     createdAt?: string
     isMock?: boolean
+    channels?: string[]
 }
 
 export interface ProductFormData {

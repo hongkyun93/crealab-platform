@@ -35,5 +35,18 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
+    // If no valid session, force-delete any stale sb-* cookies to prevent state confusion
+    if (!user) {
+        const cookieNames = request.cookies.getAll().map(c => c.name)
+        cookieNames.forEach(name => {
+            if (name.startsWith('sb-')) {
+                supabaseResponse.cookies.set(name, '', {
+                    expires: new Date(0),
+                    path: '/',
+                })
+            }
+        })
+    }
+
     return supabaseResponse
 }

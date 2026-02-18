@@ -1,8 +1,15 @@
-
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
+    // 인증 검증: 로그인된 사용자만 사용 가능
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
@@ -15,7 +22,7 @@ export async function POST(req: Request) {
         const { productName, sellingPoints, category, requiredShots } = await req.json();
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" }); // Use stable model
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
         const systemPrompt = `
 당신은 베테랑 콘텐츠 기획자이자 인플루언서 매니지먼트 전문가입니다.
@@ -57,7 +64,6 @@ export async function POST(req: Request) {
             jsonResponse = JSON.parse(jsonText);
         } catch (e) {
             console.error("JSON Parse Error:", e);
-            // Fallback parsing or return text if simple
             jsonResponse = {
                 motivation: "AI가 지원 동기를 생성했지만 형식이 올바르지 않습니다. 다시 시도해주세요.",
                 content_plan: text

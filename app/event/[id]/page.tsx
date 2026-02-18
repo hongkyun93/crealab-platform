@@ -61,6 +61,35 @@ export default function EventDetailPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isLoadingEvent, setIsLoadingEvent] = useState(false)
 
+    // [NEW] Auto-fill message logic
+    useEffect(() => {
+        if (!showProposalDialog) return
+
+        setProposalMessage(prev => {
+            let updated = prev
+
+            // 1. Update Product Name Line
+            // Match any line ending with "제품을 제공해드리고 싶으며,"
+            const productLineRegex = /^.*제품을 제공해드리고 싶으며,$/m
+            if (productLineRegex.test(updated)) {
+                const newProductPart = productName ? `[ ${productName} ]` : `[ 제안 드리는 제품명 ]`
+                updated = updated.replace(productLineRegex, `${newProductPart} 제품을 제공해드리고 싶으며,`)
+            }
+
+            // 2. Update Content Type Line
+            // Match any line ending with "형식으로 소개해주시면 좋을 것 같습니다."
+            const contentLineRegex = /^.*형식으로 소개해주시면 좋을 것 같습니다\.$/m
+            const contentTypes = [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ')
+
+            if (contentLineRegex.test(updated)) {
+                const newContentPart = contentTypes ? `[ ${contentTypes} ]` : `[ 희망 콘텐츠 형식 ]`
+                updated = updated.replace(contentLineRegex, `${newContentPart} 형식으로 소개해주시면 좋을 것 같습니다.`)
+            }
+
+            return updated
+        })
+    }, [productName, selectedContentTypes, customContentType, showProposalDialog])
+
     useEffect(() => {
         const loadEvent = async () => {
             if (!params.id || params.id === 'default') return

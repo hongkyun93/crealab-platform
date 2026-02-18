@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [isAuthChecked, setIsAuthChecked] = useState(false)
     const [isInitialized, setIsInitialized] = useState(false)
     const lastUserId = useRef<string | null>(null)
+    const isInitAuthDone = useRef(false) // Guard: prevent onAuthStateChange from double-fetching during initAuth
 
     // Initialize from localStorage
     useEffect(() => {
@@ -54,13 +55,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [user, isInitialized])
 
     // Fetch user profile from database
-    const fetchUserProfile = async (sessionUser: any): Promise<User> => {
+    const fetchUserProfile = async (sessionUser: any, retryCount = 0): Promise<User> => {
         try {
-            const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', sessionUser.id)
-                .single()
+            // [PERF] Run profiles and team_members queries in parallel
+            const [profileResult, teamResult] = await Promise.all([
+                supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', sessionUser.id)
+                    .single(),
+                supabase
+                    .from('team_members')
+                    .select('team_id')
+                    .eq('user_id', sessionUser.id)
+                    .maybeSingle()
+            ])
+
+            const { data: profile, error } = profileResult
+            const { data: teamMember } = teamResult
 
             console.log('[AuthProvider] Raw profile from DB:', {
                 id: profile?.id,
@@ -71,42 +83,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             })
 
             if (profile) {
-                let teamId = undefined;
-                try {
-                    const { data: teamMember } = await supabase
-                        .from('team_members')
-                        .select('team_id')
-                        .eq('user_id', sessionUser.id)
-                        .maybeSingle()
+                const teamId = teamMember?.team_id
 
-                    if (teamMember) teamId = teamMember.team_id
-                } catch (e) {
-                    console.warn('[AuthProvider] Team fetch error', e)
-                }
-
-                // [REFACTOR] user_type removed. Using role as primary.
-                // If role is missing in DB (legacy data), fallback to user_type if present, otherwise NULL (to trigger onboarding)
-                const role = (profile.role || profile.user_type) as any
+                const role = profile.role as any
 
                 return {
                     id: sessionUser.id,
-                    name: profile.display_name || profile.name || sessionUser.email?.split('@')[0] || "User",
+                    name: profile.display_name || sessionUser.email?.split('@')[0] || "User",
                     email: profile.email || sessionUser.email,
-                    role: role, // Mapped directly
+                    role: role,
                     onboardingCompleted: profile.onboarding_completed || false,
                     avatar: profile.avatar_url,
-                    bio: profile.bio,
-                    website: profile.website,
-                    handle: profile.instagram_handle || profile.handle,
+                    bio: profile.description,  // profiles 테이블의 description 컬럼 = bio
+                    handle: profile.instagram_handle,
                     followers: profile.followers_count || 0,
                     tags: profile.tags || [],
                     phone: profile.phone,
-                    address: profile.address,
+                    address: profile.shipping_address,
                     teamId: teamId,
 
-                    // Rate card fields from profiles
+                    // Primary Region
+                    primaryRegion: profile.primary_region,
+
+                    // Rate card fields from profiles - EXTENDED
                     priceVideo: profile.price_video || 0,
                     priceFeed: profile.price_feed || 0,
+                    priceStory: profile.price_story || 0,
+                    priceUsageRights: profile.price_usage_rights || 0,
+                    priceAutoDm: profile.price_auto_dm || 0,
                     secondaryRights: profile.secondary_rights || false,
                     usageRightsMonth: profile.usage_rights_month || 0,
                     usageRightsPrice: profile.usage_rights_price || 0,
@@ -120,22 +124,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
             }
 
-
             if (error) {
                 console.warn('[AuthProvider] Profile fetch issue:', error.message)
             }
-        } catch (e) {
+        } catch (e: any) {
+            // Detect AbortError (React StrictMode double-mount cancels in-flight requests)
+            const isAbortError = e?.name === 'AbortError' ||
+                e?.message?.includes('AbortError') ||
+                e?.message?.includes('aborted') ||
+                e?.message === 'Failed to fetch' ||
+                e?.message === 'Load failed'
+
+            if (isAbortError && retryCount < 2) {
+                // Retry after a short delay - the abort was transient (StrictMode cleanup)
+                console.log(`[AuthProvider] Fetch aborted, retrying (attempt ${retryCount + 1})...`)
+                await new Promise(resolve => setTimeout(resolve, 150))
+                return fetchUserProfile(sessionUser, retryCount + 1)
+            }
+
             console.error("[AuthProvider] Exception:", e)
         }
 
-        // Fallback
+        // Fallback: DB fetch failed, use session metadata
+        console.warn('[AuthProvider] Profile DB fetch failed, using session metadata fallback')
         return {
             id: sessionUser.id,
             name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || "User",
             email: sessionUser.email,
             role: sessionUser.user_metadata?.role as "brand" | "creator" | "admin", // No default fallback
             avatar: sessionUser.user_metadata?.avatar_url,
-            tags: []
+            tags: [],
+            _isFallback: true  // Flag to indicate this is a fallback, not a fresh user
         } as User
     }
 
@@ -150,44 +169,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setIsAuthChecked(true)
                 window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '인증 확인 시간 초과 (강제 진행)', type: 'error' } }))
             }
-        }, 3000)
+        }, 5000)
 
         const initAuth = async () => {
             console.log('[AuthProvider] Initializing auth...')
-            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '인증 시스템 초기화 시작', type: 'loading' } }))
 
-            let session = null
-            // Optimized for dev: Reduce retries to prevent long hangs
-            for (let i = 0; i < 2; i++) {
-                const result = await supabase.auth.getSession()
-                session = result.data.session
-                if (session?.user) {
-                    console.log(`[AuthProvider] Session found on attempt ${i + 1}`)
-                    window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `세션 발견 (시도: ${i + 1})`, type: 'success' } }))
-                    break
-                }
-                if (i < 1) await new Promise(resolve => setTimeout(resolve, 50))
-            }
+            // Single getSession call — no retry loop needed
+            const { data: { session } } = await supabase.auth.getSession()
 
             if (session?.user && mounted) {
                 console.log('[AuthProvider] User found:', session.user.id)
-                // FORCE DATABASE FETCH: Do not trust local storage or metadata for role
+                lastUserId.current = session.user.id // Set before fetch so onAuthStateChange skips
                 const fetchedUser = await fetchUserProfile(session.user)
 
-                if (fetchedUser) {
+                if (fetchedUser && mounted) {
                     setUser(fetchedUser)
 
                     // STRICT REDIRECT LOGIC
                     const currentPath = window.location.pathname
 
-                    if (!fetchedUser.role) {
-                        // Case 1: Role is NULL -> MUST go to Onboarding
+                    if (!fetchedUser.role && !(fetchedUser as any)._isFallback) {
                         if (currentPath !== '/onboarding') {
                             console.log('[AuthProvider] Role is NULL -> Redirecting to /onboarding')
                             router.replace('/onboarding')
                         }
                     } else {
-                        // Case 2: Role exists -> MUST NOT be on Onboarding or Login
                         if (currentPath === '/onboarding' || currentPath === '/login' || currentPath === '/signup') {
                             const target = fetchedUser.role === 'brand' || fetchedUser.role === 'agency' ? '/brand' : '/creator'
                             console.log(`[AuthProvider] Role is ${fetchedUser.role} -> Redirecting to ${target}`)
@@ -199,7 +205,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('[AuthProvider] No session found, clearing user')
                 setUser(null)
             }
-            if (mounted) setIsAuthChecked(true)
+            if (mounted) {
+                setIsAuthChecked(true)
+                isInitAuthDone.current = true // Signal: onAuthStateChange can now handle events
+            }
         }
 
         initAuth()
@@ -208,6 +217,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log(`[AuthProvider] Auth event: ${event}`, session?.user?.id)
 
             if (session?.user) {
+                // Skip INITIAL_SESSION: initAuth already handled it
+                // Skip if same user and not a fresh SIGNED_IN event
+                if (event === 'INITIAL_SESSION') {
+                    console.log('[AuthProvider] Skip INITIAL_SESSION (handled by initAuth)')
+                    return
+                }
                 if (lastUserId.current === session.user.id && event !== 'SIGNED_IN') {
                     console.log('[AuthProvider] Skip redundant fetch')
                     return
@@ -269,6 +284,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Login function
     const login = async (email: string, password: string): Promise<User> => {
         try {
+            // Clear any stale cached user data before logging in with a new account
+            localStorage.removeItem("creadypick_user")
+            setUser(null)
+
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -294,7 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         try {
             console.log('[AuthProvider] Signing out...')
-            const { error } = await supabase.auth.signOut()
+            const { error } = await supabase.auth.signOut({ scope: 'global' })
             if (error) {
                 console.error('[AuthProvider] Logout error:', error)
                 // Continue with local cleanup even if server signout implies error
@@ -303,19 +322,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // 1. Clear state
             setUser(null)
 
-            // 2. Clear all local storage to be safe (or specific keys)
+            // 2. Clear localStorage (creadypick + supabase sb-* keys)
             localStorage.removeItem("creadypick_user")
-            // Also might want to clear supabase session if it persists
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('sb-')) localStorage.removeItem(key)
             })
 
-            // 3. Navigate
+            // 3. Clear sessionStorage
+            sessionStorage.clear()
+
+            // 4. Clear browser cookies (sb-* auth token cookies)
+            document.cookie.split(';').forEach(cookie => {
+                const name = cookie.split('=')[0].trim()
+                if (name.startsWith('sb-') || name === 'supabase-auth-token') {
+                    // Expire on all possible paths and domains
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`
+                }
+            })
+
+            // 5. Navigate (full reload to clear any in-memory state)
             window.location.href = '/login'
         } catch (error: any) {
             console.error('[AuthProvider] Logout failed:', error)
             setUser(null)
             localStorage.removeItem("creadypick_user")
+            sessionStorage.clear()
             window.location.href = '/login'
         }
     }
@@ -339,11 +371,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Basic profile fields
             if (data.name !== undefined) updates.display_name = data.name
-            if (data.bio !== undefined) updates.bio = data.bio
+            if (data.bio !== undefined) updates.description = data.bio  // profiles 테이블의 description 컬럼 = bio
             if (data.avatar !== undefined) updates.avatar_url = data.avatar
-            if (data.website !== undefined) updates.website = data.website
             if (data.phone !== undefined) updates.phone = data.phone
-            if (data.address !== undefined) updates.address = data.address
+            if (data.address !== undefined) updates.shipping_address = data.address
+
+            // NEW: Primary Region
+            if (data.primaryRegion !== undefined) updates.primary_region = data.primaryRegion
 
             // Determine role/type for logic (If updating self, use local user.type, else fetch or assume creator)
             // For now, if targetId is different, we assume we are updating a creator as MCN
@@ -365,13 +399,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     updates.tier = tier
                 }
 
-                // Rate card fields
+                // Rate card fields - EXTENDED
                 if (data.priceVideo !== undefined) updates.price_video = data.priceVideo
                 if (data.priceFeed !== undefined) updates.price_feed = data.priceFeed
+                if (data.priceStory !== undefined) updates.price_story = data.priceStory
+                if (data.priceUsageRights !== undefined) updates.price_usage_rights = data.priceUsageRights
+                if (data.priceAutoDm !== undefined) updates.price_auto_dm = data.priceAutoDm
                 if (data.secondaryRights !== undefined) updates.secondary_rights = !!data.secondaryRights
                 if (data.usageRightsMonth !== undefined) updates.usage_rights_month = data.usageRightsMonth
                 if (data.usageRightsPrice !== undefined) updates.usage_rights_price = data.usageRightsPrice
-                if (data.autoDmMonth !== undefined) updates.auto_dm_month = data.autoDmMonth
                 if (data.autoDmMonth !== undefined) updates.auto_dm_month = data.autoDmMonth
                 if (data.autoDmPrice !== undefined) updates.auto_dm_price = data.autoDmPrice
 
@@ -385,10 +421,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             const { error: updateError } = await supabase
                 .from('profiles')
-                .upsert({
-                    id: idToUpdate,
-                    ...updates
-                }, { onConflict: 'id' })
+                .update(updates)
+                .eq('id', idToUpdate)
 
             if (updateError) {
                 console.error('[AuthProvider] Profile update error:', JSON.stringify(updateError, null, 2))

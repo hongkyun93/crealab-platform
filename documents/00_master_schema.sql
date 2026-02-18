@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email text,
   display_name text,
   avatar_url text,
-  user_type text DEFAULT 'influencer',
   role text, -- 'brand', 'creator', 'mcn', 'agency'
   phone text,
   instagram_handle text,
@@ -50,8 +49,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   account_holder text
 );
 
--- Ensure user_type exists (for existing tables)
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS user_type text DEFAULT 'influencer';
+-- NOTE: user_type column removed. Use 'role' column exclusively.
 
 -- Ensure bank info columns exist (Migration for existing tables)
 DO $$
@@ -665,12 +663,13 @@ ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 
 -- Helper function to get user's team IDs without RLS recursion
+-- VOLATILE: Required because function uses SET LOCAL command
 CREATE OR REPLACE FUNCTION public.get_user_team_ids(target_user_id UUID)
 RETURNS SETOF UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-STABLE
+VOLATILE
 AS $$
 BEGIN
     -- Disable RLS for this function execution
@@ -686,12 +685,13 @@ END;
 $$;
 
 -- Helper function to check if user is owner/admin of a team (prevents RLS recursion)
+-- VOLATILE: Required because function uses SET LOCAL command
 CREATE OR REPLACE FUNCTION public.is_team_owner_or_admin(target_team_id UUID, target_user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-STABLE
+VOLATILE
 AS $$
 DECLARE
     user_role TEXT;

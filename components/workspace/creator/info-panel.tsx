@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ProgressBar } from '../common/progress-bar';
 import { StageCard } from '../common/stage-card';
 import { CtaButton } from '../common/cta-button';
@@ -9,11 +9,23 @@ import { Separator } from '@/components/ui/separator';
 import { ConditionsPanel } from '../common/conditions-panel';
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { Proposal } from '@/lib/types';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export function CreatorInfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateProposal, updateMomentProposal } = useUnifiedProvider();
+    const { updateProposal, updateMomentProposal, updateBrandProposal } = useUnifiedProvider();
+    const [isConfirming, setIsConfirming] = useState(false);
 
     // Helper to determine stage status
     const getStageStatus = (stageId: string) => {
@@ -60,11 +72,16 @@ export function CreatorInfoPanel() {
         if (updates.content_type !== undefined) payload.content_type = updates.content_type;
         if (updates.condition_secondary_usage_period !== undefined) payload.condition_secondary_usage_period = updates.condition_secondary_usage_period;
 
-        // [FIX] ID-1057 Distinguish Moment Proposal
+        // [FIX] 3-way proposal type routing
+        // 1. moment_id/event_id → moment_proposals
+        // 2. campaignId/campaign_id → campaign_applications
+        // 3. else → brand_proposals
         if ((proposal as any).moment_id || (proposal as any).momentId) {
             await updateMomentProposal(proposal.id, payload);
-        } else {
+        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             await updateProposal(proposal.id, payload);
+        } else {
+            await updateBrandProposal(proposal.id, payload);
         }
     };
 
@@ -125,6 +142,68 @@ export function CreatorInfoPanel() {
                             readonly={true} // Creator usually read-only unless negotiated
                             onSave={handleConditionSave} // Pass just in case logic changes
                         />
+                        {/* [옵션 A] 크리에이터 조건 수락 버튼 */}
+                        {/* 브랜드가 brand_condition_confirmed: true 저장 후, 크리에이터가 이 버튼으로 influencer_condition_confirmed: true 저장 */}
+                        {/* 양쪽 모두 true일 때 스테이지 판단 로직이 자동으로 'contract' 단계로 전환 */}
+                        {!proposal?.influencer_condition_confirmed && (
+                            <div className="mt-4 flex justify-end">
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <CtaButton disabled={isConfirming} isLoading={isConfirming}>
+                                            조건 수락
+                                        </CtaButton>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>조건을 수락하시겠습니까?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                제안된 조건을 수락하면 계약 단계로 진행됩니다. 이 작업은 되돌릴 수 없습니다.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>취소</AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={async () => {
+                                                    setIsConfirming(true);
+                                                    try {
+                                                        const updates = {
+                                                            influencer_condition_confirmed: true
+                                                        };
+
+                                                        let success = false;
+                                                        if (proposal && ((proposal as any).moment_id || (proposal as any).event_id)) {
+                                                            success = await updateMomentProposal(proposal.id, updates);
+                                                        } else if (proposal && ((proposal as any).campaignId || (proposal as any).campaign_id)) {
+                                                            success = await updateProposal(proposal.id, updates);
+                                                        } else if (proposal) {
+                                                            success = await updateBrandProposal(proposal.id, updates);
+                                                        }
+
+                                                        // 로컬 스토어 즉시 반영
+                                                        if (success) {
+                                                            useWorkspaceStore.getState().updateProposal(updates);
+                                                        }
+                                                    } finally {
+                                                        setIsConfirming(false);
+                                                    }
+                                                }}
+                                            >
+                                                수락하기
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        )}
+                        {/* 이미 수락한 경우 표시 */}
+                        {proposal?.influencer_condition_confirmed && (
+                            <div className="mt-4 flex justify-end">
+                                <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                    ✓ 조건 수락 완료
+                                    {!proposal?.brand_condition_confirmed && ' · 브랜드 확정 대기 중'}
+                                </span>
+                            </div>
+                        )}
                     </StageCard>
 
                     {/* Stage 2: Contract */}
