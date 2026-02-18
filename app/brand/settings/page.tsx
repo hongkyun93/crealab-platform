@@ -6,28 +6,58 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Camera } from "lucide-react"
 import Link from "next/link"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
 
 export default function BrandSettingsPage() {
     const { user, updateUser } = useUnifiedProvider()
     const router = useRouter()
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const supabase = createClient()
 
     const [name, setName] = useState("")
     const [website, setWebsite] = useState("")
     const [bio, setBio] = useState("")
+    const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
+    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
     useEffect(() => {
         if (user) {
             setName(user.name || "")
             setWebsite(user.website || "")
             setBio(user.bio || "")
+            setAvatarUrl(user.avatar)
         }
     }, [user])
+
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file || !user?.id) return
+        setIsUploadingAvatar(true)
+        try {
+            const ext = file.name.split('.').pop()
+            const path = `avatars/${user.id}/brand-avatar.${ext}`
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(path, file, { upsert: true })
+            if (uploadError) throw uploadError
+            const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+            const url = data.publicUrl
+            setAvatarUrl(url)
+            await updateUser({ avatar: url })
+            toast.success("프로필 이미지가 업데이트되었습니다.")
+        } catch (err) {
+            console.error('Avatar upload error:', err)
+            toast.error("이미지 업로드에 실패했습니다.")
+        } finally {
+            setIsUploadingAvatar(false)
+        }
+    }
 
     const handleSave = async () => {
         try {
@@ -72,14 +102,32 @@ export default function BrandSettingsPage() {
                     <CardContent className="space-y-4">
                         <div className="flex flex-col items-center justify-center mb-6">
                             <Label className="mb-2">프로필 이미지</Label>
-                            <AvatarUpload
-                                uid={user?.id || "brand"}
-                                url={user?.avatar}
-                                onUpload={async (url) => {
-                                    // Immediate update
-                                    await updateUser({ avatar: url })
-                                }}
-                                size={120}
+                            <div
+                                className="relative w-[120px] h-[120px] rounded-full overflow-hidden cursor-pointer group border-2 border-border"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                {avatarUrl ? (
+                                    <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-muted flex items-center justify-center text-3xl font-bold text-muted-foreground">
+                                        {name?.[0]?.toUpperCase() || 'B'}
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Camera className="w-6 h-6 text-white" />
+                                </div>
+                                {isUploadingAvatar && (
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                )}
+                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleAvatarChange}
                             />
                             <p className="text-xs text-muted-foreground mt-2">클릭하여 이미지 변경</p>
                         </div>
