@@ -145,7 +145,7 @@ export function CreatorInfoPanel() {
                         {/* [옵션 A] 크리에이터 조건 수락 버튼 */}
                         {/* 브랜드가 brand_condition_confirmed: true 저장 후, 크리에이터가 이 버튼으로 influencer_condition_confirmed: true 저장 */}
                         {/* 양쪽 모두 true일 때 스테이지 판단 로직이 자동으로 'contract' 단계로 전환 */}
-                        {!proposal?.influencer_condition_confirmed && (
+                        {!proposal?.influencer_condition_confirmed && proposal?.brand_condition_confirmed && (
                             <div className="mt-4 flex justify-end">
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>

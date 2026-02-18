@@ -56,19 +56,29 @@ export function ChatArea({ className }: ChatAreaProps) {
         return brandUserId;
     }, [p, user?.id, user?.role]);
 
-    // Filter messages: match by sender/receiver pair.
-    // Note: Existing messages in DB have null proposal_id/brand_proposal_id due to a pre-existing
-    // bug in handleSendMessage (proposalId was passed as the 'file' parameter slot).
-    // Therefore we filter by sender/receiver ID pair, which correctly identifies the conversation.
+    // Filter messages: match by sender/receiver pair AND proposal ID.
+    // This ensures that even if the same brand and creator have multiple proposals,
+    // each workspace chat shows only messages belonging to that specific proposal.
     const filteredMessages = useMemo(() => {
         if (!user?.id || !otherId) return [];
         return messages.filter((msg) => {
-            return (
+            const senderReceiverMatch =
                 (msg.senderId === user.id && msg.receiverId === otherId) ||
-                (msg.senderId === otherId && msg.receiverId === user.id)
-            );
+                (msg.senderId === otherId && msg.receiverId === user.id);
+
+            if (!senderReceiverMatch) return false;
+
+            // Isolate by proposal ID to prevent cross-proposal message leakage
+            if (isCampaignProposal) {
+                return msg.proposalId === proposalIdStr;
+            } else if (!isMomentProposal) {
+                // brand_proposal
+                return msg.brandProposalId === proposalIdStr;
+            }
+            // moment_proposal: no FK in messages table, fall back to sender/receiver only
+            return true;
         });
-    }, [messages, user?.id, otherId]);
+    }, [messages, user?.id, otherId, isCampaignProposal, isMomentProposal, proposalIdStr]);
 
     // Auto-scroll to bottom when messages change
     useEffect(() => {

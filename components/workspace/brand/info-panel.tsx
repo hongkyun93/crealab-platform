@@ -168,32 +168,47 @@ export function InfoPanel() {
                         {/* [RESTORED] Propose / Finalize Buttons for Brand */}
                         {proposal && (
                             <div className="mt-4 flex justify-end gap-2">
-                                {proposal.status === 'applied' && (
-                                    <CtaButton onClick={async () => {
-                                        if (!confirm('현재 조건으로 협업을 제안하시겠습니까?')) return;
 
-                                        const updates = { status: 'offered' as const };
-                                        let success = false;
-                                        if ((proposal as any).moment_id || (proposal as any).event_id) {
-                                            success = await updateMomentProposal(proposal.id, updates);
-                                        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
-                                            success = await updateProposal(proposal.id, updates);
-                                        } else {
-                                            success = await updateBrandProposal(proposal.id, updates);
-                                        }
-                                        if (success) {
-                                            useWorkspaceStore.getState().updateProposal(updates);
-                                        }
-                                    }}>
-                                        협업 제안하기
-                                    </CtaButton>
+                                {/* 크리에이터가 제안 보낸 상태(offered) - 브랜드가 수락/거절 */}
+                                {proposal.status === 'offered' && !proposal.brand_condition_confirmed && (
+                                    <>
+                                        <CtaButton onClick={async () => {
+                                            if (!confirm('이 협업 제안을 거절하시겠습니까?')) return;
+                                            const updates = { status: 'rejected' as const };
+                                            let success = false;
+                                            if ((proposal as any).moment_id || (proposal as any).event_id) {
+                                                success = await updateMomentProposal(proposal.id, updates);
+                                            } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                                success = await updateProposal(proposal.id, updates);
+                                            } else {
+                                                success = await updateBrandProposal(proposal.id, updates);
+                                            }
+                                            if (success) useWorkspaceStore.getState().updateProposal(updates);
+                                        }} variant="outline">
+                                            거절하기
+                                        </CtaButton>
+                                        <CtaButton onClick={async () => {
+                                            if (!confirm('이 협업 제안을 수락하시겠습니까? 조건 협의 단계로 넘어갑니다.')) return;
+                                            const updates = { status: 'negotiating' as const };
+                                            let success = false;
+                                            if ((proposal as any).moment_id || (proposal as any).event_id) {
+                                                success = await updateMomentProposal(proposal.id, updates);
+                                            } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                                success = await updateProposal(proposal.id, updates);
+                                            } else {
+                                                success = await updateBrandProposal(proposal.id, updates);
+                                            }
+                                            if (success) useWorkspaceStore.getState().updateProposal(updates);
+                                        }}>
+                                            수락하기
+                                        </CtaButton>
+                                    </>
                                 )}
 
-                                {/* brand_condition_confirmed가 이미 true면 버튼 숨김 */}
-                                {(proposal.status === 'negotiating' || proposal.status === 'offered') && !proposal.brand_condition_confirmed && (
+                                {/* 수락 후 조건 협의 중 - 조건 확정 버튼 */}
+                                {proposal.status === 'negotiating' && !proposal.brand_condition_confirmed && (
                                     <CtaButton onClick={async () => {
                                         if (!confirm('조건을 확정하고 계약서 작성 단계로 이동하시겠습니까?')) return;
-
                                         const updates = {
                                             contract_status: 'draft' as const,
                                             brand_condition_confirmed: true
@@ -206,10 +221,7 @@ export function InfoPanel() {
                                         } else {
                                             success = await updateBrandProposal(proposal.id, updates);
                                         }
-                                        // [FIX] 로컬 스토어 즉시 반영 (DB 업데이트 후 UI 갱신)
-                                        if (success) {
-                                            useWorkspaceStore.getState().updateProposal(updates);
-                                        }
+                                        if (success) useWorkspaceStore.getState().updateProposal(updates);
                                     }}>
                                         조건 확정 및 계약서 발송
                                     </CtaButton>

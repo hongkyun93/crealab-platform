@@ -31,28 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const lastUserId = useRef<string | null>(null)
     const isInitAuthDone = useRef(false) // Guard: prevent onAuthStateChange from double-fetching during initAuth
 
-    // Initialize from localStorage
+    // Clear any stale localStorage cache on mount (no longer used)
     useEffect(() => {
-        const storedUser = localStorage.getItem("creadypick_user")
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser))
-            } catch (e) {
-                console.error("[AuthProvider] Failed to parse stored user:", e)
-            }
-        }
-        setIsInitialized(true)
+        localStorage.removeItem("creadypick_user")
     }, [])
-
-    // Save user to localStorage
-    useEffect(() => {
-        if (!isInitialized) return
-        if (user) {
-            localStorage.setItem("creadypick_user", JSON.stringify(user))
-        } else {
-            localStorage.removeItem("creadypick_user")
-        }
-    }, [user, isInitialized])
 
     // Fetch user profile from database
     const fetchUserProfile = async (sessionUser: any, retryCount = 0): Promise<User> => {
@@ -163,51 +145,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let mounted = true
 
         // Failsafe timeout to prevent infinite loading if auth check hangs
+        // 10s gives enough time for slow networks to recover session from cookies
         const timer = setTimeout(() => {
             if (!isAuthChecked && mounted) {
                 console.warn("[AuthProvider] Auth check timed out, forcing render")
+                mounted = false // Prevent stale setUser calls from completing initAuth
                 setIsAuthChecked(true)
+                setIsInitialized(true)
                 window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '인증 확인 시간 초과 (강제 진행)', type: 'error' } }))
             }
-        }, 5000)
+        }, 10000)
 
         const initAuth = async () => {
             console.log('[AuthProvider] Initializing auth...')
 
-            // Single getSession call — no retry loop needed
-            const { data: { session } } = await supabase.auth.getSession()
+            try {
+                // Use getUser() instead of getSession() for faster cookie-based session recovery
+                // getSession() checks localStorage first, then falls back to server (slow when localStorage is empty)
+                // getUser() always validates with server directly, more reliable with SSR cookie sessions
+                const { data: { user: sessionUser } } = await supabase.auth.getUser()
 
-            if (session?.user && mounted) {
-                console.log('[AuthProvider] User found:', session.user.id)
-                lastUserId.current = session.user.id // Set before fetch so onAuthStateChange skips
-                const fetchedUser = await fetchUserProfile(session.user)
+                if (sessionUser && mounted) {
+                    console.log('[AuthProvider] User found:', sessionUser.id)
+                    lastUserId.current = sessionUser.id // Set before fetch so onAuthStateChange skips
+                    const fetchedUser = await fetchUserProfile(sessionUser)
 
-                if (fetchedUser && mounted) {
-                    setUser(fetchedUser)
+                    if (fetchedUser && mounted) {
+                        setUser(fetchedUser)
 
-                    // STRICT REDIRECT LOGIC
-                    const currentPath = window.location.pathname
+                        // STRICT REDIRECT LOGIC
+                        const currentPath = window.location.pathname
 
-                    if (!fetchedUser.role && !(fetchedUser as any)._isFallback) {
-                        if (currentPath !== '/onboarding') {
-                            console.log('[AuthProvider] Role is NULL -> Redirecting to /onboarding')
-                            router.replace('/onboarding')
-                        }
-                    } else {
-                        if (currentPath === '/onboarding' || currentPath === '/login' || currentPath === '/signup') {
-                            const target = fetchedUser.role === 'brand' || fetchedUser.role === 'agency' ? '/brand' : '/creator'
-                            console.log(`[AuthProvider] Role is ${fetchedUser.role} -> Redirecting to ${target}`)
-                            router.replace(target)
+                        if (!fetchedUser.role && !(fetchedUser as any)._isFallback) {
+                            if (currentPath !== '/onboarding') {
+                                console.log('[AuthProvider] Role is NULL -> Redirecting to /onboarding')
+                                router.replace('/onboarding')
+                            }
+                        } else {
+                            if (currentPath === '/onboarding' || currentPath === '/login' || currentPath === '/signup') {
+                                const target = fetchedUser.role === 'brand' || fetchedUser.role === 'agency' ? '/brand' : '/creator'
+                                console.log(`[AuthProvider] Role is ${fetchedUser.role} -> Redirecting to ${target}`)
+                                router.replace(target)
+                            }
                         }
                     }
+                } else if (mounted) {
+                    console.log('[AuthProvider] No session found, clearing user')
+                    setUser(null)
                 }
-            } else if (mounted) {
-                console.log('[AuthProvider] No session found, clearing user')
-                setUser(null)
-            }
-            if (mounted) {
-                setIsAuthChecked(true)
-                isInitAuthDone.current = true // Signal: onAuthStateChange can now handle events
+            } catch (e) {
+                console.error('[AuthProvider] initAuth error:', e)
+            } finally {
+                if (mounted) {
+                    setIsAuthChecked(true)
+                    setIsInitialized(true) // initAuth complete → isInitialized now means "DB fetch done"
+                    isInitAuthDone.current = true // Signal: onAuthStateChange can now handle events
+                }
             }
         }
 
@@ -269,7 +262,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 lastUserId.current = null
                 setUser(null)
             }
-            if (mounted) setIsAuthChecked(true)
+            if (mounted) {
+                setIsAuthChecked(true)
+                setIsInitialized(true)
+            }
         })
 
         // Failsafe timeout: Reduced for faster automation recovery (Cleanup managed via primary useEffect)
@@ -284,10 +280,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Login function
     const login = async (email: string, password: string): Promise<User> => {
         try {
-            // Clear any stale cached user data before logging in with a new account
+            // 1. Clear ALL caches before login (stale data prevention)
             localStorage.removeItem("creadypick_user")
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('sb-')) localStorage.removeItem(key)
+            })
+            sessionStorage.clear()
+            document.cookie.split(';').forEach(cookie => {
+                const name = cookie.split('=')[0].trim()
+                if (name.startsWith('sb-') || name === 'supabase-auth-token') {
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`
+                }
+            })
             setUser(null)
 
+            // 2. Sign in
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -298,7 +306,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data.session?.user) {
-                // Strict Login: Fetch profile from DB to get real role
+                // 3. Always fetch fresh user info from DB
                 const profile = await fetchUserProfile(data.session.user)
                 return profile
             }

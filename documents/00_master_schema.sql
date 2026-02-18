@@ -1319,6 +1319,8 @@ CREATE POLICY "Team proposals insert" ON public.brand_proposals FOR INSERT WITH 
 DROP POLICY IF EXISTS "Brand proposals update" ON public.brand_proposals;
 DROP POLICY IF EXISTS "Team proposals update" ON public.brand_proposals;
 CREATE POLICY "Team proposals update" ON public.brand_proposals FOR UPDATE USING (
+    auth.uid() = brand_id OR
+    auth.uid() = influencer_id OR
     brand_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid()) OR
     influencer_team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
 );

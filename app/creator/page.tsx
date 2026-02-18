@@ -69,7 +69,7 @@ import { CalendarView } from "@/components/dashboard/calendar-view"
 import dynamic from 'next/dynamic'
 
 // Dialog Components - Dynamically loaded for code splitting
-const ApplyDialog = dynamic(() => import("@/components/dialogs/ApplyDialog").then(m => ({ default: m.ApplyDialog })))
+const CreatorProposalDialog = dynamic(() => import("@/components/dialogs/CreatorProposalDialog").then(m => ({ default: m.CreatorProposalDialog })))
 const GuideDialog = dynamic(() => import("@/components/dialogs/GuideDialog").then(m => ({ default: m.GuideDialog })))
 const CampaignDetailDialog = dynamic(() => import("@/components/dialogs/CampaignDetailDialog").then(m => ({ default: m.CampaignDetailDialog })))
 const DetailsModal = dynamic(() => import("@/components/dialogs/DetailsModal").then(m => ({ default: m.DetailsModal })))
@@ -643,32 +643,22 @@ function InfluencerDashboardContent() {
 
         let related: any[] = []
         if (type === 'moment') {
-            // Filter brand proposals that target this specific moment event
-            // The schema has 'event_id' in brand_proposals referencing influencer_events(id)
+            // Filter moment proposals that target this specific moment event
             if (item && item.id) {
-                related = brandProposals.filter((p: any) => p.event_id === item.id);
+                related = (momentProposals as any[]).filter((p: any) => p.moment_id === item.id || p.event_id === item.id);
             } else {
                 related = [];
             }
         } else {
             // Campaign: Outbound applications
-            // Ideally we find the application(s) we made for this campaign
-            // But currently campaigns_list shows outbound APPLICATIONS (Campaign objects?)
-            // If item is 'campaign', it might be the Campaign info, or the Application info.
-            // If it's the Campaign, we need to find OUR application to it.
-            // proposals -> campaign_id
             if (item && item.id) {
-                // item is likely the Campaign object if from discover, or Application if from list?
-                // In campaigns_list, we iterate 'applications' which are proposals joined with campaigns.
-                // So item is the proposal(application).
-                // We don't have 'related proposals' to an application usually.
                 related = []
             }
         }
 
         setRelatedProposals(related)
         setIsDetailsModalOpen(true)
-    }, [brandProposals])
+    }, [momentProposals])
 
 
 
@@ -733,13 +723,14 @@ function InfluencerDashboardContent() {
     }, [])
 
     const allInboundProposals = useMemo(() => {
-        // [FIX] brandProposals already contains moment proposals (merged in ProposalProvider)
-        // We should NOT merge them again here to avoid duplicate keys.
+        // brandProposals = pure brand_proposals table data
+        // momentProposals = pure moment_proposals table data
+        // Both are now separate — merge explicitly here for inbound view
         return deduplicateById([
             ...(brandProposals || []),
-            // ...(momentProposals || []) // REMOVED: Redundant merge triggering duplicate keys
+            ...(momentProposals || []),
         ]).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-    }, [brandProposals, deduplicateById])
+    }, [brandProposals, momentProposals, deduplicateById])
 
     const filteredProposalsByMoment = selectedMomentId
         ? (allInboundProposals.filter((p: any) => p.event_id === selectedMomentId) || [])
@@ -747,12 +738,11 @@ function InfluencerDashboardContent() {
 
     // --- SHARED DATA LOGIC (Lifted for Dashboard & Proposals View) ---
 
-    // [New Logic] Split brandProposals into "Offers" (Inbound) and "Applications" (Outbound)
-    // Heuristic: If it has 'motivation' or 'content_plan', it's likely a Creator Application to a Brand Product.
-    // [FIX] Filter by status to avoid duplicates in Active/Rejected/Completed Lists
+    // Outbound Applications: creator applied to brand products (has motivation/content_plan)
+    // 'offered' is excluded here — if brand counter-offers, it becomes an inbound offer (brandOffers)
     const brandApplications = brandProposals?.filter((p: any) =>
         (p.motivation || p.content_plan) &&
-        (p.status === 'applied' || p.status === 'pending' || p.status === 'viewed' || p.status === 'offered')
+        (p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')
     ) || []
 
     // Brand Offers are those WITHOUT motivation (pure offers from brand)
@@ -772,10 +762,8 @@ function InfluencerDashboardContent() {
     const activeOutbound = campaignProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'confirmed') || []
     const allActive = deduplicateById([...activeInbound, ...activeOutbound]).sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
 
-    // Refined Inbound (Waiting for Action)
-    // brandOffers is filtered from brandProposals, which already contains merged moment_proposals
-    // (See proposal-provider.tsx line 265-269: setBrandProposals([...mappedBrand, ...mappedMoment]))
-    // Do NOT merge momentProposals again - it causes duplicate keys!
+    // Inbound (Waiting for Action): pure brand offers without motivation (brand→creator)
+    // moment proposals are included via allInboundProposals → brandOffers filters them out since they have no motivation
     const inboundProposals = brandOffers
         .filter((p: any) => !p.status || p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
@@ -1117,8 +1105,8 @@ function InfluencerDashboardContent() {
                                         />
                                     </div>
 
-                                    {/* Accept/Reject Buttons - Only show for 'offered' status */}
-                                    {proposal.status === 'offered' && (
+                                    {/* Accept/Reject Buttons - Only show for inbound offers (brand→creator), not outbound (creator→brand) */}
+                                    {proposal.status === 'offered' && proposal.type !== 'creator_apply' && type !== 'outbound' && (
                                         <div className="flex gap-2 shrink-0">
                                             <Button
                                                 size="sm"
@@ -2812,13 +2800,13 @@ function InfluencerDashboardContent() {
 
 
 
-    const handleSubmitApplication = async () => {
-        if (!instagramHandle || !motivation || !contentPlan) {
-            toast.error("활동 계정, 지원 동기, 콘텐츠 제작 계획은 필수 입력 항목입니다.")
+    const handleSubmitApplication = async (formData: import('@/components/dialogs/CreatorProposalDialog').CreatorProposalFormData) => {
+        if (!formData.channelUrl || !formData.motivation || !formData.contentPlan) {
+            toast.error("활동 채널/계정, 지원 동기, 콘텐츠 제작 계획은 필수 입력 항목입니다.")
             return
         }
 
-        const effectiveCreatorId = effectiveUserId
+        const effectiveCreatorId = formData.targetCreatorId || user?.id
 
         if ((user?.role === 'agency' || user?.role === 'mcn') && !effectiveCreatorId) {
             toast.error("지원을 대행할 크리에이터를 선택해주세요.")
@@ -2829,50 +2817,45 @@ function InfluencerDashboardContent() {
 
         setIsApplying(true)
         try {
-            // Upload Insight File
-            let insightUrl = null
-            if (insightFile) {
-                const fileExt = insightFile.name.split('.').pop()
+            // Upload Insight File if exists
+            let insightUrl: string | undefined = undefined
+            if (formData.insightFile) {
+                const fileExt = formData.insightFile.name.split('.').pop()
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
                 const filePath = `insights/${fileName}`
-                const { error: uploadError } = await supabase.storage.from('campaigns').upload(filePath, insightFile)
+
+                const { error: uploadError } = await supabase.storage
+                    .from('campaigns')
+                    .upload(filePath, formData.insightFile)
+
                 if (!uploadError) {
                     const { data } = supabase.storage.from('campaigns').getPublicUrl(filePath)
                     insightUrl = data.publicUrl
                 }
             }
 
-            const priceOffer = desiredCost ? parseInt(desiredCost.replace(/[^0-9]/g, '')) : undefined
-            const pLinks = portfolioLinks.split('\n').map(l => l.trim()).filter(Boolean)
+            const priceOffer = formData.desiredCost ? parseInt(formData.desiredCost.replace(/[^0-9]/g, '')) : undefined
+            const pLinks = formData.portfolioLinks.split('\n').map(l => l.trim()).filter(Boolean)
 
             await addProposal({
                 campaignId: selectedCampaign.id,
-                influencerId: effectiveCreatorId, // Explicitly pass for Proxy Mode
+                influencerId: effectiveCreatorId,
                 fromId: effectiveCreatorId!,
                 toId: selectedCampaign.brandId || selectedCampaign.brand_id,
-                message: appealMessage || motivation,
+                message: formData.appealMessage || formData.motivation,
                 status: 'applied',
                 type: 'creator_apply',
-                motivation: motivation,
-                content_plan: contentPlan,
+                motivation: formData.motivation,
+                content_plan: formData.contentPlan,
                 portfolioLinks: pLinks,
-                instagramHandle: instagramHandle,
-                insightScreenshot: insightUrl || undefined,
+                instagramHandle: formData.channelUrl,
+                insightScreenshot: insightUrl,
                 priceOffer: priceOffer,
                 dealType: 'ad',
                 date: new Date().toISOString()
             } as any)
 
             setIsApplyDialogOpen(false)
-
-            // Cleanup state
-            setTargetCreatorId("")
-            setAppealMessage("")
-            setDesiredCost("")
-            setMotivation("")
-            setContentPlan("")
-            setPortfolioLinks("")
-            setInsightFile(null)
 
             await refreshData()
             toast.success("지원서가 성공적으로 발송되었습니다!")
@@ -3182,33 +3165,19 @@ function InfluencerDashboardContent() {
                         onApply={handleApplyClick}
                     />
 
-                    <ApplyDialog
+                    <CreatorProposalDialog
                         open={isApplyDialogOpen}
                         onOpenChange={setIsApplyDialogOpen}
-                        selectedCampaign={selectedCampaign}
-                        appealMessage={appealMessage}
-                        setAppealMessage={setAppealMessage}
-                        desiredCost={desiredCost}
-                        setDesiredCost={setDesiredCost}
-                        motivation={motivation}
-                        setMotivation={setMotivation}
-                        contentPlan={contentPlan}
-                        setContentPlan={setContentPlan}
-                        portfolioLinks={portfolioLinks}
-                        setPortfolioLinks={setPortfolioLinks}
-                        instagramHandle={instagramHandle}
-                        setInstagramHandle={setInstagramHandle}
-                        insightFile={insightFile}
-                        setInsightFile={setInsightFile}
+                        target={selectedCampaign ? {
+                            brandName: selectedCampaign.brand || selectedCampaign.brandName || "브랜드",
+                            targetName: selectedCampaign.product || selectedCampaign.name || "캠페인",
+                            budget: selectedCampaign.budget,
+                            productName: selectedCampaign.product || selectedCampaign.name,
+                        } : null}
                         onSubmit={handleSubmitApplication}
-                        isApplying={false} // Todo: Add state
-                        onClose={() => setIsApplyDialogOpen(false)}
-                        onGenerateAIPlan={handleGenerateAIPlan}
-                        isAIPlanning={isAIPlanning}
-                        // Proxy Props
-                        targetCreatorId={targetCreatorId}
-                        setTargetCreatorId={setTargetCreatorId}
-                        teamMembers={teamMembers}
+                        isSubmitting={isApplying}
+                        teamMembers={(teamMembers || []).map((m: any) => ({ user_id: m.user_id || m.id, name: m.name || m.email }))}
+                        prefillHandle={user?.handle || ""}
                     />
 
                     {/* Workspace Dialog (Mobile & Desktop Unified) */}

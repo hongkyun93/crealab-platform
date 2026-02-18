@@ -3,31 +3,13 @@
 import { SiteHeader } from "@/components/site-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Textarea } from "@/components/ui/textarea"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { ArrowLeft, CheckCircle2, DollarSign, Percent, Send, ExternalLink, ImageIcon, Sparkles, Loader2 } from "lucide-react"
+import { ArrowLeft, CheckCircle2, DollarSign, Percent, Send, ExternalLink, ImageIcon } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CreatorProposalDialog, type CreatorProposalFormData } from "@/components/dialogs/CreatorProposalDialog"
 
 
 interface BrandProductDetailViewProps {
@@ -38,29 +20,9 @@ interface BrandProductDetailViewProps {
 export function BrandProductDetailView({ productId, onBack }: BrandProductDetailViewProps) {
     const { products, user, addProposal } = useUnifiedProvider()
     const [isOpen, setIsOpen] = useState(false)
-
-    // Form State (Matching ApplyDialog)
-    const [channelName, setChannelName] = useState("instagram")
-    const [channelUrl, setChannelUrl] = useState("")
-    const [motivation, setMotivation] = useState("")
-    const [contentPlan, setContentPlan] = useState("")
-    const [portfolioLinks, setPortfolioLinks] = useState("")
-    const [insightFile, setInsightFile] = useState<File | null>(null)
-    const [desiredCost, setDesiredCost] = useState("")
-    const [appealMessage, setAppealMessage] = useState("")
-
-    // AI State
-    const [isAIPlanning, setIsAIPlanning] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const product = products.find(p => String(p.id) === productId)
-
-    // Pre-fill handle
-    useEffect(() => {
-        if (user?.handle) {
-            setChannelUrl(user.handle)
-        }
-    }, [user])
 
     // Agency/MCN Support
     const [targetCreatorId, setTargetCreatorId] = useState<string>("")
@@ -121,128 +83,78 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
         )
     }
 
-    const handleGenerateAIPlan = async () => {
-        if (!product) return
 
-        setIsAIPlanning(true)
-        try {
-            const response = await fetch('/api/generate-content-plan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    productName: product.name,
-                    sellingPoints: product.points || "제품의 일반적인 강점",
-                    category: product.category || "기타",
-                    requiredShots: product.shots || "자유로운 구도"
-                })
-            })
-
-            const data = await response.json()
-            if (data.result) {
-                // If structured data
-                if (data.result.motivation && data.result.content_plan) {
-                    setMotivation(data.result.motivation)
-                    setContentPlan(data.result.content_plan)
-                } else if (typeof data.result === 'string') {
-                    setContentPlan(data.result)
-                }
-            }
-        } catch (error) {
-            console.error("AI Generation Failed:", error)
-            alert("AI 기획안 생성에 실패했습니다.")
-        } finally {
-            setIsAIPlanning(false)
-        }
-    }
-
-    const handlePropose = async () => {
+    const handlePropose = async (formData: CreatorProposalFormData) => {
         if (!user) {
             alert("로그인이 필요합니다.")
             return
         }
-
-        if (!channelUrl || !motivation || !contentPlan) {
-            alert("활동 채널/계정, 지원 동기, 콘텐츠 제작 계획은 필수 입력 항목입니다.")
+        if (!product?.brandId) {
+            alert("제품 정보에 브랜드 ID가 누락되었습니다.")
             return
         }
+
+        const effectiveCreatorId = (user?.role === 'agency' || user?.role === 'mcn')
+            ? formData.targetCreatorId
+            : user?.id
 
         setIsSubmitting(true)
         try {
             // Upload Insight File if exists
-            let insightUrl = null
-            if (insightFile) {
+            let insightUrl: string | null = null
+            if (formData.insightFile) {
                 const supabase = createClient()
-                const fileExt = insightFile.name.split('.').pop()
+                const fileExt = formData.insightFile.name.split('.').pop()
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
                 const filePath = `insights/${fileName}`
-
                 const { error: uploadError } = await supabase.storage
-                    .from('campaigns') // Reusing campaigns bucket for now
-                    .upload(filePath, insightFile)
-
+                    .from('campaigns')
+                    .upload(filePath, formData.insightFile)
                 if (!uploadError) {
                     const { data } = supabase.storage.from('campaigns').getPublicUrl(filePath)
                     insightUrl = data.publicUrl
                 }
             }
 
-            // Pack structured data into a readable message since brand_proposals might not have specific columns
-            // This ensures backward compatibility while providing all info.
-            const formattedMessage = `
-[지원 정보]
-- 활동 채널: ${channelName} (${channelUrl})
-- 희망 원고료: ${desiredCost || '제시 없음'}
-- 포트폴리오: ${portfolioLinks || '없음'}
-- 인사이트 첨부: ${insightUrl ? '첨부됨' : '없음'}
-
-[지원 동기]
-${motivation}
-
-[콘텐츠 제작 계획]
-${contentPlan}
-
-[추가 메시지]
-${appealMessage || '없음'}
-            `.trim()
-
-            if (!product.brandId) {
-                console.error("Product missing brandId:", product)
-                alert("제품 정보에 브랜드 ID가 누락되었습니다.")
-                return
-            }
-
-            const effectiveCreatorId = (user?.role === 'agency' || user?.role === 'mcn') ? targetCreatorId : user?.id
-            if ((user?.role === 'agency' || user?.role === 'mcn') && !targetCreatorId) {
-                alert("지원을 대행할 크리에이터를 선택해주세요.")
-                setIsSubmitting(false)
-                return
-            }
-
-            console.log("Submitting proposal for product:", product.id, "Brand:", product.brandId)
+            const formattedMessage = [
+                `[지원 정보]`,
+                `- 활동 채널: ${formData.channelName} (${formData.channelUrl})`,
+                `- 희망 원고료: ${formData.desiredCost || '제시 없음'}`,
+                `- 포트폴리오: ${formData.portfolioLinks || '없음'}`,
+                `- 인사이트 첨부: ${insightUrl ? '첨부됨' : '없음'}`,
+                ``,
+                `[지원 동기]`,
+                formData.motivation,
+                ``,
+                `[콘텐츠 제작 계획]`,
+                formData.contentPlan,
+                ``,
+                `[추가 메시지]`,
+                formData.appealMessage || '없음',
+            ].join('\n')
 
             await addProposal({
                 type: "creator_apply",
                 dealType: "ad",
                 productId: product.id,
-                productName: product.name, // [FIX] pass actual product name
-                cost: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
+                productName: product.name,
+                cost: formData.desiredCost ? Number(formData.desiredCost.replace(/[^0-9]/g, '')) : 0,
                 commission: 0,
                 requestDetails: formattedMessage,
                 status: "applied",
                 fromId: effectiveCreatorId,
                 toId: product.brandId,
-                motivation: motivation,
-                content_plan: contentPlan,
-                portfolioLinks: portfolioLinks ? [portfolioLinks] : [],
-                channel_name: channelName,
-                channel_url: channelUrl,
+                motivation: formData.motivation,
+                content_plan: formData.contentPlan,
+                portfolioLinks: formData.portfolioLinks ? [formData.portfolioLinks] : [],
+                channel_name: formData.channelName,
+                channel_url: formData.channelUrl,
                 insightScreenshot: insightUrl || undefined,
             })
 
             setIsOpen(false)
             alert("제안서가 성공적으로 전송되었습니다.")
             onBack()
-
         } catch (error) {
             console.error("Proposal Error:", error)
             alert("제안서 전송 중 오류가 발생했습니다.")
@@ -300,187 +212,22 @@ ${appealMessage || '없음'}
                                     <Send className="mr-2 h-5 w-5" /> 협업 제안하기
                                 </Button>
 
-                                <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                                    <DialogContent className="sm:max-w-lg h-[90vh] sm:h-auto overflow-y-auto">
-                                        <DialogHeader>
-                                            <DialogTitle className="text-xl font-bold">협업 제안하기</DialogTitle>
-                                            <DialogDescription className="text-xs">
-                                                브랜드에게 제안할 지원 정보와 기획안을 작성해주세요.
-                                            </DialogDescription>
-                                        </DialogHeader>
-
-                                        <div className="grid gap-4 py-4">
-                                            {/* Agency/MCN Creator Selection */}
-                                            {teamMembers && teamMembers.length > 0 && (
-                                                <div className="space-y-2 pb-2 border-b">
-                                                    <Label htmlFor="creator_select" className="text-purple-600 font-bold">크리에이터 선택 (대리 지원)</Label>
-                                                    <Select value={targetCreatorId} onValueChange={setTargetCreatorId}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="지원을 대행할 크리에이터를 선택하세요" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {teamMembers.map((member) => (
-                                                                <SelectItem key={member.user_id || member.id} value={member.user_id || member.id}>
-                                                                    {member.name || member.email}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
-                                            {/* Channel Selection */}
-                                            <div className="space-y-4">
-                                                <Label>진행 채널 선택 <span className="text-red-500">*</span></Label>
-                                                <Tabs defaultValue="instagram" onValueChange={(val) => {
-                                                    setChannelName(val)
-                                                    // Optional: Reset or update pre-filled URL based on channel if using profile data
-                                                }} className="w-full">
-                                                    <TabsList className="grid w-full grid-cols-5 bg-background border h-12 p-1">
-                                                        <TabsTrigger value="instagram" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 data-[state=active]:border-purple-200 border border-transparent rounded-md text-xs font-medium transition-all">
-                                                            Instagram
-                                                        </TabsTrigger>
-                                                        <TabsTrigger value="youtube" className="data-[state=active]:bg-red-100 data-[state=active]:text-red-700 data-[state=active]:border-red-200 border border-transparent rounded-md text-xs font-medium transition-all">
-                                                            YouTube
-                                                        </TabsTrigger>
-                                                        <TabsTrigger value="tiktok" className="data-[state=active]:bg-stone-100 data-[state=active]:text-stone-900 data-[state=active]:border-stone-200 border border-transparent rounded-md text-xs font-medium transition-all">
-                                                            TikTok
-                                                        </TabsTrigger>
-                                                        <TabsTrigger value="blog" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 data-[state=active]:border-green-200 border border-transparent rounded-md text-xs font-medium transition-all">
-                                                            Blog
-                                                        </TabsTrigger>
-                                                        <TabsTrigger value="other" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 data-[state=active]:border-blue-200 border border-transparent rounded-md text-xs font-medium transition-all">
-                                                            기타
-                                                        </TabsTrigger>
-                                                    </TabsList>
-                                                </Tabs>
-
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="channelUrl" className="text-xs text-muted-foreground">
-                                                        {channelName === 'instagram' && '인스타그램 프로필 주소 또는 ID'}
-                                                        {channelName === 'youtube' && '유튜브 채널 주소'}
-                                                        {channelName === 'tiktok' && '틱톡 프로필 주소'}
-                                                        {channelName === 'blog' && '블로그 주소'}
-                                                        {channelName === 'other' && '채널/포트폴리오 주소'}
-                                                    </Label>
-                                                    <Input
-                                                        id="channelUrl"
-                                                        value={channelUrl}
-                                                        onChange={(e) => setChannelUrl(e.target.value)}
-                                                        placeholder={
-                                                            channelName === 'instagram' ? "https://instagram.com/userid" :
-                                                                channelName === 'youtube' ? "https://youtube.com/@channel" :
-                                                                    "https://..."
-                                                        }
-                                                        className="bg-muted/30"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Motivation */}
-                                            <div className="space-y-2">
-                                                <Label htmlFor="motivation">지원 동기 <span className="text-red-500">*</span></Label>
-                                                <Textarea
-                                                    id="motivation"
-                                                    value={motivation}
-                                                    onChange={(e) => setMotivation(e.target.value)}
-                                                    placeholder="이 제품에 관심을 갖게 된 계기나, 표현하고 싶은 포인트를 적어주세요."
-                                                    className="min-h-[100px]"
-                                                />
-                                            </div>
-
-                                            {/* Content Plan with AI Button */}
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between items-center">
-                                                    <Label htmlFor="contentPlan">콘텐츠 제작 계획 <span className="text-red-500">*</span></Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-6 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                                                        onClick={handleGenerateAIPlan}
-                                                        disabled={isAIPlanning}
-                                                    >
-                                                        {isAIPlanning ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
-                                                        AI 기획안 받기
-                                                    </Button>
-                                                </div>
-                                                <Textarea
-                                                    id="contentPlan"
-                                                    value={contentPlan}
-                                                    onChange={(e) => setContentPlan(e.target.value)}
-                                                    className="min-h-[150px]"
-                                                    placeholder="어떤 컨셉과 흐름(오프닝, 본문, 클로징)으로 영상을 제작할지 구체적으로 작성해주세요."
-                                                />
-                                            </div>
-
-                                            {/* Portfolio */}
-                                            <div className="space-y-2">
-                                                <Label htmlFor="portfolio">포트폴리오 링크 (선택)</Label>
-                                                <Textarea
-                                                    id="portfolio"
-                                                    value={portfolioLinks}
-                                                    onChange={(e) => setPortfolioLinks(e.target.value)}
-                                                    placeholder="관련된 콘텐츠 URL을 줄바꿈으로 구분하여 입력해주세요."
-                                                    className="min-h-[80px]"
-                                                />
-                                            </div>
-
-                                            {/* Insight File */}
-                                            <div className="space-y-2">
-                                                <Label htmlFor="insight">인사이트 캡처 (선택)</Label>
-                                                <div className="flex items-center gap-2">
-                                                    <Input
-                                                        id="insight"
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={(e) => {
-                                                            if (e.target.files && e.target.files[0]) {
-                                                                setInsightFile(e.target.files[0])
-                                                            }
-                                                        }}
-                                                        className="cursor-pointer"
-                                                    />
-                                                    {insightFile && <span className="text-xs text-emerald-600 font-bold">선택됨</span>}
-                                                </div>
-                                                <p className="text-[10px] text-muted-foreground">계정 도달수나 팔로워 인사이트 캡처를 첨부하면 선정 확률이 높아집니다.</p>
-                                            </div>
-
-                                            {/* Cost and Message */}
-                                            <div className="space-y-2 border-t pt-2">
-                                                <Label htmlFor="cost">희망 원고료 (선택)</Label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-bold">₩</span>
-                                                    <Input
-                                                        id="cost"
-                                                        type="number"
-                                                        value={desiredCost}
-                                                        onChange={(e) => setDesiredCost(e.target.value)}
-                                                        placeholder="0"
-                                                        className="pl-8"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label htmlFor="message">추가 메시지</Label>
-                                                <Textarea
-                                                    id="message"
-                                                    value={appealMessage}
-                                                    onChange={(e) => setAppealMessage(e.target.value)}
-                                                    className="min-h-[80px]"
-                                                    placeholder="기타 브랜드에게 하고 싶은 말이 있다면 적어주세요."
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <DialogFooter>
-                                            <Button variant="outline" onClick={() => setIsOpen(false)}>취소</Button>
-                                            <Button onClick={handlePropose} disabled={isSubmitting} className="font-bold">
-                                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                                제안서 전송
-                                            </Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
+                                <CreatorProposalDialog
+                                    open={isOpen}
+                                    onOpenChange={setIsOpen}
+                                    target={product ? {
+                                        brandName: product.brandName || "브랜드",
+                                        targetName: product.name,
+                                        productName: product.name,
+                                        sellingPoints: product.points,
+                                        category: product.category,
+                                        requiredShots: product.shots,
+                                    } : null}
+                                    onSubmit={handlePropose}
+                                    isSubmitting={isSubmitting}
+                                    teamMembers={teamMembers}
+                                    prefillHandle={user?.handle || ""}
+                                />
 
                                 {product.link && (
                                     <Button variant="outline" size="lg" className="flex-1 h-14 border-2 font-bold" asChild>

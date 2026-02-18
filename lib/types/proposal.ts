@@ -1,7 +1,7 @@
 // Proposal and Contract Types
 export type ProposalType = 'brand_invite' | 'brand_offer' | 'creator_apply'
 export type DealType = 'ad' | 'gonggu'
-export type ProposalStatus = 'applied' | 'accepted' | 'rejected' | 'negotiating' | 'pending' | 'hold' | 'offered'
+export type ProposalStatus = 'applied' | 'accepted' | 'rejected' | 'negotiating' | 'pending' | 'hold' | 'offered' | 'cancelled' | 'completed'
 export type ContractStatus = 'draft' | 'sent' | 'signed' | 'negotiating' | 'rejected'
 export type ContentSubmissionStatus = 'pending' | 'submitted' | 'approved' | 'rejected'
 

@@ -393,17 +393,35 @@ export function ConditionsPanel({ userRole, readonly = false, onSave }: Conditio
                 </div>
             </div>
 
-            {/* Status Indicators - Role Based */}
+            {/* Status Indicators - based on actual confirmed flags */}
             <div className="pt-2 flex gap-2">
                 {userRole === 'brand' ? (
                     <>
-                        <StatusChip label="브랜드 (나)" status="confirmed" text="✅ 제안함" />
-                        <StatusChip label="크리에이터" status="waiting" text="⏳ 대기중" active />
+                        <StatusChip
+                            label="브랜드 (나)"
+                            status={proposal?.brand_condition_confirmed ? "confirmed" : "action_needed"}
+                            text={proposal?.brand_condition_confirmed ? "✅ 확정함" : "⚠️ 확정 필요"}
+                            active={!proposal?.brand_condition_confirmed}
+                        />
+                        <StatusChip
+                            label="크리에이터"
+                            status={proposal?.influencer_condition_confirmed ? "confirmed" : "waiting"}
+                            text={proposal?.influencer_condition_confirmed ? "✅ 수락함" : "⏳ 대기중"}
+                        />
                     </>
                 ) : (
                     <>
-                        <StatusChip label="브랜드" status="confirmed" text="✅ 제안함" />
-                        <StatusChip label="크리에이터 (나)" status="action_needed" text="⚠️ 확인 필요" active />
+                        <StatusChip
+                            label="브랜드"
+                            status={proposal?.brand_condition_confirmed ? "confirmed" : "waiting"}
+                            text={proposal?.brand_condition_confirmed ? "✅ 확정함" : "⏳ 대기중"}
+                        />
+                        <StatusChip
+                            label="크리에이터 (나)"
+                            status={proposal?.influencer_condition_confirmed ? "confirmed" : "action_needed"}
+                            text={proposal?.influencer_condition_confirmed ? "✅ 수락함" : "⚠️ 확인 필요"}
+                            active={!proposal?.influencer_condition_confirmed}
+                        />
                     </>
                 )}
             </div>

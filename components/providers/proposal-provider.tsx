@@ -354,15 +354,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             setMomentProposals(rawMomentProposals)
             console.log('[ProposalProvider] Loaded raw moment proposals:', rawMomentProposals.length)
 
-            const final = [...mappedBrand, ...mappedMoment].sort((a, b) =>
+            const finalBrand = [...mappedBrand].sort((a, b) =>
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             )
 
-            setBrandProposals(final)
+            setBrandProposals(finalBrand)
             console.log('[ProposalProvider] Loaded proposals:', {
                 brand: mappedBrand.length,
-                moment: mappedMoment.length,
-                total: final.length
+                moment: mappedMoment.length
             })
 
         } catch (err) {
@@ -435,12 +434,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Realtime moment_proposal update:', payload.new.id)
-                    // Update momentProposals local state
+                    // Update momentProposals local state only (no longer merged into brandProposals)
                     setMomentProposals(prev => prev.map(p =>
-                        p.id === payload.new.id ? { ...p, ...payload.new } : p
-                    ))
-                    // Update brandProposals (merged view) as well
-                    setBrandProposals(prev => prev.map(p =>
                         p.id === payload.new.id ? { ...p, ...payload.new } : p
                     ))
                     // Also update workspace store if this proposal is currently open
@@ -517,10 +512,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Brand-side moment_proposal update:', payload.new.id)
+                    // Update momentProposals only (no longer merged into brandProposals)
                     setMomentProposals(prev => prev.map(p =>
-                        p.id === payload.new.id ? { ...p, ...payload.new } : p
-                    ))
-                    setBrandProposals(prev => prev.map(p =>
                         p.id === payload.new.id ? { ...p, ...payload.new } : p
                     ))
                     const currentProposal = useWorkspaceStore.getState().proposal

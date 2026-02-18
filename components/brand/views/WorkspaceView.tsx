@@ -183,15 +183,38 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
     // MEMOIZED DATA FILTERING
 
-    // 1. Inbound (Received Applications from Creators) - brand_proposals + campaign_applications
+    // 1. Inbound (Received from Creators) - campaign_applications + brand_proposals
+    // brand_proposals: 크리에이터가 브랜드 제품 보고 제안 (influencer_id = 크리에이터, brand_id = 브랜드)
+    // campaign_applications: 크리에이터가 브랜드 캠페인에 지원
     const inboundApplications = useMemo(
-        () => campaignProposals?.filter((p: any) => p.status === 'applied' || p.status === 'pending' || p.status === 'viewed') || [],
-        [campaignProposals]
+        () => [
+            ...(campaignProposals?.filter((p: any) => p.status === 'applied' || p.status === 'pending' || p.status === 'viewed') || []),
+            ...(brandProposals?.filter((p: any) =>
+                !p.moment_id && // moment_proposals 제외
+                (p.status === 'applied' || p.status === 'pending' || p.status === 'offered' || !p.status)
+            ) || [])
+        ],
+        [campaignProposals, brandProposals]
     )
 
-    // 2. Outbound (Sent Offers to Creators) - moment_proposals (from brandProposals)
+    // 2. Outbound (Sent by Brand to Creators) - moment_proposals only
+    // moment_proposals: 브랜드가 크리에이터 모먼트 보고 제안 (brand_id = 브랜드, influencer_id = 크리에이터)
     const outboundOffers = useMemo(
-        () => brandProposals?.filter(p => (!p.status || p.status === 'offered' || p.status === 'negotiating') && p.moment_id) || [],
+        () => brandProposals?.filter(p =>
+            p.moment_id &&
+            p.status !== 'rejected' &&
+            p.status !== 'cancelled' &&
+            p.status !== 'completed' &&
+            p.status !== 'accepted' &&
+            p.status !== 'signed' &&
+            p.status !== 'confirmed' &&
+            (
+                !p.status ||
+                p.status === 'offered' ||
+                p.status === 'negotiating' ||
+                !p.brand_condition_confirmed
+            )
+        ) || [],
         [brandProposals]
     )
 
@@ -238,7 +261,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     )
 
     const rejectedOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => p.status === 'rejected' && p.moment_id) || [],
+        () => brandProposals?.filter((p: any) => (p.status === 'rejected' || p.status === 'cancelled') && p.moment_id) || [],
         [brandProposals]
     )
 
@@ -466,8 +489,13 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         return (
             <div className="space-y-4">
                 {items.map((item: any) => {
-                    const isInbound = tabType === 'inbound' || (tabType === 'all' && item.campaign_id)
-                    const isOutbound = tabType === 'outbound' || (tabType === 'all' && item.moment_id)
+                    const isInbound = tabType === 'inbound' || (
+                        tabType === 'all' && (
+                            item.campaign_id || // campaign_applications
+                            (!item.moment_id && !item.event_id && !item.campaign_id) // brand_proposals (크리에이터→브랜드)
+                        )
+                    )
+                    const isOutbound = tabType === 'outbound' || (tabType === 'all' && (item.moment_id || item.event_id))
 
                     return (
                         <Card key={item.id} className={`p-6 border-l-4 bg-card hover:bg-accent/5 cursor-pointer hover:shadow-md transition-all
@@ -511,48 +539,50 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                             {item.message}
                                         </div>
                                     )}
-                                    <div className="mt-4">
-                                        <WorkspaceProgressBar
-                                            status={item.status}
-                                            contract_status={item.contract_status}
-                                            delivery_status={item.delivery_status}
-                                            content_submission_status={item.content_submission_status}
-                                        />
+                                    <div className="mt-4 flex items-center gap-4">
+                                        <div className="flex-1">
+                                            <WorkspaceProgressBar
+                                                status={item.status}
+                                                contract_status={item.contract_status}
+                                                delivery_status={item.delivery_status}
+                                                content_submission_status={item.content_submission_status}
+                                            />
+                                        </div>
+
+                                        {/* Action Buttons - 브랜드 받은 제안: campaign_applications(applied/pending) + brand_proposals(offered) */}
+                                        {isInbound && (item.status === 'applied' || item.status === 'pending' || item.status === 'viewed' || item.status === 'offered') && (
+                                            <div className="flex gap-2 shrink-0">
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+                                                    onClick={(e) => handleAcceptProposal(e, item.id)}
+                                                >
+                                                    수락하기
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-400 font-semibold"
+                                                    onClick={(e) => handleRejectProposal(e, item.id)}
+                                                >
+                                                    거절하기
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {isOutbound && (!item.status || item.status === 'offered' || item.status === 'negotiating') && (
+                                            <div className="shrink-0">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-gray-200 hover:bg-gray-50 text-gray-700"
+                                                    onClick={(e) => handleCancelProposal(e, item.id)}
+                                                >
+                                                    <Ban className="mr-1 h-3 w-3" /> 제안 취소
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
-
-                                    {/* Action Buttons */}
-                                    {isInbound && (item.status === 'applied' || item.status === 'pending' || item.status === 'viewed') && (
-                                        <div className="flex gap=2 mt-4">
-                                            <Button
-                                                size="sm"
-                                                className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
-                                                onClick={(e) => handleAcceptProposal(e, item.id)}
-                                            >
-                                                <CheckCircle2 className="mr-1 h-3 w-3" /> 수락
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-8 text-xs border-red-200 hover:bg-red-50 text-red-700"
-                                                onClick={(e) => handleRejectProposal(e, item.id)}
-                                            >
-                                                <X className="mr-1 h-3 w-3" /> 거절
-                                            </Button>
-                                        </div>
-                                    )}
-
-                                    {isOutbound && (!item.status || item.status === 'offered' || item.status === 'negotiating') && (
-                                        <div className="mt-4">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-8 text-xs border-gray-200 hover:bg-gray-50 text-gray-700"
-                                                onClick={(e) => handleCancelProposal(e, item.id)}
-                                            >
-                                                <Ban className="mr-1 h-3 w-3" /> 제안 취소
-                                            </Button>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </Card>
