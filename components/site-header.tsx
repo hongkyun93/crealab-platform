@@ -75,7 +75,7 @@ export function SiteHeader() {
 
     const handleLogout = async () => {
         await logout()
-        router.push("/")
+        // No router.push here - AuthProvider does hard redirect
     }
 
     const handleProfileClick = () => {
