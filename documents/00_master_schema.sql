@@ -219,6 +219,7 @@ CREATE TABLE IF NOT EXISTS public.brand_proposals (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   brand_id uuid REFERENCES public.profiles(id) NOT NULL,
   influencer_id uuid REFERENCES public.profiles(id) NOT NULL,
+  influencer_team_id uuid REFERENCES public.teams(id), -- [NEW]
   
   -- Product Info
   product_id uuid REFERENCES public.brand_products(id),
@@ -292,6 +293,7 @@ CREATE TABLE IF NOT EXISTS public.campaign_applications (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   campaign_id uuid REFERENCES public.campaigns(id) NOT NULL,
   influencer_id uuid REFERENCES public.profiles(id) NOT NULL,
+  influencer_team_id uuid REFERENCES public.teams(id), -- [NEW]
   
   message text,
   price_offer integer,
@@ -345,47 +347,7 @@ CREATE TABLE IF NOT EXISTS public.campaign_applications (
 );
 
 -- 2.8 CAMPAIGN PROPOSALS (Applications)
-CREATE TABLE IF NOT EXISTS public.campaign_proposals (
-  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-  campaign_id uuid REFERENCES public.campaigns(id) NOT NULL,
-  influencer_id uuid REFERENCES public.profiles(id) NOT NULL,
-  
-  message text,
-  price_offer integer,
-  status text DEFAULT 'pending',
-  
-  motivation text,
-  content_plan text,
-  portfolio_links text[],
-  instagram_handle text,
-  insight_screenshot text,
-  
-  -- Logistics
-  shipping_name text,
-  shipping_phone text,
-  shipping_address text,
-  tracking_number text,
-  delivery_status text DEFAULT 'pending',
-
-  -- Contract
-  contract_content TEXT,
-  contract_status TEXT DEFAULT 'none',
-  brand_signature TEXT,
-  influencer_signature TEXT,
-  brand_signed_at TIMESTAMP WITH TIME ZONE,
-  influencer_signed_at TIMESTAMP WITH TIME ZONE,
-
-  -- Conditions
-  condition_product_receipt_date text,
-  condition_plan_sharing_date text,
-  condition_draft_submission_date text,
-  condition_final_submission_date text,
-  condition_upload_date text,
-  condition_maintenance_period text,
-  condition_secondary_usage_period text,
-  brand_condition_confirmed BOOLEAN DEFAULT FALSE,
-  influencer_condition_confirmed BOOLEAN DEFAULT FALSE,
-  special_terms text,
+-- 2.8 CAMPAIGN PROPOSALS (Applications) - DEPRECATED / REMOVED
 
   -- Submission
   content_submission_url text,
@@ -408,6 +370,7 @@ CREATE TABLE IF NOT EXISTS public.moment_proposals (
     
     -- Relationships
     brand_id UUID REFERENCES public.profiles(id) NOT NULL,
+    brand_team_id UUID REFERENCES public.teams(id), -- [NEW]
     influencer_id UUID REFERENCES public.profiles(id) NOT NULL,
     moment_id UUID REFERENCES public.life_moments(id) NOT NULL, 
     product_id UUID REFERENCES public.brand_products(id),
@@ -891,21 +854,9 @@ CREATE POLICY "Brand proposals insert" ON public.brand_proposals FOR INSERT WITH
 DROP POLICY IF EXISTS "Brand proposals update" ON public.brand_proposals;
 CREATE POLICY "Brand proposals update" ON public.brand_proposals FOR UPDATE USING (auth.uid() = brand_id OR auth.uid() = influencer_id);
 
--- Campaign Proposals
-DROP POLICY IF EXISTS "Campaign proposals view" ON public.campaign_proposals;
-CREATE POLICY "Campaign proposals view" ON public.campaign_proposals FOR SELECT USING (
-    auth.uid() = influencer_id OR 
-    EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = campaign_proposals.campaign_id AND c.brand_id = auth.uid())
-);
-
-DROP POLICY IF EXISTS "Campaign proposals insert" ON public.campaign_proposals;
-CREATE POLICY "Campaign proposals insert" ON public.campaign_proposals FOR INSERT WITH CHECK (auth.uid() = influencer_id);
-
-DROP POLICY IF EXISTS "Campaign proposals update" ON public.campaign_proposals;
-CREATE POLICY "Campaign proposals update" ON public.campaign_proposals FOR UPDATE USING (
-    auth.uid() = influencer_id OR 
-    EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = campaign_proposals.campaign_id AND c.brand_id = auth.uid())
-);
+-- 2.8 CAMPAIGN PROPOSALS (Applications) - DEPRECATED / REMOVED
+-- This table was replaced by campaign_applications (2.7.5) and has been dropped.
+-- See documents/02_drop_unused_campaign_proposals.sql
 
 -- Moment Proposals (Brand initiates, Influencer accepts)
 DROP POLICY IF EXISTS "Moment proposals view" ON public.moment_proposals;

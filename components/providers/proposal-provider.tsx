@@ -24,6 +24,20 @@ interface ProposalContextType {
 
 const ProposalContext = createContext<ProposalContextType | undefined>(undefined)
 
+const isIgnorableError = (error: any) => {
+    return (
+        error.name === 'AbortError' || (
+            (error.code === undefined || error.code === '') && (
+                error.message?.includes('AbortError') ||
+                error.message?.includes('aborted') ||
+                error.message === 'Failed to fetch' ||
+                error.message === 'Load failed' ||
+                error.details?.includes('AbortError')
+            )
+        )
+    )
+}
+
 export function ProposalProvider({ children, userId, userType }: { children: React.ReactNode, userId?: string, userType?: string }) {
     const { supabase } = useAuth()
     const [campaignProposals, setCampaignProposals] = useState<Proposal[]>([])
@@ -57,56 +71,54 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             console.log(`[ProposalProvider] Fetching campaign proposals. User: ${id}, Type: ${userType}`)
             window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '캠페인 제안 데이터 불러오는 중...', type: 'loading' } }))
 
-            let query = supabase
+            // 1. Query for Influencer (My applications)
+            const influencerQuery = supabase
                 .from('campaign_applications')
                 .select(`
                     *,
                     campaigns(id, title, product_name, category, budget, brand_id, profiles(display_name, avatar_url)),
                     profiles!influencer_id(display_name, avatar_url)
                 `)
+                .eq('influencer_id', id)
                 .order('created_at', { ascending: false })
                 .abortSignal(signal || null as any)
 
-            if (userType === 'brand') {
-                // If Brand, join on campaigns and filter by brand_id
-                query = supabase
-                    .from('campaign_applications')
-                    .select(`
-                        *,
-                        campaigns!inner(id, title, product_name, category, budget, brand_id, profiles(display_name, avatar_url)),
-                        profiles!influencer_id(display_name, avatar_url)
-                    `)
-                    .eq('campaigns.brand_id', id)
-                    .order('created_at', { ascending: false })
-                    .abortSignal(signal || null as any)
-            } else {
-                // If Influencer (or undefined/other), filter by influencer_id
-                query = query.eq('influencer_id', id)
+            // 2. Query for Brand (Applications to My Campaigns)
+            const brandQuery = supabase
+                .from('campaign_applications')
+                .select(`
+                    *,
+                    campaigns!inner(id, title, product_name, category, budget, brand_id, profiles(display_name, avatar_url)),
+                    profiles!influencer_id(display_name, avatar_url)
+                `)
+                .eq('campaigns.brand_id', id)
+                .order('created_at', { ascending: false })
+                .abortSignal(signal || null as any)
+
+            const [influencerRes, brandRes] = await Promise.all([influencerQuery, brandQuery])
+
+            // Handle errors
+            if (influencerRes.error && !isIgnorableError(influencerRes.error)) {
+                console.error('[ProposalProvider] Influencer campaign query error:', influencerRes.error)
+            }
+            if (brandRes.error && !isIgnorableError(brandRes.error)) {
+                console.error('[ProposalProvider] Brand campaign query error:', brandRes.error)
             }
 
-            const { data, error } = await query
+            const influencerData = influencerRes.data || []
+            const brandData = brandRes.data || []
 
-            if (error) {
-                // Ignore AbortError and transient network errors
-                if (error.name === 'AbortError' || (
-                    (error.code === undefined || error.code === '') && (
-                        error.message?.includes('AbortError') ||
-                        error.message?.includes('aborted') ||
-                        error.message === 'Failed to fetch' ||
-                        error.message === 'Load failed' ||
-                        error.details?.includes('AbortError')
-                    )
-                )) {
-                    return
-                }
+            // Deduplicate by ID
+            const allDataMap = new Map()
+            influencerData.forEach((p: any) => allDataMap.set(p.id, p))
+            brandData.forEach((p: any) => allDataMap.set(p.id, p))
+            const mergedData = Array.from(allDataMap.values()).sort((a: any, b: any) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )
 
-                console.error('[ProposalProvider] Creator proposals error:', error)
-                return
-            }
-
-            if (data) {
-                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `캠페인 제안 ${data.length}건 로드 완료`, type: 'success' } }))
-                const mapped: Proposal[] = data.map((p: any) => {
+            if (mergedData.length > 0) {
+                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `캠페인 제안 ${mergedData.length}건 로드 완료`, type: 'success' } }))
+                const mapped: Proposal[] = mergedData.map((p: any) => {
                     return {
                         id: p.id,
                         type: 'creator_apply' as const,
@@ -166,6 +178,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
                 setCampaignProposals(mapped)
                 console.log('[ProposalProvider] Loaded campaign proposals:', mapped.length)
+            } else {
+                setCampaignProposals([])
             }
         } catch (err) {
             console.error('[ProposalProvider] Exception:', err)
@@ -354,7 +368,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             setMomentProposals(rawMomentProposals)
             console.log('[ProposalProvider] Loaded raw moment proposals:', rawMomentProposals.length)
 
-            const finalBrand = [...mappedBrand].sort((a, b) =>
+            const finalBrand = [...mappedBrand, ...mappedMoment].sort((a, b) =>
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             )
 
@@ -621,8 +635,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .from('moment_proposals')
                     .insert({
                         brand_id: userId,
-                        brand_team_id: myTeamId, // [FIX]
-                        influencer_id: proposal.toId, // Creator ID
+                        brand_team_id: myTeamId,
+                        influencer_id: proposal.toId || proposal.influencerId,
+                        influencer_team_id: null, // Influencer Team ID unknown without fetch
                         moment_id: proposal.momentId,
                         message: proposal.message,
                         price_offer: proposal.cost,
@@ -660,7 +675,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         product_id: proposal.productId,
                         product_name: (proposal as any).productName || "Brand Product",
                         message: proposal.message || proposal.requestDetails,
-                        status: 'offered',
+                        status: 'applied', // [FIXED] Creator applies to Brand Product
                         motivation: proposal.motivation,
                         content_plan: proposal.content_plan,
                         portfolio_links: proposal.portfolioLinks,

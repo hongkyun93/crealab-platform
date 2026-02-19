@@ -339,6 +339,18 @@ export const eventMutations = {
         try {
             console.log('[eventMutations] Deleting event:', id)
 
+            // [FIX] Manually cascade delete moment_proposals
+            // life_moments has foreign keys from moment_proposals without ON DELETE CASCADE
+            const { error: proposalError } = await supabase
+                .from('moment_proposals')
+                .delete()
+                .eq('moment_id', id)
+
+            if (proposalError) {
+                console.error('[eventMutations] Failed to delete associated proposals:', proposalError)
+                return false
+            }
+
             const { error } = await supabase
                 .from('life_moments')
                 .delete()

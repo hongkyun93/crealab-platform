@@ -75,7 +75,8 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                     let error = null
 
                     // Inbound for brand = campaign_applications or brand_proposals
-                    if (proposal.campaign_id) {
+                    // [FIX] Check both snake_case and camelCase
+                    if (proposal.campaign_id || proposal.campaignId) {
                         const result = await supabase
                             .from('campaign_applications')
                             .update({ status: 'accepted' })
@@ -122,7 +123,8 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
                     let error = null
 
-                    if (proposal.campaign_id) {
+                    // [FIX] Check both snake_case and camelCase
+                    if (proposal.campaign_id || proposal.campaignId) {
                         const result = await supabase
                             .from('campaign_applications')
                             .update({ status: 'rejected' })
@@ -295,13 +297,17 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
         return items.filter(item => {
             if (type === 'moment') {
-                return item.moment_id || item.event_id
+                return !!item.moment_id // 1. Moment has highest priority
             }
             if (type === 'campaign') {
-                return item.campaign_id && !item.moment_id && !item.event_id
+                // 2. Campaign has second priority
+                return (!!item.campaign_id || !!item.campaignId) && !item.moment_id
             }
             if (type === 'brand') {
-                return !item.moment_id && !item.event_id && !item.campaign_id
+                // 3. Brand is the fallback
+                // Note: brand_id exists in almost all proposals, so we check for absence of others
+                // Ensure we check both ID styles for campaign exclusion
+                return !!item.brand_id && !item.moment_id && !item.campaign_id && !item.campaignId
             }
             return false
         })
@@ -436,7 +442,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                                 item.status === 'accepted' || item.status === 'signed' ? 'border-l-emerald-500' :
                                                     item.status === 'completed' ? 'border-l-slate-400' :
                                                         item.status === 'rejected' ? 'border-l-red-500' :
-                                                            item.campaign_id ? 'border-l-blue-500' : 'border-l-purple-500'}
+                                                            (item.campaign_id || item.campaignId) ? 'border-l-blue-500' : 'border-l-purple-500'}
                         `} onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
                             <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
                                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border overflow-hidden
@@ -491,8 +497,8 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 {items.map((item: any) => {
                     const isInbound = tabType === 'inbound' || (
                         tabType === 'all' && (
-                            item.campaign_id || // campaign_applications
-                            (!item.moment_id && !item.event_id && !item.campaign_id) // brand_proposals (크리에이터→브랜드)
+                            item.campaign_id || item.campaignId || // [FIX] campaign_applications
+                            (!item.moment_id && !item.event_id && !item.campaign_id && !item.campaignId) // [FIX] brand_proposals
                         )
                     )
                     const isOutbound = tabType === 'outbound' || (tabType === 'all' && (item.moment_id || item.event_id))
@@ -507,7 +513,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                                 item.status === 'accepted' || item.status === 'signed' ? 'border-l-emerald-500' :
                                                     item.status === 'completed' ? 'border-l-slate-400' :
                                                         item.status === 'rejected' ? 'border-l-red-500' :
-                                                            item.campaign_id ? 'border-l-blue-500' : 'border-l-purple-500'}
+                                                            (item.campaign_id || item.campaignId) ? 'border-l-blue-500' : 'border-l-purple-500'}
                         `} onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
                             <div className="flex gap-6">
                                 <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xl shrink-0 overflow-hidden">

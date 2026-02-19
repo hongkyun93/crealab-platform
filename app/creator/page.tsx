@@ -742,7 +742,7 @@ function InfluencerDashboardContent() {
     // 'offered' is excluded here — if brand counter-offers, it becomes an inbound offer (brandOffers)
     const brandApplications = brandProposals?.filter((p: any) =>
         (p.motivation || p.content_plan) &&
-        (p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')
+        (p.status === 'offered' || p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')
     ) || []
 
     // Brand Offers are those WITHOUT motivation (pure offers from brand)
@@ -806,16 +806,16 @@ function InfluencerDashboardContent() {
 
         return items.filter(item => {
             if (type === 'moment') {
-                // Moment proposals or brand proposals with event_id
-                return item.moment_id || item.event_id
+                return !!item.moment_id // 1. Moment has highest priority
             }
             if (type === 'campaign') {
-                // Campaign proposals
-                return item.campaign_id && !item.moment_id && !item.event_id
+                // 2. Campaign has second priority
+                return (!!item.campaign_id || !!item.campaignId) && !item.moment_id
             }
             if (type === 'brand') {
-                // Brand proposals without event_id (direct offers)
-                return !item.moment_id && !item.event_id && !item.campaign_id
+                // 3. Brand is the fallback (contains brand_id but no moment/campaign id)
+                // Note: brand_id exists in almost all proposals, so we check for absence of others
+                return !!item.brand_id && !item.moment_id && !item.campaign_id
             }
             return false
         })
@@ -2878,6 +2878,7 @@ function InfluencerDashboardContent() {
         const mockCampaign = {
             id: product.id,
             brand: product.brandName || "Unknown Brand",
+            brandId: product.brand_id, // [FIX] Add brandId for correct proposal routing
             product: product.name,
             budget: product.price ? `${product.price.toLocaleString()}원` : "협의",
         }

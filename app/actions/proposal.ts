@@ -30,7 +30,7 @@ export async function submitCampaignApplication(
     const influencerTeamId = teamMember?.team_id
 
     const { error } = await supabase
-        .from('campaign_proposals')
+        .from('campaign_applications')
         .insert({
             campaign_id: campaignId,
             influencer_id: user.id,
@@ -59,7 +59,7 @@ export async function updateApplicationStatus(proposalId: string, status: 'accep
     const supabase = await createClient()
 
     const { error } = await supabase
-        .from('campaign_proposals')
+        .from('campaign_applications')
         .update({ status: status })
         .eq('id', proposalId)
 
