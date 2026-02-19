@@ -68,14 +68,10 @@ export default function LoginPage() {
         setError("")
         try {
             const user = await login(email, pw)
-            if (user.role === 'brand') {
-                router.push('/brand')
-            } else if (user.role === 'mcn') {
-                router.push('/creator')
-            } else if (user.role === 'agency') {
-                router.push('/brand')
+            if (user.role === 'brand' || user.role === 'agency') {
+                window.location.href = '/brand'
             } else {
-                router.push('/creator')
+                window.location.href = '/creator'
             }
         } catch (err: any) {
             setError(err.message || "로그인에 실패했습니다.")

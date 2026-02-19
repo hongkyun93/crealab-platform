@@ -252,10 +252,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         // After login/signup, redirect to appropriate dashboard
                         else if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
                             if (fetchedUser.role === 'brand' || fetchedUser.role === 'agency') {
-                                router.push('/brand')
+                                window.location.href = '/brand'
                             } else {
                                 // creator, mcn, admin go to creator dashboard
-                                router.push('/creator')
+                                window.location.href = '/creator'
                             }
                         }
                     }
