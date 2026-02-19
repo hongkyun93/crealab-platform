@@ -272,6 +272,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (data.session?.user) {
                 // 3. Always fetch fresh user info from DB
                 const profile = await fetchUserProfile(data.session.user)
+
+                // 4. SYNC METADATA (Critical for Middleware Optimization)
+                // This ensures the role is baked into the session token for fast middleware checks
+                if (profile && profile.role) {
+                    await supabase.auth.updateUser({
+                        data: { role: profile.role, onboarding_completed: profile.onboardingCompleted }
+                    })
+                }
+
                 return profile
             }
         } catch (e) {

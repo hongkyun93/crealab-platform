@@ -84,6 +84,11 @@ export default function OnboardingPage() {
                 })
                 .eq('id', user.id)
 
+            // Sync metadata for fast middleware check
+            await supabase.auth.updateUser({
+                data: { role: role, onboarding_completed: true }
+            })
+
             if (error) throw error
 
             toast.success("환영합니다!")
@@ -104,6 +109,7 @@ export default function OnboardingPage() {
         try {
             // 1. Set Role First
             await supabase.from('profiles').update({ role: selectedRole, onboarding_completed: true }).eq('id', user.id)
+            await supabase.auth.updateUser({ data: { role: selectedRole, onboarding_completed: true } })
 
             // 2. Accept Invite
             const { error } = await supabase.rpc('accept_invitation', { invitation_id: inviteId })
@@ -124,6 +130,7 @@ export default function OnboardingPage() {
         try {
             // 1. Set Role
             await supabase.from('profiles').update({ role: selectedRole, onboarding_completed: true }).eq('id', user.id)
+            await supabase.auth.updateUser({ data: { role: selectedRole, onboarding_completed: true } })
 
             // 2. Create Team
             // Note: The 'handle_new_team' trigger automatically adds the creator as 'owner' in team_members

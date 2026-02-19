@@ -34,14 +34,28 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/login', request.url))
         }
 
-        // role 조회
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role, onboarding_completed')
-            .eq('id', user.id)
-            .single()
+        // 1. FAST CHECK: Metadata (JWT)
+        let role = user.user_metadata?.role
 
-        const role = profile?.role
+        // 2. SAFE FALLBACK: RPC (if metadata missing)
+        // We use RPC because direct table query hits RLS recursion (Creator Hang)
+        if (!role) {
+            console.log('[Middleware] Role missing in metadata, checking RPC...')
+            const { data: userData } = await supabase.rpc('get_current_user_info')
+            if (userData) {
+                role = (userData as any).role
+            }
+        }
+
+        // 3. LEGACY FALLBACK: Profiles table (Only if RPC failed/missing)
+        if (!role) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single()
+            role = profile?.role
+        }
 
         // role이 없으면(온보딩 미완) → 온보딩으로
         if (!role) {
