@@ -105,34 +105,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             try {
                 // Use getUser() instead of getSession() for faster cookie-based session recovery
-                // getSession() checks localStorage first, then falls back to server (slow when localStorage is empty)
-                // getUser() always validates with server directly, more reliable with SSR cookie sessions
                 const { data: { user: sessionUser } } = await supabase.auth.getUser()
 
                 if (sessionUser && mounted) {
-                    console.log('[AuthProvider] User found:', sessionUser.id)
-                    lastUserId.current = sessionUser.id // Set before fetch so onAuthStateChange skips
-                    const fetchedUser = await fetchUserProfile(sessionUser)
+                    console.log('[AuthProvider] Session found, simple init first')
 
-                    if (fetchedUser && mounted) {
-                        setUser(fetchedUser)
+                    // 1. FAST PATH: Set basic user immediately to unblock UI
+                    // Use metadata if available, otherwise minimal info
+                    const basicUser = {
+                        id: sessionUser.id,
+                        email: sessionUser.email,
+                        name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || "User",
+                        role: sessionUser.user_metadata?.role as any || 'authenticated', // Temporary role
+                        avatar: sessionUser.user_metadata?.avatar_url,
+                        tags: [],
+                        _isFallback: true
+                    } as User
 
-                        // STRICT REDIRECT LOGIC
-                        const currentPath = window.location.pathname
+                    setUser(basicUser)
+                    lastUserId.current = sessionUser.id
 
-                        if (!fetchedUser.role && !(fetchedUser as any)._isFallback) {
-                            if (currentPath !== '/onboarding') {
-                                console.log('[AuthProvider] Role is NULL -> Redirecting to /onboarding')
-                                router.replace('/onboarding')
-                            }
-                        } else {
-                            if (currentPath === '/onboarding' || currentPath === '/login' || currentPath === '/signup') {
-                                const target = fetchedUser.role === 'brand' || fetchedUser.role === 'agency' ? '/brand' : '/creator'
-                                console.log(`[AuthProvider] Role is ${fetchedUser.role} -> Redirecting to ${target}`)
-                                router.replace(target)
+                    // 2. UNBLOCK UI IMMEDIATELY
+                    setIsAuthChecked(true)
+                    setIsInitialized(true)
+                    isInitAuthDone.current = true
+                    clearTimeout(timer)
+
+                    // 3. BACKGROUND FETCH: Get full profile data (Lazy Load)
+                    // Do not await this! Let it run in background
+                    fetchUserProfile(sessionUser).then(fetchedUser => {
+                        if (mounted && fetchedUser) {
+                            console.log('[AuthProvider] Background profile fetch complete')
+                            setUser(fetchedUser) // Update with full data
+
+                            // Role-based redirection if needed (only if on generic login pages)
+                            const currentPath = window.location.pathname
+                            if (currentPath === '/login' || currentPath === '/signup') {
+                                if (fetchedUser.role === 'brand' || fetchedUser.role === 'agency') {
+                                    window.location.href = '/brand'
+                                } else {
+                                    window.location.href = '/creator'
+                                }
                             }
                         }
-                    }
+                    })
+
+                    return // Exit function, background work continues
                 } else if (mounted) {
                     console.log('[AuthProvider] No session found, clearing user')
                     setUser(null)
@@ -140,11 +158,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } catch (e) {
                 console.error('[AuthProvider] initAuth error:', e)
             } finally {
-                clearTimeout(timer) // Cancel the failsafe timeout since initAuth completed
-                if (mounted) {
+                // For the "No Session" case or Error case
+                if (mounted && !isInitialized) {
+                    clearTimeout(timer)
                     setIsAuthChecked(true)
-                    setIsInitialized(true) // initAuth complete → isInitialized now means "DB fetch done"
-                    isInitAuthDone.current = true // Signal: onAuthStateChange can now handle events
+                    setIsInitialized(true)
+                    isInitAuthDone.current = true
                 }
             }
         }
