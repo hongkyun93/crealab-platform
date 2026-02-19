@@ -22,7 +22,7 @@ export async function POST(req: Request) {
         const { productName, sellingPoints, category, requiredShots } = await req.json();
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const systemPrompt = `
 당신은 베테랑 콘텐츠 기획자이자 인플루언서 매니지먼트 전문가입니다.

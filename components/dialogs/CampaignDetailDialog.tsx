@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Calendar, FileText, Gift, Megaphone, Send, User, X, CheckCircle2, Instagram, Youtube, MessageCircle, Hash, Link as LinkIcon, Users, Loader2, Upload } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { CampaignDetailContent } from "@/components/campaign/campaign-detail-content"
 import { CampaignApplicationDialog } from "@/components/dialogs/CampaignApplicationDialog"
 
@@ -27,8 +27,20 @@ export function CampaignDetailDialog({
 }: CampaignDetailDialogProps) {
     const [isImageUploading, setIsImageUploading] = useState(false)
     const [showApplicationDialog, setShowApplicationDialog] = useState(false)
+    const [applicantCount, setApplicantCount] = useState<number | undefined>(undefined)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
+
+    // Fetch applicant count when dialog opens
+    useEffect(() => {
+        if (open && campaign?.id) {
+            supabase
+                .from('campaign_applications')
+                .select('id', { count: 'exact', head: true })
+                .eq('campaign_id', campaign.id)
+                .then(({ count }) => setApplicantCount(count ?? 0))
+        }
+    }, [open, campaign?.id])
 
     if (!campaign) return null
 
@@ -104,7 +116,7 @@ export function CampaignDetailDialog({
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="p-0 gap-0 bg-white border-0 shadow-2xl 
                 w-full h-[100dvh] max-w-none rounded-none 
-                md:h-[90vh] md:max-w-6xl md:rounded-xl overflow-hidden flex flex-col md:block">
+                md:h-[90vh] md:max-w-6xl md:rounded-xl overflow-hidden flex flex-col md:flex">
                     <DialogTitle className="sr-only">{campaign.product || "캠페인 상세 정보"}</DialogTitle>
 
                     <CampaignDetailContent
@@ -139,6 +151,7 @@ export function CampaignDetailDialog({
                         )}
                         isUploading={isImageUploading}
                         onClose={() => onOpenChange(false)}
+                        applicantCount={applicantCount}
                     />
                 </DialogContent>
             </Dialog>

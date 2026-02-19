@@ -85,7 +85,7 @@ const SignatureCanvas = dynamic(() => import('react-signature-canvas'), {
 }) as any
 import Link from "next/link"
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
-import { useEffect, useState, Suspense, useRef, useCallback } from "react"
+import { useEffect, useState, Suspense, useRef, useCallback, useMemo } from "react"
 import { MOCK_BRAND_USER } from "@/components/providers/legacy-platform-hook"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -145,16 +145,13 @@ function BrandDashboardContent() {
         favorites, toggleFavorite,
         createMomentProposal, // [FIX] was missing from destructure
         momentProposals, // [FIX] needed for chatProposal sync
-        allEvents, fetchAllEvents, isAuthLoading, deleteMomentProposal // New: Public events & Moment deletion
+        allEvents, fetchAllEvents, isAuthLoading, deleteMomentProposal, enablePublicEvents // New: Public events & Moment deletion
     } = useUnifiedProvider()
+
 
     // AI Calculator State
     const [showCalculator, setShowCalculator] = useState(false)
 
-    // Fetch public events for discovery on mount
-    useEffect(() => {
-        fetchAllEvents() // Fetch public events for discovery
-    }, [])
 
     const displayUser = user
 
@@ -165,6 +162,14 @@ function BrandDashboardContent() {
     const initialView = initialViewRaw === "dashboard" ? "my-campaigns" : initialViewRaw
     const [currentView, setCurrentView] = useState(initialView)
     const [sortOrder, setSortOrder] = useState("latest")
+
+    // Discover 탭 진입 시에만 public events 활성화 (enablePublicEvents는 idempotent - 여러 번 호출해도 안전)
+    useEffect(() => {
+        if (currentView === 'discover') {
+            enablePublicEvents()
+        }
+    }, [currentView])
+
 
     // Filter Query States
     const [selectedTag, setSelectedTag] = useState<string | null>(null)
@@ -194,13 +199,48 @@ function BrandDashboardContent() {
     const [showReadonlyProposalDialog, setShowReadonlyProposalDialog] = useState(false)
 
     // Proposal Condition Fields (Pre-fill)
-
     const [conditionDraftDate, setConditionDraftDate] = useState("")
     const [conditionFinalDate, setConditionFinalDate] = useState("")
     const [conditionUploadDate, setConditionUploadDate] = useState("")
-
     const [conditionSecondary, setConditionSecondary] = useState("불가")
 
+    // [Badge] 탭별 새 이벤트 여부 계산
+    const workspaceTabBadges = useMemo(() => {
+        const allProposals: any[] = [
+            ...(brandProposals || []),
+            ...(campaignProposals || []),
+            ...(momentProposals || []),
+        ]
+        // 내가 받은 unread 메시지 중 workspace_id가 있는 것
+        const unreadWorkspaceIds = new Set(
+            (messages || [])
+                .filter(m => m.senderId !== user?.id && !m.read && m.workspaceId)
+                .map(m => m.workspaceId)
+        )
+        const hasUnread = (proposals: any[]) =>
+            proposals.some(p => p.workspace_id && unreadWorkspaceIds.has(p.workspace_id))
+
+        // 진행중: 협업 진행 중 & unread 메시지 있음
+        const activeProposals = allProposals.filter(p =>
+            p.status === 'accepted' || p.status === 'active' || p.status === 'in_progress'
+        )
+        // 받은 제안: 새로 지원이 들어온 것 (applied) — unread 여부도 체크
+        const inboundProposals = allProposals.filter(p => p.status === 'applied')
+        // 보낸 제안: 브랜드가 보낸 것 (offered) 중 상대가 읽지 않았거나 응답 옴
+        const outboundProposals = allProposals.filter(p => p.status === 'offered' || p.status === 'pending')
+        // 거절됨
+        const rejectedProposals = allProposals.filter(p => p.status === 'rejected')
+        // 완료됨
+        const completedProposals = allProposals.filter(p => p.status === 'completed')
+
+        return {
+            active: hasUnread(activeProposals),
+            inbound: inboundProposals.length > 0 || hasUnread(inboundProposals),
+            outbound: hasUnread(outboundProposals),
+            rejected: hasUnread(rejectedProposals),
+            completed: hasUnread(completedProposals),
+        }
+    }, [brandProposals, campaignProposals, momentProposals, messages, user?.id])
 
     // Refs for auto-scrolling
     const workspaceChatRef = useRef<HTMLDivElement>(null)
@@ -576,8 +616,9 @@ function BrandDashboardContent() {
             await updateProposal(confirmStatusData.id, {
                 status: confirmStatusData.status as any
             })
-            toast.success("상태가 변경되었습니다.")
+            toast.success("✓ 상태가 변경되었습니다", { description: "목록에 즉시 반영됩니다." })
             setConfirmStatusData(null)
+            await refreshData()
         } catch (error) {
             console.error('Status change error:', error)
             toast.error("상태 변경에 실패했습니다.")
@@ -634,6 +675,20 @@ function BrandDashboardContent() {
                     await sendMessage(receiverId, msgContent, proposalId, undefined)
                 } else {
                     await sendMessage(receiverId, msgContent, undefined, proposalId)
+                }
+            }
+
+            // 🔔 크리에이터에게 계약서 발송 알림
+            if (receiverId) {
+                try {
+                    await sendNotification(
+                        receiverId,
+                        `${user?.name}님이 계약서를 발송했습니다. 확인 후 서명해주세요.`,
+                        'contract_sent',
+                        proposalId
+                    )
+                } catch (notifErr) {
+                    console.warn('알림 발송 실패 (무시):', notifErr)
                 }
             }
 
@@ -948,7 +1003,8 @@ function BrandDashboardContent() {
             if (range) {
                 result = result.filter(e => {
                     const price = e.priceVideo || 0
-                    return price >= range.min && price < range.max
+                    // 경계값은 양쪽 범위에 모두 포함 (예: 30만원 → "10~30만" & "30~50만")
+                    return price >= range.min && price <= range.max
                 })
             }
         }
@@ -1456,7 +1512,7 @@ function BrandDashboardContent() {
                                 {sortedNotifications.map((n: any) => (
                                     <Card
                                         key={n.id}
-                                        className={`overflow-hidden border-0 shadow-sm transition-all hover:shadow-md cursor-pointer group rounded-3xl ${n.is_read ? 'bg-white opacity-70' : 'bg-white ring-2 ring-primary/5'}`}
+                                        className={`overflow-hidden border-0 shadow-sm transition-all hover:shadow-md cursor-pointer group rounded-3xl ${n.is_read ? 'bg-card opacity-70' : 'bg-card ring-2 ring-primary/20'}`}
                                         onClick={() => {
                                             const content = n.content || "";
                                             if (content.includes('지원') || content.includes('제안') || content.includes('계약')) {
@@ -1577,13 +1633,6 @@ function BrandDashboardContent() {
                                 <Search className="mr-2 h-4 w-4" /> 모먼트 검색
                             </Button>
                             <Button
-                                variant={currentView === "my-campaigns" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("my-campaigns")}
-                            >
-                                <Package className="mr-2 h-4 w-4" /> 내 캠페인
-                            </Button>
-                            <Button
                                 variant={currentView === "proposals" ? "secondary" : "ghost"}
                                 className="w-full justify-start"
                                 onClick={() => setCurrentView("proposals")}
@@ -1592,46 +1641,71 @@ function BrandDashboardContent() {
                             </Button>
                             {currentView === "proposals" && (
                                 <div className="ml-9 space-y-1 mt-1 border-l pl-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'inbound' ? 'bg-primary/20 text-primary font-bold' : 'text-muted-foreground'}`}
-                                        onClick={() => setWorkspaceTab("inbound")}
-                                    >
-                                        받은 제안
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'outbound' ? 'bg-primary/5 text-primary font-medium' : 'text-muted-foreground'}`}
-                                        onClick={() => setWorkspaceTab("outbound")}
-                                    >
-                                        보낸 제안
-                                    </Button>
+                                    {/* 진행중 */}
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         className={`w-full justify-start text-xs h-8 ${workspaceTab === 'active' ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-muted-foreground'}`}
                                         onClick={() => setWorkspaceTab("active")}
                                     >
-                                        진행중
+                                        <span className="flex-1 text-left">진행중</span>
+                                        {workspaceTabBadges.active && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
                                     </Button>
+                                    {/* 받은 제안 */}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'inbound' ? 'bg-blue-100 text-blue-700 font-bold' : 'text-muted-foreground'}`}
+                                        onClick={() => setWorkspaceTab("inbound")}
+                                    >
+                                        <span className="flex-1 text-left">받은 제안</span>
+                                        {workspaceTabBadges.inbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                    </Button>
+                                    {/* 보낸 제안 */}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'outbound' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-muted-foreground'}`}
+                                        onClick={() => setWorkspaceTab("outbound")}
+                                    >
+                                        <span className="flex-1 text-left">보낸 제안</span>
+                                        {workspaceTabBadges.outbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                    </Button>
+                                    {/* 거절됨 */}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'rejected' ? 'bg-red-50 text-red-600 font-medium' : 'text-muted-foreground'}`}
+                                        onClick={() => setWorkspaceTab("rejected")}
+                                    >
+                                        <span className="flex-1 text-left">거절됨</span>
+                                        {workspaceTabBadges.rejected && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                    </Button>
+                                    {/* 완료됨 */}
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         className={`w-full justify-start text-xs h-8 ${workspaceTab === 'completed' ? 'bg-muted text-foreground/90 font-medium' : 'text-muted-foreground'}`}
                                         onClick={() => setWorkspaceTab("completed")}
                                     >
-                                        완료됨
+                                        <span className="flex-1 text-left">완료됨</span>
+                                        {workspaceTabBadges.completed && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
                                     </Button>
                                 </div>
                             )}
+                            <Button
+                                variant={currentView === "my-campaigns" ? "secondary" : "ghost"}
+                                className="w-full justify-start"
+                                onClick={() => setCurrentView("my-campaigns")}
+                            >
+                                <Package className="mr-2 h-4 w-4" /> 내 캠페인 관리
+                            </Button>
                             <Button
                                 variant={currentView === "my-products" ? "secondary" : "ghost"}
                                 className="w-full justify-start"
                                 onClick={() => setCurrentView("my-products")}
                             >
-                                <ShoppingBag className="mr-2 h-4 w-4" /> 내 브랜드 제품
+                                <ShoppingBag className="mr-2 h-4 w-4" /> 내 브랜드 제품 관리
                             </Button>
                             <Button
                                 variant={currentView === "discover-products" ? "secondary" : "ghost"}
@@ -1694,7 +1768,7 @@ function BrandDashboardContent() {
                             <Label htmlFor="p-product" className="text-right pt-2 text-xs font-bold">제품명</Label>
                             <div className="col-span-3 space-y-2">
                                 <Input id="p-product" value={offerProduct} onChange={(e) => setOfferProduct(e.target.value)} placeholder="브랜드 제품명" />
-                                <Input id="p-link" value={productLink} onChange={(e) => setProductLink(e.target.value)} placeholder="제품 링크 (https://...)" className="text-xs" />
+                                <Input id="p-link" value={productLink} onChange={(e) => setProductLink(e.target.value)} onFocus={() => { if (!productLink) setProductLink("https://") }} onBlur={() => { if (productLink === "https://") setProductLink("") }} placeholder="제품 링크 (https://...)" className="text-xs" />
                                 <RadioGroup value={productType} onValueChange={setProductType} className="flex gap-4">
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="gift" id="r-gift" />
@@ -1922,7 +1996,7 @@ function BrandDashboardContent() {
                                             variant="outline"
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={isImageUploading}
-                                            className="w-full bg-background"
+                                            className="flex-1 bg-background"
                                         >
                                             {isImageUploading ? (
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1977,23 +2051,17 @@ function BrandDashboardContent() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="op-tags">필수 해시태그 (공백 구분)</Label>
+                                    <Label htmlFor="op-tags">필수 해시태그 (스페이스로 구분)</Label>
                                     <Input
                                         id="op-tags"
                                         value={newProductHashtags}
                                         onChange={(e) => {
                                             let val = e.target.value
-                                            // Ensure first char is # if not empty
-                                            if (val && !val.startsWith('#')) {
-                                                val = '#' + val
-                                            }
+                                            if (val === '') { setNewProductHashtags(''); return }
+                                            if (!val.startsWith('#')) val = '#' + val
+                                            val = val.replace(/ (?!#)(?=\S)/g, ' #')
+                                            val = val.replace(/#{2,}/g, '#')
                                             setNewProductHashtags(val)
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === ' ') {
-                                                e.preventDefault()
-                                                setNewProductHashtags(prev => prev + ' #')
-                                            }
                                         }}
                                         placeholder="#보이브 #룸스프레이"
                                         className="bg-background"
@@ -2008,15 +2076,14 @@ function BrandDashboardContent() {
                             </div>
                         </div>
 
-                        <ChannelSelector
-                            selected={newProductChannels}
-                            onChange={setNewProductChannels}
-                            label="추천 채널"
-                            description="이 제품에 적합한 SNS 채널"
-                        />
-
-                        {/* Right Column: Detailed Guide */}
+                        {/* Right Column: Channel + Detailed Guide */}
                         <div className="space-y-6">
+                            <ChannelSelector
+                                selected={newProductChannels}
+                                onChange={setNewProductChannels}
+                                label="추천 채널"
+                                description="이 제품에 적합한 SNS 채널"
+                            />
                             <div className="space-y-4 p-5 bg-background rounded-2xl border border-border shadow-sm h-full">
                                 <h4 className="font-bold text-sm text-foreground/90 flex items-center gap-2">
                                     <FileText className="h-4 w-4" /> 상세 가이드라인

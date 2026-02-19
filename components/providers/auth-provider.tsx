@@ -82,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     tags: profile.tags || [],
                     phone: profile.phone,
                     address: profile.shipping_address,
+                    website: profile.website_url,
                     teamId: teamId,
 
                     // Primary Region
@@ -384,6 +385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (data.avatar !== undefined) updates.avatar_url = data.avatar
             if (data.phone !== undefined) updates.phone = data.phone
             if (data.address !== undefined) updates.shipping_address = data.address
+            if (data.website !== undefined) updates.website_url = data.website
 
             // NEW: Primary Region
             if (data.primaryRegion !== undefined) updates.primary_region = data.primaryRegion

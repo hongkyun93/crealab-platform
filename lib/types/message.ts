@@ -5,6 +5,7 @@ export interface Message {
     receiverId: string
     proposalId?: string
     brandProposalId?: string
+    workspaceId?: string // [Workspaces] Unified workspace UUID for message isolation
     content: string
     timestamp: string
     read: boolean

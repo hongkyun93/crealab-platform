@@ -211,8 +211,7 @@ ${u.name}의 담당자입니다.
                 event_id: event.id,
                 product_name: productName,
                 product_type: productType,
-                // [FIX] Convert Man-won to Won for storage
-                compensation_amount: compensationAmount ? String(parseInt(compensationAmount.replace(/[^0-9]/g, '')) * 10000) : null,
+                compensation_amount: compensationAmount ? String(parseInt(compensationAmount.replace(/[^0-9]/g, ''))) : null,
                 has_incentive: hasIncentive,
                 incentive_detail: hasIncentive ? incentiveDetail : null,
                 content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ') || null,
@@ -271,7 +270,7 @@ ${u.name}의 담당자입니다.
                         product_url: productUrl
                     },
                     product_name: productName,
-                    price_offer: compensationAmount ? parseInt(compensationAmount.replace(/[^0-9]/g, '')) * 10000 : 0,
+                    price_offer: compensationAmount ? parseInt(compensationAmount.replace(/[^0-9]/g, '')) : 0,
                     // [Added] Top-level condition fields for immediate UI reflection
                     condition_product_receipt_date: null, // Usually not set on creation
                     condition_draft_submission_date: draftSubmissionDate ? format(draftSubmissionDate, "yyyy-MM-dd") : null,
@@ -730,6 +729,8 @@ ${u.name}의 담당자입니다.
                                 id="productUrl"
                                 value={productUrl}
                                 onChange={(e) => setProductUrl(e.target.value)}
+                                onFocus={() => { if (!productUrl) setProductUrl("https://") }}
+                                onBlur={() => { if (productUrl === "https://") setProductUrl("") }}
                                 placeholder="https://..."
                             />
                         </div>
@@ -773,17 +774,17 @@ ${u.name}의 담당자입니다.
                         </div>
                         {/* Compensation */}
                         <div className="space-y-2">
-                            <Label htmlFor="compensation">보상 금액 (단위: 만원)</Label>
+                            <Label htmlFor="compensation">보상 금액 (원)</Label>
                             <div className="relative">
                                 <Input
                                     id="compensation"
                                     type="number"
                                     value={compensationAmount}
                                     onChange={(e) => setCompensationAmount(e.target.value)}
-                                    placeholder="예: 10 (10만원)"
-                                    className="pr-12"
+                                    placeholder="예: 300000"
+                                    className="pr-8"
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">만원</span>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">원</span>
                             </div>
                         </div>
 

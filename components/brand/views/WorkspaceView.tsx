@@ -95,6 +95,23 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                         throw error
                     }
 
+                    // 1. 워크스페이스 자동 오픈
+                    setChatProposal(proposal)
+                    setIsChatOpen(true)
+
+                    // 2. 크리에이터에게 알림 발송
+                    try {
+                        await supabase.from('notifications').insert({
+                            recipient_id: proposal.influencer_id,
+                            sender_id: proposal.brand_id,
+                            type: 'proposal_accepted',
+                            content: `"${proposal.product_name || '제안'}"이 수락되었습니다. 협업을 시작하세요!`,
+                            reference_id: proposal.id
+                        })
+                    } catch (notifErr) {
+                        console.warn('알림 발송 실패 (무시):', notifErr)
+                    }
+
                     await refreshData()
                     toast.success('제안을 수락했습니다!')
                 } catch (error: any) {
@@ -227,7 +244,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     )
 
     const activeOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => (p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') && p.moment_id) || [],
+        () => brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') || [],
         [brandProposals]
     )
 
@@ -245,7 +262,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     )
 
     const completedOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => p.status === 'completed' && p.moment_id) || [],
+        () => brandProposals?.filter((p: any) => p.status === 'completed') || [],
         [brandProposals]
     )
 
@@ -263,7 +280,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     )
 
     const rejectedOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => (p.status === 'rejected' || p.status === 'cancelled') && p.moment_id) || [],
+        () => brandProposals?.filter((p: any) => p.status === 'rejected' || p.status === 'cancelled') || [],
         [brandProposals]
     )
 
@@ -400,7 +417,9 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] overflow-hidden">
-                                                {item.influencerName?.[0] || item.influencer_name?.[0] || "C"}
+                                                {(item.influencerAvatar || item.influencer_avatar)
+                                                    ? <img src={item.influencerAvatar || item.influencer_avatar} alt="Profile" className="h-full w-full object-cover" />
+                                                    : (item.influencerName?.[0] || item.influencer_name?.[0] || "C")}
                                             </div>
                                             {item.influencerName || item.influencer_name}
                                         </div>
@@ -450,7 +469,9 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                         item.status === 'completed' ? 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700' :
                                             'bg-blue-50 border-blue-100 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800'}
                                 `}>
-                                    {item.influencerName?.[0] || item.influencer_name?.[0] || "C"}
+                                    {(item.influencerAvatar || item.influencer_avatar)
+                                        ? <img src={item.influencerAvatar || item.influencer_avatar} alt="Profile" className="h-full w-full object-cover" />
+                                        : (item.influencerName?.[0] || item.influencer_name?.[0] || "C")}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h4 className="font-bold truncate text-sm">{item.influencerName || item.influencer_name}</h4>

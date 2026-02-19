@@ -142,10 +142,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                                 <span className="text-sm font-bold">
                                     {(() => {
                                         const amount = data.compensation_amount ? parseInt(data.compensation_amount.toString().replace(/[^0-9]/g, '')) : 0
-                                        if (amount >= 10000) {
-                                            return `${(amount / 10000).toLocaleString()}만원`
-                                        }
-                                        return `${amount.toLocaleString()}원`
+                                        return amount > 0 ? `${amount.toLocaleString()}원` : '협의 필요'
                                     })()}
                                 </span>
                             </div>

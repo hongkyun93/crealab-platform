@@ -162,6 +162,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         tags: [],
                         instagramHandle: p.instagram_handle,
                         insightScreenshot: p.insight_screenshot,
+                        channel_name: p.channel_name,         // [FIX] 누락됐던 채널명
+                        channel_url: p.channel_url,           // [FIX] 누락됐던 채널URL
+                        channel_subtype: p.channel_subtype,   // [NEW] 서브타입 (instagram_reels 등)
                         contract_content: p.contract_content,
                         contract_status: p.contract_status,
                         brand_signature: p.brand_signature,
@@ -172,6 +175,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         payout_status: p.payout_status,
                         content_submission_url: p.content_submission_url,
                         content_submission_status: p.content_submission_status,
+                        workspace_id: p.workspace_id, // [Workspaces]
                         campaign: p.campaigns
                     }
                 })
@@ -212,7 +216,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         *,
                         brand:profiles!brand_id(display_name, avatar_url),
                         influencer:profiles!influencer_id(display_name, avatar_url),
-                        moment:life_moments(title, event_date)
+                        moment:life_moments(title, event_date, channels)
                     `)
                     .or(`brand_id.eq.${id},influencer_id.eq.${id}`)
                     .order('created_at', { ascending: false })
@@ -266,12 +270,17 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 portfolio_links: p.portfolio_links,
                 instagram_handle: p.instagram_handle,
                 insight_screenshot: p.insight_screenshot,
+                channel_name: p.channel_name,         // [FIX] 채널명
+                channel_url: p.channel_url,           // [FIX] 채널URL
+                channel_subtype: p.channel_subtype,   // [NEW] 서브타입
                 created_at: p.created_at,
                 updated_at: p.updated_at,
                 brand_name: p.brand?.display_name,
                 brandAvatar: p.brand?.avatar_url,
                 influencer_name: p.influencer?.display_name,
+                influencerName: p.influencer?.display_name,
                 influencer_avatar: p.influencer?.avatar_url,
+                influencerAvatar: p.influencer?.avatar_url,
                 contract_content: p.contract_content,
                 contract_status: p.contract_status,
                 brand_signature: p.brand_signature,
@@ -291,7 +300,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 content_submission_url: p.content_submission_url,
                 content_submission_status: p.content_submission_status,
                 product_url: p.products?.image_url,
-                product: p.products
+                product: p.products,
+                workspace_id: p.workspace_id // [Workspaces]
             }))
 
             const mappedMoment: BrandProposal[] = momentData.map((p: any) => ({
@@ -340,10 +350,18 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 brand_name: p.brand?.display_name,
                 brandAvatar: p.brand?.avatar_url,
                 influencer_name: p.influencer?.display_name,
+                influencerName: p.influencer?.display_name,
                 influencer_avatar: p.influencer?.avatar_url,
+                influencerAvatar: p.influencer?.avatar_url,
 
                 // Moment Specific Context
-                product_url: p.moment?.title ? `모먼트: ${p.moment.title}` : undefined
+                product_url: p.moment?.title ? `모먼트: ${p.moment.title}` : undefined,
+                // [NEW] 모먼트의 채널 정보를 서브타입으로 매핑 (여러 채널 모두 포함)
+                channel_subtype: (p.moment?.channels && p.moment.channels.length > 0)
+                    ? p.moment.channels.join(',')   // e.g. "instagram_reels,youtube_shorts"
+                    : null,
+                channel_name: p.moment?.channels?.[0]?.split('_')[0] || null,
+                workspace_id: p.workspace_id // [Workspaces]
             }))
 
             // [NEW] Separate Moment Proposals State Population
@@ -362,7 +380,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 influencer_name: p.influencer?.display_name,
                 influencer_avatar: p.influencer?.avatar_url,
                 moment_title: p.moment?.title,
-                conditions: p.conditions
+                conditions: p.conditions,
+                workspace_id: p.workspace_id // [Workspaces]
             }))
 
             setMomentProposals(rawMomentProposals)
@@ -606,14 +625,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             // Distinguish between Campaign Application and Product Proposal
             if (proposal.campaignId) {
-                // Campaign Proposal (Insert into campaign_proposals)
+                // Campaign Proposal
                 const { data, error } = await supabase
                     .from('campaign_applications')
                     .insert({
                         campaign_id: proposal.campaignId,
                         influencer_id: targetInfluencerId,
-                        influencer_team_id: myTeamId, // [FIX]
-                        price_offer: proposal.cost,
+                        influencer_team_id: myTeamId,
+                        price_offer: (proposal as any).priceOffer ?? proposal.cost,
                         message: proposal.message,
                         status: 'applied',
                         motivation: proposal.motivation,
@@ -621,6 +640,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         portfolio_links: proposal.portfolioLinks,
                         channel_name: proposal.channel_name,
                         channel_url: proposal.channel_url,
+                        channel_subtype: (proposal as any).channel_subtype || null,
                         instagram_handle: proposal.instagramHandle || (proposal.channel_name === 'instagram' ? proposal.channel_url : undefined),
                         insight_screenshot: proposal.insightScreenshot
                     })
@@ -628,8 +648,61 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .single()
 
                 if (error) throw error
+
+                // 🔔 캠페인 브랜드에게 지원 알림
+                try {
+                    const { data: campaign } = await supabase
+                        .from('campaigns')
+                        .select('brand_id')
+                        .eq('id', proposal.campaignId!)
+                        .single()
+                    if (campaign?.brand_id && data?.id) {
+                        await supabase.from('notifications').insert({
+                            recipient_id: campaign.brand_id,
+                            sender_id: userId,
+                            type: 'application_received',
+                            content: `캠페인에 새로운 크리에이터가 지원했습니다. 확인해보세요!`,
+                            reference_id: data.id.toString(),
+                            is_read: false
+                        })
+                    }
+                } catch (notifErr) {
+                    console.warn('알림 발송 실패 (무시):', notifErr)
+                }
+
+                // [Workspaces] workspace row 생성 (campaign_applications에는 brand_id 없으므로 campaigns join 필요)
+                try {
+                    if (data?.id) {
+                        const { data: campaign } = await supabase
+                            .from('campaigns')
+                            .select('brand_id')
+                            .eq('id', proposal.campaignId!)
+                            .single()
+                        if (campaign?.brand_id) {
+                            const { data: ws } = await supabase
+                                .from('workspaces')
+                                .insert({
+                                    brand_id: campaign.brand_id,
+                                    influencer_id: targetInfluencerId,
+                                    proposal_type: 'campaign_application',
+                                    proposal_id: data.id.toString()
+                                })
+                                .select('id')
+                                .single()
+                            if (ws?.id) {
+                                await supabase
+                                    .from('campaign_applications')
+                                    .update({ workspace_id: ws.id })
+                                    .eq('id', data.id)
+                            }
+                        }
+                    }
+                } catch (wsErr) {
+                    console.warn('[ProposalProvider] workspace 생성 실패 (무시):', wsErr)
+                }
+
             } else if (proposal.momentId) {
-                // Moment Proposal (Insert into moment_proposals)
+                // Moment Proposal
                 console.log('[ProposalProvider] Submitting Moment Proposal:', proposal)
                 const { data, error } = await supabase
                     .from('moment_proposals')
@@ -637,7 +710,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         brand_id: userId,
                         brand_team_id: myTeamId,
                         influencer_id: proposal.toId || proposal.influencerId,
-                        influencer_team_id: null, // Influencer Team ID unknown without fetch
+                        influencer_team_id: null,
                         moment_id: proposal.momentId,
                         message: proposal.message,
                         price_offer: proposal.cost,
@@ -645,10 +718,10 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         conditions: {
                             group: 'moment_proposal',
                             product_name: proposal.productName,
-                            product_type: "gift", // Default or map from proposal
-                            has_incentive: false, // Default or map from proposal
+                            product_type: "gift",
+                            has_incentive: false,
                             incentive_detail: null,
-                            content_type: proposal.content_plan, // Mapping content plan to content type? Or just generic
+                            content_type: proposal.content_plan,
                             desired_date: proposal.date,
                             date_flexible: false,
                             condition_draft_submission_date: proposal.condition_draft_submission_date,
@@ -661,8 +734,51 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .single()
 
                 if (error) throw error
+
+                // 🔔 크리에이터에게 모먼트 제안 알림
+                try {
+                    const recipientId = proposal.toId || proposal.influencerId
+                    if (recipientId && data?.id) {
+                        await supabase.from('notifications').insert({
+                            recipient_id: recipientId,
+                            sender_id: userId,
+                            type: 'proposal_received',
+                            content: `브랜드에서 새 협업 제안이 도착했습니다. 확인해보세요!`,
+                            reference_id: data.id.toString(),
+                            is_read: false
+                        })
+                    }
+                } catch (notifErr) {
+                    console.warn('알림 발송 실패 (무시):', notifErr)
+                }
+
+                // [Workspaces] workspace row 생성
+                try {
+                    const recipientId = proposal.toId || proposal.influencerId
+                    if (data?.id && recipientId) {
+                        const { data: ws } = await supabase
+                            .from('workspaces')
+                            .insert({
+                                brand_id: userId,
+                                influencer_id: recipientId,
+                                proposal_type: 'moment_proposal',
+                                proposal_id: data.id.toString()
+                            })
+                            .select('id')
+                            .single()
+                        if (ws?.id) {
+                            await supabase
+                                .from('moment_proposals')
+                                .update({ workspace_id: ws.id })
+                                .eq('id', data.id)
+                        }
+                    }
+                } catch (wsErr) {
+                    console.warn('[ProposalProvider] workspace 생성 실패 (무시):', wsErr)
+                }
+
             } else if (proposal.productId) {
-                // Brand Product Proposal (Insert into brand_proposals as Creator Application)
+                // Brand Product Proposal
                 if (!proposal.toId) {
                     throw new Error('brand_id(toId) is required for brand product proposal')
                 }
@@ -670,27 +786,69 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .from('brand_proposals')
                     .insert({
                         influencer_id: userId,
-                        influencer_team_id: myTeamId, // [FIX]
+                        influencer_team_id: myTeamId,
                         brand_id: proposal.toId,
                         product_id: proposal.productId,
                         product_name: (proposal as any).productName || "Brand Product",
-                        message: proposal.message || proposal.requestDetails,
-                        status: 'applied', // [FIXED] Creator applies to Brand Product
+                        message: proposal.message || (proposal as any).requestDetails,
+                        status: 'applied',
                         motivation: proposal.motivation,
                         content_plan: proposal.content_plan,
                         portfolio_links: proposal.portfolioLinks,
                         instagram_handle: proposal.instagramHandle || (proposal.channel_name === 'instagram' ? proposal.channel_url : undefined),
                         channel_name: proposal.channel_name,
                         channel_url: proposal.channel_url,
+                        channel_subtype: (proposal as any).channel_subtype || null,
                         insight_screenshot: proposal.insightScreenshot,
                         product_type: 'ad',
+                        price_offer: proposal.cost ?? 0,
                         compensation_amount: proposal.cost?.toString(),
                     })
                     .select()
                     .single()
 
                 if (error) throw error
-            }
+
+                // 🔔 브랜드에게 제품 지원 알림
+                try {
+                    if (proposal.toId && data?.id) {
+                        await supabase.from('notifications').insert({
+                            recipient_id: proposal.toId,
+                            sender_id: userId,
+                            type: 'application_received',
+                            content: `브랜드 제품에 새로운 크리에이터가 지원했습니다.`,
+                            reference_id: data.id.toString(),
+                            is_read: false
+                        })
+                    }
+                } catch (notifErr) {
+                    console.warn('알림 발송 실패 (무시):', notifErr)
+                }
+
+                // [Workspaces] workspace row 생성
+                try {
+                    if (data?.id && proposal.toId) {
+                        const { data: ws } = await supabase
+                            .from('workspaces')
+                            .insert({
+                                brand_id: proposal.toId,
+                                influencer_id: userId,
+                                proposal_type: 'brand_proposal',
+                                proposal_id: data.id.toString()
+                            })
+                            .select('id')
+                            .single()
+                        if (ws?.id) {
+                            await supabase
+                                .from('brand_proposals')
+                                .update({ workspace_id: ws.id })
+                                .eq('id', data.id)
+                        }
+                    }
+                } catch (wsErr) {
+                    console.warn('[ProposalProvider] workspace 생성 실패 (무시):', wsErr)
+                }
+            } // end else if (proposal.productId)
 
             await fetchCampaignProposals(userId)
             await fetchBrandProposals(userId)
@@ -779,6 +937,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
             if (updates.compensation_amount !== undefined) dbUpdates.compensation_amount = updates.compensation_amount
             if (updates.product_name) dbUpdates.product_name = updates.product_name
+            if ((updates as any).product_type) dbUpdates.product_type = (updates as any).product_type
             if (updates.special_terms !== undefined) dbUpdates.special_terms = updates.special_terms
             if (updates.has_incentive !== undefined) dbUpdates.has_incentive = updates.has_incentive
             if (updates.incentive_detail !== undefined) dbUpdates.incentive_detail = updates.incentive_detail
@@ -952,6 +1111,35 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             if (error) throw error
 
+            // [Workspaces] workspace row 생성
+            try {
+                if (data?.id) {
+                    const brandId = payload.brand_id
+                    const influencerId = payload.influencer_id
+                    if (brandId && influencerId) {
+                        const { data: ws } = await supabase
+                            .from('workspaces')
+                            .insert({
+                                brand_id: brandId,
+                                influencer_id: influencerId,
+                                proposal_type: 'brand_proposal',
+                                proposal_id: data.id.toString()
+                            })
+                            .select('id')
+                            .single()
+                        if (ws?.id) {
+                            await supabase
+                                .from('brand_proposals')
+                                .update({ workspace_id: ws.id })
+                                .eq('id', data.id)
+                            data.workspace_id = ws.id // reflect in returned data
+                        }
+                    }
+                }
+            } catch (wsErr) {
+                console.warn('[ProposalProvider] workspace 생성 실패 (무시):', wsErr)
+            }
+
             setBrandProposals(prev => [data, ...prev])
             return data
         } catch (error) {
@@ -987,6 +1175,35 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 .single()
 
             if (error) throw error
+
+            // [Workspaces] workspace row 생성
+            try {
+                if (data?.id) {
+                    const brandId = payload.brand_id
+                    const influencerId = payload.influencer_id
+                    if (brandId && influencerId) {
+                        const { data: ws } = await supabase
+                            .from('workspaces')
+                            .insert({
+                                brand_id: brandId,
+                                influencer_id: influencerId,
+                                proposal_type: 'moment_proposal',
+                                proposal_id: data.id.toString()
+                            })
+                            .select('id')
+                            .single()
+                        if (ws?.id) {
+                            await supabase
+                                .from('moment_proposals')
+                                .update({ workspace_id: ws.id })
+                                .eq('id', data.id)
+                            data.workspace_id = ws.id // reflect in returned data
+                        }
+                    }
+                }
+            } catch (wsErr) {
+                console.warn('[ProposalProvider] workspace 생성 실패 (무시):', wsErr)
+            }
 
             setMomentProposals(prev => [data, ...prev])
             return data

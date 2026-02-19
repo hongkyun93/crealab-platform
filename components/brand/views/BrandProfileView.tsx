@@ -1,16 +1,14 @@
 "use client"
 
-import React, { useState } from "react"
-import { Loader2, User } from "lucide-react"
+import React from "react"
+import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { AvatarUpload } from "@/components/ui/avatar-upload"
-import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useAuth } from "@/components/providers/auth-provider"
 
 interface BrandProfileViewProps {
     user: any
@@ -49,8 +47,6 @@ export const BrandProfileView = React.memo(function BrandProfileView({
     switchRole
 }: BrandProfileViewProps) {
     const { supabase } = useUnifiedProvider()
-    const { logout } = useAuth()
-    const [confirmSwitch, setConfirmSwitch] = useState(false)
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -79,7 +75,14 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="b-web">공식 웹사이트</Label>
-                        <Input id="b-web" className="pl-9" value={editWebsite} onChange={(e) => setEditWebsite(e.target.value)} placeholder="https://" />
+                        <Input
+                            id="b-web"
+                            value={editWebsite}
+                            onChange={(e) => setEditWebsite(e.target.value)}
+                            onFocus={() => { if (!editWebsite) setEditWebsite("https://") }}
+                            onBlur={() => { if (editWebsite === "https://") setEditWebsite("") }}
+                            placeholder="https://"
+                        />
                     </div>
 
                     <div className="space-y-2">
@@ -100,43 +103,6 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "저장하기"}
                     </Button>
                 </CardFooter>
-            </Card>
-
-            <Card className="max-w-2xl border-red-100 bg-red-50/10 mt-6">
-                <CardHeader>
-                    <CardTitle className="text-red-600 flex items-center gap-2">
-                        계정 유형 전환
-                    </CardTitle>
-                    <CardDescription>
-                        크리에이터 계정으로 전환하시겠습니까? 계정 유형을 변경하면 크리에이터 전용 대시보드를 사용하게 됩니다.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-xs text-muted-foreground mb-4">
-                        * 전환 후에도 브랜드 정보는 유지되지만, 대시보드 인터페이스가 크리에이터용으로 변경됩니다.
-                    </p>
-                    <div className="flex justify-start">
-                        <Button
-                            variant="outline"
-                            className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
-                            onClick={() => setConfirmSwitch(true)}
-                        >
-                            <User className="h-4 w-4 mr-2" />
-                            크리에이터 계정으로 전환 (로그아웃)
-                        </Button>
-                    </div>
-
-                    <ConfirmDialog
-                        open={confirmSwitch}
-                        onOpenChange={setConfirmSwitch}
-                        title="계정 전환"
-                        description="정말로 크리에이터 계정으로 전환하시겠습니까? (로그아웃 됩니다)"
-                        onConfirm={async () => {
-                            await logout()
-                        }}
-                        confirmText="전환"
-                    />
-                </CardContent>
             </Card>
         </div>
     )

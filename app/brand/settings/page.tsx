@@ -150,7 +150,8 @@ export default function BrandSettingsPage() {
                                 id="website"
                                 value={website}
                                 onChange={(e) => setWebsite(e.target.value)}
-                                onBlur={(e) => setWebsite(e.target.value)}
+                                onFocus={() => { if (!website) setWebsite("https://") }}
+                                onBlur={() => { if (website === "https://") setWebsite("") }}
                                 autoComplete="off"
                                 placeholder="https://example.com"
                             />

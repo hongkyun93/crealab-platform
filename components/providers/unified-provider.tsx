@@ -12,6 +12,10 @@ import { TeamProvider, useTeam } from "./team-provider"
 import { SocialChannelsProvider, useSocialChannels } from "./social-channels-provider"
 import { createClient } from "@/lib/supabase/client"
 
+// Context for triggering public events load (lazy)
+const PublicEventsContext = React.createContext<() => void>(() => { })
+export const useEnablePublicEvents = () => React.useContext(PublicEventsContext)
+
 // Unified Provider that combines all domain providers
 export function UnifiedProvider({ children }: { children: React.ReactNode }) {
     // Global Event Listener for Runtime Logs
@@ -51,6 +55,12 @@ function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
     const { user } = useAuth()
     const { currentTeam, selectedMember, isProxyMode } = useTeam()
 
+    // Public events lazy loading: 처음에는 비활성화, discover 탭 진입 시 enablePublicEvents() 호출
+    const [publicEventsEnabled, setPublicEventsEnabled] = React.useState(false)
+    const enablePublicEvents = React.useCallback(() => {
+        setPublicEventsEnabled(true)
+    }, [])
+
     // [PERFORMANCE OPTIMIZATION] Use useMemo to prevent cascade re-renders
     // This enables parallel provider loading instead of waterfall
     const effectiveUserId = React.useMemo(() =>
@@ -72,13 +82,21 @@ function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
 
     return (
         <CampaignProvider userId={effectiveUserId} userType={user?.role} teamId={campaignTeamId}>
-            <EventProvider userId={effectiveUserId} teamId={activeTeamId} isProxyMode={isProxyMode} userType={user?.role}>
+            <EventProvider
+                userId={effectiveUserId}
+                teamId={activeTeamId}
+                isProxyMode={isProxyMode}
+                userType={user?.role}
+                publicEventsEnabled={publicEventsEnabled}
+            >
                 <ProductProvider userId={effectiveUserId} teamId={activeTeamId}>
                     <ProposalProvider userId={effectiveUserId} userType={user?.role}>
                         <MessageProvider userId={effectiveUserId}>
                             <FavoriteProvider userId={effectiveUserId}>
                                 <SocialChannelsProvider>
-                                    {children}
+                                    <PublicEventsContext.Provider value={enablePublicEvents}>
+                                        {children}
+                                    </PublicEventsContext.Provider>
                                 </SocialChannelsProvider>
                             </FavoriteProvider>
                         </MessageProvider>
@@ -104,6 +122,7 @@ export function useUnifiedProvider() {
     const favorites = useFavorites()
     const team = useTeam()
     const supabase = auth.supabase
+    const enablePublicEvents = useEnablePublicEvents()  // Hook을 useMemo 밖에서 호출 (React rules)
 
     return React.useMemo(() => ({
         // Team (New)
@@ -134,6 +153,9 @@ export function useUnifiedProvider() {
         updateEvent: events.updateEvent,
         deleteEvent: events.deleteEvent,
         fetchAllEvents: events.fetchAllEvents,
+        refreshEvents: events.refreshEvents,
+        enablePublicEvents,  // Discover 탭 진입 시 호출 → public events 쿼리 활성화
+
 
         // Products
         products: products.products,

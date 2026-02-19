@@ -293,7 +293,7 @@ export function SettingsView() {
                 autoDmPrice: autoDmPrice ? parseInt(autoDmPrice) : 0,
             }, effectiveUserId) // Pass effectiveUserId to update the correct profile
 
-            toast.success("프로필 정보가 저장되었습니다.")
+            toast.success("✓ 프로필이 저장되었습니다", { description: "변경 내용이 즉시 반영됩니다." })
         } catch (error) {
             console.error("Failed to save settings:", error)
             toast.error("저장에 실패했습니다.")
@@ -385,6 +385,35 @@ export function SettingsView() {
                         <p className="text-xs text-muted-foreground mt-1">
                             선택된 태그: {selectedTags.join(", ")}
                         </p>
+                        {selectedTags[0] && (() => {
+                            const TAG_DESCRIPTIONS: Record<string, string> = {
+                                "💄 뷰티": "메이크업, 스킨케어, 헤어 등 뷰티 전반의 콘텐츠를 제작하는 크리에이터입니다.",
+                                "👗 패션": "스타일링, 코디, 트렌드 등 패션 관련 콘텐츠를 전문으로 합니다.",
+                                "💊 건강": "운동, 영양, 웰니스 등 건강한 라이프스타일을 다루는 크리에이터입니다.",
+                                "💉 시술/병원": "시술, 의료 뷰티, 건강 관련 정보를 전문으로 공유합니다.",
+                                "🍽️ 맛집": "국내외 레스토랑 리뷰 및 맛집 탐방 콘텐츠를 제작합니다.",
+                                "🏡 리빙/인테리어": "홈 데코, 인테리어, 라이프스타일 공간을 소개하는 크리에이터입니다.",
+                                "💍 웨딩/결혼": "웨딩 준비, 신혼 라이프 등 결혼 관련 콘텐츠를 제작합니다.",
+                                "🏋️ 헬스/운동": "피트니스, 스포츠, 다이어트 운동 콘텐츠를 전문으로 합니다.",
+                                "🥗 다이어트": "식단 관리, 체중 감량, 건강한 식습관 콘텐츠를 제공합니다.",
+                                "👶 육아": "육아, 유아 제품, 자녀 교육 관련 콘텐츠를 제작합니다.",
+                                "🐶 반려동물": "반려견, 반려묘 등 펫 라이프 콘텐츠를 전문으로 합니다.",
+                                "💻 테크/IT": "최신 기기, 앱, IT 트렌드를 리뷰하는 크리에이터입니다.",
+                                "🎮 게임": "게임 플레이, 리뷰, 공략 등 게이밍 콘텐츠를 제작합니다.",
+                                "📚 도서/자기계발": "자기계발, 독서, 커리어 성장 콘텐츠를 공유합니다.",
+                                "🎨 취미/DIY": "수공예, 취미 활동, DIY 프로젝트 콘텐츠를 제작합니다.",
+                                "🎓 교육/강의": "전문 지식, 강의, 학습 콘텐츠를 제공하는 크리에이터입니다.",
+                                "🎬 영화/문화": "영화, 전시, 공연 등 문화 전반을 리뷰하고 소개합니다.",
+                                "💰 재테크": "투자, 절약, 금융 정보를 공유하는 크리에이터입니다.",
+                                "✈️ 여행": "국내외 여행지, 숙소, 여행 팁을 소개하는 크리에이터입니다.",
+                            }
+                            const desc = TAG_DESCRIPTIONS[selectedTags[0]]
+                            return desc ? (
+                                <p className="text-xs text-blue-600 mt-1.5 bg-blue-50 rounded-md px-3 py-2 border border-blue-100">
+                                    🏷 <strong>대표 태그: {selectedTags[0]}</strong> — {desc}
+                                </p>
+                            ) : null
+                        })()}
                     </div>
 
                     <div className="space-y-2">

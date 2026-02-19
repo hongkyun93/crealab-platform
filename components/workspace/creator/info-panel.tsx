@@ -1,31 +1,17 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ProgressBar } from '../common/progress-bar';
 import { StageCard } from '../common/stage-card';
-import { CtaButton } from '../common/cta-button';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { ConditionsPanel } from '../common/conditions-panel';
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
-import { Proposal } from '@/lib/types';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 export function CreatorInfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateProposal, updateMomentProposal, updateBrandProposal } = useUnifiedProvider();
-    const [isConfirming, setIsConfirming] = useState(false);
+    const { updateProposal, updateMomentProposal, updateBrandProposal, sendNotification, user } = useUnifiedProvider();
 
     // Helper to determine stage status
     const getStageStatus = (stageId: string) => {
@@ -85,6 +71,50 @@ export function CreatorInfoPanel() {
         }
     };
 
+    // 크리에이터 수락 토글 (chip 클릭)
+    const handleToggleConfirm = async (role: 'brand' | 'creator', currentValue: boolean) => {
+        if (!proposal?.id) return;
+        const newValue = !currentValue;
+        const updates: any = { influencer_condition_confirmed: newValue };
+        let success = false;
+        if ((proposal as any).moment_id || (proposal as any).momentId) {
+            success = await updateMomentProposal(proposal.id, updates);
+        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            success = await updateProposal(proposal.id, updates);
+        } else {
+            success = await updateBrandProposal(proposal.id, updates);
+        }
+        if (success) {
+            useWorkspaceStore.getState().updateProposal(updates);
+
+            // 양쪽 다 확정됐으면 즉시 계약 단계로 전환 (progress-bar 즉시 반영)
+            const bothConfirmed = newValue && !!proposal.brand_condition_confirmed;
+            if (bothConfirmed) {
+                useWorkspaceStore.getState().setCurrentStage('contract');
+            }
+
+            // ⚠️ 수락 시에만 브랜드에게 알림
+            if (newValue) {
+                try {
+                    const brandId = (proposal as any).brand_id ||
+                        (proposal as any).brandId ||
+                        (proposal as any).campaign?.brand_id;
+                    const creatorName = user?.name || '크리에이터';
+                    if (brandId) {
+                        await sendNotification(
+                            brandId,
+                            `${creatorName}님이 조건을 수락했습니다. 계약서를 작성해주세요.`,
+                            'condition_confirmed',
+                            proposal.id?.toString()
+                        );
+                    }
+                } catch (notifErr) {
+                    console.warn('알림 발송 실패 (무시):', notifErr);
+                }
+            }
+        }
+    };
+
     return (
         <div className="flex flex-col h-full">
             {/* 1. Workspace Header */}
@@ -139,71 +169,10 @@ export function CreatorInfoPanel() {
                     >
                         <ConditionsPanel
                             userRole="creator"
-                            readonly={true} // Creator usually read-only unless negotiated
-                            onSave={handleConditionSave} // Pass just in case logic changes
+                            readonly={true}
+                            onSave={handleConditionSave}
+                            onToggleConfirm={handleToggleConfirm}
                         />
-                        {/* [옵션 A] 크리에이터 조건 수락 버튼 */}
-                        {/* 브랜드가 brand_condition_confirmed: true 저장 후, 크리에이터가 이 버튼으로 influencer_condition_confirmed: true 저장 */}
-                        {/* 양쪽 모두 true일 때 스테이지 판단 로직이 자동으로 'contract' 단계로 전환 */}
-                        {!proposal?.influencer_condition_confirmed && proposal?.brand_condition_confirmed && (
-                            <div className="mt-4 flex justify-end">
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <CtaButton disabled={isConfirming} isLoading={isConfirming}>
-                                            조건 수락
-                                        </CtaButton>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>조건을 수락하시겠습니까?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                제안된 조건을 수락하면 계약 단계로 진행됩니다. 이 작업은 되돌릴 수 없습니다.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>취소</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={async () => {
-                                                    setIsConfirming(true);
-                                                    try {
-                                                        const updates = {
-                                                            influencer_condition_confirmed: true
-                                                        };
-
-                                                        let success = false;
-                                                        if (proposal && ((proposal as any).moment_id || (proposal as any).event_id)) {
-                                                            success = await updateMomentProposal(proposal.id, updates);
-                                                        } else if (proposal && ((proposal as any).campaignId || (proposal as any).campaign_id)) {
-                                                            success = await updateProposal(proposal.id, updates);
-                                                        } else if (proposal) {
-                                                            success = await updateBrandProposal(proposal.id, updates);
-                                                        }
-
-                                                        // 로컬 스토어 즉시 반영
-                                                        if (success) {
-                                                            useWorkspaceStore.getState().updateProposal(updates);
-                                                        }
-                                                    } finally {
-                                                        setIsConfirming(false);
-                                                    }
-                                                }}
-                                            >
-                                                수락하기
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
-                        )}
-                        {/* 이미 수락한 경우 표시 */}
-                        {proposal?.influencer_condition_confirmed && (
-                            <div className="mt-4 flex justify-end">
-                                <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                                    ✓ 조건 수락 완료
-                                    {!proposal?.brand_condition_confirmed && ' · 브랜드 확정 대기 중'}
-                                </span>
-                            </div>
-                        )}
                     </StageCard>
 
                     {/* Stage 2: Contract */}

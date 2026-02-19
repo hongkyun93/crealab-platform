@@ -42,9 +42,7 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
     // Form States
     const [loading, setLoading] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string[]>([])
-    const [postingYear, setPostingYear] = useState("2026")
-    const [postingMonth, setPostingMonth] = useState("3")
-    const [postingDay, setPostingDay] = useState("")
+    const [postingDate, setPostingDate] = useState("")
     const [selectedChannels, setSelectedChannels] = useState<string[]>([])
     const [deadline, setDeadline] = useState("")
     const [selectionDate, setSelectionDate] = useState("")
@@ -56,6 +54,7 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
     const [isUploading, setIsUploading] = useState(false)
     const [title, setTitle] = useState("")
     const [budget, setBudget] = useState("")
+    const [productType, setProductType] = useState<'gift' | 'loan'>('gift')
     const [target, setTarget] = useState("")
     const [referenceLink, setReferenceLink] = useState("")
     const [hashtags, setHashtags] = useState("")
@@ -94,11 +93,8 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
             }
 
             // Date parsing
-            if (campaign.postingDate) {
-                const [y, m, d] = campaign.postingDate.split('-')
-                if (y) setPostingYear(y)
-                if (m) setPostingMonth(parseInt(m).toString())
-                if (d) setPostingDay(d)
+            if (campaign.postingDate || campaign.posting_date) {
+                setPostingDate(campaign.postingDate || campaign.posting_date || "")
             }
 
             // New fields
@@ -112,8 +108,10 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
                 setSelectedChannels(campaign.channels)
             }
             if (campaign.hashtags && Array.isArray(campaign.hashtags)) {
-                setHashtags(campaign.hashtags.join(', '))
+                setHashtags(campaign.hashtags.join(' '))
             }
+            if (campaign.product_type === 'loan') setProductType('loan')
+            else setProductType('gift')
         }
     }, [mode, campaignId, campaigns, router])
 
@@ -147,7 +145,8 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
         } else {
             toast.success(`캠페인이 성공적으로 ${mode === 'edit' ? '수정' : '등록'}되었습니다!`)
             await refreshData()
-            router.push("/brand?view=dashboard")
+            router.refresh()
+            router.push("/brand?view=my-campaigns")
         }
     }
 
@@ -342,6 +341,24 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
                                 onChange={(e) => setBudget(e.target.value)}
                                 required
                             />
+                            {/* 제품 제공 방식 토글 */}
+                            <div className="flex gap-2 pt-1">
+                                {(['gift', 'loan'] as const).map(type => (
+                                    <button
+                                        type="button"
+                                        key={type}
+                                        onClick={() => setProductType(type)}
+                                        className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all duration-200
+                                            ${productType === type
+                                                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                                : 'bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                                            }`}
+                                    >
+                                        {type === 'gift' ? '🎁 증정 (제품 제공)' : '🔄 대여 (반납 필요)'}
+                                    </button>
+                                ))}
+                            </div>
+                            <input type="hidden" name="productType" value={productType} />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -381,25 +398,18 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>모집 조건 (팔로워 수)</Label>
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        name="minFollowers"
-                                        type="number"
-                                        placeholder="최소 (명)"
-                                        value={minFollowers}
-                                        onChange={(e) => setMinFollowers(e.target.value)}
-                                    />
-                                    <span className="text-muted-foreground">~</span>
-                                    <Input
-                                        name="maxFollowers"
-                                        type="number"
-                                        placeholder="최대 (명)"
-                                        value={maxFollowers}
-                                        onChange={(e) => setMaxFollowers(e.target.value)}
-                                    />
-                                </div>
-                                <p className="text-xs text-muted-foreground">비워두시면 제한 없음으로 설정됩니다.</p>
+                                <Label htmlFor="postingDate" className="flex items-center gap-2">
+                                    <Send className="h-4 w-4" />
+                                    콘텐츠 업로드 시기 (예정)
+                                </Label>
+                                <Input
+                                    id="postingDate"
+                                    type="date"
+                                    name="postingDate"
+                                    value={postingDate}
+                                    onChange={(e) => setPostingDate(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">미입력 시 '협의'로 표시됩니다.</p>
                             </div>
                         </div>
 
@@ -420,6 +430,8 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
                                     placeholder="예: https://example.com/product (레퍼런스 게시물 또는 자사몰 링크)"
                                     value={referenceLink}
                                     onChange={(e) => setReferenceLink(e.target.value)}
+                                    onFocus={() => { if (!referenceLink) setReferenceLink("https://") }}
+                                    onBlur={() => { if (referenceLink === "https://") setReferenceLink("") }}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -427,11 +439,32 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
                                 <Input
                                     id="hashtags"
                                     name="hashtags"
-                                    placeholder="예: #크레디픽, #제품명, #광고 (쉼표로 구분)"
+                                    placeholder="#크리에이티브 #제품명 → 스페이스로 구분"
                                     value={hashtags}
-                                    onChange={(e) => setHashtags(e.target.value)}
+                                    onChange={(e) => {
+                                        // 한글 IME 조합 중에는 변환 로직을 건드리지 않음
+                                        if (e.nativeEvent.isComposing) {
+                                            setHashtags(e.target.value)
+                                            return
+                                        }
+                                        let val = e.target.value
+                                        if (val === '') { setHashtags(''); return }
+                                        if (!val.startsWith('#')) val = '#' + val
+                                        val = val.replace(/ (?!#)(?=\S)/g, ' #')
+                                        val = val.replace(/#{2,}/g, '#')
+                                        setHashtags(val)
+                                    }}
+                                    onCompositionEnd={(e) => {
+                                        // 한글 조합 완료 시점에 한 번만 변환 처리
+                                        let val = (e.target as HTMLInputElement).value
+                                        if (val === '') return
+                                        if (!val.startsWith('#')) val = '#' + val
+                                        val = val.replace(/ (?!#)(?=\S)/g, ' #')
+                                        val = val.replace(/#{2,}/g, '#')
+                                        setHashtags(val)
+                                    }}
                                 />
-                                <p className="text-xs text-muted-foreground">크리에이터가 콘텐츠 업로드 시 포함해야 할 해시태그를 입력해주세요.</p>
+                                <p className="text-xs text-muted-foreground">태그 입력 후 스페이스로 다음 태그를 구분하세요.</p>
                             </div>
                         </div>
 
@@ -464,65 +497,38 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
                             <input type="hidden" name="category" value={selectedCategory.join(",")} />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="target">원하는 크리에이터 스타일</Label>
-                            <Input
-                                id="target"
-                                name="target"
-                                placeholder="예: 감성적인 사진을 잘 찍으시는 분, 영상 편집 퀄리티가 높으신 분"
-                                value={target}
-                                onChange={(e) => setTarget(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2">
-                                <Send className="h-4 w-4" />
-                                콘텐츠 업로드 시기 (예정)
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
-                                    className="h-6 px-2 text-xs ml-1 bg-background"
-                                >
-                                    {postingYear}년 🔄
-                                </Button>
-                            </Label>
-                            <div className="grid grid-cols-6 gap-2">
-                                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].map((m) => {
-                                    const isSelected = postingMonth === m
-                                    return (
-                                        <Button
-                                            key={`posting-${m}`}
-                                            type="button"
-                                            variant={isSelected ? "default" : "outline"}
-                                            className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
-                                            onClick={() => setPostingMonth(m)}
-                                        >
-                                            {m}월
-                                        </Button>
-                                    )
-                                })}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label>모집 조건 (팔로워 수)</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        name="minFollowers"
+                                        type="number"
+                                        placeholder="최소 (명)"
+                                        value={minFollowers}
+                                        onChange={(e) => setMinFollowers(e.target.value)}
+                                    />
+                                    <span className="text-muted-foreground">~</span>
+                                    <Input
+                                        name="maxFollowers"
+                                        type="number"
+                                        placeholder="최대 (명)"
+                                        value={maxFollowers}
+                                        onChange={(e) => setMaxFollowers(e.target.value)}
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground">비워두시면 제한 없음으로 설정됩니다.</p>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="target">원하는 크리에이터 스타일</Label>
                                 <Input
-                                    type="number"
-                                    placeholder="일 (선택사항)"
-                                    className="w-24"
-                                    min={1}
-                                    max={31}
-                                    name="postingDay"
-                                    value={postingDay}
-                                    onChange={(e) => setPostingDay(e.target.value)}
+                                    id="target"
+                                    name="target"
+                                    placeholder="예: 감성적인 사진을 잘 찍으시는 분, 영상 편집 풀리티가 높으시는 분"
+                                    value={target}
+                                    onChange={(e) => setTarget(e.target.value)}
                                 />
-                                <span className="text-sm text-muted-foreground">일에 업로드 희망 (미입력시 '협의'로 표시됩니다)</span>
                             </div>
-                            <input
-                                type="hidden"
-                                name="postingDate"
-                                value={`${postingYear}-${postingMonth.padStart(2, '0')}`}
-                            />
                         </div>
 
                         <div className="space-y-2">

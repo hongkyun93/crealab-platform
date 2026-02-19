@@ -29,6 +29,9 @@ export interface Campaign {
     selection_announcement_date?: string
     min_followers?: number
     max_followers?: number
+    posting_date?: string  // snake_case DB column alias for postingDate
+    product_type?: 'gift' | 'loan'  // 제품 제공 방식
+    created_at?: string
 }
 
 export interface CampaignFormData {

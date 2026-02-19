@@ -83,9 +83,6 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
             if (refreshData) await refreshData()
             else router.refresh()
 
-            if (refreshData) await refreshData()
-            else router.refresh()
-
             toast.success("캠페인 이미지가 변경되었습니다.")
         } catch (error: any) {
             console.error("Image upload error:", error)
@@ -94,6 +91,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
             setIsImageUploading(false)
         }
     }
+
     // Memoize selected campaign lookup
     const selectedCampaign = useMemo(
         () => myCampaigns.find(c => c.id === selectedCampaignId),
@@ -126,65 +124,66 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
         })
     }, [myCampaigns, activeTab])
 
-    // Detail View
-    if (selectedCampaignId && selectedCampaign) {
-        const today = new Date()
-        const dDay = selectedCampaign.recruitment_deadline
-            ? Math.ceil((new Date(selectedCampaign.recruitment_deadline).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-            : null
-
-        const CHANNELS = [
-            { id: "instagram", label: "인스타그램", icon: "📸" },
-            { id: "youtube", label: "유튜브", icon: "▶️" },
-            { id: "tiktok", label: "틱톡", icon: "🎵" },
-            { id: "blog", label: "블로그", icon: "📝" },
-            { id: "shorts", label: "유튜브 숏츠", icon: "⚡" },
-            { id: "reels", label: "인스타 릴스", icon: "🎞️" }
-        ]
-        const getChannelLabel = (id: string) => CHANNELS.find(c => c.id === id)?.label || id
-        const getChannelIcon = (id: string) => CHANNELS.find(c => c.id === id)?.icon || ""
-
+    // ── Detail View: Design B (CampaignDetailContent) + Right Applicants Panel ──
+    if (selectedCampaignId && selectedCampaign && displayCampaign) {
         return (
-            <div className="w-full space-y-6 animate-in slide-in-from-right-4 duration-300">
-                <div className="flex items-center gap-2">
+            <div className="w-full animate-in slide-in-from-right-4 duration-300">
+                {/* Back Button */}
+                <div className="flex items-center gap-2 mb-5">
                     <Button variant="ghost" size="sm" onClick={() => setSelectedCampaignId(null)} className="gap-1 pl-0 hover:bg-transparent hover:text-primary">
                         <ArrowRight className="h-4 w-4 rotate-180" /> 목록으로 돌아가기
                     </Button>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-[1fr_350px]">
-                    {/* Left: Campaign Detail Card (Refactored to match Dialog UI) */}
-                    {/* Left: Campaign Detail Card (Refactored to match Dialog UI) */}
-                    <div className="h-[calc(100vh-200px)] min-h-[600px] border rounded-xl overflow-hidden shadow-sm flex flex-col bg-card">
+                {/* Layout: CampaignDetailContent (Design B, left) + Applicants (right) */}
+                <div className="flex flex-col xl:flex-row gap-5 items-start">
+
+                    {/* ── Left: Campaign Detail Content (Design B) ── */}
+                    <div className="w-full xl:w-[55%] xl:flex-shrink-0 min-w-0 border rounded-xl overflow-hidden shadow-sm bg-card" style={{ minHeight: 520 }}>
                         <CampaignDetailContent
                             campaign={displayCampaign}
                             onImageUpload={handleImageUpload}
                             isUploading={isImageUploading}
-                            className="" // Let it use default grid behavior
                             renderHeaderSideAction={() => (
-                                <Button variant="secondary" size="sm" asChild className="h-9 px-4 text-xs font-semibold shadow-lg hover:bg-white shrink-0">
+                                <Button variant="secondary" size="sm" asChild className="h-9 px-4 text-xs font-semibold shrink-0">
                                     <Link href={`/brand/edit/${displayCampaign.id}`}>
                                         <Pencil className="h-3.5 w-3.5 mr-1.5" /> 캠페인 수정
                                     </Link>
                                 </Button>
                             )}
                         />
-
                     </div>
 
-                    {/* Right: Proposals */}
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2 font-bold text-lg">
-                            <Package className="h-5 w-5" /> 도착한 제안
+                    {/* ── Right: Applicants Panel ── */}
+                    <div className="w-full xl:flex-1 min-w-0">
+                        {/* KPI: 현재 지원자 수 */}
+                        <div className="rounded-xl border bg-card p-4 mb-4 flex items-center justify-between shadow-sm">
+                            <div>
+                                <p className="text-xs text-muted-foreground font-medium mb-1">현재 지원자 수</p>
+                                <div className="flex items-end gap-1.5">
+                                    <span className={`text-3xl font-extrabold tabular-nums ${filteredProposals.length > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                                        {filteredProposals.length}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground mb-0.5">명</span>
+                                </div>
+                            </div>
+                            <div className="text-right space-y-1">
+                                <div className="text-xs text-muted-foreground">
+                                    수락 <span className="font-bold text-emerald-600">{filteredProposals.filter((p: any) => p.status === 'accepted').length}명</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    대기 <span className="font-bold text-amber-500">{filteredProposals.filter((p: any) => p.status !== 'accepted').length}명</span>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="bg-muted/10 rounded-xl border min-h-[400px] p-4">
+                        <div className="bg-muted/10 rounded-xl border min-h-[300px] p-4">
                             {filteredProposals.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3 py-10">
                                     <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
                                         <Bell className="h-5 w-5 opacity-30" />
                                     </div>
-                                    <p className="text-sm">이 캠페인에 도착한 제안이 아직 없습니다.</p>
+                                    <p className="text-sm">이 캠페인에 도착한 지원이 아직 없습니다.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -235,11 +234,32 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                             )}
                         </div>
                     </div>
-                </div >
-            </div >
+                </div>
+
+                <ConfirmDialog
+                    open={!!confirmAcceptId}
+                    onOpenChange={(open) => !open && setConfirmAcceptId(null)}
+                    title="제안 수락"
+                    description="이 크리에이터의 제안을 수락하시겠습니까?"
+                    onConfirm={async () => {
+                        if (confirmAcceptId) {
+                            try {
+                                const { updateApplicationStatus } = await import('@/app/actions/proposal')
+                                await updateApplicationStatus(confirmAcceptId, 'accepted')
+                                toast.success('수락되었습니다')
+                                window.location.reload()
+                            } catch (e) {
+                                toast.error('오류가 발생했습니다.')
+                            }
+                            setConfirmAcceptId(null)
+                        }
+                    }}
+                />
+            </div>
         )
     }
 
+    // ── List View ──
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between">
@@ -309,13 +329,11 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                             </div>
                                         </div>
                                     ) : (
-                                        // Placeholder if no image at all
                                         <div className="w-full md:w-48 h-32 md:h-auto bg-muted flex items-center justify-center shrink-0">
                                             <Package className="h-8 w-8 text-muted-foreground/50" />
                                         </div>
                                     )}
 
-                                    {/* Main Content */}
                                     {/* Main Content */}
                                     <div className="flex-1 p-4 md:p-5 flex flex-col justify-between">
                                         <div>
@@ -336,8 +354,6 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                             </span>
                                                         );
                                                     })()}
-
-                                                    {/* Top Row Extra Info (To save space) */}
                                                     <div className="hidden xl:flex items-center gap-2 text-[10px] text-muted-foreground border-l pl-2 ml-1">
                                                         {c.selection_announcement_date && <span>선정발표 : {c.selection_announcement_date}</span>}
                                                         {(c.min_followers || c.max_followers) && <span>| 지원조건 : 팔로워 {c.min_followers ? c.min_followers.toLocaleString() : '0'} ~ {c.max_followers ? c.max_followers.toLocaleString() : '제한없음'}</span>}
@@ -379,7 +395,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                 )}
                                             </div>
 
-                                            {/* Grid - Restored to 4 Cols (Single Row on PC) */}
+                                            {/* Grid */}
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-4 text-sm text-muted-foreground">
                                                 <div className="space-y-0.5">
                                                     <div className="text-[10px] font-bold text-muted-foreground/70">제공 혜택</div>

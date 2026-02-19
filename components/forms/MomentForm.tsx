@@ -48,7 +48,7 @@ interface MomentFormProps {
 
 export function MomentForm({ mode, eventId }: MomentFormProps) {
     const router = useRouter()
-    const { user, addEvent, updateEvent, deleteEvent, supabase, currentTeam, events } = useUnifiedProvider()
+    const { user, addEvent, updateEvent, deleteEvent, supabase, currentTeam, events, refreshEvents } = useUnifiedProvider()
     const { effectiveUserId, isProxyMode, effectiveUser } = useEffectiveUser()
 
     // MCN/Agency specific
@@ -279,7 +279,8 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                 })
 
                 if (success) {
-                    toast.success("모먼트가 성공적으로 수정되었습니다!")
+                    await refreshEvents()
+                    toast.success("✓ 모먼트가 수정되었습니다", { description: "아카이브에 반영됐습니다." })
                     router.push("/creator")
                 }
             } catch (error) {
@@ -319,7 +320,8 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
             })
 
             if (success) {
-                toast.success("모먼트가 성공적으로 등록되었습니다!")
+                await refreshEvents()
+                toast.success("✓ 모먼트가 등록되었습니다", { description: "아카이브에 바로 반영됐습니다." })
                 router.push('/creator')
             } else {
                 toast.error("모먼트 등록에 실패했습니다. 다시 시도해주세요.")

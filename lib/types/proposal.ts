@@ -42,6 +42,7 @@ export interface Proposal {
     priceOffer?: number // camelCase alias for MomentProposal compatibility
     price_offer?: number // [FIX] snake_case mapping from DB
 
+    workspace_id?: string // [Workspaces] FK to workspaces table
     fromId?: string
     toId?: string
     date: string
@@ -112,6 +113,7 @@ export interface Proposal {
     brand_avatar?: string // [FIX] Snake case for compatibility
     channel_name?: string
     channel_url?: string
+    channel_subtype?: string // [NEW] e.g. "instagram_reels", "youtube_shorts", "other:팟캐스트"
 
     // [FIX] Fields used in conditions-panel (missing from original type)
     desired_date?: string // Legacy alias for condition_upload_date
@@ -123,6 +125,7 @@ export interface Proposal {
     content_type?: string
     contentType?: string // camelCase alias
     secondaryUsage?: string // camelCase alias for condition_secondary_usage_period
+    product_type?: string // 제품 제공 방식: 'gift' | 'loan'
 }
 
 export interface BrandProposal {
@@ -161,6 +164,7 @@ export interface BrandProposal {
     brand_avatar?: string // snake_case for consistency with MomentProposal
 
     type?: string
+    workspace_id?: string // [Workspaces] FK to workspaces table
 
     // Contract
     contract_content?: string
@@ -221,6 +225,7 @@ export interface MomentProposal {
     brand_id: string
     influencer_id: string
     moment_id: string
+    workspace_id?: string // [Workspaces] FK to workspaces table
 
     // Status
     status: ProposalStatus

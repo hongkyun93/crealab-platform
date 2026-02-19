@@ -20,12 +20,13 @@ interface EventContextType {
 
 const EventContext = createContext<EventContextType | undefined>(undefined)
 
-export function EventProvider({ children, userId, teamId, isProxyMode = false, userType }: {
+export function EventProvider({ children, userId, teamId, isProxyMode = false, userType, publicEventsEnabled = false }: {
     children: React.ReactNode,
     userId?: string,
     teamId?: string,
     isProxyMode?: boolean,
-    userType?: string
+    userType?: string,
+    publicEventsEnabled?: boolean  // true일 때만 public events 쿼리 실행
 }) {
     const { supabase } = useAuth()
 
@@ -38,7 +39,7 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
 
     // Use SWR hooks for data fetching (Team-based or User-based)
     const { events: userEvents, isLoading: isUserLoading, revalidate: revalidateUser } = useUserEvents(teamId, userId, fetchMode)
-    const { events: publicEvents, isLoading: isPublicLoading, revalidate: revalidatePublic } = usePublicEvents()
+    const { events: publicEvents, isLoading: isPublicLoading, revalidate: revalidatePublic } = usePublicEvents(publicEventsEnabled)
 
     const isLoading = isUserLoading || isPublicLoading
 

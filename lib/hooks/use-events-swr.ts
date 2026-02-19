@@ -11,6 +11,8 @@ const supabase = createClient()
 const mapEvents = (data: any[]): InfluencerEvent[] => {
     return data.map((e: any) => {
         const profile = e.profiles || {}
+        const socialChannels: any[] = profile.social_channels || []
+        const primaryChannel = socialChannels.find((c: any) => c.is_primary) || socialChannels[0] || null
 
         return {
             id: e.id,
@@ -24,7 +26,7 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
             description: e.description || '',
             tags: e.tags || [],
             verified: profile.role === 'creator',
-            followers: profile.followers_count || 0,
+            followers: primaryChannel?.followers_count ?? profile.followers_count ?? 0,
             category: e.category || '',
             targetProduct: e.target_product || '',
             eventDate: e.event_date || '',
@@ -35,7 +37,12 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
             dateFlexible: e.date_flexible || false,
             schedule: e.schedule,
             isMock: false,
-            createdAt: e.created_at
+            createdAt: e.created_at,
+            primaryChannel: primaryChannel ? {
+                platform: primaryChannel.channel_type || primaryChannel.platform || '',
+                followersCount: primaryChannel.followers_count || 0,
+                handle: primaryChannel.handle || ''
+            } : null
         }
     })
 }
@@ -125,7 +132,10 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
         .from('life_moments')
         .select(`
       *,
-      profiles(*)
+      profiles(
+        *,
+        social_channels(*)
+      )
     `)
         .eq('is_private', false)
         .order('created_at', { ascending: false })
@@ -193,15 +203,16 @@ export function useUserEvents(teamId?: string, userId?: string, fetchMode: 'team
 
 /**
  * Custom hook for all public events with SWR
+ * enabled=false일 때 fetch를 완전히 비활성화 (SWR conditional fetching)
  */
-export function usePublicEvents() {
+export function usePublicEvents(enabled: boolean = false) {
     const { data, error, isLoading, mutate: revalidate } = useSWR(
-        SWR_KEYS.EVENTS_PUBLIC,
+        enabled ? SWR_KEYS.EVENTS_PUBLIC : null,  // null key = no fetch
         fetchPublicEvents,
         {
-            revalidateOnFocus: true,
+            revalidateOnFocus: false,  // public 데이터는 focus 시 재조회 불필요
             revalidateOnReconnect: true,
-            dedupingInterval: 5000, // Longer dedup for public data
+            dedupingInterval: 30000, // 30초 dedup (public 데이터는 자주 변하지 않음)
         }
     )
 
@@ -212,6 +223,7 @@ export function usePublicEvents() {
         revalidate,
     }
 }
+
 
 /**
  * Mutation functions for events

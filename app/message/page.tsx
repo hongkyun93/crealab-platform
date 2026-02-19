@@ -108,7 +108,9 @@ export default function MessagePage() {
             handle: string
         }> = {}
 
-        allMessages.forEach(msg => {
+        // [Workspaces] workspace 협업 메시지(workspace_id 있음)는 일반 DM 목록에서 제외
+        const dmMessages = allMessages.filter(msg => !msg.workspaceId)
+        dmMessages.forEach(msg => {
             const isMe = msg.senderId === displayUser.id
             const otherId = isMe ? msg.receiverId : msg.senderId
             const otherName = isMe ? msg.receiverName : msg.senderName

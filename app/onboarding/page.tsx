@@ -23,7 +23,7 @@ interface Invitation {
 
 export default function OnboardingPage() {
     const router = useRouter()
-    const { user, refreshSession } = useAuth()
+    const { user } = useAuth()
     const [step, setStep] = useState<1 | 2>(1)
     const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
     const [isLoading, setIsLoading] = useState(false)
@@ -86,12 +86,11 @@ export default function OnboardingPage() {
 
             if (error) throw error
 
-            await refreshSession()
-
-            if (role === 'brand') router.push('/brand')
-            else router.push('/creator')
-
             toast.success("환영합니다!")
+
+            // window.location.href 사용: 전체 페이지 로드로 proxy.ts가 최신 DB role을 올바르게 읽음
+            // router.push는 클라이언트 사이드 이동이라 쿠키 갱신 전 proxy가 role=null로 읽을 수 있음
+            window.location.href = role === 'brand' ? '/brand' : '/creator'
         } catch (error) {
             console.error('Error updating role:', error)
             toast.error('오류가 발생했습니다.')
@@ -110,9 +109,8 @@ export default function OnboardingPage() {
             const { error } = await supabase.rpc('accept_invitation', { invitation_id: inviteId })
             if (error) throw error
 
-            await refreshSession()
-            router.push('/creator')
             toast.success("팀에 합류했습니다!")
+            window.location.href = '/creator'
         } catch (error) {
             console.error('Invite accept error:', error)
             toast.error('초대 수락 실패')
@@ -142,9 +140,8 @@ export default function OnboardingPage() {
 
             if (teamError) throw teamError
 
-            await refreshSession()
-            router.push('/creator')
             toast.success("팀을 생성했습니다!")
+            window.location.href = '/creator'
         } catch (error) {
             console.error('Team creation error:', error)
             toast.error('팀 생성 실패')

@@ -117,7 +117,8 @@ export async function submitDirectProposal(data: any) {
                 condition_draft_submission_date: data.condition_draft_submission_date,
                 condition_final_submission_date: data.condition_final_submission_date,
                 condition_upload_date: data.condition_upload_date,
-                condition_secondary_usage_period: data.condition_secondary_usage_period
+                condition_secondary_usage_period: data.condition_secondary_usage_period,
+                product_id: data.product_id || null,
             }
         }
 

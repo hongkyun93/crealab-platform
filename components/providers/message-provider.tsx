@@ -9,8 +9,8 @@ interface MessageContextType {
     notifications: Notification[]
     submissionFeedback: SubmissionFeedback[]
     isLoading: boolean
-    sendMessage: (receiverId: string, content: string, file?: { url: string; name: string; size: number; type: string }, proposalId?: string, brandProposalId?: string) => Promise<void>
-    sendNotification: (recipientId: string, type: string, content: string, referenceId?: string) => Promise<void>
+    sendMessage: (receiverId: string, content: string, file?: { url: string; name: string; size: number; type: string }, proposalId?: string, brandProposalId?: string, workspaceId?: string) => Promise<void>
+    sendNotification: (recipientId: string, content: string, type: string, referenceId?: string) => Promise<void>
     sendSubmissionFeedback: (proposalId: string | undefined, brandProposalId: string | undefined, content: string) => Promise<void>
     fetchSubmissionFeedback: (proposalId?: string, brandProposalId?: string) => Promise<SubmissionFeedback[]>
     markAsRead: (notificationId: string) => Promise<void>
@@ -85,6 +85,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     receiverId: msg.receiver_id,
                     proposalId: msg.proposal_id,
                     brandProposalId: msg.brand_proposal_id,
+                    workspaceId: msg.workspace_id,
                     content: msg.content || '',
                     timestamp: msg.created_at,
                     read: msg.is_read || false,
@@ -261,7 +262,8 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         content: string,
         file?: { url: string; name: string; size: number; type: string },
         proposalId?: string,
-        brandProposalId?: string
+        brandProposalId?: string,
+        workspaceId?: string
     ) => {
         if (!userId) {
             throw new Error('User ID required')
@@ -277,6 +279,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     receiver_id: receiverId,
                     proposal_id: proposalId,
                     brand_proposal_id: brandProposalId,
+                    workspace_id: workspaceId || null,
                     content: content || '',
                     file_url: file?.url,
                     file_name: file?.name,
@@ -299,7 +302,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
     }
 
     // Send notification
-    const sendNotification = async (recipientId: string, type: string, content: string, referenceId?: string) => {
+    const sendNotification = async (recipientId: string, content: string, type: string, referenceId?: string) => {
         try {
             console.log('[MessageProvider] Sending notification:', { recipientId, type, content })
 
@@ -308,8 +311,8 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 .insert({
                     recipient_id: recipientId,
                     sender_id: userId,
-                    type,
-                    content,
+                    type,     // 타입 코드 (e.g. 'proposal_update')
+                    content,  // 사람이 읽는 문장 (e.g. '조건 협의가 완료되었습니다.')
                     reference_id: referenceId,
                     is_read: false
                 })

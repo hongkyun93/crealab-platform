@@ -41,6 +41,7 @@ export function CampaignApplicationDialog({
 
     // Form State
     const [channelName, setChannelName] = useState("instagram")
+    const [channelSubtype, setChannelSubtype] = useState("")
     const [channelUrl, setChannelUrl] = useState("")
     const [motivation, setMotivation] = useState("")
     const [contentPlan, setContentPlan] = useState("")
@@ -222,6 +223,7 @@ ${additionalMessage || '없음'}
                 portfolioLinks: portfolioLinks ? [portfolioLinks] : [],
                 channel_name: channelName,
                 channel_url: channelUrl,
+                channel_subtype: channelSubtype || undefined, // [NEW]
                 insightScreenshot: insightUrl || undefined,
             })
 
@@ -230,6 +232,7 @@ ${additionalMessage || '없음'}
 
             // Reset form
             setChannelName("instagram")
+            setChannelSubtype("")
             setChannelUrl(user?.handle || "")
             setMotivation("")
             setContentPlan("")
@@ -285,7 +288,7 @@ ${additionalMessage || '없음'}
                         <Label>진행 채널 선택 <span className="text-red-500">*</span></Label>
                         <Tabs defaultValue="instagram" onValueChange={(val) => {
                             setChannelName(val)
-                            // Optional: Reset or update pre-filled URL based on channel if using profile data
+                            setChannelSubtype("") // 채널 변경 시 서브타입 초기화
                         }} className="w-full">
                             <TabsList className="grid w-full grid-cols-5 bg-background border h-12 p-1">
                                 <TabsTrigger value="instagram" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 data-[state=active]:border-purple-200 border border-transparent rounded-md text-xs font-medium transition-all">
@@ -305,6 +308,59 @@ ${additionalMessage || '없음'}
                                 </TabsTrigger>
                             </TabsList>
                         </Tabs>
+
+                        {/* 서브타입 선택 (인스타/유튜브만) */}
+                        {channelName === 'instagram' && (
+                            <div className="flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                                <span className="text-xs text-muted-foreground min-w-[36px]">형태</span>
+                                <div className="flex gap-1.5 flex-wrap">
+                                    {[{ id: 'instagram_reels', label: '릴스', emoji: '🎞️' }, { id: 'instagram_feed', label: '피드', emoji: '📷' }, { id: 'instagram_story', label: '스토리', emoji: '⭕' }].map(sub => (
+                                        <button
+                                            key={sub.id}
+                                            type="button"
+                                            onClick={() => setChannelSubtype(channelSubtype === sub.id ? '' : sub.id)}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 ${channelSubtype === sub.id
+                                                ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 border-transparent text-white shadow-md scale-105'
+                                                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                                }`}
+                                        >
+                                            <span>{sub.emoji}</span><span>{sub.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {channelName === 'youtube' && (
+                            <div className="flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                                <span className="text-xs text-muted-foreground min-w-[36px]">형태</span>
+                                <div className="flex gap-1.5">
+                                    {[{ id: 'youtube_longform', label: '롱폼', emoji: '▶️' }, { id: 'youtube_shorts', label: '숏츠', emoji: '⚡' }].map(sub => (
+                                        <button
+                                            key={sub.id}
+                                            type="button"
+                                            onClick={() => setChannelSubtype(channelSubtype === sub.id ? '' : sub.id)}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 ${channelSubtype === sub.id
+                                                ? 'bg-gradient-to-r from-red-600 to-red-700 border-transparent text-white shadow-md scale-105'
+                                                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                                }`}
+                                        >
+                                            <span>{sub.emoji}</span><span>{sub.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {channelName === 'other' && (
+                            <div className="flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                                <span className="text-xs text-muted-foreground min-w-[36px]">채널명</span>
+                                <Input
+                                    value={channelSubtype.startsWith('other:') ? channelSubtype.slice(6) : ''}
+                                    onChange={e => setChannelSubtype(e.target.value ? `other:${e.target.value}` : '')}
+                                    placeholder="예: 팟캐스트, 카카오뷰, 네이버 클립..."
+                                    className="h-8 text-xs max-w-xs rounded-full"
+                                />
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <Label htmlFor="channelUrl" className="text-xs text-muted-foreground">

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creadypick</title> 특허 제안서 모음</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+
+        h1 {
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h2 {
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+
+        h3 {
+            color: #0056b3;
+            margin-top: 20px;
+        }
+
+        .document-box {
+            border: 1px solid #ddd;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .doc-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: Consolas, monospace;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: Consolas, monospace;
+        }
+
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            background: #eef;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .page-break {
+            page-break-after: always;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Invention Disclosure -->
+    <div class="document-box">
+        <div class="doc-title">[문서 1] 발명 제안서 (변리사 제출용)</div>
+
+        <h1>발명 제안서 (Invention Disclosure Form)</h1>
+
+        <h3>1. 발명의 명칭 (Title of Invention)</h3>
+        <p><strong>국문</strong>: 일정 데이터의 상업적 가치 평가 및 제안 객체 자동 생성 시스템 및 그 방법<br>
+            <strong>영문</strong>: System and Method for Evaluating Commercial Value of Schedule Data and Automatically
+            Generating Proposal Objects
+        </p>
+
+        <h3>2. 발명의 배경 및 목적 (Background & Objectives)</h3>
+        <h4>2.1 종래 기술의 문제점 (Problems in Prior Art)</h4>
+        <ul>
+            <li><strong>일정 관리와 상업적 제안의 분리</strong>: 종래의 인플루언서 마케팅 시스템에서 크리에이터의 '개인 일정(Schedule)'과 브랜드와의 '계약(Contract)'은
+                별도의 도구에서 관리됨.</li>
+            <li><strong>기회 손실 (Opportunity Loss)</strong>: 크리에이터가 여행, 이사, 결혼 등 고가치 상업적 이벤트(High-Value Commercial Event)를
+                계획하더라도, 이를 브랜드가 적시에 인지하고 제안하기 위한 자동화된 창구가 부재함.</li>
+            <li><strong>협상 비효율</strong>: 브랜드는 크리에이터의 일정을 알 수 없어 무차별적인 제안(Cold DM)을 발송하며, 이는 낮은 성사율로 귀결됨.</li>
+            <li><strong>협업의 비대칭성 부재</strong>: 기존 협업 도구(Google Docs 등)는 모든 사용자에게 동일한 화면과 권한을 부여하여, '협상(Negotiation)'이라는
+                특수한 비대칭적 상황(갑/을 관계, 가격 비공개 영역 등)을 지원하지 못함.</li>
+        </ul>
+
+        <h4>2.2 본 발명의 목적 (Objective)</h4>
+        <ol>
+            <li><strong>[제1발명] 모먼트 엔진</strong>: 일정 데이터를 상업적 제안 객체로 자동 변환.</li>
+            <li><strong>[제2발명] 통합 워크스페이스</strong>: 단일 제안 객체에 대해 브랜드와 크리에이터에게 <strong>서로 다른 권한과 뷰(View)를 제공</strong>하며
+                실시간 동기화.</li>
+        </ol>
+
+        <h3>3. 발명의 구성 및 특징 (Configuration & Features)</h3>
+
+        <h4>3.1 하드웨어 구성 (Hardware Components - 필수 요소)</h4>
+        <p>본 발명은 단순한 비즈니스 모델이 아닌, 구체적인 하드웨어 장치들의 상호작용으로 구현된다.</p>
+        <ol>
+            <li><strong>사용자 단말기 (User Terminal)</strong>: 터치스크린과 통신 모듈을 포함하며, 캘린더 인터페이스를 통해 사용자의 일정 입력을 수신하고, 서버로부터 수신된
+                제안 객체의 상태(Status)를 시각적으로 렌더링하는 장치.</li>
+            <li><strong>중앙 처리 서버 (Central Processing Server)</strong>: 다수의 사용자 단말기로부터 수신된 일정 데이터를 저장하고, 내장된 '모먼트
+                엔진(Moment Engine)'을 통해 연산을 수행하는 컴퓨팅 장치.</li>
+            <li><strong>데이터베이스 (Database)</strong>:
+                <ul>
+                    <li><strong>이벤트 DB</strong>: 원본 일정 데이터(EventID, Date, Title) 저장.</li>
+                    <li><strong>제안 DB</strong>: 가공된 상업적 제안 데이터(ProposalID, SlotList, Pricing) 저장.</li>
+                    <li><strong>단가표 DB</strong>: 각 사용자별 미디어 단가(RateCard) 저장.</li>
+                </ul>
+            </li>
+        </ol>
+
+        <h4>3.2 핵심 처리 흐름도 (Core Process Logic)</h4>
+        <div class="mermaid">
+            sequenceDiagram
+            participant Terminal as 사용자 단말기
+            participant Server as 중앙 처리 서버
+            participant Engine as 모먼트 엔진 (제어기)
+            participant DB as 데이터베이스
+
+            Note over Terminal, Server: 1. 데이터 수집 단계 (Data Acquisition)
+            Terminal->>Server: 1. 일정 데이터 전송 (기간, 키워드)
+
+            Note over Server, Engine: 2. 연산 및 변환 단계 (Transformation)
+            Server->>Engine: 2. 이벤트 문맥 분석 요청 (AnalyzeEventContext)
+            Engine->>Engine: 3. NLP 구매 의도(Purchase Intent) 추출
+            Engine->>DB: 4. 사용자별 단가표(RateCard) 조회
+            DB-->>Engine: 5. 단가 반환 {Youtube: 500만, Insta: 100만}
+
+            Engine->>Engine: 6. 슬롯 계산 = 기간(Duration) * 빈도(Freq)
+            Note right of Engine: *하드웨어적 특징: 메모리상의 변수 매핑 과정
+
+            Engine->>DB: 7. 제안 객체(Proposal Object) 생성 및 저장
+            DB-->>Server: 8. 생성된 ProposalID 반환
+
+            Note over Server, Terminal: 3. 상태 동기화 단계 (Synchronization)
+            Server->>Terminal: 9. 푸시 알림: "새 제안 생성됨"
+            Terminal->>Terminal: 10. UI 업데이트: 캘린더 셀 색상 변경
+        </div>
+
+        <h4>3.3 핵심 알고리즘 설명 (Detailed Description of Algorithm)</h4>
+        <p><strong>[청구항 1] 상업적 슬롯 자동 할당 시스템</strong><br>
+            프로세서(Processor)를 포함하는 서버 시스템으로서, 상기 프로세서는:<br>
+            1. 통신 모듈을 통해 제1단말기로부터 일정 데이터 패킷을 수신하고,<br>
+            2. 상기 일정 데이터의 기간(Duration) 값을 추출하여 메모리에 로드하고,<br>
+            3. 기설정된 슬롯 생성 규칙(Rule Set)을 적용하여, 상기 기간 값에 비례하는 복수의 광고 슬롯(Ad Slots) 객체를 생성하여 데이터베이스에 저장하는 것을 특징으로 하는 시스템.
+        </p>
+
+        <p><strong>[청구항 2] 동적 단가 산정 방법</strong><br>
+            컴퓨터로 구현되는 방법에 있어서,<br>
+            1. 사용자의 식별자(User ID)를 키(Key)로 하여 단가표(Rate Card) 데이터를 조회하는 단계;<br>
+            2. 입력된 일정의 계절적 특성(Seasonality) 데이터를 로드하는 단계;<br>
+            3. 상기 단가표의 기본값에 상기 계절적 특성에 따른 가중치(Weight)를 곱셈 연산하여 최종 제안 단가를 산출하는 단계;<br>
+            를 포함하는 상업적 제안 객체 생성 방법.</p>
+
+        <h4>[제2발명] 비대칭 상태 동기화 워크스페이스 (Asymmetric State Synchronization)</h4>
+        <p><strong>3.4 통합 워크스페이스 아키텍처</strong><br>
+            - <strong>Dual-View, Single-State 구조</strong>:<br>
+            - 데이터베이스에는 하나의 <code>Proposal</code> 객체만 존재함.<br>
+            - 그러나 서버는 요청자의 <code>Role</code> (Brand vs Creator)에 따라 전혀 다른 JSON 데이터를 내려줌.<br>
+            - <strong>브랜드 뷰</strong>: <code>Outcome</code> (결과물) 위주, <code>Payment</code> (결제) 버튼 활성화.<br>
+            - <strong>크리에이터 뷰</strong>: <code>Task</code> (할일) 위주, <code>Payment</code> 버튼 비활성화, <code>Payout</code>
+            (정산) 정보 표시.</p>
+
+        <h3>4. 청구 범위 전략 (Claim Strategy - 중요)</h3>
+        <p><strong>변리사님께: 본 발명은 두 가지의 독립적인 기술 사상을 포함하고 있습니다. 반드시 청구항을 분리하여 작성해 주십시오.</strong></p>
+        <ul>
+            <li><strong>[대분류 1] 모먼트 엔진 독립항</strong>: 일정 데이터를 제안 객체로 변환하는 기술 그 자체. (워크스페이스 기능이 없더라도 침해 성립되도록)</li>
+            <li><strong>[대분류 2] 워크스페이스 독립항</strong>: 이종(Dual) 클라이언트 간의 비대칭 상태 동기화 기술. (모먼트 엔진이 없더라도 침해 성립되도록)</li>
+            <li><strong>[종속항]</strong>: 두 기술이 결합된 전체 시스템.</li>
+        </ul>
+
+        <h3>5. 발명의 효과 (Technical Effects)</h3>
+        <ol>
+            <li><strong>데이터 자산화</strong>: (모먼트 엔진) 시간의 상품화.</li>
+            <li><strong>협업 효율성</strong>: (워크스페이스) 이메일, 전화 없이 플랫폼 내에서 비대칭 협상 및 계약 완결.</li>
+            <li><strong>UI 상태 동기화</strong>: 서버의 DB 상태 변경이 즉시 사용자 단말기의 캘린더 UI 픽셀 렌더링 변화로 이어지는 기술적 피드백 루프를 제공함.</li>
+        </ol>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Novelty Analysis -->
+    <div class="document-box">
+        <div class="doc-title">[문서 2] 특허 신규성 심층 분석 보고서</div>
+
+        <h1>Creadypick 특허 신규성 심층 분석 보고서 (Deep Novelty Analysis)</h1>
+
+        <h2>1. 요약 (Executive Summary)</h2>
+        <p><strong>"모먼트-투-상업화(Moment-to-Commercialization)" 엔진은 기존 시장에 존재하는 솔루션과 명확히 구분되며, 특허 등록 가능성이 매우 높은 "블루오션" 기술로
+                판단됩니다.</strong></p>
+        <p>기존 인플루언서 마케팅 플랫폼들은 캘린더를 "일정 관리(Scheduling)" 도구로만 활용하지만, Creadypick은 이를 <strong>"재고 생성(Inventory
+                Generation)"</strong> 도구로 활용한다는 점에서 기술적 진보성(Inventive Step)이 뚜렷합니다.</p>
+
+        <h2>2. 기존 기술의 한계 (The "Prior Art" Trap)</h2>
+        <h3>A. 단순 포스팅 예약 시스템 (Content Scheduling)</h3>
+        <ul>
+            <li><strong>대표 주자</strong>: Later, Hootsuite, Sprout Social 등.</li>
+            <li><strong>특허 동향</strong>: "데이터베이스에 저장된 콘텐츠를 특정 시간에 소셜 미디어 API로 전송하는 방법"에 집중됨.</li>
+            <li><strong>한계</strong>: 이미 제작된 콘텐츠를 <strong>언제 배포할지</strong>만 관리함. 콘텐츠 제작 전 단계의 <strong>"계약 체결"</strong>과는
+                무관함.</li>
+        </ul>
+
+        <h3>B. 인플루언서 마켓플레이스 (Influencer Marketplaces)</h3>
+        <ul>
+            <li><strong>대표 주자</strong>: CreatorIQ, AspireIQ, Grin 등.</li>
+            <li><strong>특허 동향</strong>: "조건에 맞는 인플루언서를 검색하고 매칭하는 알고리즘"에 집중됨.</li>
+            <li><strong>한계</strong>: 매칭이 성사된 <strong>후</strong>에야 캘린더가 등장함(캠페인 일정 관리용). 즉, 캘린더가 매칭의
+                <strong>결과</strong>이지, 매칭의 <strong>원인(Source)</strong>이 아님.
+            </li>
+        </ul>
+
+        <h2>3. Creadypick의 기술적 차별성 (The "Gap")</h2>
+        <table>
+            <tr>
+                <th>구분</th>
+                <th>기존 방식 (Marketplace)</th>
+                <th>Creadypick 방식 (Moment Engine)</th>
+            </tr>
+            <tr>
+                <td><strong>시작점</strong></td>
+                <td>브랜드의 모집 공고 (Brief)</td>
+                <td><strong>크리에이터의 개인 일정 (Calendar)</strong></td>
+            </tr>
+            <tr>
+                <td><strong>데이터 흐름</strong></td>
+                <td>공고 -> 지원 -> 매칭 -> 일정 확정</td>
+                <td><strong>일정 감지 -> 상품화 -> 매칭 -> 계약</strong></td>
+            </tr>
+            <tr>
+                <td><strong>기술적 특징</strong></td>
+                <td>검색 및 필터링 (Search & Filter)</td>
+                <td><strong>객체 형변환 (Type Transformation)</strong></td>
+            </tr>
+        </table>
+        <p><strong>핵심 주장</strong>: "일정(Time)"이라는 비상업적 데이터를 "상품(Asset)"이라는 상업적 데이터로 <strong>자동
+                변환(Auto-Transformation)</strong>하는 로직 자체가 새로운 발명입니다.</p>
+
+
+        <h2>🛡️ 대응 전략: 독립항 분리 (Multiple Independent Claims)</h2>
+        <p>우리는 하나의 특허 출원서 안에 <strong>서로 다른 독립된 발명</strong>을 포함시켜야 합니다.</p>
+        <ol>
+            <li><strong>청구항 1 (독립항)</strong>: "모먼트 엔진(A)" 단독 기술 (가장 넓은 권리 범위). <em>(이것만 있어도 침해.)</em></li>
+            <li><strong>청구항 10 (독립항)</strong>: "통합 워크스페이스(B)" 단독 기술. <em>(이것만 있어도 침해.)</em></li>
+            <li><strong>청구항 20 (종속항)</strong>: "A와 B가 결합된 시스템". <em>(방어용 논리.)</em></li>
+        </ol>
+    </div>
+
+
+    <div class="page-break"></div>
+
+    <!-- Trademark Strategy -->
+    <div class="document-box">
+        <div class="doc-title">[문서 3] 상표권 출원 전략 가이드</div>
+
+        <h1>Creadypick 상표권 출원 전략 가이드</h1>
+
+        <h2>1. 상표권의 핵심 (무엇을 보호하는가?)</h2>
+        <p>특허가 "기술"을 보호한다면, 상표는 <strong>"이름(Brand Name)과 로고(Logo)"</strong>를 보호합니다.<br>
+            다른 사람이 "Creadypick"이라는 이름으로 유사한 서비스를 하지 못하게 막는 것이 목적입니다.</p>
+
+        <h2>2. 필수 지정상품 류 (Nice Classification)</h2>
+        <p>상표는 전 영역에서 독점하는 것이 아니라, 등록한 <strong>"상품류(Class)"</strong> 안에서만 보호받습니다.<br>
+            Creadypick 같은 IT 플랫폼 서비스는 다음 <strong>4가지 류(Class)</strong> 확보가 필수적입니다.</p>
+
+        <table>
+            <tr>
+                <th>중요도</th>
+                <th>상품류 (Class)</th>
+                <th>설명</th>
+                <th>주요 지정상품 (예시)</th>
+            </tr>
+            <tr>
+                <td><strong>필수</strong></td>
+                <td><strong>제09류</strong></td>
+                <td><strong>앱/소프트웨어</strong></td>
+                <td>내려받기 가능한 컴퓨터 소프트웨어, 모바일 앱, 전자출판물</td>
+            </tr>
+            <tr>
+                <td><strong>필수</strong></td>
+                <td><strong>제35류</strong></td>
+                <td><strong>광고/비즈니스</strong></td>
+                <td>인플루언서 마케팅업, 광고 대행업, 데이터 처리업, 온라인 장터 운영업</td>
+            </tr>
+            <tr>
+                <td><strong>권장</strong></td>
+                <td><strong>제42류</strong></td>
+                <td><strong>SaaS/개발업</strong></td>
+                <td>소프트웨어 서비스업(SaaS), 플랫폼 개발업, 클라우드 컴퓨팅</td>
+            </tr>
+            <tr>
+                <td><strong>선택</strong></td>
+                <td><strong>제36류</strong></td>
+                <td><strong>금융/결제</strong></td>
+                <td>(추후 정산/핀테크 확장 시) 전자 자금 이체업, 금융 정보 제공업</td>
+            </tr>
+        </table>
+
+        <p><strong>전략</strong>: 예산이 부족하면 <strong>09류(앱)</strong>와 <strong>35류(광고/사업)</strong> 두 가지는 반드시 먼저 출원해야 합니다.
+            42류를 안 하면 경쟁사가 "우리는 앱이 아니라 웹사이트 유지보수업이다"라고 우길 때 방어가 까다로울 수 있습니다.</p>
+
+        <h2>3. 선행 상표 조사 (Registration Possibility)</h2>
+        <p>출원 전, <a href="http://www.kipris.or.kr" target="_blank">키프리스(KIPRIS)</a>에서 "Creadypick", "크리에랩", "Creative
+            Lab"
+            등을 검색해봐야 합니다.</p>
+        <ul>
+            <li><strong>식별력(Distinctiveness)</strong>: 단순히 "Creative Lab"이라고 하면 "창작 연구소"라는 일반 명사로 취급되어 거절될 확률이 높습니다.
+            </li>
+            <li><strong>해결책</strong>:
+                <ol>
+                    <li><strong>합성어 강조</strong>: "Creadypick" (띄어쓰기 없이 붙여서 고유명사화)</li>
+                    <li><strong>로고 결합</strong>: 글자만으로 등록이 어려우면, 독창적인 <strong>로고(도형)</strong>와 결합하여 출원하면 등록 확률이 올라갑니다.
+                    </li>
+                </ol>
+            </li>
+        </ul>
+
+        <h2>4. 준비물 및 절차</h2>
+        <ol>
+            <li><strong>출원인 정보</strong>: 법인 등기부등본 (법인 명의 출원 시) 또는 대표자 신분증.</li>
+            <li><strong>상표 견본</strong>: 고화질 로고 이미지 (JPG/PNG). (흰 배경에 검은 글씨가 가장 무난하며, 추후 색상 변경이 자유롭습니다.)</li>
+            <li><strong>지정상품 리스트</strong>: 위 표의 09/35/42류 항목.</li>
+        </ol>
+
+        <h2>5. 비용 절감 팁 (우선 심사)</h2>
+        <ul>
+            <li>일반 심사는 1년 이상 걸립니다.</li>
+            <li><strong>"우선 심사"</strong>를 신청하면 비용은 조금 더 들지만(관납료 약 16만원 추가), <strong>3~4개월</strong> 안에 결과를 받을 수 있습니다.
+                비즈니스 런칭이 급하다면 필수입니다.</li>
+        </ul>
+    </div>
+
+</body>
+
+</html>

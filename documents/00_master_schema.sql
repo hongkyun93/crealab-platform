@@ -210,6 +210,7 @@ CREATE TABLE IF NOT EXISTS public.campaigns (
   selection_announcement_date text,
   min_followers integer,
   max_followers integer,
+  product_type text DEFAULT 'gift',
   
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -1254,19 +1255,26 @@ WHERE mp.brand_id = btm.user_id AND btm.role = 'owner'
   AND mp.brand_team_id IS NULL;
 
 -- 9.3 Update RLS Policies to use Teams
--- Campaigns
+-- Campaigns: allow brand owner OR team member to manage
 DROP POLICY IF EXISTS "Brand manage campaigns" ON public.campaigns;
 DROP POLICY IF EXISTS "Team manage campaigns" ON public.campaigns;
-CREATE POLICY "Team manage campaigns" ON public.campaigns FOR ALL USING (
-    team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+CREATE POLICY "Brand or Team manage campaigns" ON public.campaigns FOR ALL USING (
+    auth.uid() = brand_id
+    OR team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
 );
 
 -- Products
 DROP POLICY IF EXISTS "Brand manage products" ON public.brand_products;
 DROP POLICY IF EXISTS "Team manage products" ON public.brand_products;
-CREATE POLICY "Team manage products" ON public.brand_products FOR ALL USING (
-    team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
-);
+DROP POLICY IF EXISTS "Anyone can view products" ON public.brand_products;
+-- All authenticated users can browse products (creator discovery)
+CREATE POLICY "Anyone can view products" ON public.brand_products
+    FOR SELECT USING (auth.role() = 'authenticated');
+-- Only team members can insert/update/delete their own products
+CREATE POLICY "Team manage products" ON public.brand_products
+    FOR ALL USING (
+        team_id IN (SELECT team_id FROM public.team_members WHERE user_id = auth.uid())
+    );
 
 -- Moments
 DROP POLICY IF EXISTS "Influencer manage moments" ON public.life_moments;

@@ -28,10 +28,9 @@ export function ChatArea({ className }: ChatAreaProps) {
     // moment_proposal: has moment_id (merged into brandProposals array but different table)
     const p = proposal as any;
     const isCampaignProposal = p?.type === 'creator_apply' || !!p?.campaignId;
-    // moment_proposals have a moment_id field. Their IDs CANNOT be used as brand_proposal_id
-    // because messages.brand_proposal_id FKs to brand_proposals table only.
     const isMomentProposal = !!p?.moment_id;
     const proposalIdStr = p?.id?.toString();
+    const workspaceId: string | undefined = p?.workspace_id; // [Workspaces]
 
     // Determine the OTHER party's user ID.
     // The workspace store proposal always has brand_id (UUID of brand user) and influencer_id (UUID of creator).
@@ -68,17 +67,21 @@ export function ChatArea({ className }: ChatAreaProps) {
 
             if (!senderReceiverMatch) return false;
 
-            // Isolate by proposal ID to prevent cross-proposal message leakage
-            if (isCampaignProposal) {
-                return msg.proposalId === proposalIdStr;
-            } else if (!isMomentProposal) {
-                // brand_proposal
-                return msg.brandProposalId === proposalIdStr;
+            // [Workspaces] Primary isolation: workspace_id (covers all proposal types)
+            // NOTE: messages.proposal_id FK references brand_proposals table only.
+            // Campaign/moment proposal IDs cannot be stored in proposal_id FK column.
+            if (workspaceId && msg.workspaceId) {
+                return msg.workspaceId === workspaceId;
             }
-            // moment_proposal: no FK in messages table, fall back to sender/receiver only
+            // Fallback for old messages without workspace_id
+            if (!isMomentProposal && !isCampaignProposal) {
+                // brand_proposal: isolate by brand_proposal_id (old messages)
+                if (msg.brandProposalId) return msg.brandProposalId === proposalIdStr;
+            }
+            // campaign/moment or truly old messages: sender/receiver pair only
             return true;
         });
-    }, [messages, user?.id, otherId, isCampaignProposal, isMomentProposal, proposalIdStr]);
+    }, [messages, user?.id, otherId, isCampaignProposal, isMomentProposal, proposalIdStr, workspaceId]);
 
     // Auto-scroll to bottom when messages change
     useEffect(() => {
@@ -93,19 +96,11 @@ export function ChatArea({ className }: ChatAreaProps) {
         setIsSending(true);
 
         try {
-            // sendMessage signature: (receiverId, content, file?, proposalId?, brandProposalId?)
-            // file is always undefined here (no file attachment in this UI)
-            // IMPORTANT: moment_proposals IDs cannot be used as brand_proposal_id FK
-            // because messages.brand_proposal_id references brand_proposals table only.
-            if (isCampaignProposal) {
-                await sendMessage(otherId, msgContent, undefined, proposalIdStr, undefined);
-            } else if (isMomentProposal) {
-                // moment_proposal: no FK column in messages table, send without proposal ID
-                await sendMessage(otherId, msgContent, undefined, undefined, undefined);
-            } else {
-                // brand_proposal: use brand_proposal_id
-                await sendMessage(otherId, msgContent, undefined, undefined, proposalIdStr);
-            }
+            // [Workspaces] Send with workspaceId for unified message isolation.
+            // workspaceId is stored in messages.workspace_id (no FK constraint → no violation).
+            // Old FK columns (proposal_id, brand_proposal_id) are intentionally NOT used
+            // to avoid 23503 FK violation on campaign/moment proposal IDs.
+            await sendMessage(otherId, msgContent, undefined, undefined, undefined, workspaceId);
         } catch (e) {
             console.error('[ChatArea] Message send failed:', e);
             setChatMessage(msgContent);

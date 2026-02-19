@@ -37,6 +37,7 @@ import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout";
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store";
 import { ProductDetailView } from "@/components/dashboard/product-detail-view"
+import InsightAnalyzer from "@/components/creator/InsightAnalyzer"
 
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -224,6 +225,38 @@ function InfluencerDashboardContent() {
     const [workspaceViewMode, setWorkspaceViewMode] = useState<'list' | 'grid' | 'table'>('list')
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
 
+    // [Badge] 탭별 새 이벤트 여부 계산
+    const workspaceTabBadges = useMemo(() => {
+        const allProposals: any[] = [
+            ...(brandProposals || []),
+            ...(campaignProposals || []),
+            ...(momentProposals || []),
+        ]
+        const unreadWorkspaceIds = new Set(
+            (messages || [])
+                .filter(m => m.senderId !== user?.id && !m.read && m.workspaceId)
+                .map(m => m.workspaceId)
+        )
+        const hasUnread = (proposals: any[]) =>
+            proposals.some(p => p.workspace_id && unreadWorkspaceIds.has(p.workspace_id))
+
+        const activeProposals = allProposals.filter(p =>
+            p.status === 'accepted' || p.status === 'active' || p.status === 'in_progress'
+        )
+        const inboundProposals = allProposals.filter(p => p.status === 'applied')
+        const outboundProposals = allProposals.filter(p => p.status === 'offered' || p.status === 'pending')
+        const rejectedProposals = allProposals.filter(p => p.status === 'rejected')
+        const completedProposals = allProposals.filter(p => p.status === 'completed')
+
+        return {
+            active: hasUnread(activeProposals),
+            inbound: inboundProposals.length > 0 || hasUnread(inboundProposals),
+            outbound: hasUnread(outboundProposals),
+            rejected: hasUnread(rejectedProposals),
+            completed: hasUnread(completedProposals),
+        }
+    }, [brandProposals, campaignProposals, momentProposals, messages, user?.id])
+
     // ReadonlyProposalDialog State
     const [showReadonlyDialog, setShowReadonlyDialog] = useState(false)
     const [selectedProposal, setSelectedProposal] = useState<any>(null)
@@ -243,35 +276,7 @@ function InfluencerDashboardContent() {
     const [targetCreatorId, setTargetCreatorId] = useState<string>("")
     const [teamMembers, setTeamMembers] = useState<any[]>([])
 
-    // Check if user is MCN but has no teams (and not loading)
-    // MOVED HERE: After all hooks are declared to prevent "Rendered fewer hooks than expected" error
-    if (isMCN && !isLoading && isInitialized && teams && teams.length === 0) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-muted/20">
-                <div className="text-center max-w-md p-8 bg-background border rounded-2xl shadow-sm space-y-6">
-                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto">
-                        <Building2 className="w-8 h-8" />
-                    </div>
-                    <div className="space-y-2">
-                        <h2 className="text-2xl font-bold">소속된 팀이 없습니다</h2>
-                        <p className="text-muted-foreground">
-                            아직 소속된 MCN/Agency 팀이 없습니다.<br />
-                            관리자에게 초대를 요청하거나, 직접 팀을 만들어보세요.
-                        </p>
-                    </div>
-                    <div className="pt-2 flex flex-col gap-3">
-                        <div className="p-4 bg-muted rounded-lg text-sm break-all">
-                            내 이메일: <span className="font-mono font-bold">{user?.email}</span>
-                        </div>
-                        {/* Option to create team if they changed their mind? */}
-                        <Button onClick={() => router.push('/onboarding')} variant="outline">
-                            온보딩 다시하기 (팀 생성)
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        )
-    }
+    // NOTE: MCN no-team check moved below all hooks (React rules: no early returns before hooks)
 
     useEffect(() => {
         const fetchTeamMembers = async () => {
@@ -401,6 +406,27 @@ function InfluencerDashboardContent() {
                     if (error) {
                         toast.error('수락 실패: ' + error.message)
                         throw error
+                    }
+
+                    // 1. 워크스페이스 자동 오픈
+                    setChatProposal(proposal)
+                    setCurrentView('workspace')
+
+                    // 2. 브랜드에게 알림 발송
+                    try {
+                        const brandId = (proposal as any).brand_id
+                        const creatorName = (user as any)?.display_name || user?.name || '크리에이터'
+                        if (brandId) {
+                            await supabase.from('notifications').insert({
+                                recipient_id: brandId,
+                                sender_id: user?.id,
+                                type: 'proposal_accepted',
+                                content: `${creatorName}님이 "${(proposal as any).product_name || '제안'}"을 수락했습니다. 협업을 시작하세요!`,
+                                reference_id: proposalId
+                            })
+                        }
+                    } catch (notifErr) {
+                        console.warn('알림 발송 실패 (무시):', notifErr)
                     }
 
                     await refreshData() // Refresh proposal list
@@ -908,7 +934,9 @@ function InfluencerDashboardContent() {
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
                                             <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] overflow-hidden">
-                                                {item.brand_name?.[0] || "B"}
+                                                {(item.brandAvatar || item.brand_avatar)
+                                                    ? <img src={item.brandAvatar || item.brand_avatar} alt="Brand" className="h-full w-full object-cover" />
+                                                    : (item.brand_name?.[0] || "B")}
                                             </div>
                                             {item.brand_name}
                                         </div>
@@ -970,7 +998,9 @@ function InfluencerDashboardContent() {
                                         item.status === 'completed' ? 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700' :
                                             'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:border-emerald-800'}
                                 `}>
-                                    {item.brand_name?.[0] || "W"}
+                                    {(item.brandAvatar || item.brand_avatar)
+                                        ? <img src={item.brandAvatar || item.brand_avatar} alt="Brand" className="h-full w-full object-cover" />
+                                        : (item.brand_name?.[0] || "W")}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h4 className="font-bold truncate text-sm">{item.brand_name}</h4>
@@ -1048,7 +1078,9 @@ function InfluencerDashboardContent() {
                         }}>
                         <div className="flex flex-col md:flex-row gap-6">
                             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-muted/50 border border-border overflow-hidden">
-                                <span className="font-bold text-lg text-muted-foreground">{proposal.brand_name?.[0] || "W"}</span>
+                                {(proposal.brandAvatar || proposal.brand_avatar)
+                                    ? <img src={proposal.brandAvatar || proposal.brand_avatar} alt="Brand" className="h-full w-full object-cover" />
+                                    : <span className="font-bold text-lg text-muted-foreground">{proposal.brand_name?.[0] || "W"}</span>}
                             </div>
                             <div className="flex-1 space-y-2">
                                 <div className="flex justify-between items-start">
@@ -1186,6 +1218,23 @@ function InfluencerDashboardContent() {
                 await sendMessage(brandId, msg, proposalId, undefined)
             } else {
                 await sendMessage(brandId, msg, undefined, proposalId)
+            }
+
+            // 🔔 브랜드에게 계약 관련 알림 발송
+            if (brandId) {
+                try {
+                    const notifContent = status === 'signed'
+                        ? `${user?.name}님이 계약서에 서명했습니다. 협업을 시작하세요!`
+                        : status === 'negotiating'
+                            ? `${user?.name}님이 계약서 내용 수정을 요청했습니다.`
+                            : `${user?.name}님이 계약 제안을 거절했습니다.`
+                    const notifType = status === 'signed' ? 'contract_signed'
+                        : status === 'negotiating' ? 'contract_negotiating'
+                            : 'contract_rejected'
+                    await sendNotification(brandId, notifContent, notifType, proposalId)
+                } catch (notifErr) {
+                    console.warn('알림 발송 실패 (무시):', notifErr)
+                }
             }
 
             toast.success("상태가 업데이트되었습니다.")
@@ -1681,8 +1730,8 @@ function InfluencerDashboardContent() {
     // Onboarding Check: Automatically show settings if crucial info is missing
     useEffect(() => {
         if (user && !isLoading && user.role === 'creator') {
-            // Only force settings if name or handle is truly missing
-            const isMissingInfo = !user.handle || !user.name
+            // Only force settings if name is truly missing (handle is managed separately in social channels)
+            const isMissingInfo = !user.name
             if (isMissingInfo && currentView !== 'settings' && initialView !== 'settings' && currentView !== 'profile') {
                 setCurrentView("settings")
             }
@@ -2449,8 +2498,8 @@ function InfluencerDashboardContent() {
                                 {renderSubTabs(rejectedProposals)}
                                 {renderWorkspaceItems(filterByType(rejectedProposals, workspaceSubTab), 'rejected')}
                             </TabsContent>
-                        </Tabs >
-                    </div >
+                        </Tabs>
+                    </div>
                 )
 
 
@@ -2548,6 +2597,8 @@ function InfluencerDashboardContent() {
                         </div>
                     </div>
                 )
+            case "insight-analyzer":
+                return <InsightAnalyzer />
             case "settings":
                 return <SettingsView />
             case "discover-products":
@@ -2835,7 +2886,7 @@ function InfluencerDashboardContent() {
                 influencerId: effectiveCreatorId,
                 fromId: effectiveCreatorId!,
                 toId: selectedCampaign.brandId || selectedCampaign.brand_id,
-                message: formData.appealMessage || formData.motivation,
+                message: formData.appealMessage,
                 status: 'applied',
                 type: 'creator_apply',
                 motivation: formData.motivation,
@@ -2943,280 +2994,419 @@ function InfluencerDashboardContent() {
 
     return (
         <div className="min-h-screen bg-muted/30">
-            <SiteHeader />
-            <main className="container py-8 max-w-[1920px] px-6 md:px-8">
-                <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-                    {/* Mobile Menu Button - Show only on mobile */}
-                    <div className="lg:hidden flex items-center justify-between mb-4">
-                        <h1 className="text-xl font-bold">크리에이터 대시보드</h1>
-                        <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-                            <SheetTrigger asChild>
-                                <Button variant="outline" size="icon">
-                                    <Menu className="h-5 w-5" />
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent side="left" className="w-[280px] p-0">
-                                <div className="flex flex-col h-full">
-                                    <SheetHeader className="p-4 border-b">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-12 w-12">
-                                                <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
-                                                <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <h2 className="font-bold">{user?.name || "사용자"}</h2>
-                                                <p className="text-xs text-muted-foreground">{user?.handle || "핸들 없음"}</p>
-                                            </div>
-                                        </div>
-                                    </SheetHeader>
-                                    <nav className="space-y-2 p-4">
-                                        <Button
-                                            variant={currentView === "dashboard" ? "secondary" : "ghost"}
-                                            className="w-full justify-start"
-                                            onClick={() => {
-                                                setCurrentView("dashboard")
-                                                setIsMobileSidebarOpen(false)
-                                            }}
-                                        >
-                                            <Calendar className="mr-2 h-4 w-4" /> 내 일정 관리
-                                        </Button>
-                                        <Button
-                                            variant={currentView === "proposals" ? "secondary" : "ghost"}
-                                            className="w-full justify-start"
-                                            onClick={() => {
-                                                setCurrentView("proposals")
-                                                setIsMobileSidebarOpen(false)
-                                            }}
-                                        >
-                                            <Briefcase className="mr-2 h-4 w-4" /> 워크스페이스 아카이브
-                                        </Button>
-                                        <Button
-                                            variant={currentView === "discover-campaigns" ? "secondary" : "ghost"}
-                                            className="w-full justify-start text-primary font-medium"
-                                            onClick={() => {
-                                                setCurrentView("discover-campaigns")
-                                                setIsMobileSidebarOpen(false)
-                                            }}
-                                        >
-                                            <Megaphone className="mr-2 h-4 w-4" /> 브랜드 캠페인 둘러보기
-                                        </Button>
-                                        <Button
-                                            variant={currentView === "discover-products" ? "secondary" : "ghost"}
-                                            className="w-full justify-start text-primary font-medium"
-                                            onClick={() => {
-                                                setCurrentView("discover-products")
-                                                setIsMobileSidebarOpen(false)
-                                            }}
-                                        >
-                                            <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
-                                        </Button>
-                                        <Button
-                                            variant={currentView === "notifications" ? "secondary" : "ghost"}
-                                            className="w-full justify-start"
-                                            onClick={() => {
-                                                setCurrentView("notifications")
-                                                setIsMobileSidebarOpen(false)
-                                            }}
-                                        >
-                                            <Bell className="mr-2 h-4 w-4" /> 알림
-                                        </Button>
-                                        <div className="my-2 border-t" />
-                                        {(!isMCN || isProxyMode) && (
-                                            <Button
-                                                variant={currentView === "settings" ? "secondary" : "ghost"}
-                                                className="w-full justify-start"
-                                                onClick={() => {
-                                                    setCurrentView("settings")
-                                                    setIsMobileSidebarOpen(false)
-                                                }}
-                                            >
-                                                <Settings className="mr-2 h-4 w-4" /> 프로필 관리
-                                            </Button>
-                                        )}
-                                    </nav>
-                                </div>
-                            </SheetContent>
-                        </Sheet>
-                    </div>
-
-                    {/* Sidebar ... */}
-
-                    {/* ... skipping sidebar code ... */}
-                    <aside className="hidden lg:flex flex-col gap-4">
-                        <div className="flex items-center gap-3 px-2 py-4">
-                            <Avatar className="h-12 w-12">
-                                <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
-                                <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <h2 className="font-bold">{user?.name || "사용자"}</h2>
-                                <p className="text-xs text-muted-foreground">{user?.handle || "핸들 없음"}</p>
-                            </div>
+            {/* MCN with no teams: show waiting screen */}
+            {isMCN && !isLoading && isInitialized && teams && teams.length === 0 ? (
+                <div className="min-h-screen flex items-center justify-center bg-muted/20">
+                    <div className="text-center max-w-md p-8 bg-background border rounded-2xl shadow-sm space-y-6">
+                        <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+                            <Building2 className="w-8 h-8" />
                         </div>
-                        <nav className="space-y-2">
-                            <Button
-                                variant={currentView === "dashboard" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("dashboard")}
-                            >
-                                <Calendar className="mr-2 h-4 w-4" /> 내 일정 관리
+                        <div className="space-y-2">
+                            <h2 className="text-2xl font-bold">소속된 팀이 없습니다</h2>
+                            <p className="text-muted-foreground">
+                                아직 소속된 MCN/Agency 팀이 없습니다.<br />
+                                관리자에게 초대를 요청하거나, 직접 팀을 만들어보세요.
+                            </p>
+                        </div>
+                        <div className="pt-2 flex flex-col gap-3">
+                            <div className="p-4 bg-muted rounded-lg text-sm break-all">
+                                내 이메일: <span className="font-mono font-bold">{user?.email}</span>
+                            </div>
+                            <Button onClick={() => router.push('/onboarding')} variant="outline">
+                                온보딩 다시하기 (팀 생성)
                             </Button>
-                            <Button
-                                variant={currentView === "proposals" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("proposals")}
-                            >
-                                <Briefcase className="mr-2 h-4 w-4" /> 워크스페이스 아카이브
-                            </Button>
-                            <Button
-                                variant={currentView === "discover-campaigns" ? "secondary" : "ghost"}
-                                className="w-full justify-start text-primary font-medium"
-                                onClick={() => setCurrentView("discover-campaigns")}
-                            >
-                                <Megaphone className="mr-2 h-4 w-4" /> 브랜드 캠페인 둘러보기
-                            </Button>
-                            <Button
-                                variant={currentView === "discover-products" ? "secondary" : "ghost"}
-                                className="w-full justify-start text-primary font-medium"
-                                onClick={() => setCurrentView("discover-products")}
-                            >
-                                <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
-                            </Button>
-                            <Button
-                                variant={currentView === "notifications" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("notifications")}
-                            >
-                                <Bell className="mr-2 h-4 w-4" /> 알림
-                            </Button>
-                            <div className="my-2 border-t" />
-                            {(!isMCN || isProxyMode) && (
-                                <Button
-                                    variant={currentView === "settings" ? "secondary" : "ghost"}
-                                    className="w-full justify-start"
-                                    onClick={() => setCurrentView("settings")}
-                                >
-                                    <Settings className="mr-2 h-4 w-4" /> 프로필 관리
-                                </Button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <SiteHeader />
+                    <main className="container py-8 max-w-[1920px] px-6 md:px-8">
+                        <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
+                            {/* Mobile Menu Button - Show only on mobile */}
+                            <div className="lg:hidden flex items-center justify-between mb-4">
+                                <h1 className="text-xl font-bold">크리에이터 대시보드</h1>
+                                <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+                                    <SheetTrigger asChild>
+                                        <Button variant="outline" size="icon">
+                                            <Menu className="h-5 w-5" />
+                                        </Button>
+                                    </SheetTrigger>
+                                    <SheetContent side="left" className="w-[280px] p-0">
+                                        <div className="flex flex-col h-full">
+                                            <SheetHeader className="p-4 border-b">
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-12 w-12">
+                                                        <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
+                                                        <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <h2 className="font-bold">{user?.name || "사용자"}</h2>
+                                                        {user?.tags?.[0] && (
+                                                            <p className="text-xs text-muted-foreground">
+                                                                🏷 {user.tags[0]}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </SheetHeader>
+                                            <nav className="space-y-2 p-4">
+                                                <Button
+                                                    variant={currentView === "dashboard" ? "secondary" : "ghost"}
+                                                    className="w-full justify-start"
+                                                    onClick={() => {
+                                                        setCurrentView("dashboard")
+                                                        setIsMobileSidebarOpen(false)
+                                                    }}
+                                                >
+                                                    <Calendar className="mr-2 h-4 w-4" /> 내 일정 관리
+                                                </Button>
+                                                <Button
+                                                    variant={currentView === "proposals" ? "secondary" : "ghost"}
+                                                    className="w-full justify-start"
+                                                    onClick={() => {
+                                                        setCurrentView("proposals")
+                                                        setIsMobileSidebarOpen(false)
+                                                    }}
+                                                >
+                                                    <Briefcase className="mr-2 h-4 w-4" /> 워크스페이스 아카이브
+                                                </Button>
+                                                {currentView === "proposals" && (
+                                                    <div className="ml-9 space-y-1 mt-1 border-l pl-2">
+                                                        {/* 진행중 */}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className={`w-full justify-start text-xs h-8 ${workspaceTab === 'active' ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-muted-foreground'}`}
+                                                            onClick={() => { setWorkspaceTab("active"); setIsMobileSidebarOpen(false) }}
+                                                        >
+                                                            <span className="flex-1 text-left">진행중</span>
+                                                            {workspaceTabBadges.active && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                                        </Button>
+                                                        {/* 받은 제안 */}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className={`w-full justify-start text-xs h-8 ${workspaceTab === 'inbound' ? 'bg-blue-100 text-blue-700 font-bold' : 'text-muted-foreground'}`}
+                                                            onClick={() => { setWorkspaceTab("inbound"); setIsMobileSidebarOpen(false) }}
+                                                        >
+                                                            <span className="flex-1 text-left">받은 제안</span>
+                                                            {workspaceTabBadges.inbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                                        </Button>
+                                                        {/* 보낸 제안 */}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className={`w-full justify-start text-xs h-8 ${workspaceTab === 'outbound' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-muted-foreground'}`}
+                                                            onClick={() => { setWorkspaceTab("outbound"); setIsMobileSidebarOpen(false) }}
+                                                        >
+                                                            <span className="flex-1 text-left">보낸 제안</span>
+                                                            {workspaceTabBadges.outbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                                        </Button>
+                                                        {/* 거절됨 */}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className={`w-full justify-start text-xs h-8 ${workspaceTab === 'rejected' ? 'bg-red-50 text-red-600 font-medium' : 'text-muted-foreground'}`}
+                                                            onClick={() => { setWorkspaceTab("rejected"); setIsMobileSidebarOpen(false) }}
+                                                        >
+                                                            <span className="flex-1 text-left">거절됨</span>
+                                                            {workspaceTabBadges.rejected && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                                        </Button>
+                                                        {/* 완료됨 */}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className={`w-full justify-start text-xs h-8 ${workspaceTab === 'completed' ? 'bg-muted text-foreground/90 font-medium' : 'text-muted-foreground'}`}
+                                                            onClick={() => { setWorkspaceTab("completed"); setIsMobileSidebarOpen(false) }}
+                                                        >
+                                                            <span className="flex-1 text-left">완료됨</span>
+                                                            {workspaceTabBadges.completed && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                                <Button
+                                                    variant={currentView === "discover-campaigns" ? "secondary" : "ghost"}
+                                                    className="w-full justify-start text-primary font-medium"
+                                                    onClick={() => {
+                                                        setCurrentView("discover-campaigns")
+                                                        setIsMobileSidebarOpen(false)
+                                                    }}
+                                                >
+                                                    <Megaphone className="mr-2 h-4 w-4" /> 브랜드 캠페인 둘러보기
+                                                </Button>
+                                                <Button
+                                                    variant={currentView === "discover-products" ? "secondary" : "ghost"}
+                                                    className="w-full justify-start text-primary font-medium"
+                                                    onClick={() => {
+                                                        setCurrentView("discover-products")
+                                                        setIsMobileSidebarOpen(false)
+                                                    }}
+                                                >
+                                                    <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
+                                                </Button>
+                                                <Button
+                                                    variant={currentView === "notifications" ? "secondary" : "ghost"}
+                                                    className="w-full justify-start"
+                                                    onClick={() => {
+                                                        setCurrentView("notifications")
+                                                        setIsMobileSidebarOpen(false)
+                                                    }}
+                                                >
+                                                    <Bell className="mr-2 h-4 w-4" /> 알림
+                                                </Button>
+                                                <div className="my-2 border-t" />
+                                                <Button
+                                                    variant={currentView === "insight-analyzer" ? "secondary" : "ghost"}
+                                                    className="w-full justify-start text-violet-600 dark:text-violet-400 font-medium"
+                                                    onClick={() => {
+                                                        setCurrentView("insight-analyzer")
+                                                        setIsMobileSidebarOpen(false)
+                                                    }}
+                                                >
+                                                    <Sparkles className="mr-2 h-4 w-4" /> AI 단가 분석기
+                                                </Button>
+                                                {(!isMCN || isProxyMode) && (
+                                                    <Button
+                                                        variant={currentView === "settings" ? "secondary" : "ghost"}
+                                                        className="w-full justify-start"
+                                                        onClick={() => {
+                                                            setCurrentView("settings")
+                                                            setIsMobileSidebarOpen(false)
+                                                        }}
+                                                    >
+                                                        <Settings className="mr-2 h-4 w-4" /> 프로필 관리
+                                                    </Button>
+                                                )}
+                                            </nav>
+                                        </div>
+                                    </SheetContent>
+                                </Sheet>
+                            </div>
+
+                            {/* Sidebar ... */}
+
+                            {/* ... skipping sidebar code ... */}
+                            <aside className="hidden lg:flex flex-col gap-4">
+                                <div className="flex items-center gap-3 px-2 py-4">
+                                    <Avatar className="h-12 w-12">
+                                        <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
+                                        <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <h2 className="font-bold">{user?.name || "사용자"}</h2>
+                                        {user?.tags?.[0] && (
+                                            <p className="text-xs text-muted-foreground">
+                                                🏷 {user.tags[0]}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                <nav className="space-y-2">
+                                    <Button
+                                        variant={currentView === "dashboard" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => setCurrentView("dashboard")}
+                                    >
+                                        <Calendar className="mr-2 h-4 w-4" /> 내 일정 관리
+                                    </Button>
+                                    <Button
+                                        variant={currentView === "proposals" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => setCurrentView("proposals")}
+                                    >
+                                        <Briefcase className="mr-2 h-4 w-4" /> 워크스페이스 아카이브
+                                    </Button>
+                                    {currentView === "proposals" && (
+                                        <div className="ml-9 space-y-1 mt-1 border-l pl-2">
+                                            <Button variant="ghost" size="sm"
+                                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'active' ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-muted-foreground'}`}
+                                                onClick={() => setWorkspaceTab("active")}>
+                                                <span className="flex-1 text-left">진행중</span>
+                                                {workspaceTabBadges.active && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                            </Button>
+                                            <Button variant="ghost" size="sm"
+                                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'inbound' ? 'bg-blue-100 text-blue-700 font-bold' : 'text-muted-foreground'}`}
+                                                onClick={() => setWorkspaceTab("inbound")}>
+                                                <span className="flex-1 text-left">받은 제안</span>
+                                                {workspaceTabBadges.inbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                            </Button>
+                                            <Button variant="ghost" size="sm"
+                                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'outbound' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-muted-foreground'}`}
+                                                onClick={() => setWorkspaceTab("outbound")}>
+                                                <span className="flex-1 text-left">보낸 제안</span>
+                                                {workspaceTabBadges.outbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                            </Button>
+                                            <Button variant="ghost" size="sm"
+                                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'rejected' ? 'bg-red-50 text-red-600 font-medium' : 'text-muted-foreground'}`}
+                                                onClick={() => setWorkspaceTab("rejected")}>
+                                                <span className="flex-1 text-left">거절됨</span>
+                                                {workspaceTabBadges.rejected && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                            </Button>
+                                            <Button variant="ghost" size="sm"
+                                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'completed' ? 'bg-muted text-foreground/90 font-medium' : 'text-muted-foreground'}`}
+                                                onClick={() => setWorkspaceTab("completed")}>
+                                                <span className="flex-1 text-left">완료됨</span>
+                                                {workspaceTabBadges.completed && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                                            </Button>
+                                        </div>
+                                    )}
+                                    <Button
+                                        variant={currentView === "discover-campaigns" ? "secondary" : "ghost"}
+                                        className="w-full justify-start text-primary font-medium"
+                                        onClick={() => setCurrentView("discover-campaigns")}
+                                    >
+                                        <Megaphone className="mr-2 h-4 w-4" /> 브랜드 캠페인 둘러보기
+                                    </Button>
+                                    <Button
+                                        variant={currentView === "discover-products" ? "secondary" : "ghost"}
+                                        className="w-full justify-start text-primary font-medium"
+                                        onClick={() => setCurrentView("discover-products")}
+                                    >
+                                        <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
+                                    </Button>
+                                    <Button
+                                        variant={currentView === "notifications" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => setCurrentView("notifications")}
+                                    >
+                                        <Bell className="mr-2 h-4 w-4" /> 알림
+                                    </Button>
+                                    <div className="my-2 border-t" />
+                                    <Button
+                                        variant={currentView === "insight-analyzer" ? "secondary" : "ghost"}
+                                        className="w-full justify-start text-violet-600 dark:text-violet-400 font-medium"
+                                        onClick={() => setCurrentView("insight-analyzer")}
+                                    >
+                                        <Sparkles className="mr-2 h-4 w-4" /> AI 단가 분석기
+                                    </Button>
+                                    {(!isMCN || isProxyMode) && (
+                                        <Button
+                                            variant={currentView === "settings" ? "secondary" : "ghost"}
+                                            className="w-full justify-start"
+                                            onClick={() => setCurrentView("settings")}
+                                        >
+                                            <Settings className="mr-2 h-4 w-4" /> 프로필 관리
+                                        </Button>
+                                    )}
+
+                                </nav>
+
+                                {/* MCN Management Tools (Sidebar) */}
+                                {isMCN && (
+                                    <div className="p-4 space-y-6 overflow-y-auto border-t">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Building2 className="h-4 w-4 text-primary" />
+                                            <h4 className="font-bold text-sm">MCN 관리</h4>
+                                        </div>
+
+                                        <TeamStatistics />
+                                        {/* Compact versions or full cards - Scrollable sidebar allows vertical flow */}
+                                        <div className="space-y-4">
+                                            <TeamMembersCard />
+                                            <InviteLinkGenerator />
+                                        </div>
+                                    </div>
+                                )}
+
+                            </aside>
+
+                            {/* Main Content */}
+                            {isMCN && !isProxyMode ? (
+                                /* MCN 본인 모드: 크리에이터 기능 차단 */
+                                <div className="flex-1 p-8 pt-0">
+                                    <Card className="p-12 text-center bg-muted/20 border-dashed">
+                                        <UsersIcon className="h-20 w-20 mx-auto mb-6 text-muted-foreground/40" />
+                                        <h2 className="text-3xl font-bold mb-3">
+                                            소속 크리에이터를 선택해주세요
+                                        </h2>
+                                        <p className="text-muted-foreground text-lg mb-2">
+                                            헤더에서 관리할 크리에이터를 선택하시면
+                                        </p>
+                                        <p className="text-muted-foreground text-lg">
+                                            해당 크리에이터의 모먼트와 협업을 관리할 수 있습니다
+                                        </p>
+                                    </Card>
+                                </div>
+                            ) : (
+                                /* 일반 크리에이터 OR 프록시 모드: 정상 표시 */
+                                renderContent()
                             )}
 
-                        </nav>
+                            {/* Render the Dialog */}
+                            {/* AI Plan Modal */}
+                            <AIPlanModal
+                                isOpen={isAIPlanModalOpen}
+                                onOpenChange={setIsAIPlanModalOpen}
+                                planContent={aiPlanResult}
+                            />
 
-                        {/* MCN Management Tools (Sidebar) */}
-                        {isMCN && (
-                            <div className="p-4 space-y-6 overflow-y-auto border-t">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Building2 className="h-4 w-4 text-primary" />
-                                    <h4 className="font-bold text-sm">MCN 관리</h4>
-                                </div>
+                            {/* Campaign Detail Dialog */}
+                            <CampaignDetailDialog
+                                open={isCampaignDetailOpen}
+                                onOpenChange={setIsCampaignDetailOpen}
+                                campaign={selectedCampaign}
+                            />
 
-                                <TeamStatistics />
-                                {/* Compact versions or full cards - Scrollable sidebar allows vertical flow */}
-                                <div className="space-y-4">
-                                    <TeamMembersCard />
-                                    <InviteLinkGenerator />
-                                </div>
-                            </div>
-                        )}
+                            <CreatorProposalDialog
+                                open={isApplyDialogOpen}
+                                onOpenChange={setIsApplyDialogOpen}
+                                target={selectedCampaign ? {
+                                    brandName: selectedCampaign.brand || selectedCampaign.brandName || "브랜드",
+                                    targetName: selectedCampaign.product || selectedCampaign.name || "캠페인",
+                                    budget: selectedCampaign.budget,
+                                    productName: selectedCampaign.product || selectedCampaign.name,
+                                } : null}
+                                onSubmit={handleSubmitApplication}
+                                isSubmitting={isApplying}
+                                teamMembers={(teamMembers || []).map((m: any) => ({ user_id: m.user_id || m.id, name: m.name || m.email }))}
+                                prefillHandle={user?.handle || ""}
+                            />
 
-                    </aside>
-
-                    {/* Main Content */}
-                    {isMCN && !isProxyMode ? (
-                        /* MCN 본인 모드: 크리에이터 기능 차단 */
-                        <div className="flex-1 p-8 pt-0">
-                            <Card className="p-12 text-center bg-muted/20 border-dashed">
-                                <UsersIcon className="h-20 w-20 mx-auto mb-6 text-muted-foreground/40" />
-                                <h2 className="text-3xl font-bold mb-3">
-                                    소속 크리에이터를 선택해주세요
-                                </h2>
-                                <p className="text-muted-foreground text-lg mb-2">
-                                    헤더에서 관리할 크리에이터를 선택하시면
-                                </p>
-                                <p className="text-muted-foreground text-lg">
-                                    해당 크리에이터의 모먼트와 협업을 관리할 수 있습니다
-                                </p>
-                            </Card>
+                            {/* Workspace Dialog (Mobile & Desktop Unified) */}
+                            <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+                                <DialogContent className="max-w-[100vw] h-[100dvh] sm:max-w-[1500px] sm:w-[95vw] sm:h-[90vh] sm:max-h-[900px] p-0 gap-0 overflow-hidden flex flex-col bg-background border-0 shadow-2xl sm:rounded-2xl">
+                                    <DialogTitle className="sr-only">Creator Workspace</DialogTitle>
+                                    <CreatorWorkspaceLayout />
+                                </DialogContent>
+                            </Dialog>
                         </div>
-                    ) : (
-                        /* 일반 크리에이터 OR 프록시 모드: 정상 표시 */
-                        renderContent()
-                    )}
 
-                    {/* Render the Dialog */}
-                    {/* AI Plan Modal */}
-                    <AIPlanModal
-                        isOpen={isAIPlanModalOpen}
-                        onOpenChange={setIsAIPlanModalOpen}
-                        planContent={aiPlanResult}
-                    />
-
-                    {/* Campaign Detail Dialog */}
-                    <CampaignDetailDialog
-                        open={isCampaignDetailOpen}
-                        onOpenChange={setIsCampaignDetailOpen}
-                        campaign={selectedCampaign}
-                    />
-
-                    <CreatorProposalDialog
-                        open={isApplyDialogOpen}
-                        onOpenChange={setIsApplyDialogOpen}
-                        target={selectedCampaign ? {
-                            brandName: selectedCampaign.brand || selectedCampaign.brandName || "브랜드",
-                            targetName: selectedCampaign.product || selectedCampaign.name || "캠페인",
-                            budget: selectedCampaign.budget,
-                            productName: selectedCampaign.product || selectedCampaign.name,
-                        } : null}
-                        onSubmit={handleSubmitApplication}
-                        isSubmitting={isApplying}
-                        teamMembers={(teamMembers || []).map((m: any) => ({ user_id: m.user_id || m.id, name: m.name || m.email }))}
-                        prefillHandle={user?.handle || ""}
-                    />
-
-                    {/* Workspace Dialog (Mobile & Desktop Unified) */}
-                    <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-                        <DialogContent className="max-w-[100vw] h-[100dvh] sm:max-w-[1500px] sm:w-[95vw] sm:h-[90vh] sm:max-h-[900px] p-0 gap-0 overflow-hidden flex flex-col bg-background border-0 shadow-2xl sm:rounded-2xl">
-                            <DialogTitle className="sr-only">Creator Workspace</DialogTitle>
-                            <CreatorWorkspaceLayout />
-                        </DialogContent>
-                    </Dialog>
-                </div>
-
-                {/* Details Modal */}
-                <DetailsModal
-                    isOpen={isDetailsModalOpen}
-                    onOpenChange={setIsDetailsModalOpen}
-                    data={selectedItemDetails}
-                    type={detailsType}
-                    proposals={relatedProposals}
-                    onViewProposal={handleViewProposal}
-                    onEdit={(id) => {
-                        setIsDetailsModalOpen(false);
-                        router.push(`/creator/edit/${id}`);
-                    }}
-                    onDelete={(id) => {
-                        setConfirmDialog({
-                            open: true,
-                            title: "모먼트 삭제",
-                            description: "정말 이 모먼트를 삭제하시겠습니까? 복구할 수 없습니다.",
-                            onConfirm: async () => {
-                                await deleteEvent(id);
+                        {/* Details Modal */}
+                        <DetailsModal
+                            isOpen={isDetailsModalOpen}
+                            onOpenChange={setIsDetailsModalOpen}
+                            data={selectedItemDetails}
+                            type={detailsType}
+                            proposals={relatedProposals}
+                            onViewProposal={handleViewProposal}
+                            onEdit={(id) => {
                                 setIsDetailsModalOpen(false);
-                            },
-                            variant: "destructive"
-                        })
-                    }}
-                />
+                                router.push(`/creator/edit/${id}`);
+                            }}
+                            onDelete={(id) => {
+                                setConfirmDialog({
+                                    open: true,
+                                    title: "모먼트 삭제",
+                                    description: "정말 이 모먼트를 삭제하시겠습니까? 복구할 수 없습니다.",
+                                    onConfirm: async () => {
+                                        await deleteEvent(id);
+                                        setIsDetailsModalOpen(false);
+                                    },
+                                    variant: "destructive"
+                                })
+                            }}
+                        />
 
-                {/* Full Contract Viewer Dialog */}
-                <Dialog open={isFullContractOpen} onOpenChange={setIsFullContractOpen}>
-                    <DialogContent className="sm:max-w-3xl h-[80vh] flex flex-col p-6 overflow-hidden">
-                        <DialogHeader className="mb-4">
-                            <DialogTitle>표준 광고 협업 계약서</DialogTitle>
-                            <DialogDescription>작성된 계약서의 전체 내용입니다.</DialogDescription>
-                        </DialogHeader>
-                        <div className="flex-1 overflow-y-auto p-6 bg-muted/30 rounded-xl border border-border font-mono text-sm whitespace-pre-wrap">
-                            {generatedContract || `제 1조 [목적]
+                        {/* Full Contract Viewer Dialog */}
+                        <Dialog open={isFullContractOpen} onOpenChange={setIsFullContractOpen}>
+                            <DialogContent className="sm:max-w-3xl h-[80vh] flex flex-col p-6 overflow-hidden">
+                                <DialogHeader className="mb-4">
+                                    <DialogTitle>표준 광고 협업 계약서</DialogTitle>
+                                    <DialogDescription>작성된 계약서의 전체 내용입니다.</DialogDescription>
+                                </DialogHeader>
+                                <div className="flex-1 overflow-y-auto p-6 bg-muted/30 rounded-xl border border-border font-mono text-sm whitespace-pre-wrap">
+                                    {generatedContract || `제 1조 [목적]
 본 계약은 '갑'(${chatProposal?.brand_name || '브랜드'})과 '을'(${user?.name || '크리에이터'})간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.
 
 제 2조 [원고료 및 지급]
@@ -3229,357 +3419,361 @@ function InfluencerDashboardContent() {
 ... (중략) ...
 
 상기 내용을 확인하였으며, 계약에 동의합니다.`}
-                        </div>
-                        <DialogFooter className="mt-6">
-                            <Button onClick={() => setIsFullContractOpen(false)}>닫기</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                                </div>
+                                <DialogFooter className="mt-6">
+                                    <Button onClick={() => setIsFullContractOpen(false)}>닫기</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
 
-            </main>
-            {/* Signature Modal */}
-            <Dialog open={isSignatureModalOpen} onOpenChange={setIsSignatureModalOpen}>
-                <DialogContent className="sm:max-w-xl">
-                    <DialogHeader>
-                        <DialogTitle>전자 서명 (Electronic Signature)</DialogTitle>
-                        <DialogDescription>
-                            계약서에 첨부될 서명을 아래 영역에 그려주세요. 법적 서명란에 자동 삽입됩니다.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <div className="border-2 border-dashed border-slate-300 rounded-xl bg-muted/30 overflow-hidden relative group">
-                            <SignatureCanvasDynamic
-                                ref={sigCanvas as any}
-                                penColor="black"
-                                canvasProps={{
-                                    className: "w-full h-48 cursor-crosshair active:cursor-none",
-                                    style: { width: '100%', height: '192px' }
-                                }}
+                    </main>
+                    {/* Signature Modal */}
+                    <Dialog open={isSignatureModalOpen} onOpenChange={setIsSignatureModalOpen} >
+                        <DialogContent className="sm:max-w-xl">
+                            <DialogHeader>
+                                <DialogTitle>전자 서명 (Electronic Signature)</DialogTitle>
+                                <DialogDescription>
+                                    계약서에 첨부될 서명을 아래 영역에 그려주세요. 법적 서명란에 자동 삽입됩니다.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <div className="border-2 border-dashed border-slate-300 rounded-xl bg-muted/30 overflow-hidden relative group">
+                                    <SignatureCanvasDynamic
+                                        ref={sigCanvas as any}
+                                        penColor="black"
+                                        canvasProps={{
+                                            className: "w-full h-48 cursor-crosshair active:cursor-none",
+                                            style: { width: '100%', height: '192px' }
+                                        }}
+                                    />
+                                    <div className="absolute top-2 right-2 opacity-50 text-[10px] pointer-events-none group-hover:opacity-100 transition-opacity">
+                                        ✍️ Sign Here
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
+                                    <span>마우스나 터치로 서명하세요.</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-xs text-muted-foreground/70 hover:text-red-500"
+                                        onClick={() => sigCanvas.current.clear()}
+                                    >
+                                        <X className="h-3 w-3 mr-1" /> 초기화
+                                    </Button>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsSignatureModalOpen(false)}>취소</Button>
+                                <Button onClick={performContractSign} className="gap-2">
+                                    <BadgeCheck className="h-4 w-4" />
+                                    동의 및 서명 완료
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Product Guide Dialog Render */}
+                    {
+                        isProductGuideOpen && guideProduct && (
+                            <ProductGuideDialog
+                                isOpen={isProductGuideOpen}
+                                onOpenChange={setIsProductGuideOpen}
+                                product={guideProduct}
                             />
-                            <div className="absolute top-2 right-2 opacity-50 text-[10px] pointer-events-none group-hover:opacity-100 transition-opacity">
-                                ✍️ Sign Here
-                            </div>
-                        </div>
-                        <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
-                            <span>마우스나 터치로 서명하세요.</span>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs text-muted-foreground/70 hover:text-red-500"
-                                onClick={() => sigCanvas.current.clear()}
-                            >
-                                <X className="h-3 w-3 mr-1" /> 초기화
-                            </Button>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsSignatureModalOpen(false)}>취소</Button>
-                        <Button onClick={performContractSign} className="gap-2">
-                            <BadgeCheck className="h-4 w-4" />
-                            동의 및 서명 완료
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Product Guide Dialog Render */}
-            {
-                isProductGuideOpen && guideProduct && (
-                    <ProductGuideDialog
-                        isOpen={isProductGuideOpen}
-                        onOpenChange={setIsProductGuideOpen}
-                        product={guideProduct}
-                    />
-                )
-            }
-            {/* Brand Detail Modal */}
-            <Dialog open={!!selectedBrandProduct} onOpenChange={(open) => !open && setSelectedBrandProduct(null)}>
-                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
-                    <div className="relative h-32 bg-gradient-to-r from-indigo-500 to-purple-600">
-                        <div className="absolute -bottom-10 left-6 h-20 w-20 rounded-full border-4 border-white bg-white shadow-md overflow-hidden">
-                            {selectedBrandProduct?.brandAvatar ? (
-                                <img src={selectedBrandProduct.brandAvatar} alt={selectedBrandProduct.brandName} className="h-full w-full object-cover" />
-                            ) : (
-                                <div className="h-full w-full bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground/70">
-                                    {selectedBrandProduct?.brandName?.[0]}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="pt-12 pb-6 px-6">
-                        <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-foreground">{selectedBrandProduct?.brandName}</h2>
-                            <p className="text-sm text-muted-foreground font-medium">@{selectedBrandProduct?.brandHandle || 'brand_official'}</p>
-                            {selectedBrandProduct?.brandBio && (
-                                <p className="mt-2 text-sm text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg border border-border/50">
-                                    "{selectedBrandProduct.brandBio}"
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="space-y-4">
-                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                <Package className="h-4 w-4 text-indigo-600" />
-                                관심 제품 정보
-                            </h4>
-                            <div className="flex gap-4 p-4 border rounded-xl bg-white shadow-sm">
-                                <div className="h-20 w-20 shrink-0 bg-muted rounded-lg overflow-hidden border border-border/50">
-                                    {selectedBrandProduct?.image ? (
-                                        <img src={selectedBrandProduct.image} alt={selectedBrandProduct.name} className="h-full w-full object-cover" />
+                        )
+                    }
+                    {/* Brand Detail Modal */}
+                    <Dialog open={!!selectedBrandProduct} onOpenChange={(open) => !open && setSelectedBrandProduct(null)}>
+                        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+                            <div className="relative h-32 bg-gradient-to-r from-indigo-500 to-purple-600">
+                                <div className="absolute -bottom-10 left-6 h-20 w-20 rounded-full border-4 border-white bg-white shadow-md overflow-hidden">
+                                    {selectedBrandProduct?.brandAvatar ? (
+                                        <img src={selectedBrandProduct.brandAvatar} alt={selectedBrandProduct.brandName} className="h-full w-full object-cover" />
                                     ) : (
-                                        <div className="h-full w-full flex items-center justify-center text-slate-300">
-                                            <ImageIcon className="h-8 w-8" />
+                                        <div className="h-full w-full bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground/70">
+                                            {selectedBrandProduct?.brandName?.[0]}
                                         </div>
                                     )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <Badge variant="outline" className="mb-1 text-[10px]">{selectedBrandProduct?.category || 'General'}</Badge>
-                                            <h3 className="font-bold text-foreground truncate">{selectedBrandProduct?.name}</h3>
-                                        </div>
-                                        <p className="font-bold text-indigo-600 text-sm">{selectedBrandProduct?.price?.toLocaleString()}원</p>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{selectedBrandProduct?.description}</p>
                                 </div>
                             </div>
-
-                            <div className="pt-4 flex gap-3">
-                                <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={() => {
-                                    handleProductApply(selectedBrandProduct);
-                                    setSelectedBrandProduct(null);
-                                }}>
-                                    <Send className="mr-2 h-4 w-4" /> 제안 보내기
-                                </Button>
-                                <Button variant="outline" className="flex-1" onClick={() => setSelectedBrandProduct(null)}>
-                                    닫기
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            {/* Moment Detail Dialog */}
-            <Dialog open={!!selectedMoment} onOpenChange={(open) => !open && setSelectedMoment(null)}>
-                <DialogContent className="max-w-md md:max-w-2xl overflow-y-auto max-h-[90vh]">
-                    <DialogHeader>
-                        <DialogTitle>모먼트 상세</DialogTitle>
-                        <DialogDescription>
-                            해당 모먼트의 상세 정보와 도착한 제안 목록입니다.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    {selectedMoment && (
-                        <div className="space-y-6">
-                            {/* Moment Info */}
-                            <div className="space-y-4">
-                                <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-                                    {selectedMoment.targetProduct ? (
-                                        <div className="text-center p-4">
-                                            <div className="text-4xl mb-2">📸</div>
-                                            <p className="text-sm font-medium text-foreground">{selectedMoment.title}</p>
-                                        </div>
-                                    ) : (
-                                        <span className="text-4xl">✨</span>
-                                    )}
-                                    {selectedMoment.status === 'completed' && (
-                                        <div className="absolute top-2 right-2 bg-slate-800/80 text-white text-xs px-2 py-1 rounded-full">
-                                            완료됨
-                                        </div>
+                            <div className="pt-12 pb-6 px-6">
+                                <div className="mb-6">
+                                    <h2 className="text-2xl font-bold text-foreground">{selectedBrandProduct?.brandName}</h2>
+                                    <p className="text-sm text-muted-foreground font-medium">@{selectedBrandProduct?.brandHandle || 'brand_official'}</p>
+                                    {selectedBrandProduct?.brandBio && (
+                                        <p className="mt-2 text-sm text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg border border-border/50">
+                                            "{selectedBrandProduct.brandBio}"
+                                        </p>
                                     )}
                                 </div>
 
-                                <div>
-                                    <h3 className="text-lg font-bold text-foreground">{selectedMoment.title}</h3>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        <Badge variant="secondary">{selectedMoment.category}</Badge>
-                                        {selectedMoment.tags.map(tag => (
-                                            <Badge key={tag} variant="outline" className="text-[10px]">#{tag}</Badge>
-                                        ))}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mt-3 whitespace-pre-wrap leading-relaxed">
-                                        {selectedMoment.description}
-                                    </p>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
-                                    <div>
-                                        <span className="text-muted-foreground block text-xs mb-1">희망 일정</span>
-                                        <span className="font-medium">{selectedMoment.eventDate || '미정'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-muted-foreground block text-xs mb-1">업로드 희망</span>
-                                        <span className="font-medium">
-                                            {selectedMoment.dateFlexible ? (
-                                                <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                        <Package className="h-4 w-4 text-indigo-600" />
+                                        관심 제품 정보
+                                    </h4>
+                                    <div className="flex gap-4 p-4 border rounded-xl bg-white shadow-sm">
+                                        <div className="h-20 w-20 shrink-0 bg-muted rounded-lg overflow-hidden border border-border/50">
+                                            {selectedBrandProduct?.image ? (
+                                                <img src={selectedBrandProduct.image} alt={selectedBrandProduct.name} className="h-full w-full object-cover" />
                                             ) : (
-                                                selectedMoment.postingDate || '미정'
+                                                <div className="h-full w-full flex items-center justify-center text-slate-300">
+                                                    <ImageIcon className="h-8 w-8" />
+                                                </div>
                                             )}
-                                        </span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <Badge variant="outline" className="mb-1 text-[10px]">{selectedBrandProduct?.category || 'General'}</Badge>
+                                                    <h3 className="font-bold text-foreground truncate">{selectedBrandProduct?.name}</h3>
+                                                </div>
+                                                <p className="font-bold text-indigo-600 text-sm">{selectedBrandProduct?.price?.toLocaleString()}원</p>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{selectedBrandProduct?.description}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 flex gap-3">
+                                        <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={() => {
+                                            handleProductApply(selectedBrandProduct);
+                                            setSelectedBrandProduct(null);
+                                        }}>
+                                            <Send className="mr-2 h-4 w-4" /> 제안 보내기
+                                        </Button>
+                                        <Button variant="outline" className="flex-1" onClick={() => setSelectedBrandProduct(null)}>
+                                            닫기
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
+                        </DialogContent>
+                    </Dialog>
 
-                            <Separator />
+                    {/* Moment Detail Dialog */}
+                    <Dialog open={!!selectedMoment} onOpenChange={(open) => !open && setSelectedMoment(null)}>
+                        <DialogContent className="max-w-md md:max-w-2xl overflow-y-auto max-h-[90vh]">
+                            <DialogHeader>
+                                <DialogTitle>모먼트 상세</DialogTitle>
+                                <DialogDescription>
+                                    해당 모먼트의 상세 정보와 도착한 제안 목록입니다.
+                                </DialogDescription>
+                            </DialogHeader>
 
-                            {/* Linked Proposals */}
-                            <div>
-                                <h4 className="text-sm font-bold text-foreground mb-3 flex items-center">
-                                    📥 도착한 제안 <Badge className="ml-2 bg-indigo-600 hover:bg-indigo-700">{allInboundProposals.filter(p => p.event_id === selectedMoment.id).length}건</Badge>
-                                </h4>
-
-                                <div className="space-y-3">
-                                    {allInboundProposals.filter(p => p.event_id === selectedMoment.id).length > 0 ? (
-                                        allInboundProposals.filter(p => p.event_id === selectedMoment.id).map(proposal => (
-                                            <div
-                                                key={proposal.id}
-                                                className="bg-white border hover:border-indigo-500 rounded-lg p-4 transition-all cursor-pointer shadow-sm hover:shadow-md group"
-                                                onClick={() => {
-                                                    setChatProposal(proposal)
-                                                    setIsChatOpen(true)
-                                                    setSelectedMoment(null)
-                                                }}
-                                            >
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Avatar className="w-8 h-8">
-                                                            <AvatarImage src={proposal.brand_avatar} />
-                                                            <AvatarFallback>{proposal.brand_name?.substring(0, 2)}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-foreground">{proposal.brand_name || '브랜드'}</p>
-                                                            <p className="text-[10px] text-muted-foreground">{new Date(proposal.created_at).toLocaleDateString()}</p>
-                                                        </div>
-                                                    </div>
-                                                    <Badge variant={proposal.status === 'accepted' ? 'default' : 'secondary'}>
-                                                        {proposal.status === 'offered' ? '제안옴' :
-                                                            proposal.status === 'accepted' ? '진행중' :
-                                                                proposal.status === 'rejected' ? '거절됨' : proposal.status}
-                                                    </Badge>
+                            {selectedMoment && (
+                                <div className="space-y-6">
+                                    {/* Moment Info */}
+                                    <div className="space-y-4">
+                                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
+                                            {selectedMoment.targetProduct ? (
+                                                <div className="text-center p-4">
+                                                    <div className="text-4xl mb-2">📸</div>
+                                                    <p className="text-sm font-medium text-foreground">{selectedMoment.title}</p>
                                                 </div>
-
-                                                <div className="flex gap-3 mt-3">
-                                                    {proposal.product && (
-                                                        <div className="w-12 h-12 rounded bg-muted/30 flex-shrink-0 border flex items-center justify-center overflow-hidden">
-                                                            {proposal.product.image_url ? (
-                                                                <img src={proposal.product.image_url} alt="" className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <Package className="w-5 h-5 text-slate-300" />
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium text-foreground truncate">{proposal.product_name}</p>
-                                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{proposal.message}</p>
-                                                    </div>
+                                            ) : (
+                                                <span className="text-4xl">✨</span>
+                                            )}
+                                            {selectedMoment.status === 'completed' && (
+                                                <div className="absolute top-2 right-2 bg-slate-800/80 text-white text-xs px-2 py-1 rounded-full">
+                                                    완료됨
                                                 </div>
-
-                                                <div className="mt-3 flex justify-end">
-                                                    <Button size="sm" variant="outline" className="text-xs h-7 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-200">
-                                                        제안 확인하기 <ArrowRight className="w-3 h-3 ml-1" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-8 bg-muted/30 rounded-lg border border-dashed">
-                                            <p className="text-muted-foreground text-sm">아직 이 모먼트에 도착한 제안이 없습니다.</p>
+                                            )}
                                         </div>
-                                    )}
+
+                                        <div>
+                                            <h3 className="text-lg font-bold text-foreground">{selectedMoment.title}</h3>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                <Badge variant="secondary">{selectedMoment.category}</Badge>
+                                                {selectedMoment.tags.map(tag => (
+                                                    <Badge key={tag} variant="outline" className="text-[10px]">#{tag}</Badge>
+                                                ))}
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mt-3 whitespace-pre-wrap leading-relaxed">
+                                                {selectedMoment.description}
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
+                                            <div>
+                                                <span className="text-muted-foreground block text-xs mb-1">희망 일정</span>
+                                                <span className="font-medium">{selectedMoment.eventDate || '미정'}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-muted-foreground block text-xs mb-1">업로드 희망</span>
+                                                <span className="font-medium">
+                                                    {selectedMoment.dateFlexible ? (
+                                                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
+                                                    ) : (
+                                                        selectedMoment.postingDate || '미정'
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <Separator />
+
+                                    {/* Linked Proposals */}
+                                    <div>
+                                        <h4 className="text-sm font-bold text-foreground mb-3 flex items-center">
+                                            📥 도착한 제안 <Badge className="ml-2 bg-indigo-600 hover:bg-indigo-700">{allInboundProposals.filter(p => p.event_id === selectedMoment.id).length}건</Badge>
+                                        </h4>
+
+                                        <div className="space-y-3">
+                                            {allInboundProposals.filter(p => p.event_id === selectedMoment.id).length > 0 ? (
+                                                allInboundProposals.filter(p => p.event_id === selectedMoment.id).map(proposal => (
+                                                    <div
+                                                        key={proposal.id}
+                                                        className="bg-white border hover:border-indigo-500 rounded-lg p-4 transition-all cursor-pointer shadow-sm hover:shadow-md group"
+                                                        onClick={() => {
+                                                            setChatProposal(proposal)
+                                                            setIsChatOpen(true)
+                                                            setSelectedMoment(null)
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <Avatar className="w-8 h-8">
+                                                                    <AvatarImage src={proposal.brand_avatar} />
+                                                                    <AvatarFallback>{proposal.brand_name?.substring(0, 2)}</AvatarFallback>
+                                                                </Avatar>
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-foreground">{proposal.brand_name || '브랜드'}</p>
+                                                                    <p className="text-[10px] text-muted-foreground">{new Date(proposal.created_at).toLocaleDateString()}</p>
+                                                                </div>
+                                                            </div>
+                                                            <Badge variant={proposal.status === 'accepted' ? 'default' : 'secondary'}>
+                                                                {proposal.status === 'offered' ? '제안옴' :
+                                                                    proposal.status === 'accepted' ? '진행중' :
+                                                                        proposal.status === 'rejected' ? '거절됨' : proposal.status}
+                                                            </Badge>
+                                                        </div>
+
+                                                        <div className="flex gap-3 mt-3">
+                                                            {proposal.product && (
+                                                                <div className="w-12 h-12 rounded bg-muted/30 flex-shrink-0 border flex items-center justify-center overflow-hidden">
+                                                                    {proposal.product.image_url ? (
+                                                                        <img src={proposal.product.image_url} alt="" className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        <Package className="w-5 h-5 text-slate-300" />
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-foreground truncate">{proposal.product_name}</p>
+                                                                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{proposal.message}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="mt-3 flex justify-end">
+                                                            <Button size="sm" variant="outline" className="text-xs h-7 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-200">
+                                                                제안 확인하기 <ArrowRight className="w-3 h-3 ml-1" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-8 bg-muted/30 rounded-lg border border-dashed">
+                                                    <p className="text-muted-foreground text-sm">아직 이 모먼트에 도착한 제안이 없습니다.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
+                            )}
+                        </DialogContent>
+                    </Dialog>
 
-            {/* ReadonlyProposalDialog for viewing proposal details */}
-            <ReadonlyProposalDialog
-                open={showReadonlyDialog}
-                onOpenChange={setShowReadonlyDialog}
-                proposal={selectedProposal}
-                onAccept={async (proposalId) => {
-                    // Determine which table to update based on proposal type
-                    const proposal = selectedProposal
-                    if (!proposal) return
+                    {/* ReadonlyProposalDialog for viewing proposal details */}
+                    <ReadonlyProposalDialog
+                        open={showReadonlyDialog}
+                        onOpenChange={setShowReadonlyDialog}
+                        proposal={selectedProposal}
+                        onAccept={async (proposalId) => {
+                            // Determine which table to update based on proposal type
+                            const proposal = selectedProposal
+                            if (!proposal) return
 
-                    try {
-                        if (proposal.moment_id) {
-                            // Moment proposal
-                            const { error } = await supabase
-                                .from('moment_proposals')
-                                .update({ status: 'accepted' })
-                                .eq('id', proposalId)
-                            if (error) throw error
-                        } else if (proposal.campaign_id) {
-                            // Campaign application
-                            const { error } = await supabase
-                                .from('campaign_applications')
-                                .update({ status: 'accepted' })
-                                .eq('id', proposalId)
-                            if (error) throw error
-                        } else {
-                            // Brand proposal (default)
-                            const { error } = await supabase
-                                .from('brand_proposals')
-                                .update({ status: 'accepted' })
-                                .eq('id', proposalId)
-                            if (error) throw error
-                        }
+                            try {
+                                if (proposal.moment_id) {
+                                    // Moment proposal
+                                    const { error } = await supabase
+                                        .from('moment_proposals')
+                                        .update({ status: 'accepted' })
+                                        .eq('id', proposalId)
+                                    if (error) throw error
+                                } else if (proposal.campaign_id) {
+                                    // Campaign application
+                                    const { error } = await supabase
+                                        .from('campaign_applications')
+                                        .update({ status: 'accepted' })
+                                        .eq('id', proposalId)
+                                    if (error) throw error
+                                } else {
+                                    // Brand proposal (default)
+                                    const { error } = await supabase
+                                        .from('brand_proposals')
+                                        .update({ status: 'accepted' })
+                                        .eq('id', proposalId)
+                                    if (error) throw error
+                                }
 
-                        await refreshData()
-                        toast.success('제안을 수락했습니다!')
-                    } catch (error: any) {
-                        toast.error('수락 실패: ' + error.message)
-                        throw error
+                                await refreshData()
+                                toast.success('제안을 수락했습니다!')
+                            } catch (error: any) {
+                                toast.error('수락 실패: ' + error.message)
+                                throw error
+                            }
+                        }}
+                        onReject={async (proposalId) => {
+                            const proposal = selectedProposal
+                            if (!proposal) return
+
+                            try {
+                                if (proposal.moment_id) {
+                                    const { error } = await supabase
+                                        .from('moment_proposals')
+                                        .update({ status: 'rejected' })
+                                        .eq('id', proposalId)
+                                    if (error) throw error
+                                } else if (proposal.campaign_id) {
+                                    const { error } = await supabase
+                                        .from('campaign_applications')
+                                        .update({ status: 'rejected' })
+                                        .eq('id', proposalId)
+                                    if (error) throw error
+                                } else {
+                                    const { error } = await supabase
+                                        .from('brand_proposals')
+                                        .update({ status: 'rejected' })
+                                        .eq('id', proposalId)
+                                    if (error) throw error
+                                }
+
+                                await refreshData()
+                                toast.success('제안을 거절했습니다!')
+                            } catch (error: any) {
+                                toast.error('거절 실패: ' + error.message)
+                                throw error
+                            }
+                        }}
+                        currentUserId={user?.id}
+                    />
+
+                    {/* Confirm Dialog for Accept/Reject Actions */}
+                    {
+                        confirmDialog && (
+                            <ConfirmDialog
+                                open={confirmDialog.open}
+                                onOpenChange={(open) => !open && setConfirmDialog(null)}
+                                title={confirmDialog.title}
+                                description={confirmDialog.description}
+                                onConfirm={confirmDialog.onConfirm}
+                                variant={confirmDialog.variant}
+                            />
+                        )
                     }
-                }}
-                onReject={async (proposalId) => {
-                    const proposal = selectedProposal
-                    if (!proposal) return
-
-                    try {
-                        if (proposal.moment_id) {
-                            const { error } = await supabase
-                                .from('moment_proposals')
-                                .update({ status: 'rejected' })
-                                .eq('id', proposalId)
-                            if (error) throw error
-                        } else if (proposal.campaign_id) {
-                            const { error } = await supabase
-                                .from('campaign_applications')
-                                .update({ status: 'rejected' })
-                                .eq('id', proposalId)
-                            if (error) throw error
-                        } else {
-                            const { error } = await supabase
-                                .from('brand_proposals')
-                                .update({ status: 'rejected' })
-                                .eq('id', proposalId)
-                            if (error) throw error
-                        }
-
-                        await refreshData()
-                        toast.success('제안을 거절했습니다!')
-                    } catch (error: any) {
-                        toast.error('거절 실패: ' + error.message)
-                        throw error
-                    }
-                }}
-                currentUserId={user?.id}
-            />
-
-            {/* Confirm Dialog for Accept/Reject Actions */}
-            {confirmDialog && (
-                <ConfirmDialog
-                    open={confirmDialog.open}
-                    onOpenChange={(open) => !open && setConfirmDialog(null)}
-                    title={confirmDialog.title}
-                    description={confirmDialog.description}
-                    onConfirm={confirmDialog.onConfirm}
-                    variant={confirmDialog.variant}
-                />
+                </>
             )}
         </div>
     )

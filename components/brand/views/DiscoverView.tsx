@@ -251,13 +251,13 @@ export const DiscoverView = React.memo(function DiscoverView({
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex items-center justify-between gap-2">
                                                 <h4 className="font-bold truncate">{item.influencer}</h4>
                                                 {user?.role === 'admin' && (
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-6 w-6 text-muted-foreground hover:text-red-500 rounded-full"
+                                                        className="h-6 w-6 text-muted-foreground hover:text-red-500 rounded-full shrink-0"
                                                         onClick={(e) => {
                                                             e.preventDefault();
                                                             e.stopPropagation();
@@ -268,10 +268,60 @@ export const DiscoverView = React.memo(function DiscoverView({
                                                     </Button>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-muted-foreground truncate">{item.handle}</p>
-                                            <span className="text-[10px] font-medium bg-secondary/50 px-2 py-0.5 rounded-full mt-1 inline-block">
-                                                {(item.followers || 0).toLocaleString()} 팔로워
-                                            </span>
+                                            {/* Primary channel: 이름 아래 */}
+                                            {(() => {
+                                                const pc = (item as any).primaryChannel
+                                                const platform = pc?.platform || ''
+                                                const followers = pc?.followersCount ?? item.followers ?? 0
+                                                const fmt = (n: number) => n >= 10000 ? `${(n / 10000).toFixed(1)}만` : n.toLocaleString()
+                                                const PLATFORM_ICONS: Record<string, React.ReactNode> = {
+                                                    instagram: (
+                                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none">
+                                                            <defs>
+                                                                <linearGradient id="ig-grad2" x1="0%" y1="100%" x2="100%" y2="0%">
+                                                                    <stop offset="0%" stopColor="#f09433" />
+                                                                    <stop offset="25%" stopColor="#e6683c" />
+                                                                    <stop offset="50%" stopColor="#dc2743" />
+                                                                    <stop offset="75%" stopColor="#cc2366" />
+                                                                    <stop offset="100%" stopColor="#bc1888" />
+                                                                </linearGradient>
+                                                            </defs>
+                                                            <rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig-grad2)" />
+                                                            <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.5" />
+                                                            <circle cx="17.5" cy="6.5" r="1" fill="white" />
+                                                        </svg>
+                                                    ),
+                                                    youtube: (
+                                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none">
+                                                            <rect x="2" y="4" width="20" height="16" rx="5" fill="#FF0000" />
+                                                            <polygon points="10,8.5 10,15.5 16,12" fill="white" />
+                                                        </svg>
+                                                    ),
+                                                    tiktok: (
+                                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none">
+                                                            <rect width="24" height="24" rx="5" fill="#010101" />
+                                                            <path d="M16 7.5c1 .7 2.1 1 3 1v2.2c-.9 0-1.8-.2-2.6-.6v5.4A4.1 4.1 0 1 1 12.3 11v2.3a1.9 1.9 0 1 0 1.9 1.9V5h2z" fill="white" />
+                                                        </svg>
+                                                    ),
+                                                    blog: (
+                                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5">
+                                                            <rect width="24" height="24" rx="5" fill="#03C75A" />
+                                                            <text x="12" y="16.5" textAnchor="middle" fontSize="10" fontWeight="bold" fill="white">N</text>
+                                                        </svg>
+                                                    ),
+                                                }
+                                                const icon = PLATFORM_ICONS[platform] || (
+                                                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                                                    </svg>
+                                                )
+                                                return (
+                                                    <span className="flex items-center gap-1.5 mt-1 text-[11px] font-medium text-muted-foreground">
+                                                        {icon}
+                                                        <span>{fmt(followers)} 팔로워</span>
+                                                    </span>
+                                                )
+                                            })()}
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-3 flex-1 relative">
@@ -328,9 +378,9 @@ export const DiscoverView = React.memo(function DiscoverView({
                                                 {item.guide || "브랜드 가이드를 따르겠습니다."}
                                             </p>
                                         </div>
-                                        <div className="flex flex-wrap gap-1">
-                                            {item.tags.slice(0, 3).map((t: string) => (
-                                                <span key={t} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">#{t}</span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {item.tags.slice(0, 5).map((t: string) => (
+                                                <span key={t} className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">#{t}</span>
                                             ))}
                                         </div>
                                     </CardContent>

@@ -29,7 +29,9 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
 
     // Fetch campaigns from database (Team-based)
     const fetchCampaigns = async (targetUserId?: string, signal?: AbortSignal) => {
-        if (isFetching.current) return
+        if (isFetching.current) {
+            isFetching.current = false  // force-reset so refresh always goes through
+        }
         if (!targetUserId && !userId && !teamId) return
 
         isFetching.current = true
@@ -87,7 +89,7 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
                     product: c.product_name,
                     category: c.category,
                     budget: c.budget?.toString() || '0',
-                    target: c.target_audience || '',
+                    target: c.target || '',
                     description: c.description || '',
                     image: c.image || c.image_url,
                     date: new Date(c.created_at).toISOString().split('T')[0],
@@ -106,7 +108,8 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
                     hashtags: c.hashtags || [],
                     selection_announcement_date: c.selection_announcement_date,
                     min_followers: c.min_followers,
-                    max_followers: c.max_followers
+                    max_followers: c.max_followers,
+                    product_type: c.product_type || 'gift'
                 }))
 
                 setCampaigns(mapped)
