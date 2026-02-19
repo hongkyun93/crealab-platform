@@ -834,6 +834,12 @@ ALTER TABLE public.campaign_applications ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Team manage applications" ON public.campaign_applications;
 CREATE POLICY "Team manage applications" ON public.campaign_applications FOR ALL USING (
     auth.uid() = influencer_id OR
+    -- Brand access: Check if the campaign belongs to the brand
+    EXISTS (
+        SELECT 1 FROM public.campaigns c
+        WHERE c.id = campaign_applications.campaign_id
+        AND c.brand_id = auth.uid()
+    ) OR
     -- Allow team members to manage applications
     EXISTS (
         SELECT 1 FROM public.team_members tm_target
@@ -894,7 +900,18 @@ CREATE POLICY "Notification update" ON public.notifications FOR UPDATE USING (au
 DROP POLICY IF EXISTS "Feedback view" ON public.submission_feedback;
 CREATE POLICY "Feedback view" ON public.submission_feedback FOR SELECT USING (
     sender_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.campaign_proposals p WHERE p.id = proposal_id AND (p.influencer_id = auth.uid() OR EXISTS (SELECT 1 FROM public.campaigns c WHERE c.id = p.campaign_id AND c.brand_id = auth.uid()))) OR
+    -- References campaign_applications instead of campaign_proposals
+    EXISTS (
+        SELECT 1 FROM public.campaign_applications p 
+        WHERE p.id = proposal_id 
+        AND (
+            p.influencer_id = auth.uid() OR 
+            EXISTS (
+                SELECT 1 FROM public.campaigns c 
+                WHERE c.id = p.campaign_id AND c.brand_id = auth.uid()
+            )
+        )
+    ) OR
     EXISTS (SELECT 1 FROM public.brand_proposals bp WHERE bp.id = brand_proposal_id AND (bp.influencer_id = auth.uid() OR bp.brand_id = auth.uid()))
 );
 
