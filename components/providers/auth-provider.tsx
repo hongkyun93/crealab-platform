@@ -321,200 +321,196 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Force redirect even if error
             window.location.href = '/login'
         }
-    }            localStorage.removeItem("creadypick_user")
-    sessionStorage.clear()
-    window.location.href = '/login'
-}
     }
 
-// Generic Profile Update Function (Exposed)
-const updateProfile = async (data: Partial<User>, targetId?: string) => {
-    // Default to current user if no targetId provided
-    const idToUpdate = targetId || user?.id
-    console.log('[AuthProvider] Updating profile:', idToUpdate, data)
+    // Generic Profile Update Function (Exposed)
+    const updateProfile = async (data: Partial<User>, targetId?: string) => {
+        // Default to current user if no targetId provided
+        const idToUpdate = targetId || user?.id
+        console.log('[AuthProvider] Updating profile:', idToUpdate, data)
 
-    if (!idToUpdate) {
-        console.error('[AuthProvider] No user ID to update')
-        return
-    }
-
-    try {
-        // Consolidated profile updates
-        const updates: any = {
-            updated_at: new Date().toISOString(),
+        if (!idToUpdate) {
+            console.error('[AuthProvider] No user ID to update')
+            return
         }
 
-        // Basic profile fields
-        if (data.name !== undefined) updates.display_name = data.name
-        if (data.bio !== undefined) updates.description = data.bio  // profiles 테이블의 description 컬럼 = bio
-        if (data.avatar !== undefined) updates.avatar_url = data.avatar
-        if (data.phone !== undefined) updates.phone = data.phone
-        if (data.address !== undefined) updates.shipping_address = data.address
-        if (data.website !== undefined) updates.website_url = data.website
-
-        // NEW: Primary Region
-        if (data.primaryRegion !== undefined) updates.primary_region = data.primaryRegion
-
-        // Determine role/type for logic (If updating self, use local user.type, else fetch or assume creator)
-        // For now, if targetId is different, we assume we are updating a creator as MCN
-        const isUpdatingSelf = idToUpdate === user?.id
-        const targetType = isUpdatingSelf ? user?.role : 'creator'
-
-        // Creator specific fields
-        if (targetType === 'creator') {
-            if (data.tags !== undefined) updates.tags = data.tags
-            if (data.handle !== undefined) updates.instagram_handle = data.handle
-            if (data.followers !== undefined) {
-                const count = typeof data.followers === 'string' ? parseInt(data.followers) : data.followers
-                updates.followers_count = isNaN(count) ? 0 : count
-
-                let tier = 'Nano'
-                if (count >= 1000000) tier = 'Mega'
-                else if (count >= 100000) tier = 'Macro'
-                else if (count >= 10000) tier = 'Micro'
-                updates.tier = tier
+        try {
+            // Consolidated profile updates
+            const updates: any = {
+                updated_at: new Date().toISOString(),
             }
 
-            // Rate card fields - EXTENDED
-            if (data.priceVideo !== undefined) updates.price_video = data.priceVideo
-            if (data.priceFeed !== undefined) updates.price_feed = data.priceFeed
-            if (data.priceStory !== undefined) updates.price_story = data.priceStory
-            if (data.priceUsageRights !== undefined) updates.price_usage_rights = data.priceUsageRights
-            if (data.priceAutoDm !== undefined) updates.price_auto_dm = data.priceAutoDm
-            if (data.secondaryRights !== undefined) updates.secondary_rights = !!data.secondaryRights
-            if (data.usageRightsMonth !== undefined) updates.usage_rights_month = data.usageRightsMonth
-            if (data.usageRightsPrice !== undefined) updates.usage_rights_price = data.usageRightsPrice
-            if (data.autoDmMonth !== undefined) updates.auto_dm_month = data.autoDmMonth
-            if (data.autoDmPrice !== undefined) updates.auto_dm_price = data.autoDmPrice
+            // Basic profile fields
+            if (data.name !== undefined) updates.display_name = data.name
+            if (data.bio !== undefined) updates.description = data.bio  // profiles 테이블의 description 컬럼 = bio
+            if (data.avatar !== undefined) updates.avatar_url = data.avatar
+            if (data.phone !== undefined) updates.phone = data.phone
+            if (data.address !== undefined) updates.shipping_address = data.address
+            if (data.website !== undefined) updates.website_url = data.website
 
-            // Bank Info
-            if (data.bankName !== undefined) updates.bank_name = data.bankName
-            if (data.accountNumber !== undefined) updates.account_number = data.accountNumber
-            if (data.accountHolder !== undefined) updates.account_holder = data.accountHolder
-        }
+            // NEW: Primary Region
+            if (data.primaryRegion !== undefined) updates.primary_region = data.primaryRegion
 
-        console.log('[AuthProvider] Profile updates payload:', updates)
+            // Determine role/type for logic (If updating self, use local user.type, else fetch or assume creator)
+            // For now, if targetId is different, we assume we are updating a creator as MCN
+            const isUpdatingSelf = idToUpdate === user?.id
+            const targetType = isUpdatingSelf ? user?.role : 'creator'
 
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .update(updates)
-            .eq('id', idToUpdate)
+            // Creator specific fields
+            if (targetType === 'creator') {
+                if (data.tags !== undefined) updates.tags = data.tags
+                if (data.handle !== undefined) updates.instagram_handle = data.handle
+                if (data.followers !== undefined) {
+                    const count = typeof data.followers === 'string' ? parseInt(data.followers) : data.followers
+                    updates.followers_count = isNaN(count) ? 0 : count
 
-        if (updateError) {
-            console.error('[AuthProvider] Profile update error:', JSON.stringify(updateError, null, 2))
-            alert(`저장 실패 (Profile): ${updateError.message || JSON.stringify(updateError)}`)
-            throw updateError
-        }
+                    let tier = 'Nano'
+                    if (count >= 1000000) tier = 'Mega'
+                    else if (count >= 100000) tier = 'Macro'
+                    else if (count >= 10000) tier = 'Micro'
+                    updates.tier = tier
+                }
 
-        console.log('[AuthProvider] Profile updated successfully')
+                // Rate card fields - EXTENDED
+                if (data.priceVideo !== undefined) updates.price_video = data.priceVideo
+                if (data.priceFeed !== undefined) updates.price_feed = data.priceFeed
+                if (data.priceStory !== undefined) updates.price_story = data.priceStory
+                if (data.priceUsageRights !== undefined) updates.price_usage_rights = data.priceUsageRights
+                if (data.priceAutoDm !== undefined) updates.price_auto_dm = data.priceAutoDm
+                if (data.secondaryRights !== undefined) updates.secondary_rights = !!data.secondaryRights
+                if (data.usageRightsMonth !== undefined) updates.usage_rights_month = data.usageRightsMonth
+                if (data.usageRightsPrice !== undefined) updates.usage_rights_price = data.usageRightsPrice
+                if (data.autoDmMonth !== undefined) updates.auto_dm_month = data.autoDmMonth
+                if (data.autoDmPrice !== undefined) updates.auto_dm_price = data.autoDmPrice
 
-        // Only update local state if we updated ourselves
-        if (isUpdatingSelf && user) {
-            const updatedUser = { ...user, ...data }
-            setUser(updatedUser)
-            console.log('[AuthProvider] Local user state updated')
-        } else {
-            // If we updated someone else (proxy), we might want to trigger a refresh if the UI depends on it
-            // For now, the caller (SettingsView) usually handles the UI state or re-fetch
-            console.log('[AuthProvider] Proxy update completed - Local user state unchanged')
-        }
+                // Bank Info
+                if (data.bankName !== undefined) updates.bank_name = data.bankName
+                if (data.accountNumber !== undefined) updates.account_number = data.accountNumber
+                if (data.accountHolder !== undefined) updates.account_holder = data.accountHolder
+            }
 
-    } catch (error: any) {
-        console.error('[AuthProvider] Update failed:', error)
-        throw error
-    }
-}
+            console.log('[AuthProvider] Profile updates payload:', updates)
 
-// Legacy alias (for backward compatibility), but now supports targetId
-const updateUser = updateProfile
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', idToUpdate)
 
-// Switch role
-const switchRole = async (newRole: 'brand' | 'creator') => {
-    if (!user) {
-        alert("로그인 세션이 확인되지 않습니다.")
-        return
-    }
+            if (updateError) {
+                console.error('[AuthProvider] Profile update error:', JSON.stringify(updateError, null, 2))
+                alert(`저장 실패 (Profile): ${updateError.message || JSON.stringify(updateError)}`)
+                throw updateError
+            }
 
-    try {
-        console.log(`[AuthProvider] Switching to: ${newRole}`)
+            console.log('[AuthProvider] Profile updated successfully')
 
-        // Update profiles table
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-                id: user.id,
-                role: newRole,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'id' })
+            // Only update local state if we updated ourselves
+            if (isUpdatingSelf && user) {
+                const updatedUser = { ...user, ...data }
+                setUser(updatedUser)
+                console.log('[AuthProvider] Local user state updated')
+            } else {
+                // If we updated someone else (proxy), we might want to trigger a refresh if the UI depends on it
+                // For now, the caller (SettingsView) usually handles the UI state or re-fetch
+                console.log('[AuthProvider] Proxy update completed - Local user state unchanged')
+            }
 
-        if (profileError) {
-            console.error('[AuthProvider] Switch role error:', profileError)
-            throw new Error(`DB 업데이트 실패: ${profileError.message}`)
-        }
-
-        // Update auth metadata
-        const { error: authError } = await supabase.auth.updateUser({
-            data: { role: newRole }
-        })
-
-        if (authError) {
-            console.error('[AuthProvider] Auth metadata error:', authError)
-        }
-
-        // Update local state
-        setUser(prev => prev ? { ...prev, role: newRole } : null)
-
-        alert("계정 유형이 성공적으로 변경되었습니다. 새로운 대시보드로 이동합니다.")
-        window.location.href = newRole === 'brand' ? '/brand' : '/creator'
-    } catch (error: any) {
-        console.error('[AuthProvider] Switch failed:', error)
-        alert(`전환 실패: ${error.message || "알 수 없는 오류"}`)
-        throw error
-    }
-}
-
-// Refresh session and user profile
-const refreshSession = async () => {
-    console.log('[AuthProvider] Manual session refresh...')
-    try {
-        const { data: { session }, error } = await supabase.auth.refreshSession()
-        if (error) {
-            console.error('[AuthProvider] Session refresh error:', error)
+        } catch (error: any) {
+            console.error('[AuthProvider] Update failed:', error)
             throw error
         }
-
-        if (session?.user) {
-            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '사용자 프로필 불러오는 중...', type: 'loading' } }))
-            const fetchedUser = await fetchUserProfile(session.user)
-            if (fetchedUser) {
-                setUser(fetchedUser)
-                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `${fetchedUser.name}님 환영합니다 (${fetchedUser.role})`, type: 'success' } }))
-                console.log('[AuthProvider] User profile refreshed:', fetchedUser.role)
-            }
-        } else {
-            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '게스트 모드로 시작', type: 'info' } }))
-        }
-    } catch (error) {
-        console.error('[AuthProvider] Failed to refresh session:', error)
     }
-}
 
-return (
-    <AuthContext.Provider value={{
-        user,
-        supabase,
-        isAuthChecked,
-        isInitialized,
-        login,
-        logout,
-        updateUser, // Kept for compatibility
-        updateProfile, // New exposed function
-        switchRole,
-        refreshSession
-    }}>
-        {children}
-    </AuthContext.Provider>
-)
+    // Legacy alias (for backward compatibility), but now supports targetId
+    const updateUser = updateProfile
+
+    // Switch role
+    const switchRole = async (newRole: 'brand' | 'creator') => {
+        if (!user) {
+            alert("로그인 세션이 확인되지 않습니다.")
+            return
+        }
+
+        try {
+            console.log(`[AuthProvider] Switching to: ${newRole}`)
+
+            // Update profiles table
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: user.id,
+                    role: newRole,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'id' })
+
+            if (profileError) {
+                console.error('[AuthProvider] Switch role error:', profileError)
+                throw new Error(`DB 업데이트 실패: ${profileError.message}`)
+            }
+
+            // Update auth metadata
+            const { error: authError } = await supabase.auth.updateUser({
+                data: { role: newRole }
+            })
+
+            if (authError) {
+                console.error('[AuthProvider] Auth metadata error:', authError)
+            }
+
+            // Update local state
+            setUser(prev => prev ? { ...prev, role: newRole } : null)
+
+            alert("계정 유형이 성공적으로 변경되었습니다. 새로운 대시보드로 이동합니다.")
+            window.location.href = newRole === 'brand' ? '/brand' : '/creator'
+        } catch (error: any) {
+            console.error('[AuthProvider] Switch failed:', error)
+            alert(`전환 실패: ${error.message || "알 수 없는 오류"}`)
+            throw error
+        }
+    }
+
+    // Refresh session and user profile
+    const refreshSession = async () => {
+        console.log('[AuthProvider] Manual session refresh...')
+        try {
+            const { data: { session }, error } = await supabase.auth.refreshSession()
+            if (error) {
+                console.error('[AuthProvider] Session refresh error:', error)
+                throw error
+            }
+
+            if (session?.user) {
+                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '사용자 프로필 불러오는 중...', type: 'loading' } }))
+                const fetchedUser = await fetchUserProfile(session.user)
+                if (fetchedUser) {
+                    setUser(fetchedUser)
+                    window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `${fetchedUser.name}님 환영합니다 (${fetchedUser.role})`, type: 'success' } }))
+                    console.log('[AuthProvider] User profile refreshed:', fetchedUser.role)
+                }
+            } else {
+                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '게스트 모드로 시작', type: 'info' } }))
+            }
+        } catch (error) {
+            console.error('[AuthProvider] Failed to refresh session:', error)
+        }
+    }
+
+    return (
+        <AuthContext.Provider value={{
+            user,
+            supabase,
+            isAuthChecked,
+            isInitialized,
+            login,
+            logout,
+            updateUser, // Kept for compatibility
+            updateProfile, // New exposed function
+            switchRole,
+            refreshSession
+        }}>
+            {children}
+        </AuthContext.Provider>
+    )
 }
 
 export function useAuth() {
