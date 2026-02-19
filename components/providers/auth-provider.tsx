@@ -39,76 +39,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Fetch user profile from database
     const fetchUserProfile = async (sessionUser: any, retryCount = 0): Promise<User> => {
         try {
-            // [PERF] Run profiles and team_members queries in parallel
-            const [profileResult, teamResult] = await Promise.all([
-                supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', sessionUser.id)
-                    .single(),
-                supabase
-                    .from('team_members')
-                    .select('team_id')
-                    .eq('user_id', sessionUser.id)
-                    .maybeSingle()
-            ])
+            console.log('[AuthProvider] Fetching user profile via RPC...')
 
-            const { data: profile, error } = profileResult
-            const { data: teamMember } = teamResult
-
-            console.log('[AuthProvider] Raw profile from DB:', {
-                id: profile?.id,
-                email: profile?.email,
-                role: profile?.role,
-                onboarding_completed: profile?.onboarding_completed,
-                tags: profile?.tags
-            })
-
-            if (profile) {
-                const teamId = teamMember?.team_id
-
-                const role = profile.role as any
-
-                return {
-                    id: sessionUser.id,
-                    name: profile.display_name || sessionUser.email?.split('@')[0] || "User",
-                    email: profile.email || sessionUser.email,
-                    role: role,
-                    onboardingCompleted: profile.onboarding_completed || false,
-                    avatar: profile.avatar_url,
-                    bio: profile.description,  // profiles 테이블의 description 컬럼 = bio
-                    handle: profile.instagram_handle,
-                    followers: profile.followers_count || 0,
-                    tags: profile.tags || [],
-                    phone: profile.phone,
-                    address: profile.shipping_address,
-                    website: profile.website_url,
-                    teamId: teamId,
-
-                    // Primary Region
-                    primaryRegion: profile.primary_region,
-
-                    // Rate card fields from profiles - EXTENDED
-                    priceVideo: profile.price_video || 0,
-                    priceFeed: profile.price_feed || 0,
-                    priceStory: profile.price_story || 0,
-                    priceUsageRights: profile.price_usage_rights || 0,
-                    priceAutoDm: profile.price_auto_dm || 0,
-                    secondaryRights: profile.secondary_rights || false,
-                    usageRightsMonth: profile.usage_rights_month || 0,
-                    usageRightsPrice: profile.usage_rights_price || 0,
-                    autoDmMonth: profile.auto_dm_month || 0,
-                    autoDmPrice: profile.auto_dm_price || 0,
-
-                    // Bank Info
-                    bankName: profile.bank_name,
-                    accountNumber: profile.account_number,
-                    accountHolder: profile.account_holder
-                }
-            }
+            // Use RPC for atomic, fast, RLS-bypassed fetch
+            const { data: userData, error } = await supabase.rpc('get_current_user_info')
 
             if (error) {
-                console.warn('[AuthProvider] Profile fetch issue:', error.message)
+                console.error('[AuthProvider] RPC error:', error)
+                throw error
+            }
+
+            if (userData) {
+                console.log('[AuthProvider] RPC success:', userData.role)
+                return userData as User
             }
         } catch (e: any) {
             // Detect AbortError (React StrictMode double-mount cancels in-flight requests)
