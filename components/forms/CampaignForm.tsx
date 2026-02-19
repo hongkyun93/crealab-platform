@@ -443,7 +443,7 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
                                     value={hashtags}
                                     onChange={(e) => {
                                         // 한글 IME 조합 중에는 변환 로직을 건드리지 않음
-                                        if (e.nativeEvent.isComposing) {
+                                        if ((e.nativeEvent as InputEvent).isComposing) {
                                             setHashtags(e.target.value)
                                             return
                                         }
