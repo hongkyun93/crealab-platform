@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setIsInitialized(true)
                 window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '인증 확인 시간 초과 (강제 진행)', type: 'error' } }))
             }
-        }, 15000)
+        }, 3000)
 
         const initAuth = async () => {
             console.log('[AuthProvider] Initializing auth...')
