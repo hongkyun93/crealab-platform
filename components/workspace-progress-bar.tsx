@@ -29,19 +29,19 @@ export function WorkspaceProgressBar({ status, contract_status, delivery_status,
         currentStepIndex = 1;
     }
 
-    // Step 3: Contract Signed
+    // Step 3: Contract Signed → contract done, shipping is now active
     if (contract_status === 'signed' || ['signed', 'shipped', 'started', 'completed'].includes(status || '')) {
-        currentStepIndex = 2;
+        currentStepIndex = 3;
     }
 
-    // Step 4: Shipping
+    // Step 4: Shipping done → content is active
     if (delivery_status === 'shipped' || delivery_status === 'delivered' || ['completed'].includes(status || '')) {
-        currentStepIndex = 3;
+        currentStepIndex = 4;
     }
 
     // Step 5: Content Submitted
     if (content_submission_status === 'submitted' || content_submission_status === 'approved' || ['completed'].includes(status || '')) {
-        currentStepIndex = 4;
+        currentStepIndex = 5;
     }
 
     // Step 6: Completed
