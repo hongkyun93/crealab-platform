@@ -248,14 +248,32 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             const html2pdf = (await import('html2pdf.js')).default;
             const productName = proposal.productName || proposal.product_name || '협업';
             const filename = `CreadyPick_계약서_${productName}.pdf`;
+
+            // Clone the contract content into a temp div with explicit colors
+            // to avoid html2canvas failing on oklch/lab color functions
+            const clone = contractRef.current.cloneNode(true) as HTMLElement;
+            clone.style.cssText = 'background:#fff;color:#111;padding:32px;font-family:sans-serif;';
+            // Override all text colors in clone to plain hex
+            clone.querySelectorAll('*').forEach((el: any) => {
+                el.style.color = el.style.color || '#111';
+            });
+            clone.querySelectorAll('h1,h2,h3').forEach((el: any) => {
+                el.style.color = '#1e3a8a';
+            });
+            clone.querySelectorAll('strong').forEach((el: any) => {
+                el.style.color = '#111';
+            });
+            document.body.appendChild(clone);
+
             const opt = {
                 margin: [10, 10, 10, 10] as [number, number, number, number],
                 filename,
                 image: { type: 'jpeg' as const, quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
+                html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
             };
-            await html2pdf().set(opt).from(contractRef.current).save();
+            await html2pdf().set(opt).from(clone).save();
+            document.body.removeChild(clone);
         } catch (err) {
             console.error('[SmartContractPanel] PDF generation failed:', err);
             window.print();
@@ -266,9 +284,9 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     const renderMarkdown = (md: string) => {
         if (!md) return '';
         return md.split('\n').map(line => {
-            if (line.startsWith('# ')) return `<h1 class="text-xl font-bold mt-6 mb-2 text-primary">${line.slice(2)}</h1>`;
-            if (line.startsWith('## ')) return `<h2 class="text-lg font-bold mt-5 mb-2 text-primary">${line.slice(3)}</h2>`;
-            if (line.startsWith('### ')) return `<h3 class="text-base font-bold mt-4 mb-1 text-primary">${line.slice(4)}</h3>`;
+            if (line.startsWith('# ')) return `<h1 style="color:#1e3a8a;font-size:1.25rem;font-weight:700;margin-top:1.5rem;margin-bottom:0.5rem">${line.slice(2)}</h1>`;
+            if (line.startsWith('## ')) return `<h2 style="color:#1e3a8a;font-size:1.125rem;font-weight:700;margin-top:1.25rem;margin-bottom:0.5rem">${line.slice(3)}</h2>`;
+            if (line.startsWith('### ')) return `<h3 style="color:#1e3a8a;font-size:1rem;font-weight:700;margin-top:1rem;margin-bottom:0.25rem">${line.slice(4)}</h3>`;
             line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
             if (line.match(/^\d+\.\s/)) return `<p class="ml-4 my-1">${line}</p>`;
             if (line.startsWith('- ')) return `<p class="ml-4 my-1">• ${line.slice(2)}</p>`;

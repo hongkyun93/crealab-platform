@@ -184,9 +184,13 @@ export function InfoPanel() {
             {/* 1. Workspace Header */}
             <div className="p-6 pb-2">
                 <div className="flex items-center gap-3 mb-4">
-                    {/* Avatar Placeholder */}
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-lg font-bold text-primary">
-                        C
+                    {/* Creator Avatar */}
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-lg font-bold text-primary overflow-hidden">
+                        {(proposal?.influencerAvatar || (proposal as any)?.influencer_avatar) ? (
+                            <img src={proposal?.influencerAvatar || (proposal as any)?.influencer_avatar} alt="Creator" className="w-full h-full object-cover" />
+                        ) : (
+                            (proposal?.influencerName?.[0] || 'C')
+                        )}
                     </div>
                     <div>
                         <h2 className="font-bold text-lg leading-tight">{proposal?.influencerName || 'Creator Name'}</h2>
