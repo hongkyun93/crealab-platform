@@ -198,7 +198,7 @@ export default function ServicesDesignPage() {
                         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(79,70,229,0.3),transparent)]" />
                         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_100%,rgba(5,150,105,0.15),transparent)]" />
                     </div>
-                    <div className="relative container mx-auto px-6 md:px-8 pt-7 pb-14 max-w-5xl text-center space-y-6">
+                    <div className="relative container mx-auto px-6 md:px-8 pt-7 pb-20 max-w-5xl text-center space-y-6">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-sm font-medium backdrop-blur-sm">
                             <Sparkles className="h-4 w-4" />세계 유일의 라이프 모먼트 기반 매칭 플랫폼
                         </div>
