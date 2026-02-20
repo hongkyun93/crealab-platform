@@ -77,16 +77,23 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
 
             {/* Center + Right: Contract View OR Chat + Files */}
             {contractViewOpen && proposal ? (
-                <div className="h-full col-span-2 bg-background relative flex flex-col min-w-0 overflow-hidden">
-                    <SmartContractPanel
-                        proposal={proposal}
-                        userType="creator"
-                        onSign={handleSign}
-                        onSaveContract={handleSaveContract}
-                        onUndoSign={handleUndoSign}
-                        fullWidth
-                    />
-                </div>
+                <>
+                    {/* Center: Contract */}
+                    <div className="h-full bg-background relative flex flex-col min-w-0 overflow-hidden">
+                        <SmartContractPanel
+                            proposal={proposal}
+                            userType="creator"
+                            onSign={handleSign}
+                            onSaveContract={handleSaveContract}
+                            onUndoSign={handleUndoSign}
+                            fullWidth
+                        />
+                    </div>
+                    {/* Right: Chat (so creator can discuss while viewing contract) */}
+                    <div className="h-full bg-muted/20 relative flex flex-col min-w-0 overflow-hidden border-l border-border/50">
+                        <ChatArea className="h-full" />
+                    </div>
+                </>
             ) : (
                 <>
                     <div className="h-full bg-muted/20 relative flex flex-col min-w-0 overflow-hidden">
