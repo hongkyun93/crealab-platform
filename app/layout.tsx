@@ -46,7 +46,7 @@ export const metadata: Metadata = {
 
 import { Toaster } from "@/components/ui/sonner";
 
-import { RuntimeMonitor } from "@/components/dev/RuntimeMonitor";
+
 
 export default function RootLayout({
   children,
@@ -69,7 +69,6 @@ export default function RootLayout({
             {children}
             <SiteFooter />
             <Toaster />
-            <RuntimeMonitor />
           </ThemeProvider>
         </UnifiedProvider>
       </body>
