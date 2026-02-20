@@ -122,7 +122,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     return {
                         id: p.id,
                         type: 'creator_apply' as const,
-                        dealType: p.deal_type || 'ad',
+                        dealType: 'ad',
                         campaignId: p.campaign_id,
                         campaignName: p.campaigns?.title || p.campaigns?.product_name,
                         productName: p.campaigns?.product_name,
@@ -172,7 +172,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         shipping_name: p.shipping_name,
                         tracking_number: p.tracking_number,
                         delivery_status: p.delivery_status,
-                        payout_status: p.payout_status,
+
                         content_submission_url: p.content_submission_url,
                         content_submission_status: p.content_submission_status,
                         workspace_id: p.workspace_id, // [Workspaces]
@@ -255,7 +255,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 influencer_id: p.influencer_id,
                 event_id: p.event_id,
                 product_id: p.product_id,
-                campaign_id: p.campaign_id,
                 product_name: p.product_name || p.products?.name,
                 product_type: p.product_type,
                 compensation_amount: p.compensation_amount,
@@ -264,7 +263,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 content_type: p.content_type,
                 status: p.status,
                 message: p.message,
-                cost: p.cost,
                 motivation: p.motivation,
                 content_plan: p.content_plan,
                 portfolio_links: p.portfolio_links,
@@ -285,7 +283,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 contract_status: p.contract_status,
                 brand_signature: p.brand_signature,
                 influencer_signature: p.influencer_signature,
-                payout_status: p.payout_status,
+
                 delivery_status: p.delivery_status,
                 brand_condition_confirmed: p.brand_condition_confirmed,
                 influencer_condition_confirmed: p.influencer_condition_confirmed,
@@ -640,7 +638,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         portfolio_links: proposal.portfolioLinks,
                         channel_name: proposal.channel_name,
                         channel_url: proposal.channel_url,
-                        channel_subtype: (proposal as any).channel_subtype || null,
                         instagram_handle: proposal.instagramHandle || (proposal.channel_name === 'instagram' ? proposal.channel_url : undefined),
                         insight_screenshot: proposal.insightScreenshot
                     })
@@ -792,13 +789,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         product_name: (proposal as any).productName || "Brand Product",
                         message: proposal.message || (proposal as any).requestDetails,
                         status: 'applied',
-                        motivation: proposal.motivation,
-                        content_plan: proposal.content_plan,
-                        portfolio_links: proposal.portfolioLinks,
                         instagram_handle: proposal.instagramHandle || (proposal.channel_name === 'instagram' ? proposal.channel_url : undefined),
                         channel_name: proposal.channel_name,
                         channel_url: proposal.channel_url,
-                        channel_subtype: (proposal as any).channel_subtype || null,
                         insight_screenshot: proposal.insightScreenshot,
                         product_type: 'ad',
                         price_offer: proposal.cost ?? 0,
@@ -881,11 +874,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             // [FIX] Condition fields (previously missing from campaign_applications whitelist)
             if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
-            if ((updates as any).product_name) dbUpdates.product_name = (updates as any).product_name
             if ((updates as any).special_terms !== undefined) dbUpdates.special_terms = (updates as any).special_terms
-            if ((updates as any).has_incentive !== undefined) dbUpdates.has_incentive = (updates as any).has_incentive
-            if ((updates as any).incentive_detail !== undefined) dbUpdates.incentive_detail = (updates as any).incentive_detail
-            if ((updates as any).content_type) dbUpdates.content_type = (updates as any).content_type
             if ((updates as any).condition_product_receipt_date) dbUpdates.condition_product_receipt_date = (updates as any).condition_product_receipt_date
             if ((updates as any).condition_draft_submission_date) dbUpdates.condition_draft_submission_date = (updates as any).condition_draft_submission_date
             if ((updates as any).condition_final_submission_date) dbUpdates.condition_final_submission_date = (updates as any).condition_final_submission_date

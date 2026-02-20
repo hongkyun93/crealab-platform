@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS public.team_invitations (
 CREATE TABLE IF NOT EXISTS public.life_moments (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   influencer_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  team_id uuid REFERENCES public.teams(id) ON DELETE SET NULL,
   name text,
   title text,
   icon text,
@@ -154,6 +155,7 @@ CREATE TABLE IF NOT EXISTS public.life_moments (
 CREATE TABLE IF NOT EXISTS public.brand_products (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   brand_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  team_id uuid REFERENCES public.teams(id) ON DELETE SET NULL,
   name text NOT NULL,
   description text,
   price integer DEFAULT 0,

@@ -15,7 +15,7 @@ async function fetchProducts(): Promise<Product[]> {
         .from('brand_products')
         .select(`
       *,
-      profiles(display_name, avatar_url, bio)
+      profiles(display_name, avatar_url, description)
     `)
         .order('created_at', { ascending: false })
 
@@ -44,7 +44,7 @@ async function fetchProducts(): Promise<Product[]> {
         brandId: p.brand_id,
         brandName: p.profiles?.display_name || 'Brand',
         brandAvatar: p.profiles?.avatar_url,
-        brandBio: p.profiles?.bio,
+        brandBio: p.profiles?.description,
         name: p.name,
         price: p.price || 0,
         image: p.image_url || '',
