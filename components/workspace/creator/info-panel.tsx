@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { ConditionsPanel } from '../common/conditions-panel';
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { SmartContractPanel } from '../common/smart-contract-panel';
-import { FileText, CheckCircle2, MapPin, Truck, Package, Loader2, Pencil } from 'lucide-react';
+import { FileText, CheckCircle2, MapPin, Truck, Package, Loader2, Pencil, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -326,6 +326,21 @@ export function CreatorInfoPanel() {
                                 {/* Show form if no shipping info saved yet, or editing */}
                                 {(!proposal?.shipping_name || isEditing) && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' ? (
                                     <div className="space-y-2">
+                                        {/* Load from profile button */}
+                                        <button
+                                            type="button"
+                                            className="w-full flex items-center justify-center gap-1.5 text-xs text-primary hover:text-primary/80 py-1.5 px-2 rounded-md border border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                                            onClick={() => {
+                                                if (user) {
+                                                    setShipName(user.name || '');
+                                                    setShipPhone(user.phone || '');
+                                                    setShipAddress(user.address || '');
+                                                }
+                                            }}
+                                        >
+                                            <User className="h-3 w-3" />
+                                            프로필에서 불러오기
+                                        </button>
                                         <div>
                                             <Label className="text-xs">받는 사람</Label>
                                             <Input value={shipName} onChange={(e) => setShipName(e.target.value)} placeholder="홍길동" className="h-8 text-sm mt-1" />
@@ -502,7 +517,7 @@ export function CreatorInfoPanel() {
                         </div>
                     </StageCard>
                 </div>
-            </ScrollArea>
-        </div>
+            </ScrollArea >
+        </div >
     );
 }
