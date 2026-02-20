@@ -1,183 +1,505 @@
+"use client"
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, FileSignature, ShieldCheck, Download, Ban } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { CheckCircle2, FileSignature, ShieldCheck, Download, Pencil, Save, X, Loader2, RotateCcw, FileText, PenTool } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Proposal } from "@/lib/types/proposal";
+import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
+// ───── Types ─────
 interface SmartContractPanelProps {
     proposal: Proposal;
     userType: 'brand' | 'creator';
-    onSign: (role: 'brand' | 'creator') => Promise<void>;
+    onSign: (role: 'brand' | 'creator', signatureData: string) => Promise<void>;
+    onSaveContract?: (content: string) => Promise<void>;
     isSigning?: boolean;
 }
 
-export function SmartContractPanel({ proposal, userType, onSign, isSigning }: SmartContractPanelProps) {
-    const [hasRead, setHasRead] = useState(false);
+type ContractTab = 'view' | 'brand_sign' | 'creator_sign';
+
+// ───── Signature Canvas Component ─────
+function SignatureCanvas({
+    onSign,
+    existingSignature,
+    signedAt,
+    signerName,
+    disabled,
+    isSigning,
+}: {
+    onSign: (data: string) => void;
+    existingSignature?: string | null;
+    signedAt?: string | null;
+    signerName: string;
+    disabled: boolean;
+    isSigning?: boolean;
+}) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [hasDrawn, setHasDrawn] = useState(false);
+
+    const getCoords = (e: React.MouseEvent | React.TouchEvent) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return { x: 0, y: 0 };
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        if ('touches' in e) {
+            return {
+                x: (e.touches[0].clientX - rect.left) * scaleX,
+                y: (e.touches[0].clientY - rect.top) * scaleY,
+            };
+        }
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY,
+        };
+    };
+
+    const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
+        if (disabled || existingSignature) return;
+        e.preventDefault();
+        const ctx = canvasRef.current?.getContext('2d');
+        if (!ctx) return;
+        setIsDrawing(true);
+        const { x, y } = getCoords(e);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    };
+
+    const draw = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!isDrawing || disabled || existingSignature) return;
+        e.preventDefault();
+        const ctx = canvasRef.current?.getContext('2d');
+        if (!ctx) return;
+        const { x, y } = getCoords(e);
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#1e3a5f';
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        setHasDrawn(true);
+    };
+
+    const endDraw = () => setIsDrawing(false);
+
+    const clearCanvas = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        setHasDrawn(false);
+    };
+
+    const handleSign = () => {
+        if (!canvasRef.current || !hasDrawn) return;
+        const dataUrl = canvasRef.current.toDataURL('image/png');
+        onSign(dataUrl);
+    };
+
+    // If already signed, show the signature image
+    if (existingSignature) {
+        return (
+            <div className="space-y-4">
+                <div className="border-2 border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800/40 rounded-xl p-6 text-center">
+                    <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-3" />
+                    <p className="font-bold text-green-700 dark:text-green-400 mb-2">서명 완료</p>
+                    {existingSignature.startsWith('data:image') ? (
+                        <div className="bg-white dark:bg-zinc-800 rounded-lg p-3 border inline-block">
+                            <img src={existingSignature} alt="서명" className="h-16 w-auto" />
+                        </div>
+                    ) : (
+                        <div className="font-script text-2xl text-indigo-700 dark:text-indigo-400">{existingSignature}</div>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-3">
+                        {signerName} · {signedAt ? new Date(signedAt).toLocaleString('ko-KR') : ''}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className={cn(
+                "border-2 border-dashed rounded-xl p-4 transition-colors",
+                disabled ? "border-muted bg-muted/10 opacity-50" : "border-indigo-200 bg-indigo-50/30 dark:bg-indigo-950/10 dark:border-indigo-800/30"
+            )}>
+                <p className="text-sm text-muted-foreground mb-3 text-center">
+                    {disabled
+                        ? "상대방이 먼저 서명해야 합니다."
+                        : "아래 영역에 서명해주세요"}
+                </p>
+                <canvas
+                    ref={canvasRef}
+                    width={600}
+                    height={200}
+                    className={cn(
+                        "w-full h-[120px] sm:h-[150px] rounded-lg border bg-white dark:bg-zinc-900 touch-none",
+                        disabled ? "cursor-not-allowed" : "cursor-crosshair"
+                    )}
+                    onMouseDown={startDraw}
+                    onMouseMove={draw}
+                    onMouseUp={endDraw}
+                    onMouseLeave={endDraw}
+                    onTouchStart={startDraw}
+                    onTouchMove={draw}
+                    onTouchEnd={endDraw}
+                />
+                <div className="flex gap-2 mt-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearCanvas}
+                        disabled={disabled || !hasDrawn}
+                        className="flex-1"
+                    >
+                        <RotateCcw className="h-3.5 w-3.5 mr-1" /> 지우기
+                    </Button>
+                    <Button
+                        size="sm"
+                        onClick={handleSign}
+                        disabled={disabled || !hasDrawn || isSigning}
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                    >
+                        {isSigning ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <PenTool className="h-3.5 w-3.5 mr-1" />}
+                        {isSigning ? "처리 중..." : "서명 완료"}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ───── Main Panel ─────
+export function SmartContractPanel({ proposal, userType, onSign, onSaveContract, isSigning }: SmartContractPanelProps) {
+    const [activeTab, setActiveTab] = useState<ContractTab>('view');
+    const [contractContent, setContractContent] = useState<string>(proposal.contract_content || '');
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+    const contractRef = useRef<HTMLDivElement>(null);
+    const updateProposal = useWorkspaceStore((state) => state.updateProposal);
 
     // Status Logic
     const isBrandSigned = !!proposal.brand_signature;
     const isInfluencerSigned = !!proposal.influencer_signature;
-    const isUserSigned = userType === 'brand' ? isBrandSigned : isInfluencerSigned;
     const isFullySigned = isBrandSigned && isInfluencerSigned;
+    const isAnySigned = isBrandSigned || isInfluencerSigned;
+    const canEdit = userType === 'brand' && !isAnySigned;
 
-    const brandName = proposal.brandName || "브랜드(갑)";
+    const brandName = proposal.brandName || proposal.brand_name || "브랜드(갑)";
     const influencerName = proposal.influencerName || "크리에이터(을)";
-    const productName = proposal.productName || "제품명 미정";
-    const cost = proposal.priceOffer || proposal.price_offer || 0;
-    const costString = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(cost);
 
-    // Condition Dates
-    const productDate = proposal.condition_product_receipt_date || "미정";
-    const draftDate = proposal.condition_draft_submission_date || "미정";
-    const uploadDate = proposal.condition_upload_date || "미정";
-
-    const handleSign = async () => {
-        if (!hasRead) {
-            alert("계약서 내용을 확인하고 동의해주세요.");
-            return;
+    // Generate AI contract on first load if no content exists
+    useEffect(() => {
+        if (!contractContent && !isGenerating) {
+            generateContract();
         }
-        await onSign(userType);
+    }, []);
+
+    const generateContract = async () => {
+        setIsGenerating(true);
+        try {
+            const res = await fetch('/api/generate-contract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    proposal,
+                    brandName,
+                    influencerName,
+                    messages: [], // Could pass chat messages if available
+                }),
+            });
+            const data = await res.json();
+            if (data.result) {
+                setContractContent(data.result);
+                // Save to DB
+                if (onSaveContract) {
+                    await onSaveContract(data.result);
+                }
+                updateProposal({ contract_content: data.result } as any);
+            }
+        } catch (err) {
+            console.error('[SmartContractPanel] AI contract generation failed:', err);
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
+    const handleStartEdit = () => {
+        setEditContent(contractContent);
+        setIsEditing(true);
+    };
+
+    const handleSaveEdit = async () => {
+        setIsSaving(true);
+        try {
+            setContractContent(editContent);
+            if (onSaveContract) {
+                await onSaveContract(editContent);
+            }
+            updateProposal({ contract_content: editContent } as any);
+            setIsEditing(false);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setEditContent('');
+    };
+
+    const handleSignature = async (signatureData: string) => {
+        await onSign(userType, signatureData);
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!contractRef.current) return;
+        setIsPdfGenerating(true);
+        try {
+            // Dynamic import for client-side only
+            const html2pdf = (await import('html2pdf.js')).default;
+            const productName = proposal.productName || proposal.product_name || '협업';
+            const filename = `CreadyPick_계약서_${productName}.pdf`;
+
+            const opt = {
+                margin: [10, 10, 10, 10] as [number, number, number, number],
+                filename,
+                image: { type: 'jpeg' as const, quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+            };
+
+            await html2pdf().set(opt).from(contractRef.current).save();
+        } catch (err) {
+            console.error('[SmartContractPanel] PDF generation failed:', err);
+            // Fallback to window.print
+            window.print();
+        } finally {
+            setIsPdfGenerating(false);
+        }
+    };
+
+    // Simple markdown-to-HTML renderer (handles headers, bold, lists, paragraphs)
+    const renderMarkdown = (md: string) => {
+        if (!md) return '';
+        return md
+            .split('\n')
+            .map(line => {
+                // Headers
+                if (line.startsWith('# ')) return `<h1 class="text-xl font-bold mt-6 mb-2 text-primary">${line.slice(2)}</h1>`;
+                if (line.startsWith('## ')) return `<h2 class="text-lg font-bold mt-5 mb-2 text-primary">${line.slice(3)}</h2>`;
+                if (line.startsWith('### ')) return `<h3 class="text-base font-bold mt-4 mb-1 text-primary">${line.slice(4)}</h3>`;
+                // Bold
+                line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                // List items
+                if (line.match(/^\d+\.\s/)) return `<p class="ml-4 my-1">${line}</p>`;
+                if (line.startsWith('- ')) return `<p class="ml-4 my-1">• ${line.slice(2)}</p>`;
+                // Empty line
+                if (line.trim() === '') return '<br />';
+                return `<p class="my-1">${line}</p>`;
+            })
+            .join('');
+    };
+
+    // ───── Tabs ─────
+    const tabs: { id: ContractTab; label: string; icon: React.ReactNode }[] = [
+        { id: 'view', label: '계약서 보기', icon: <FileText className="h-3.5 w-3.5" /> },
+        { id: 'brand_sign', label: '브랜드 서명', icon: <PenTool className="h-3.5 w-3.5" /> },
+        { id: 'creator_sign', label: '크리에이터 서명', icon: <PenTool className="h-3.5 w-3.5" /> },
+    ];
+
     return (
-        <Card className="w-full h-full flex flex-col border-none shadow-none bg-background/50 backdrop-blur-sm">
-            <CardHeader className="pb-3 border-b flex flex-row items-center justify-between bg-card/50">
-                <div>
-                    <CardTitle className="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                        <FileSignature className="h-5 w-5 text-indigo-600" />
-                        표준 광고 거래 계약서
-                    </CardTitle>
-                    <CardDescription>
-                        CreadyPick 표준 안심 계약 (제 2026-{String(proposal.id || "").slice(0, 8)}호)
-                    </CardDescription>
+        <div className="w-full flex flex-col border rounded-xl overflow-hidden bg-background/50 backdrop-blur-sm">
+            {/* Header */}
+            <div className="px-4 py-3 border-b flex items-center justify-between bg-card/50">
+                <div className="flex items-center gap-2">
+                    <FileSignature className="h-4 w-4 text-indigo-600" />
+                    <span className="font-bold text-sm bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                        전자 계약서
+                    </span>
                 </div>
                 {isFullySigned && (
-                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 px-3 py-1 flex items-center gap-1">
-                        <ShieldCheck className="h-3 w-3" />
-                        계약 체결 완료
+                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800/40 text-xs px-2 py-0.5 flex items-center gap-1">
+                        <ShieldCheck className="h-3 w-3" /> 체결 완료
                     </Badge>
                 )}
-            </CardHeader>
-
-            <ScrollArea className="flex-1 p-6 bg-white/80 dark:bg-zinc-900/80 rounded-b-xl">
-                <div className="prose dark:prose-invert max-w-none text-sm space-y-6 select-text p-4 border rounded-lg bg-card shadow-sm">
-                    {/* Contract Content */}
-                    <div className="text-center space-y-2 pb-6 border-b">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">제품 광고/협찬 표준 계약서</h1>
-                        <p className="text-gray-500">
-                            본 계약은 <strong>{brandName}</strong>(이하 "갑"이라 함)와 <strong>{influencerName}</strong>(이하 "을"이라 함) 간의 신뢰를 바탕으로 체결한다.
-                        </p>
-                    </div>
-
-                    <article>
-                        <h3 className="font-bold text-lg mb-2 text-primary">제 1 조 (목적)</h3>
-                        <p>본 계약은 "갑"이 제공하는 제품 <strong>[{productName}]</strong>에 대한 홍보 콘텐츠를 "을"이 제작하고, 이를 지정된 채널에 게시함에 있어 필요한 제반 사항을 규정함을 목적으로 한다.</p>
-                    </article>
-
-                    <article>
-                        <h3 className="font-bold text-lg mb-2 text-primary">제 2 조 (계약 기간 및 일정)</h3>
-                        <ul className="list-disc pl-5 space-y-1">
-                            <li>제품 수령 예정일: <span className="font-semibold text-foreground underline decoration-wavy decoration-indigo-300">{productDate}</span></li>
-                            <li>초안 제출 마감일: <span className="font-semibold text-foreground underline decoration-wavy decoration-indigo-300">{draftDate}</span></li>
-                            <li>최종 업로드 마감일: <span className="font-semibold text-foreground underline decoration-wavy decoration-indigo-300">{uploadDate}</span></li>
-                        </ul>
-                    </article>
-
-                    <article>
-                        <h3 className="font-bold text-lg mb-2 text-primary">제 3 조 (지급 및 협찬)</h3>
-                        <p>
-                            "갑"은 "을"에게 본 계약의 대가로
-                            <span className="font-bold text-green-600 mx-1">{costString}</span>
-                            을(를) 콘텐츠 게시 후 30일 이내에 지급하며, 촬영용 제품을 무상으로 제공한다.
-                        </p>
-                    </article>
-
-                    <article>
-                        <h3 className="font-bold text-lg mb-2 text-primary">제 4 조 (특약 사항)</h3>
-                        <div className="p-3 bg-muted rounded-md text-muted-foreground italic border-l-4 border-indigo-400">
-                            {proposal.specialTerms || proposal.special_terms || "별도 특약사항 없음"}
-                        </div>
-                    </article>
-
-                    <article>
-                        <h3 className="font-bold text-lg mb-2 text-primary">제 5 조 (성실 의무)</h3>
-                        <p>"을"은 합의된 가이드라인을 준수하여 콘텐츠를 제작하며, 업로드 후 최소 3개월간 게시물을 유지하여야 한다. "갑"은 정당한 사유 없이 콘텐츠 수정을 무리하게 요구할 수 없다.</p>
-                    </article>
-
-                    {/* Signatures Visual Representation */}
-                    <div className="mt-12 pt-8 border-t grid grid-cols-2 gap-8 text-center">
-                        <div className={cn("p-6 rounded-xl border-2 border-dashed transition-all", isBrandSigned ? "border-solid border-indigo-600 bg-indigo-50/50" : "border-gray-200")}>
-                            <p className="text-sm text-gray-500 mb-4">"갑" (브랜드)</p>
-                            {isBrandSigned ? (
-                                <div className="space-y-2">
-                                    <div className="font-script text-2xl text-indigo-700">{proposal.brand_signature || brandName}</div>
-                                    <p className="text-xs text-indigo-600/70">서명 완료 ({new Date(proposal.brand_signed_at || Date.now()).toLocaleDateString()})</p>
-                                </div>
-                            ) : (
-                                <p className="text-gray-300">서명 대기 중</p>
-                            )}
-                        </div>
-
-                        <div className={cn("p-6 rounded-xl border-2 border-dashed transition-all", isInfluencerSigned ? "border-solid border-indigo-600 bg-indigo-50/50" : "border-gray-200")}>
-                            <p className="text-sm text-gray-500 mb-4">"을" (크리에이터)</p>
-                            {isInfluencerSigned ? (
-                                <div className="space-y-2">
-                                    <div className="font-script text-2xl text-indigo-700">{proposal.influencer_signature || influencerName}</div>
-                                    <p className="text-xs text-indigo-600/70">서명 완료 ({new Date(proposal.influencer_signed_at || Date.now()).toLocaleDateString()})</p>
-                                </div>
-                            ) : (
-                                <p className="text-gray-300">서명 대기 중</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </ScrollArea>
-
-            {/* Actions Footer */}
-            <div className="p-4 border-t bg-background/50 backdrop-blur flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    {!isUserSigned && (
-                        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-                            <input
-                                type="checkbox"
-                                checked={hasRead}
-                                onChange={(e) => setHasRead(e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            위 계약 내용을 모두 확인하였으며 이에 동의합니다.
-                        </label>
-                    )}
-                </div>
-
-                <div className="flex gap-2">
-                    {isFullySigned ? (
-                        <Button variant="outline" className="gap-2" onClick={() => window.print()}>
-                            <Download className="w-4 h-4" />
-                            PDF 다운로드
-                        </Button>
-                    ) : (
-                        isUserSigned ? (
-                            <Button disabled variant="secondary" className="gap-2 opacity-50 cursor-not-allowed">
-                                <CheckCircle2 className="w-4 h-4" />
-                                서명 완료 (상대방 대기중)
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={handleSign}
-                                disabled={!hasRead || isSigning}
-                                className={cn("gap-2 min-w-[140px]", hasRead ? "bg-indigo-600 hover:bg-indigo-700" : "bg-gray-400")}
-                            >
-                                {isSigning ? "처리중..." : "서명하기"}
-                                <FileSignature className="w-4 h-4" />
-                            </Button>
-                        )
-                    )}
-                </div>
             </div>
-        </Card>
+
+            {/* Tab Navigation */}
+            <div className="flex border-b bg-muted/30">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={cn(
+                            "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-all border-b-2",
+                            activeTab === tab.id
+                                ? "border-indigo-600 text-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20"
+                                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                            // Show green indicator if signed
+                            tab.id === 'brand_sign' && isBrandSigned && "text-green-600",
+                            tab.id === 'creator_sign' && isInfluencerSigned && "text-green-600",
+                        )}
+                    >
+                        {(tab.id === 'brand_sign' && isBrandSigned) || (tab.id === 'creator_sign' && isInfluencerSigned)
+                            ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                            : tab.icon
+                        }
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Tab Content */}
+            <div className="flex-1 min-h-0">
+                {/* ───── Tab: 계약서 보기 ───── */}
+                {activeTab === 'view' && (
+                    <div className="flex flex-col h-full">
+                        {/* Toolbar */}
+                        <div className="px-4 py-2 border-b flex items-center justify-between bg-background/80">
+                            <span className="text-xs text-muted-foreground">
+                                {isAnySigned ? '🔒 서명이 완료되어 수정할 수 없습니다' : 'AI가 자동 생성한 계약서입니다'}
+                            </span>
+                            <div className="flex gap-1.5">
+                                {canEdit && !isEditing && (
+                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleStartEdit}>
+                                        <Pencil className="h-3 w-3 mr-1" /> 수정
+                                    </Button>
+                                )}
+                                {isEditing && (
+                                    <>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancelEdit}>
+                                            <X className="h-3 w-3 mr-1" /> 취소
+                                        </Button>
+                                        <Button size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700" onClick={handleSaveEdit} disabled={isSaving}>
+                                            {isSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
+                                            저장
+                                        </Button>
+                                    </>
+                                )}
+                                {!isEditing && contractContent && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={handleDownloadPdf}
+                                        disabled={isPdfGenerating}
+                                    >
+                                        {isPdfGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
+                                        PDF
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Contract Content */}
+                        <ScrollArea className="flex-1 max-h-[400px]">
+                            {isGenerating ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                                    <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-3" />
+                                    <p className="text-sm font-medium">AI가 계약서를 생성하고 있습니다...</p>
+                                    <p className="text-xs mt-1">약 5~10초 소요됩니다</p>
+                                </div>
+                            ) : isEditing ? (
+                                <div className="p-4">
+                                    <Textarea
+                                        value={editContent}
+                                        onChange={(e) => setEditContent(e.target.value)}
+                                        className="min-h-[300px] font-mono text-xs leading-relaxed"
+                                        placeholder="계약서 내용을 수정하세요..."
+                                    />
+                                </div>
+                            ) : (
+                                <div ref={contractRef} className="p-6">
+                                    <div
+                                        className="prose dark:prose-invert max-w-none text-sm leading-relaxed select-text"
+                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(contractContent) }}
+                                    />
+                                    {/* Signature section for PDF */}
+                                    {(isBrandSigned || isInfluencerSigned) && (
+                                        <div className="mt-8 pt-6 border-t grid grid-cols-2 gap-6">
+                                            <div className="text-center p-4 border rounded-lg">
+                                                <p className="text-xs text-muted-foreground mb-2">"갑" (브랜드)</p>
+                                                {isBrandSigned && proposal.brand_signature?.startsWith('data:image') ? (
+                                                    <img src={proposal.brand_signature} alt="브랜드 서명" className="h-12 mx-auto" />
+                                                ) : isBrandSigned ? (
+                                                    <p className="font-bold text-indigo-700">{proposal.brand_signature || brandName}</p>
+                                                ) : (
+                                                    <p className="text-muted-foreground text-xs">서명 대기 중</p>
+                                                )}
+                                                {proposal.brand_signed_at && (
+                                                    <p className="text-[10px] text-muted-foreground mt-1">{new Date(proposal.brand_signed_at).toLocaleString('ko-KR')}</p>
+                                                )}
+                                            </div>
+                                            <div className="text-center p-4 border rounded-lg">
+                                                <p className="text-xs text-muted-foreground mb-2">"을" (크리에이터)</p>
+                                                {isInfluencerSigned && proposal.influencer_signature?.startsWith('data:image') ? (
+                                                    <img src={proposal.influencer_signature} alt="크리에이터 서명" className="h-12 mx-auto" />
+                                                ) : isInfluencerSigned ? (
+                                                    <p className="font-bold text-indigo-700">{proposal.influencer_signature || influencerName}</p>
+                                                ) : (
+                                                    <p className="text-muted-foreground text-xs">서명 대기 중</p>
+                                                )}
+                                                {proposal.influencer_signed_at && (
+                                                    <p className="text-[10px] text-muted-foreground mt-1">{new Date(proposal.influencer_signed_at).toLocaleString('ko-KR')}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </div>
+                )}
+
+                {/* ───── Tab: 브랜드 서명 ───── */}
+                {activeTab === 'brand_sign' && (
+                    <div className="p-4">
+                        <SignatureCanvas
+                            onSign={async (data) => { await onSign('brand', data); }}
+                            existingSignature={proposal.brand_signature}
+                            signedAt={proposal.brand_signed_at}
+                            signerName={brandName}
+                            disabled={userType !== 'brand'}
+                            isSigning={isSigning}
+                        />
+                        {userType !== 'brand' && !isBrandSigned && (
+                            <p className="text-xs text-muted-foreground text-center mt-3">
+                                브랜드만 이 탭에서 서명할 수 있습니다.
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                {/* ───── Tab: 크리에이터 서명 ───── */}
+                {activeTab === 'creator_sign' && (
+                    <div className="p-4">
+                        <SignatureCanvas
+                            onSign={async (data) => { await onSign('creator', data); }}
+                            existingSignature={proposal.influencer_signature}
+                            signedAt={proposal.influencer_signed_at}
+                            signerName={influencerName}
+                            disabled={userType !== 'creator'}
+                            isSigning={isSigning}
+                        />
+                        {userType !== 'creator' && !isInfluencerSigned && (
+                            <p className="text-xs text-muted-foreground text-center mt-3">
+                                크리에이터만 이 탭에서 서명할 수 있습니다.
+                            </p>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }

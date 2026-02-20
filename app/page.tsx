@@ -275,7 +275,7 @@ export default function HomeLandingPage() {
                                 <div className="h-full rounded-2xl border bg-gradient-to-br from-violet-50/50 to-purple-50/30 dark:from-violet-950/20 dark:to-purple-950/10 p-7 space-y-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                                     <div className="flex items-center gap-3">
                                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-violet-500/25"><Star className="h-5 w-5" /></div>
-                                        <div><h3 className="font-bold text-lg">크리에이터님</h3><p className="text-xs text-muted-foreground">광고 수익을 높이고 싶으신가요?</p></div>
+                                        <div><h3 className="font-bold text-lg">크리에이터님</h3><p className="text-xs text-muted-foreground">필요한 제품도 협찬받고, 광고 수익도 올리고 싶으신가요?</p></div>
                                     </div>
                                     <div className="space-y-2">
                                         {["나랑 안 맞는 광고 제안만 와요...", "팔로워 적다고 기회가 없어요", "내 가치를 얼마로 정해야 할지 모르겠어요", "브랜드 연락이 개인 DM에 묻혀서 놓쳐요..."].map((pain, i) => (
@@ -287,7 +287,7 @@ export default function HomeLandingPage() {
                                     </div>
                                     <div className="border-t pt-4 space-y-1.5">
                                         <p className="font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1.5 text-sm"><Sparkles className="h-3.5 w-3.5" /> CreadyPick으로 해결!</p>
-                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">일상을 등록하면 브랜드가 먼저 찾아옵니다.</strong> 전용 비즈니스 메시징으로 협업 대화만 한 곳에서 관리하세요.</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">일상을 등록하면 원하는 광고가 먼저 찾아옵니다.</strong> 크레디픽이 원하는 제품/서비스의 광고주와 매칭시켜드려요.</p>
                                     </div>
                                 </div>
                             </RevealSection>

@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { ConditionsPanel } from '../common/conditions-panel';
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
+import { SmartContractPanel } from '../common/smart-contract-panel';
 
 export function CreatorInfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
@@ -27,15 +28,11 @@ export function CreatorInfoPanel() {
     const handleConditionSave = async (updates: any) => {
         if (!proposal?.id) return;
 
-        // Creator might only really edit 'specialTerms' or negotiate
-        // We map what we can, assuming using generic updateProposal
         const payload: any = {};
-
 
         // [FIX] Full Symmetric Mapping (matching Brand InfoPanel)
         if (updates.price_offer !== undefined) {
             payload.price_offer = updates.price_offer;
-            // [COMPAT] Keep compensation_amount in sync as string
             payload.compensation_amount = `${updates.price_offer}`;
         } else if (updates.cost !== undefined) {
             payload.price_offer = updates.cost;
@@ -59,9 +56,6 @@ export function CreatorInfoPanel() {
         if (updates.condition_secondary_usage_period !== undefined) payload.condition_secondary_usage_period = updates.condition_secondary_usage_period;
 
         // [FIX] 3-way proposal type routing
-        // 1. moment_id/event_id → moment_proposals
-        // 2. campaignId/campaign_id → campaign_applications
-        // 3. else → brand_proposals
         if ((proposal as any).moment_id || (proposal as any).momentId) {
             await updateMomentProposal(proposal.id, payload);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
@@ -87,7 +81,7 @@ export function CreatorInfoPanel() {
         if (success) {
             useWorkspaceStore.getState().updateProposal(updates);
 
-            // 양쪽 다 확정됐으면 즉시 계약 단계로 전환 (progress-bar 즉시 반영)
+            // 양쪽 다 확정됐으면 즉시 계약 단계로 전환
             const bothConfirmed = newValue && !!proposal.brand_condition_confirmed;
             if (bothConfirmed) {
                 useWorkspaceStore.getState().setCurrentStage('contract');
@@ -112,6 +106,49 @@ export function CreatorInfoPanel() {
                     console.warn('알림 발송 실패 (무시):', notifErr);
                 }
             }
+        }
+    };
+
+    // 크리에이터 전자서명
+    const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
+        if (!proposal?.id) return;
+
+        const updates: any = {
+            influencer_signature: signatureData,
+            influencer_signed_at: new Date().toISOString(),
+        };
+
+        // If brand already signed, mark as fully signed
+        if (proposal.brand_signature) {
+            updates.contract_status = 'signed';
+        } else {
+            updates.contract_status = 'partial';
+        }
+
+        let success = false;
+        if ((proposal as any).moment_id || (proposal as any).momentId) {
+            success = await updateMomentProposal(proposal.id, updates);
+        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            success = await updateProposal(proposal.id, updates);
+        } else {
+            success = await updateBrandProposal(proposal.id, updates);
+        }
+
+        if (success) {
+            useWorkspaceStore.getState().updateProposal(updates);
+        }
+    };
+
+    // 계약서 내용 저장
+    const handleSaveContract = async (content: string) => {
+        if (!proposal?.id) return;
+        const updates: any = { contract_content: content };
+        if ((proposal as any).moment_id || (proposal as any).momentId) {
+            await updateMomentProposal(proposal.id, updates);
+        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            await updateProposal(proposal.id, updates);
+        } else {
+            await updateBrandProposal(proposal.id, updates);
         }
     };
 
@@ -140,7 +177,7 @@ export function CreatorInfoPanel() {
 
             <Separator className="my-2" />
 
-            {/* 3. Next Action Callout (Only for active stage) */}
+            {/* 3. Next Action Callout */}
             <div className="px-6 py-3">
                 <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-100/50 rounded-full -mr-8 -mt-8" />
@@ -183,9 +220,18 @@ export function CreatorInfoPanel() {
                         isCompleted={getStageStatus('contract') === 'completed'}
                         summary="표준 광고 계약서 서명"
                     >
-                        <div className="text-sm text-muted-foreground p-2 text-center bg-muted/20 rounded-lg">
-                            조건 확정 후 계약서를 확인하고 서명합니다.
-                        </div>
+                        {proposal ? (
+                            <SmartContractPanel
+                                proposal={proposal}
+                                userType="creator"
+                                onSign={handleSign}
+                                onSaveContract={handleSaveContract}
+                            />
+                        ) : (
+                            <div className="text-sm text-muted-foreground p-2 text-center bg-muted/20 rounded-lg">
+                                조건 확정 후 계약서를 확인하고 서명합니다.
+                            </div>
+                        )}
                     </StageCard>
 
                     {/* Stage 3: Shipping */}

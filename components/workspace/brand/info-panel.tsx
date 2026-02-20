@@ -115,25 +115,46 @@ export function InfoPanel() {
         }
     };
 
-    const handleSign = async (role: 'brand' | 'creator') => {
+    const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
         if (!proposal?.id) return;
 
         console.log('[InfoPanel] Signing contract as:', role);
         const updates: any = {
-            brand_signature: proposal.brandName || "Brand",
+            brand_signature: signatureData,
             brand_signed_at: new Date().toISOString(),
         };
 
         // If influencer already signed, mark as fully signed
         if (proposal.influencer_signature) {
             updates.contract_status = 'signed';
-            updates.status = 'accepted'; // Move proposal status to accepted if specific logic requires it
         } else {
             updates.contract_status = 'partial';
         }
 
-        await updateBrandProposal(proposal.id, updates);
-        alert("서명이 완료되었습니다.");
+        let success = false;
+        if ((proposal as any).moment_id || (proposal as any).event_id) {
+            success = await updateMomentProposal(proposal.id, updates);
+        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            success = await updateProposal(proposal.id, updates);
+        } else {
+            success = await updateBrandProposal(proposal.id, updates);
+        }
+
+        if (success) {
+            useWorkspaceStore.getState().updateProposal(updates);
+        }
+    };
+
+    const handleSaveContract = async (content: string) => {
+        if (!proposal?.id) return;
+        const updates: any = { contract_content: content };
+        if ((proposal as any).moment_id || (proposal as any).event_id) {
+            await updateMomentProposal(proposal.id, updates);
+        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            await updateProposal(proposal.id, updates);
+        } else {
+            await updateBrandProposal(proposal.id, updates);
+        }
     };
 
     return (
@@ -205,6 +226,7 @@ export function InfoPanel() {
                                 proposal={proposal}
                                 userType="brand"
                                 onSign={handleSign}
+                                onSaveContract={handleSaveContract}
                             />
                         )}
                     </StageCard>
