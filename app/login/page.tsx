@@ -110,6 +110,9 @@ export default function LoginPage() {
         setError("")
         try {
             const user = await login(email, pw)
+            // Small delay to ensure auth cookies are fully set by the browser
+            // before the hard redirect triggers server-side middleware
+            await new Promise(resolve => setTimeout(resolve, 500))
             if (user.role === 'brand' || user.role === 'agency') {
                 window.location.href = '/brand'
             } else {
