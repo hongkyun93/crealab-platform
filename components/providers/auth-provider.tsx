@@ -89,19 +89,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let mounted = true
 
         // Failsafe timeout to prevent infinite loading if auth check hangs
-        // 15s gives enough time for slow networks to recover session from cookies
         const timer = setTimeout(() => {
             if (!isAuthChecked && mounted) {
                 console.warn("[AuthProvider] Auth check timed out, forcing render")
-                // NOTE: Do NOT set mounted=false here - initAuth may still complete
                 setIsAuthChecked(true)
                 setIsInitialized(true)
                 window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '인증 확인 시간 초과 (강제 진행)', type: 'error' } }))
             }
-        }, 15000)
+        }, 5000)
 
         const initAuth = async () => {
             console.log('[AuthProvider] Initializing auth...')
+
+            // On login/signup pages, skip getUser() entirely.
+            // getUser() acquires a navigator lock that blocks all subsequent Supabase calls
+            // (signInWithPassword, RPC, etc.) through the singleton client.
+            // On Vercel production, this lock can be held for 10+ seconds, causing login to hang.
+            const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
+            if (currentPath === '/login' || currentPath === '/signup') {
+                console.log('[AuthProvider] On login page, skipping getUser() to avoid lock contention')
+                setUser(null)
+                clearTimeout(timer)
+                setIsAuthChecked(true)
+                setIsInitialized(true)
+                isInitAuthDone.current = true
+                return
+            }
 
             try {
                 // Use getUser() instead of getSession() for faster cookie-based session recovery
@@ -111,12 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     console.log('[AuthProvider] Session found, simple init first')
 
                     // 1. FAST PATH: Set basic user immediately to unblock UI
-                    // Use metadata if available, otherwise minimal info
                     const basicUser = {
                         id: sessionUser.id,
                         email: sessionUser.email,
                         name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || "User",
-                        role: sessionUser.user_metadata?.role as any || 'authenticated', // Temporary role
+                        role: sessionUser.user_metadata?.role as any || 'authenticated',
                         avatar: sessionUser.user_metadata?.avatar_url,
                         tags: [],
                         _isFallback: true
@@ -132,25 +144,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     clearTimeout(timer)
 
                     // 3. BACKGROUND FETCH: Get full profile data (Lazy Load)
-                    // Do not await this! Let it run in background
                     fetchUserProfile(sessionUser).then(fetchedUser => {
                         if (mounted && fetchedUser) {
                             console.log('[AuthProvider] Background profile fetch complete')
-                            setUser(fetchedUser) // Update with full data
-
-                            // Role-based redirection if needed (only if on generic login pages)
-                            const currentPath = window.location.pathname
-                            if (currentPath === '/login' || currentPath === '/signup') {
-                                if (fetchedUser.role === 'brand' || fetchedUser.role === 'agency') {
-                                    window.location.href = '/brand'
-                                } else {
-                                    window.location.href = '/creator'
-                                }
-                            }
+                            setUser(fetchedUser)
                         }
                     })
 
-                    return // Exit function, background work continues
+                    return
                 } else if (mounted) {
                     console.log('[AuthProvider] No session found, clearing user')
                     setUser(null)
@@ -158,7 +159,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } catch (e) {
                 console.error('[AuthProvider] initAuth error:', e)
             } finally {
-                // For the "No Session" case or Error case
                 if (mounted && !isInitialized) {
                     clearTimeout(timer)
                     setIsAuthChecked(true)
