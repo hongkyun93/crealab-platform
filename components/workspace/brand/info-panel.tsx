@@ -303,11 +303,11 @@ export function InfoPanel() {
                                     <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                                     <span className="text-xs font-semibold text-muted-foreground">크리에이터 배송지</span>
                                 </div>
-                                {proposal?.shipping_name ? (
+                                {proposal?.receiver_name ? (
                                     <div className="bg-muted/30 rounded-lg p-3 space-y-1.5 text-sm">
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground text-xs">받는 사람</span>
-                                            <span className="font-medium">{proposal.shipping_name}</span>
+                                            <span className="font-medium">{proposal.receiver_name}</span>
                                         </div>
                                         {(proposal as any).shipping_phone && (
                                             <div className="flex justify-between">

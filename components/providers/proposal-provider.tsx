@@ -169,7 +169,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         contract_status: p.contract_status,
                         brand_signature: p.brand_signature,
                         influencer_signature: p.influencer_signature,
-                        shipping_name: p.shipping_name,
+                        receiver_name: p.receiver_name,
+                        shipping_phone: p.shipping_phone,
+                        shipping_address: p.shipping_address,
                         tracking_number: p.tracking_number,
                         delivery_status: p.delivery_status,
 
@@ -864,7 +866,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             const dbUpdates: any = {}
             if (updates.status) dbUpdates.status = updates.status
             if (updates.delivery_status) dbUpdates.delivery_status = updates.delivery_status
-            if (updates.shipping_name) dbUpdates.shipping_name = updates.shipping_name
+            if (updates.receiver_name) dbUpdates.receiver_name = updates.receiver_name
             if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
             if (updates.shipping_phone) dbUpdates.shipping_phone = updates.shipping_phone
             if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
@@ -921,7 +923,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             // Status & Logistics
             if (updates.status) dbUpdates.status = updates.status
             if (updates.delivery_status) dbUpdates.delivery_status = updates.delivery_status
-            if (updates.shipping_name) dbUpdates.shipping_name = updates.shipping_name
+            if (updates.receiver_name) dbUpdates.receiver_name = updates.receiver_name
             if (updates.shipping_phone) dbUpdates.shipping_phone = updates.shipping_phone
             if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
             if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
@@ -987,7 +989,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             // Status & Logistics
             if (updates.status) dbUpdates.status = updates.status
             if (updates.delivery_status) dbUpdates.delivery_status = updates.delivery_status
-            if (updates.shipping_name) dbUpdates.shipping_name = updates.shipping_name
+            if (updates.receiver_name) dbUpdates.receiver_name = updates.receiver_name
             if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
             if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
             if (updates.shipping_phone) dbUpdates.shipping_phone = updates.shipping_phone

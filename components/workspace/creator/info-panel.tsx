@@ -41,8 +41,8 @@ export function CreatorInfoPanel() {
 
     // Pre-fill from proposal data or user profile
     useEffect(() => {
-        if (proposal?.shipping_name) {
-            setShipName(proposal.shipping_name);
+        if (proposal?.receiver_name) {
+            setShipName(proposal.receiver_name);
             setShipPhone((proposal as any).shipping_phone || '');
             setShipAddress((proposal as any).shipping_address || '');
         } else if (user) {
@@ -50,7 +50,7 @@ export function CreatorInfoPanel() {
             setShipPhone(user.phone || '');
             setShipAddress(user.address || '');
         }
-    }, [proposal?.shipping_name, user]);
+    }, [proposal?.receiver_name, user]);
 
     const handleConditionSave = async (updates: any) => {
         if (!proposal?.id) return;
@@ -318,7 +318,7 @@ export function CreatorInfoPanel() {
                                 <div className="flex items-center gap-2 mb-2">
                                     <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                                     <span className="text-xs font-semibold text-muted-foreground">배송지 정보</span>
-                                    {proposal?.shipping_name && !isEditing && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' && (
+                                    {proposal?.receiver_name && !isEditing && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' && (
                                         <button onClick={() => setIsEditing(true)} className="ml-auto text-muted-foreground hover:text-foreground">
                                             <Pencil className="h-3 w-3" />
                                         </button>
@@ -326,7 +326,7 @@ export function CreatorInfoPanel() {
                                 </div>
 
                                 {/* Show form if no shipping info saved yet, or editing */}
-                                {(!proposal?.shipping_name || isEditing) && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' ? (
+                                {(!proposal?.receiver_name || isEditing) && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' ? (
                                     <div className="space-y-2">
                                         {/* Load from profile button */}
                                         <button
@@ -368,7 +368,7 @@ export function CreatorInfoPanel() {
                                                     setIsSavingShip(true);
                                                     try {
                                                         const updates: any = {
-                                                            shipping_name: shipName.trim(),
+                                                            receiver_name: shipName.trim(),
                                                             shipping_phone: shipPhone.trim(),
                                                             shipping_address: shipAddress.trim(),
                                                         };
@@ -403,7 +403,7 @@ export function CreatorInfoPanel() {
                                     <div className="bg-muted/30 rounded-lg p-3 space-y-1.5 text-sm">
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground text-xs">받는 사람</span>
-                                            <span className="font-medium">{proposal?.shipping_name}</span>
+                                            <span className="font-medium">{proposal?.receiver_name}</span>
                                         </div>
                                         {(proposal as any)?.shipping_phone && (
                                             <div className="flex justify-between">

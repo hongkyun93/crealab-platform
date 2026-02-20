@@ -82,7 +82,7 @@ export interface Proposal {
     special_terms?: string // snake_case mapping
 
     // Delivery
-    shipping_name?: string
+    receiver_name?: string
     shipping_phone?: string
     shipping_address?: string
     tracking_number?: string
@@ -187,7 +187,7 @@ export interface BrandProposal {
     // Delivery
     payout_status?: string
     delivery_status?: string
-    shipping_name?: string
+    receiver_name?: string
     shipping_phone?: string
     shipping_address?: string
     tracking_number?: string
@@ -277,7 +277,7 @@ export interface MomentProposal {
 
     // [Added] Logistics
     delivery_status?: string
-    shipping_name?: string
+    receiver_name?: string
     shipping_phone?: string
     shipping_address?: string
     tracking_number?: string

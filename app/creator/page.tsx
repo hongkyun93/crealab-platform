@@ -1330,7 +1330,7 @@ function InfluencerDashboardContent() {
             const brandId = isCampaignProposal ? chatProposal.campaign?.brand_id : chatProposal.brand_id
 
             const updateData = {
-                shipping_name: shippingName,
+                receiver_name: shippingName,
                 shipping_phone: shippingPhone,
                 shipping_address: shippingAddress,
                 delivery_status: 'pending' // Ready to ship
