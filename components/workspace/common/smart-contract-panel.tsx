@@ -186,6 +186,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+    const [signatureExpanded, setSignatureExpanded] = useState(false);
     const contractRef = useRef<HTMLDivElement>(null);
     const updateProposal = useWorkspaceStore((state) => state.updateProposal);
     const setContractViewOpen = useWorkspaceStore((state) => state.setContractViewOpen);
@@ -394,36 +395,61 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                     </ScrollArea>
                 </div>
 
-                {/* Bottom Section: 서명 2개 나란히 */}
-                <div className="shrink-0 grid grid-cols-2 divide-x border-t" style={{ height: fullWidth ? '45%' : '280px' }}>
-                    {/* 브랜드 서명 (좌) */}
-                    <div className="bg-background/50">
-                        <SignatureCanvas
-                            onSign={async (data) => { await onSign('brand', data); }}
-                            onUndo={onUndoSign ? () => onUndoSign('brand') : undefined}
-                            existingSignature={proposal.brand_signature}
-                            signedAt={proposal.brand_signed_at}
-                            signerName={brandName}
-                            label={`"갑" 브랜드 서명`}
-                            disabled={userType !== 'brand'}
-                            isOwner={userType === 'brand'}
-                            isSigning={isSigning}
-                        />
-                    </div>
-                    {/* 크리에이터 서명 (우) */}
-                    <div className="bg-background/50">
-                        <SignatureCanvas
-                            onSign={async (data) => { await onSign('creator', data); }}
-                            onUndo={onUndoSign ? () => onUndoSign('creator') : undefined}
-                            existingSignature={proposal.influencer_signature}
-                            signedAt={proposal.influencer_signed_at}
-                            signerName={influencerName}
-                            label={`"을" 크리에이터 서명`}
-                            disabled={userType !== 'creator'}
-                            isOwner={userType === 'creator'}
-                            isSigning={isSigning}
-                        />
-                    </div>
+                {/* Bottom Section: Collapsible Signature Area */}
+                <div className="shrink-0 border-t">
+                    {/* Toggle Bar — always visible */}
+                    <button
+                        onClick={() => setSignatureExpanded(!signatureExpanded)}
+                        className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            <PenTool className="h-3.5 w-3.5 text-indigo-600" />
+                            <span className="text-xs font-semibold text-foreground">서명하기</span>
+                            <div className="flex items-center gap-2">
+                                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", isBrandSigned ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" : "bg-muted text-muted-foreground")}>
+                                    {isBrandSigned ? "✅ 갑" : "⬜ 갑"}
+                                </span>
+                                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", isInfluencerSigned ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" : "bg-muted text-muted-foreground")}>
+                                    {isInfluencerSigned ? "✅ 을" : "⬜ 을"}
+                                </span>
+                            </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{signatureExpanded ? '▲ 접기' : '▼ 펼치기'}</span>
+                    </button>
+
+                    {/* Expandable Signature Pads */}
+                    {signatureExpanded && (
+                        <div className="grid grid-cols-2 divide-x" style={{ height: fullWidth ? '40%' : '260px' }}>
+                            {/* 브랜드 서명 (좌) */}
+                            <div className="bg-background/50">
+                                <SignatureCanvas
+                                    onSign={async (data) => { await onSign('brand', data); }}
+                                    onUndo={onUndoSign ? () => onUndoSign('brand') : undefined}
+                                    existingSignature={proposal.brand_signature}
+                                    signedAt={proposal.brand_signed_at}
+                                    signerName={brandName}
+                                    label={`"갑" 브랜드 서명`}
+                                    disabled={userType !== 'brand'}
+                                    isOwner={userType === 'brand'}
+                                    isSigning={isSigning}
+                                />
+                            </div>
+                            {/* 크리에이터 서명 (우) */}
+                            <div className="bg-background/50">
+                                <SignatureCanvas
+                                    onSign={async (data) => { await onSign('creator', data); }}
+                                    onUndo={onUndoSign ? () => onUndoSign('creator') : undefined}
+                                    existingSignature={proposal.influencer_signature}
+                                    signedAt={proposal.influencer_signed_at}
+                                    signerName={influencerName}
+                                    label={`"을" 크리에이터 서명`}
+                                    disabled={userType !== 'creator'}
+                                    isOwner={userType === 'creator'}
+                                    isSigning={isSigning}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
