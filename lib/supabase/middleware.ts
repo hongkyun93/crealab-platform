@@ -35,18 +35,11 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    // If no valid session, force-delete any stale sb-* cookies to prevent state confusion
-    if (!user) {
-        const cookieNames = request.cookies.getAll().map(c => c.name)
-        cookieNames.forEach(name => {
-            if (name.startsWith('sb-')) {
-                supabaseResponse.cookies.set(name, '', {
-                    expires: new Date(0),
-                    path: '/',
-                })
-            }
-        })
-    }
+    // Note: Do NOT delete sb-* cookies here when user=null.
+    // Cookie cleanup is handled by logout() and login page cleanup.
+    // Deleting cookies here causes race conditions on Vercel Edge Runtime
+    // where fresh auth cookies from signInWithPassword get wiped before
+    // the next request can use them, causing AbortError loops.
 
     return supabaseResponse
 }
