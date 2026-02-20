@@ -1012,7 +1012,7 @@ function BrandDashboardContent() {
         else if (sortOrder === "match") result.sort(() => Math.random() - 0.5)
         else if (sortOrder === "verified") result = result.filter(e => e.verified)
         else if (sortOrder === "followers_high") result.sort((a, b) => (b.followers || 0) - (a.followers || 0))
-        if (sortOrder === "latest") result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        if (sortOrder === "latest") result.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
         return result
     }
 
