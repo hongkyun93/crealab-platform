@@ -161,7 +161,7 @@ export default function HomeLandingPage() {
                     </div>
 
                     <div className="relative container mx-auto px-6 md:px-8 max-w-7xl">
-                        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[calc(100vh-64px)] py-20">
+                        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[calc(100vh-64px)] py-7">
                             {/* Left: Text */}
                             <div className="space-y-8" style={{
                                 opacity: isLoaded ? 1 : 0, transform: isLoaded ? "translateY(0)" : "translateY(40px)",
