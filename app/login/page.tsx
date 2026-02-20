@@ -23,17 +23,15 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
 
-    // 로그인 페이지 진입 시: 핵폭탄급 캐시/세션 전체 정리
+    // 로그인 페이지 진입 시: 캐시/세션 정리 (5초 후)
+    // signOut은 이미 logout()에서 호출되므로 여기서 다시 호출하면 새 세션을 죽임
+    const [cleanupDone, setCleanupDone] = useState(false)
     useEffect(() => {
-        const nuclearCleanup = async () => {
-            console.log('[Login] Nuclear cleanup starting...')
+        const cleanup = () => {
+            if (cleanupDone) return
+            console.log('[Login] Delayed cleanup starting...')
 
-            // 1. Supabase signOut (가장 중요 - 토큰 + 쿠키 삭제)
-            try {
-                await supabaseCleanup.auth.signOut({ scope: 'local' })
-            } catch { /* ignore */ }
-
-            // 2. localStorage에서 Supabase 관련 항목 전부 삭제
+            // localStorage에서 Supabase 관련 항목 삭제 (signOut은 하지 않음!)
             const keysToRemove: string[] = []
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i)
@@ -43,10 +41,10 @@ export default function LoginPage() {
             }
             keysToRemove.forEach(key => localStorage.removeItem(key))
 
-            // 3. sessionStorage 전부 정리
+            // sessionStorage 정리
             sessionStorage.clear()
 
-            // 4. 쿠키에서 sb-* 항목 직접 삭제 (Supabase signOut이 놓칠 수 있음)
+            // 쿠키에서 sb-* 항목 삭제
             document.cookie.split(';').forEach(c => {
                 const name = c.trim().split('=')[0]
                 if (name.startsWith('sb-')) {
@@ -55,25 +53,11 @@ export default function LoginPage() {
                 }
             })
 
-            // 5. Service Worker 해제
-            if ('serviceWorker' in navigator) {
-                const registrations = await navigator.serviceWorker.getRegistrations()
-                for (const reg of registrations) {
-                    await reg.unregister()
-                }
-            }
-
-            // 6. Cache API 정리
-            if ('caches' in window) {
-                const cacheNames = await caches.keys()
-                for (const name of cacheNames) {
-                    await caches.delete(name)
-                }
-            }
-
-            console.log('[Login] Nuclear cleanup complete')
+            setCleanupDone(true)
+            console.log('[Login] Delayed cleanup complete')
         }
-        const timer = setTimeout(nuclearCleanup, 5000) // 5초 후 실행 (입력 도중 리셋 방지)
+
+        const timer = setTimeout(cleanup, 5000)
         return () => clearTimeout(timer)
     }, [])
 

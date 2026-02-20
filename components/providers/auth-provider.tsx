@@ -295,11 +295,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             console.log('[AuthProvider] Signing out (Optimistic)...')
 
-            // 1. Fire & Forget Server Signout (Don't await!)
-            // We don't care if it succeeds or fails, we are leaving anyway.
-            supabase.auth.signOut({ scope: 'global' }).catch(err => {
-                console.warn('[AuthProvider] Background signout error (ignored):', err)
-            })
+            // 1. Await server signout to ensure session is fully cleared before navigating
+            try {
+                await supabase.auth.signOut({ scope: 'global' })
+            } catch (err) {
+                console.warn('[AuthProvider] Signout error (proceeding anyway):', err)
+            }
 
             // 2. Clear state immediately
             setUser(null)
