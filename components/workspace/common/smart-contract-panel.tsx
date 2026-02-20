@@ -304,7 +304,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             {/* ───── 3-Section Layout ───── */}
             <div className={cn("flex-1 min-h-0 flex flex-col", fullWidth && "overflow-hidden")}>
                 {/* Top Section: 계약서 보기 */}
-                <div className="flex-1 min-h-0 flex flex-col border-b">
+                <div className={cn("flex-1 min-h-0 flex flex-col", signatureExpanded && "border-b")}>
                     {/* Contract Toolbar */}
                     <div className="px-4 py-2 border-b flex items-center justify-between bg-background/80 shrink-0">
                         <span className="text-xs text-muted-foreground">

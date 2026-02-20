@@ -78,7 +78,7 @@ export function BrandWorkspaceLayout({ className }: BrandWorkspaceLayoutProps) {
 
             {/* Center + Right: Contract View OR Chat + Files */}
             {contractViewOpen && proposal ? (
-                <div className="h-full col-span-2 bg-background relative flex flex-col min-w-0 overflow-auto p-4">
+                <div className="h-full col-span-2 bg-background relative flex flex-col min-w-0 overflow-hidden">
                     <SmartContractPanel
                         proposal={proposal}
                         userType="brand"
