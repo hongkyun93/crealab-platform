@@ -23,23 +23,57 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
 
-    // 로그인 페이지 진입 시: 오래된 세션/캐시 자동 정리
+    // 로그인 페이지 진입 시: 핵폭탄급 캐시/세션 전체 정리
     useEffect(() => {
-        const clearStaleSession = async () => {
+        const nuclearCleanup = async () => {
+            console.log('[Login] Nuclear cleanup starting...')
+
+            // 1. Supabase signOut (가장 중요 - 토큰 + 쿠키 삭제)
             try {
-                // 이전 세션 토큰이 남아있으면 정리
-                const { data: { user } } = await supabaseCleanup.auth.getUser()
-                if (user) {
-                    console.log('[Login] Clearing stale session for clean login')
-                    await supabaseCleanup.auth.signOut()
+                await supabaseCleanup.auth.signOut({ scope: 'local' })
+            } catch { /* ignore */ }
+
+            // 2. localStorage에서 Supabase 관련 항목 전부 삭제
+            const keysToRemove: string[] = []
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i)
+                if (key && (key.startsWith('sb-') || key.includes('supabase') || key === 'creadypick_user')) {
+                    keysToRemove.push(key)
                 }
-            } catch {
-                // 세션 확인 실패해도 무시 - 어차피 로그인 페이지
             }
-            // 캐시된 사용자 데이터도 정리
-            localStorage.removeItem("creadypick_user")
+            keysToRemove.forEach(key => localStorage.removeItem(key))
+
+            // 3. sessionStorage 전부 정리
+            sessionStorage.clear()
+
+            // 4. 쿠키에서 sb-* 항목 직접 삭제 (Supabase signOut이 놓칠 수 있음)
+            document.cookie.split(';').forEach(c => {
+                const name = c.trim().split('=')[0]
+                if (name.startsWith('sb-')) {
+                    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
+                    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`
+                }
+            })
+
+            // 5. Service Worker 해제
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations()
+                for (const reg of registrations) {
+                    await reg.unregister()
+                }
+            }
+
+            // 6. Cache API 정리
+            if ('caches' in window) {
+                const cacheNames = await caches.keys()
+                for (const name of cacheNames) {
+                    await caches.delete(name)
+                }
+            }
+
+            console.log('[Login] Nuclear cleanup complete')
         }
-        clearStaleSession()
+        nuclearCleanup()
     }, [])
 
     // We can use same state for both forms since they replace each other
