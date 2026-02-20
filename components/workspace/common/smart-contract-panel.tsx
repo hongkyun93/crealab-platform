@@ -241,6 +241,44 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     };
     const handleCancelEdit = () => { setIsEditing(false); setEditContent(''); };
 
+    // CSS variable overrides: oklch → hex (for html2canvas compatibility)
+    const hexColorOverrides = `
+:root, .dark, *, *::before, *::after {
+  --background: #ffffff !important;
+  --foreground: #1a1a1a !important;
+  --card: #ffffff !important;
+  --card-foreground: #1a1a1a !important;
+  --popover: #ffffff !important;
+  --popover-foreground: #1a1a1a !important;
+  --primary: #1e3a8a !important;
+  --primary-foreground: #f5f5f5 !important;
+  --secondary: #f5f5f5 !important;
+  --secondary-foreground: #1a1a1a !important;
+  --muted: #f5f5f5 !important;
+  --muted-foreground: #737373 !important;
+  --accent: #f5f5f5 !important;
+  --accent-foreground: #1a1a1a !important;
+  --destructive: #dc2626 !important;
+  --border: #e5e5e5 !important;
+  --input: #e5e5e5 !important;
+  --ring: #a3a3a3 !important;
+  --chart-1: #e66e2a !important;
+  --chart-2: #2a9d8f !important;
+  --chart-3: #264653 !important;
+  --chart-4: #e9c46a !important;
+  --chart-5: #f4a261 !important;
+  --sidebar: #fafafa !important;
+  --sidebar-foreground: #1a1a1a !important;
+  --sidebar-primary: #1a1a1a !important;
+  --sidebar-primary-foreground: #fafafa !important;
+  --sidebar-accent: #f5f5f5 !important;
+  --sidebar-accent-foreground: #1a1a1a !important;
+  --sidebar-border: #e5e5e5 !important;
+  --sidebar-ring: #a3a3a3 !important;
+}
+body { background: #fff !important; color: #111 !important; }
+`;
+
     const handleDownloadPdf = async () => {
         if (!contractRef.current) return;
         setIsPdfGenerating(true);
@@ -249,31 +287,31 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             const productName = proposal.productName || proposal.product_name || '협업';
             const filename = `CreadyPick_계약서_${productName}.pdf`;
 
-            // Clone the contract content into a temp div with explicit colors
-            // to avoid html2canvas failing on oklch/lab color functions
-            const clone = contractRef.current.cloneNode(true) as HTMLElement;
-            clone.style.cssText = 'background:#fff;color:#111;padding:32px;font-family:sans-serif;';
-            // Override all text colors in clone to plain hex
-            clone.querySelectorAll('*').forEach((el: any) => {
-                el.style.color = el.style.color || '#111';
-            });
-            clone.querySelectorAll('h1,h2,h3').forEach((el: any) => {
-                el.style.color = '#1e3a8a';
-            });
-            clone.querySelectorAll('strong').forEach((el: any) => {
-                el.style.color = '#111';
-            });
-            document.body.appendChild(clone);
-
             const opt = {
                 margin: [10, 10, 10, 10] as [number, number, number, number],
                 filename,
                 image: { type: 'jpeg' as const, quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    onclone: (clonedDoc: Document) => {
+                        // Inject hex color overrides to replace all oklch() variables
+                        const style = clonedDoc.createElement('style');
+                        style.textContent = hexColorOverrides;
+                        clonedDoc.head.appendChild(style);
+
+                        // Also remove all existing stylesheets that contain oklch
+                        clonedDoc.querySelectorAll('style').forEach((s) => {
+                            if (s !== style && s.textContent?.includes('oklch')) {
+                                s.textContent = s.textContent.replace(/oklch\([^)]*\)/g, '#111111');
+                            }
+                        });
+                    },
+                },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
             };
-            await html2pdf().set(opt).from(clone).save();
-            document.body.removeChild(clone);
+            await html2pdf().set(opt).from(contractRef.current).save();
         } catch (err) {
             console.error('[SmartContractPanel] PDF generation failed:', err);
             window.print();
