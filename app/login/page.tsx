@@ -73,7 +73,8 @@ export default function LoginPage() {
 
             console.log('[Login] Nuclear cleanup complete')
         }
-        nuclearCleanup()
+        const timer = setTimeout(nuclearCleanup, 5000) // 5초 후 실행 (입력 도중 리셋 방지)
+        return () => clearTimeout(timer)
     }, [])
 
     // We can use same state for both forms since they replace each other

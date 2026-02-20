@@ -638,6 +638,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         portfolio_links: proposal.portfolioLinks,
                         channel_name: proposal.channel_name,
                         channel_url: proposal.channel_url,
+                        channel_subtype: (proposal as any).channel_subtype,
                         instagram_handle: proposal.instagramHandle || (proposal.channel_name === 'instagram' ? proposal.channel_url : undefined),
                         insight_screenshot: proposal.insightScreenshot
                     })

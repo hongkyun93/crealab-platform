@@ -202,6 +202,7 @@ CREATE TABLE IF NOT EXISTS public.campaigns (
   min_followers integer,
   max_followers integer,
   product_type text DEFAULT 'gift',
+  team_id uuid REFERENCES public.teams(id),
   created_at timestamptz DEFAULT now() NOT NULL
 );
 
@@ -267,6 +268,7 @@ CREATE TABLE IF NOT EXISTS public.brand_proposals (
   -- Meta
   is_mock boolean DEFAULT false,
   insight_screenshot text,
+  instagram_handle text,
   created_at timestamptz DEFAULT now() NOT NULL
 );
 
@@ -276,6 +278,7 @@ CREATE TABLE IF NOT EXISTS public.moment_proposals (
   brand_id uuid REFERENCES public.profiles(id) NOT NULL,
   brand_team_id uuid REFERENCES public.teams(id),
   influencer_id uuid REFERENCES public.profiles(id) NOT NULL,
+  influencer_team_id uuid REFERENCES public.teams(id),
   moment_id uuid REFERENCES public.life_moments(id) NOT NULL,
   product_id uuid REFERENCES public.brand_products(id),
   product_url text,
@@ -357,6 +360,7 @@ CREATE TABLE IF NOT EXISTS public.campaign_applications (
   workspace_id uuid,
   channel_name text,
   channel_url text,
+  channel_subtype text,
   -- Logistics
   shipping_name text,
   shipping_phone text,
@@ -408,12 +412,17 @@ CREATE TABLE IF NOT EXISTS public.workspaces (
 CREATE TABLE IF NOT EXISTS public.messages (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   brand_proposal_id uuid REFERENCES public.brand_proposals(id) ON DELETE SET NULL,
+  proposal_id uuid,
   sender_id uuid REFERENCES public.profiles(id) NOT NULL,
   receiver_id uuid REFERENCES public.profiles(id) NOT NULL,
   content text NOT NULL,
   is_read boolean DEFAULT false,
   is_mock boolean DEFAULT false,
   workspace_id uuid,
+  file_url text,
+  file_name text,
+  file_size integer,
+  file_type text,
   created_at timestamptz DEFAULT now() NOT NULL
 );
 
@@ -433,6 +442,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 CREATE TABLE IF NOT EXISTS public.submission_feedback (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   brand_proposal_id uuid REFERENCES public.brand_proposals(id) ON DELETE CASCADE,
+  proposal_id uuid,
   sender_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
   content text NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL
@@ -523,7 +533,14 @@ BEGIN
         'priceStory', COALESCE(p.price_story, 0),
         'priceUsageRights', COALESCE(p.price_usage_rights, 0),
         'priceAutoDm', COALESCE(p.price_auto_dm, 0),
-        'teamId', (SELECT team_id FROM public.team_members WHERE user_id = current_user_id LIMIT 1)
+        'teamId', (SELECT team_id FROM public.team_members WHERE user_id = current_user_id LIMIT 1),
+        'bankName', p.bank_name,
+        'accountNumber', p.account_number,
+        'accountHolder', p.account_holder,
+        'usageRightsMonth', COALESCE(p.usage_rights_month, 0),
+        'usageRightsPrice', COALESCE(p.usage_rights_price, 0),
+        'autoDmMonth', COALESCE(p.auto_dm_month, 0),
+        'autoDmPrice', COALESCE(p.auto_dm_price, 0)
     ) INTO result
     FROM public.profiles p
     WHERE p.id = current_user_id;
