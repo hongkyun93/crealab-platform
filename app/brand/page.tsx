@@ -914,6 +914,18 @@ function BrandDashboardContent() {
     const [editPhone, setEditPhone] = useState("")
     const [editAddress, setEditAddress] = useState("")
     const [isSaving, setIsSaving] = useState(false)
+    // Brand Business Fields
+    const [editRepresentativeName, setEditRepresentativeName] = useState("")
+    const [editBusinessNumber, setEditBusinessNumber] = useState("")
+    const [editCompanyAddress, setEditCompanyAddress] = useState("")
+    const [editCompanyPhone, setEditCompanyPhone] = useState("")
+    const [editTaxEmail, setEditTaxEmail] = useState("")
+    const [editBusinessCategory, setEditBusinessCategory] = useState("")
+    const [editBusinessType, setEditBusinessType] = useState("")
+    const [editContactPersonName, setEditContactPersonName] = useState("")
+    const [editContactPersonPhone, setEditContactPersonPhone] = useState("")
+    const [editContactPersonEmail, setEditContactPersonEmail] = useState("")
+    const [editSettlementBank, setEditSettlementBank] = useState("")
 
     useEffect(() => {
         if (displayUser) {
@@ -922,6 +934,18 @@ function BrandDashboardContent() {
             setEditBio(displayUser.bio || "")
             setEditPhone(displayUser.phone || "")
             setEditAddress(displayUser.address || "")
+            // Brand Business Fields
+            setEditRepresentativeName(displayUser.representativeName || "")
+            setEditBusinessNumber(displayUser.businessNumber || "")
+            setEditCompanyAddress(displayUser.companyAddress || "")
+            setEditCompanyPhone(displayUser.companyPhone || "")
+            setEditTaxEmail(displayUser.taxEmail || "")
+            setEditBusinessCategory(displayUser.businessCategory || "")
+            setEditBusinessType(displayUser.businessType || "")
+            setEditContactPersonName(displayUser.contactPersonName || "")
+            setEditContactPersonPhone(displayUser.contactPersonPhone || "")
+            setEditContactPersonEmail(displayUser.contactPersonEmail || "")
+            setEditSettlementBank(displayUser.settlementBank || "")
         }
     }, [displayUser])
 
@@ -1253,7 +1277,19 @@ function BrandDashboardContent() {
                 website: editWebsite,
                 bio: editBio,
                 phone: editPhone,
-                address: editAddress
+                address: editAddress,
+                // Brand Business Fields
+                representativeName: editRepresentativeName,
+                businessNumber: editBusinessNumber,
+                companyAddress: editCompanyAddress,
+                companyPhone: editCompanyPhone,
+                taxEmail: editTaxEmail,
+                businessCategory: editBusinessCategory,
+                businessType: editBusinessType,
+                contactPersonName: editContactPersonName,
+                contactPersonPhone: editContactPersonPhone,
+                contactPersonEmail: editContactPersonEmail,
+                settlementBank: editSettlementBank,
             })
             toast.success("프로필 정보가 저장되었습니다.")
         } catch (e: any) {
@@ -1567,6 +1603,28 @@ function BrandDashboardContent() {
                         setEditAddress={setEditAddress}
                         editBio={editBio}
                         setEditBio={setEditBio}
+                        editRepresentativeName={editRepresentativeName}
+                        setEditRepresentativeName={setEditRepresentativeName}
+                        editBusinessNumber={editBusinessNumber}
+                        setEditBusinessNumber={setEditBusinessNumber}
+                        editCompanyAddress={editCompanyAddress}
+                        setEditCompanyAddress={setEditCompanyAddress}
+                        editCompanyPhone={editCompanyPhone}
+                        setEditCompanyPhone={setEditCompanyPhone}
+                        editTaxEmail={editTaxEmail}
+                        setEditTaxEmail={setEditTaxEmail}
+                        editBusinessCategory={editBusinessCategory}
+                        setEditBusinessCategory={setEditBusinessCategory}
+                        editBusinessType={editBusinessType}
+                        setEditBusinessType={setEditBusinessType}
+                        editContactPersonName={editContactPersonName}
+                        setEditContactPersonName={setEditContactPersonName}
+                        editContactPersonPhone={editContactPersonPhone}
+                        setEditContactPersonPhone={setEditContactPersonPhone}
+                        editContactPersonEmail={editContactPersonEmail}
+                        setEditContactPersonEmail={setEditContactPersonEmail}
+                        editSettlementBank={editSettlementBank}
+                        setEditSettlementBank={setEditSettlementBank}
                         handleSaveProfile={handleSaveProfile}
                         updateUser={updateUser}
                         switchRole={switchRole as any}

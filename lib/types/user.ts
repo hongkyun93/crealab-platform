@@ -38,6 +38,26 @@ export interface User {
     bankName?: string
     accountNumber?: string
     accountHolder?: string
+
+    // Brand Business Info
+    representativeName?: string   // 대표자명
+    businessNumber?: string       // 사업자 등록번호
+    companyAddress?: string       // 회사 주소
+    companyPhone?: string         // 회사 전화번호
+    taxEmail?: string             // 세금계산서 이메일
+    businessCategory?: string     // 업태/업종
+    businessType?: string         // 사업자 유형 (법인/개인)
+    contactPersonName?: string    // 담당자명
+    contactPersonPhone?: string   // 담당자 연락처
+    contactPersonEmail?: string   // 담당자 이메일
+    settlementBank?: string       // 정산 계좌 정보
+
+    // Creator Legal/Tax Info
+    legalName?: string            // 실명 (법적 이름)
+    birthDate?: string            // 생년월일
+    legalAddress?: string         // 법적 주소
+    isBusinessRegistered?: boolean // 사업자 등록 여부
+    creatorBusinessNumber?: string // 크리에이터 사업자번호
 }
 
 // Social Channel Types

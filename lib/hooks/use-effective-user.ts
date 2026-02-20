@@ -36,7 +36,13 @@ export function useEffectiveUser() {
             usageRightsMonth: selectedMember.profile?.usage_rights_month,
             usageRightsPrice: selectedMember.profile?.usage_rights_price,
             autoDmMonth: selectedMember.profile?.auto_dm_month,
-            autoDmPrice: selectedMember.profile?.auto_dm_price
+            autoDmPrice: selectedMember.profile?.auto_dm_price,
+            // Creator Legal/Tax fields (cast: profile type doesn't include new cols yet)
+            legalName: (selectedMember.profile as any)?.legal_name,
+            birthDate: (selectedMember.profile as any)?.birth_date,
+            legalAddress: (selectedMember.profile as any)?.legal_address,
+            isBusinessRegistered: (selectedMember.profile as any)?.is_business_registered,
+            creatorBusinessNumber: (selectedMember.profile as any)?.creator_business_number,
         }
     }, [selectedMember])
 

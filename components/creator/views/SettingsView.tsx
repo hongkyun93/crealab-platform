@@ -195,6 +195,13 @@ export function SettingsView() {
     const [newChannelHandle, setNewChannelHandle] = useState("")
     const [newChannelFollowers, setNewChannelFollowers] = useState("")
 
+    // Creator Legal/Tax Fields
+    const [legalName, setLegalName] = useState("")
+    const [birthDate, setBirthDate] = useState("")
+    const [legalAddress, setLegalAddress] = useState("")
+    const [isBusinessRegistered, setIsBusinessRegistered] = useState(false)
+    const [creatorBusinessNumber, setCreatorBusinessNumber] = useState("")
+
 
 
     // Initialize state from effectiveUser
@@ -220,6 +227,13 @@ export function SettingsView() {
             setUsageRightsPrice(effectiveUser.usageRightsPrice?.toString() || "")
             setAutoDmMonth(effectiveUser.autoDmMonth?.toString() || "")
             setAutoDmPrice(effectiveUser.autoDmPrice?.toString() || "")
+
+            // Creator Legal/Tax Fields
+            setLegalName(effectiveUser.legalName || "")
+            setBirthDate(effectiveUser.birthDate || "")
+            setLegalAddress(effectiveUser.legalAddress || "")
+            setIsBusinessRegistered(effectiveUser.isBusinessRegistered || false)
+            setCreatorBusinessNumber(effectiveUser.creatorBusinessNumber || "")
         }
     }, [effectiveUser])
 
@@ -292,6 +306,12 @@ export function SettingsView() {
                 usageRightsPrice: usageRightsPrice ? parseInt(usageRightsPrice) : 0,
                 autoDmMonth: autoDmMonth ? parseInt(autoDmMonth) : 0,
                 autoDmPrice: autoDmPrice ? parseInt(autoDmPrice) : 0,
+                // Creator Legal/Tax Fields
+                legalName,
+                birthDate,
+                legalAddress,
+                isBusinessRegistered,
+                creatorBusinessNumber,
             }, effectiveUserId) // Pass effectiveUserId to update the correct profile
 
             toast.success("✓ 프로필이 저장되었습니다", { description: "변경 내용이 즉시 반영됩니다." })
@@ -664,6 +684,68 @@ export function SettingsView() {
                                         />
                                     </div>
                                 </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Creator Legal/Tax Info */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>계약서 · 세무 정보</CardTitle>
+                            <CardDescription>계약서 생성 및 원천징수에 사용되는 법적 정보입니다.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>실명 (법적 이름)</Label>
+                                    <Input
+                                        value={legalName}
+                                        onChange={(e) => setLegalName(e.target.value)}
+                                        placeholder="홍길동"
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">계약서 '을' 기명에 사용됩니다</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>생년월일</Label>
+                                    <Input
+                                        value={birthDate}
+                                        onChange={(e) => setBirthDate(e.target.value)}
+                                        placeholder="1990-01-01"
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">원천징수(3.3%) 신고에 필요합니다</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>법적 주소 (계약서용)</Label>
+                                <Input
+                                    value={legalAddress}
+                                    onChange={(e) => setLegalAddress(e.target.value)}
+                                    placeholder="서울시 강남구..."
+                                />
+                                <p className="text-[11px] text-muted-foreground">배송 주소와 다를 수 있습니다</p>
+                            </div>
+                            <div className="space-y-4 pt-2 border-t">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="biz-reg"
+                                        checked={isBusinessRegistered}
+                                        onChange={(e) => setIsBusinessRegistered(e.target.checked)}
+                                        className="h-4 w-4 rounded border-gray-300"
+                                    />
+                                    <Label htmlFor="biz-reg" className="cursor-pointer">개인사업자로 등록되어 있습니다</Label>
+                                </div>
+                                {isBusinessRegistered && (
+                                    <div className="space-y-2 ml-7">
+                                        <Label>사업자 등록번호</Label>
+                                        <Input
+                                            value={creatorBusinessNumber}
+                                            onChange={(e) => setCreatorBusinessNumber(e.target.value)}
+                                            placeholder="000-00-00000"
+                                            className="max-w-sm"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

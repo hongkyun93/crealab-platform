@@ -363,6 +363,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // NEW: Primary Region
             if (data.primaryRegion !== undefined) updates.primary_region = data.primaryRegion
 
+            // Brand Business fields
+            if (data.representativeName !== undefined) updates.representative_name = data.representativeName
+            if (data.businessNumber !== undefined) updates.business_number = data.businessNumber
+            if (data.companyAddress !== undefined) updates.company_address = data.companyAddress
+            if (data.companyPhone !== undefined) updates.company_phone = data.companyPhone
+            if (data.taxEmail !== undefined) updates.tax_email = data.taxEmail
+            if (data.businessCategory !== undefined) updates.business_category = data.businessCategory
+            if (data.businessType !== undefined) updates.business_type = data.businessType
+            if (data.contactPersonName !== undefined) updates.contact_person_name = data.contactPersonName
+            if (data.contactPersonPhone !== undefined) updates.contact_person_phone = data.contactPersonPhone
+            if (data.contactPersonEmail !== undefined) updates.contact_person_email = data.contactPersonEmail
+            if (data.settlementBank !== undefined) updates.settlement_bank = data.settlementBank
+
             // Determine role/type for logic (If updating self, use local user.type, else fetch or assume creator)
             // For now, if targetId is different, we assume we are updating a creator as MCN
             const isUpdatingSelf = idToUpdate === user?.id
@@ -399,6 +412,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (data.bankName !== undefined) updates.bank_name = data.bankName
                 if (data.accountNumber !== undefined) updates.account_number = data.accountNumber
                 if (data.accountHolder !== undefined) updates.account_holder = data.accountHolder
+
+                // Creator Legal/Tax fields
+                if (data.legalName !== undefined) updates.legal_name = data.legalName
+                if (data.birthDate !== undefined) updates.birth_date = data.birthDate
+                if (data.legalAddress !== undefined) updates.legal_address = data.legalAddress
+                if (data.isBusinessRegistered !== undefined) updates.is_business_registered = data.isBusinessRegistered
+                if (data.creatorBusinessNumber !== undefined) updates.creator_business_number = data.creatorBusinessNumber
             }
 
             console.log('[AuthProvider] Profile updates payload:', updates)
