@@ -101,29 +101,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const initAuth = async () => {
             console.log('[AuthProvider] Initializing auth...')
 
-            // On login/signup pages, skip getUser() entirely.
-            // getUser() acquires a navigator lock that blocks all subsequent Supabase calls
-            // (signInWithPassword, RPC, etc.) through the singleton client.
-            // On Vercel production, this lock can be held for 10+ seconds, causing login to hang.
-            const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
-            if (currentPath === '/login' || currentPath === '/signup') {
-                console.log('[AuthProvider] On login page, skipping getUser() to avoid lock contention')
-                setUser(null)
-                clearTimeout(timer)
-                setIsAuthChecked(true)
-                setIsInitialized(true)
-                isInitAuthDone.current = true
-                return
-            }
-
             try {
-                // Use getUser() instead of getSession() for faster cookie-based session recovery
-                const { data: { user: sessionUser } } = await supabase.auth.getUser()
+                // Use getSession() instead of getUser() — getUser() makes a server call
+                // through navigator locks which ALWAYS fails with AbortError on Vercel.
+                // getSession() reads local tokens only — no server call, no lock.
+                // The middleware already validates the session server-side, so this is safe.
+                const { data: { session } } = await supabase.auth.getSession()
+                const sessionUser = session?.user
 
                 if (sessionUser && mounted) {
                     console.log('[AuthProvider] Session found, simple init first')
 
-                    // 1. FAST PATH: Set basic user immediately to unblock UI
                     const basicUser = {
                         id: sessionUser.id,
                         email: sessionUser.email,
@@ -137,18 +125,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setUser(basicUser)
                     lastUserId.current = sessionUser.id
 
-                    // 2. UNBLOCK UI IMMEDIATELY
+                    // UNBLOCK UI IMMEDIATELY
                     setIsAuthChecked(true)
                     setIsInitialized(true)
                     isInitAuthDone.current = true
                     clearTimeout(timer)
 
-                    // 3. BACKGROUND FETCH: Get full profile data (Lazy Load)
+                    // BACKGROUND FETCH: Get full profile data (Lazy Load)
                     fetchUserProfile(sessionUser).then(fetchedUser => {
                         if (mounted && fetchedUser) {
                             console.log('[AuthProvider] Background profile fetch complete')
                             setUser(fetchedUser)
                         }
+                    }).catch(e => {
+                        console.warn('[AuthProvider] Background profile fetch failed:', e)
                     })
 
                     return
