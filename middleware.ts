@@ -8,19 +8,8 @@ export async function middleware(request: NextRequest) {
     // 세션 갱신 (Supabase SSR 필수)
     const response = await updateSession(request)
 
-    // /login, /signup 접속 시: 서버 사이드에서 오래된 쿠키 강제 삭제
-    // (브라우저 JS 캐시와 무관하게 동작)
+    // /login, /signup: 캐시 방지만 적용 (쿠키 삭제는 logout()에서 처리)
     if (pathname === '/login' || pathname === '/signup') {
-        const cookieNames = request.cookies.getAll().map(c => c.name)
-        cookieNames.forEach(name => {
-            if (name.startsWith('sb-')) {
-                response.cookies.set(name, '', {
-                    expires: new Date(0),
-                    path: '/',
-                })
-            }
-        })
-        // 브라우저 캐시 방지 — 항상 최신 번들 로드
         response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
         response.headers.set('Pragma', 'no-cache')
         return response
