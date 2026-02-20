@@ -48,12 +48,14 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
             has_incentive: c.has_incentive !== undefined ? c.has_incentive : proposal.has_incentive,
             incentive_detail: c.incentive_detail || proposal.incentive_detail,
 
-            // Content & Conditions
-            content_type: c.content_type || proposal.content_type || '협의',
+            // Channel
+            channel_name: c.channel_name || proposal.channel_name || '협의',
+            channel_subtype: c.channel_subtype || proposal.channel_subtype || '',
             draft_date: c.condition_draft_submission_date || proposal.condition_draft_submission_date || '미정',
             final_date: c.condition_final_submission_date || proposal.condition_final_submission_date || '미정',
             upload_date: c.condition_upload_date || proposal.condition_upload_date || '미정',
-            secondary_usage: c.condition_secondary_usage_period || proposal.condition_secondary_usage_period
+            secondary_usage: c.condition_secondary_usage_period || proposal.condition_secondary_usage_period,
+            secondary_usage_fee: c.secondary_usage_fee || proposal.secondary_usage_fee || 0,
         }
     }, [proposal])
 
@@ -170,10 +172,10 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                             <Calendar className="h-4 w-4" /> 일정 및 조건
                         </h4>
                         <div className="bg-card border rounded-lg p-3 space-y-1">
-                            {/* Content Type */}
+                            {/* Channel */}
                             <div className="flex justify-between py-1 border-b border-border/50">
-                                <span className="text-sm text-muted-foreground">콘텐츠 타입</span>
-                                <span className="text-sm font-medium">{data.content_type}</span>
+                                <span className="text-sm text-muted-foreground">진행 채널</span>
+                                <span className="text-sm font-medium">{data.channel_name}{data.channel_subtype ? ` (${data.channel_subtype})` : ''}</span>
                             </div>
 
                             {/* Dates */}
@@ -192,7 +194,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                             {data.secondary_usage && (
                                 <div className="flex justify-between py-1 border-t border-border/50 mt-1 pt-2">
                                     <span className="text-sm text-muted-foreground">2차 활용 기간</span>
-                                    <span className="text-sm font-medium">{data.secondary_usage}</span>
+                                    <span className="text-sm font-medium">{data.secondary_usage}{data.secondary_usage_fee > 0 && ` · ${data.secondary_usage_fee.toLocaleString()}원`}</span>
                                 </div>
                             )}
                         </div>

@@ -12,7 +12,7 @@ import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { Proposal } from '@/lib/types';
 
 import { SmartContractPanel } from '../common/smart-contract-panel';
-import { FileText, CheckCircle2, Package, Truck, MapPin, Loader2 } from 'lucide-react';
+import { FileText, CheckCircle2, Package, Truck, MapPin, Loader2, Video, Eye, Download, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 export function InfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
+    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData, sendNotification } = useUnifiedProvider();
     const [trackingInput, setTrackingInput] = useState('');
     const [isShipping, setIsShipping] = useState(false);
 
@@ -74,8 +74,11 @@ export function InfoPanel() {
         // Incentive, Content, Usage
         if (updates.incentive_detail !== undefined) payload.incentive_detail = updates.incentive_detail;
         if (updates.has_incentive !== undefined) payload.has_incentive = updates.has_incentive;
-        if (updates.content_type !== undefined) payload.content_type = updates.content_type;
+        if ((updates as any).channel_name !== undefined) payload.channel_name = (updates as any).channel_name;
+        if ((updates as any).channel_subtype !== undefined) payload.channel_subtype = (updates as any).channel_subtype;
         if (updates.condition_secondary_usage_period !== undefined) payload.condition_secondary_usage_period = updates.condition_secondary_usage_period;
+        if ((updates as any).secondary_usage_fee !== undefined) payload.secondary_usage_fee = (updates as any).secondary_usage_fee;
+        if (updates.product_type !== undefined) payload.product_type = updates.product_type;
 
         console.log('[InfoPanel] Saving conditions:', payload);
 
@@ -417,10 +420,162 @@ export function InfoPanel() {
                         title="콘텐츠 관리"
                         isActive={currentStage === 'content'}
                         isCompleted={getStageStatus('content') === 'completed'}
-                        summary="콘텐츠 제출 및 피드백"
+                        summary={
+                            proposal?.content_final_url && proposal?.content_clean_url ? '✅ 최종본 + 클린본 제출 완료'
+                                : proposal?.content_submission_status === 'approved' ? '✅ 초안 승인됨 · 최종본 대기'
+                                    : proposal?.content_submission_status === 'revision_requested' ? '🔄 수정 요청 전달됨'
+                                        : proposal?.content_submission_file_url ? '📎 초안 리뷰 필요'
+                                            : '콘텐츠 제출 및 피드백'
+                        }
                     >
-                        <div className="text-sm text-muted-foreground p-2 text-center bg-muted/20 rounded-lg">
-                            제품 배송 후 콘텐츠 관리가 시작됩니다.
+                        <div className="space-y-4">
+                            {/* No content yet */}
+                            {!proposal?.content_submission_file_url && !proposal?.content_final_url && (
+                                <div className="text-sm text-muted-foreground p-2 text-center bg-muted/20 rounded-lg">
+                                    크리에이터가 콘텐츠를 제출하면 여기에 표시됩니다.
+                                </div>
+                            )}
+
+                            {/* Draft review phase */}
+                            {proposal?.content_submission_file_url && proposal?.content_submission_status !== 'approved' && (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Video className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span className="text-xs font-semibold text-muted-foreground">초안 리뷰</span>
+                                        <Badge variant="outline" className={`text-[10px] h-5 ml-auto ${proposal.content_submission_status === 'submitted' ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20' :
+                                            proposal.content_submission_status === 'revision_requested' ? 'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20' :
+                                                'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20'
+                                            }`}>
+                                            {proposal.content_submission_status === 'submitted' ? `v${proposal.content_submission_version || 1.0} 제출됨` :
+                                                proposal.content_submission_status === 'revision_requested' ? '수정 요청됨' : '승인됨'}
+                                        </Badge>
+                                    </div>
+
+                                    {/* Preview link */}
+                                    <div className="bg-muted/30 rounded-lg p-3 mb-3">
+                                        <a href={proposal.content_submission_file_url} target="_blank" rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-sm text-primary hover:underline">
+                                            <Eye className="h-4 w-4" />
+                                            초안 미리보기 / 다운로드
+                                        </a>
+                                    </div>
+
+                                    {/* Approve / Request Revision buttons */}
+                                    {proposal.content_submission_status === 'submitted' && (
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="flex-1 h-8 text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                                onClick={async () => {
+                                                    if (!proposal?.id) return;
+                                                    const updates: any = { content_submission_status: 'revision_requested' };
+                                                    let success = false;
+                                                    if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
+                                                    else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                    else success = await updateBrandProposal(proposal.id, updates);
+                                                    if (success) {
+                                                        useWorkspaceStore.getState().updateProposal(updates);
+                                                        refreshData();
+                                                        toast.success('수정 요청을 전달했습니다.');
+                                                        const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
+                                                        if (creatorId) sendNotification(creatorId, '브랜드가 콘텐츠 수정을 요청했습니다.', 'content_revision', proposal.id?.toString());
+                                                    }
+                                                }}
+                                            >
+                                                <MessageSquare className="h-3 w-3 mr-1" /> 수정 요청
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                className="flex-1 h-8 bg-emerald-600 hover:bg-emerald-700"
+                                                onClick={async () => {
+                                                    if (!proposal?.id) return;
+                                                    const updates: any = { content_submission_status: 'approved' };
+                                                    let success = false;
+                                                    if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
+                                                    else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                    else success = await updateBrandProposal(proposal.id, updates);
+                                                    if (success) {
+                                                        useWorkspaceStore.getState().updateProposal(updates);
+                                                        refreshData();
+                                                        toast.success('초안을 승인했습니다!');
+                                                        const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
+                                                        if (creatorId) sendNotification(creatorId, '브랜드가 콘텐츠를 승인했습니다! 최종본과 클린본을 제출해주세요.', 'content_approved', proposal.id?.toString());
+                                                    }
+                                                }}
+                                            >
+                                                <CheckCircle2 className="h-3 w-3 mr-1" /> 승인
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {proposal.content_submission_status === 'revision_requested' && (
+                                        <div className="text-xs text-amber-600 text-center bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2">
+                                            크리에이터에게 수정 요청을 보냈습니다. 수정본 대기 중...
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Final + Clean download phase */}
+                            {proposal?.content_submission_status === 'approved' && (
+                                <div className="space-y-3">
+                                    <div className="text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2 text-center font-medium">
+                                        ✅ 초안 승인 완료
+                                    </div>
+
+                                    {/* Final download */}
+                                    <div className="flex items-center justify-between bg-muted/30 rounded-lg p-2">
+                                        <span className="text-xs font-semibold">📹 최종본</span>
+                                        {proposal?.content_final_url ? (
+                                            <a href={proposal.content_final_url} target="_blank" rel="noopener noreferrer"
+                                                className="flex items-center gap-1 text-xs text-primary hover:underline">
+                                                <Download className="h-3 w-3" /> 다운로드
+                                            </a>
+                                        ) : (
+                                            <span className="text-[10px] text-muted-foreground">대기 중</span>
+                                        )}
+                                    </div>
+
+                                    {/* Clean download */}
+                                    <div className="flex items-center justify-between bg-muted/30 rounded-lg p-2">
+                                        <span className="text-xs font-semibold">🎬 클린본</span>
+                                        {proposal?.content_clean_url ? (
+                                            <a href={proposal.content_clean_url} target="_blank" rel="noopener noreferrer"
+                                                className="flex items-center gap-1 text-xs text-primary hover:underline">
+                                                <Download className="h-3 w-3" /> 다운로드
+                                            </a>
+                                        ) : (
+                                            <span className="text-[10px] text-muted-foreground">대기 중</span>
+                                        )}
+                                    </div>
+
+                                    {/* Complete button — both files required */}
+                                    {proposal?.content_final_url && proposal?.content_clean_url && (
+                                        <Button
+                                            className="w-full bg-emerald-600 hover:bg-emerald-700"
+                                            size="sm"
+                                            onClick={async () => {
+                                                if (!proposal?.id) return;
+                                                const updates: any = { status: 'completed', content_submission_status: 'completed' };
+                                                let success = false;
+                                                if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
+                                                else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                else success = await updateBrandProposal(proposal.id, updates);
+                                                if (success) {
+                                                    useWorkspaceStore.getState().updateProposal(updates);
+                                                    refreshData();
+                                                    toast.success('협업이 완료되었습니다! 🎉');
+                                                    const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
+                                                    if (creatorId) sendNotification(creatorId, '협업이 완료되었습니다! 감사합니다.', 'collaboration_complete', proposal.id?.toString());
+                                                }
+                                            }}
+                                        >
+                                            <CheckCircle2 className="h-4 w-4 mr-2" /> 협업 완료
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </StageCard>
                 </div>

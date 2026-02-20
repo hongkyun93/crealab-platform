@@ -1949,7 +1949,7 @@ function InfluencerDashboardContent() {
                     </div>
                     <div>
                         <p className="text-muted-foreground">희망 채널</p>
-                        <p className="font-medium">{proposal.content_type}</p>
+                        <p className="font-medium">{proposal.channel_name || '미정'}</p>
                     </div>
                 </div>
 

@@ -80,7 +80,7 @@ export default function MessagePage() {
                     </div>
                     <div>
                         <p className="text-muted-foreground">희망 채널</p>
-                        <p className="font-medium">{proposal.content_type}</p>
+                        <p className="font-medium">{(proposal as any).channel_name || '미정'}</p>
                     </div>
                 </div>
                 <div className="bg-white/80 p-2 rounded text-[11px] text-muted-foreground italic line-clamp-2">

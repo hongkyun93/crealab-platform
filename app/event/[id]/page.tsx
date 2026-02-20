@@ -49,13 +49,14 @@ export default function EventDetailPage() {
     const [compensationAmount, setCompensationAmount] = useState("")
     const [hasIncentive, setHasIncentive] = useState(false)
     const [incentiveDetail, setIncentiveDetail] = useState("")
-    const [selectedContentTypes, setSelectedContentTypes] = useState<string[]>([])
-    const [customContentType, setCustomContentType] = useState("")
+    const [channelName, setChannelName] = useState("instagram")
+    const [channelSubtype, setChannelSubtype] = useState("")
     const [desiredDate, setDesiredDate] = useState<Date>()
     const [dateFlexible, setDateFlexible] = useState(false)
     const [draftSubmissionDate, setDraftSubmissionDate] = useState<Date>()
     const [finalSubmissionDate, setFinalSubmissionDate] = useState<Date>()
     const [secondaryUsagePeriod, setSecondaryUsagePeriod] = useState("")
+    const [secondaryUsageFee, setSecondaryUsageFee] = useState("")
     const [proposalMessage, setProposalMessage] = useState("")
     const [videoGuide, setVideoGuide] = useState("brand_provided")
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -69,26 +70,30 @@ export default function EventDetailPage() {
             let updated = prev
 
             // 1. Update Product Name Line
-            // Match any line ending with "제품을 제공해드리고 싶으며,"
             const productLineRegex = /^.*제품을 제공해드리고 싶으며,$/m
             if (productLineRegex.test(updated)) {
                 const newProductPart = productName ? `[ ${productName} ]` : `[ 제안 드리는 제품명 ]`
                 updated = updated.replace(productLineRegex, `${newProductPart} 제품을 제공해드리고 싶으며,`)
             }
 
-            // 2. Update Content Type Line
-            // Match any line ending with "형식으로 소개해주시면 좋을 것 같습니다."
+            // 2. Update Channel Line
             const contentLineRegex = /^.*형식으로 소개해주시면 좋을 것 같습니다\.$/m
-            const contentTypes = [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ')
+            const SUBTYPE_LABELS: Record<string, string> = {
+                instagram_reels: '릴스', instagram_feed: '피드', instagram_story: '스토리',
+                youtube_longform: '롱폼', youtube_shorts: '숏츠',
+            }
+            const channelLabel = channelSubtype
+                ? (channelSubtype.startsWith('other:') ? channelSubtype.slice(6) : (SUBTYPE_LABELS[channelSubtype] || channelSubtype))
+                : channelName
 
             if (contentLineRegex.test(updated)) {
-                const newContentPart = contentTypes ? `[ ${contentTypes} ]` : `[ 희망 콘텐츠 형식 ]`
+                const newContentPart = channelLabel ? `[ ${channelLabel} ]` : `[ 희망 콘텐츠 형식 ]`
                 updated = updated.replace(contentLineRegex, `${newContentPart} 형식으로 소개해주시면 좋을 것 같습니다.`)
             }
 
             return updated
         })
-    }, [productName, selectedContentTypes, customContentType, showProposalDialog])
+    }, [productName, channelName, channelSubtype, showProposalDialog])
 
     useEffect(() => {
         const loadEvent = async () => {
@@ -214,12 +219,14 @@ ${u.name}의 담당자입니다.
                 compensation_amount: compensationAmount ? String(parseInt(compensationAmount.replace(/[^0-9]/g, ''))) : null,
                 has_incentive: hasIncentive,
                 incentive_detail: hasIncentive ? incentiveDetail : null,
-                content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', ') || null,
+                channel_name: channelName,
+                channel_subtype: channelSubtype || null,
                 desired_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
                 condition_draft_submission_date: draftSubmissionDate ? format(draftSubmissionDate, "yyyy-MM-dd") : null,
                 condition_final_submission_date: finalSubmissionDate ? format(finalSubmissionDate, "yyyy-MM-dd") : null,
                 condition_upload_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
                 condition_secondary_usage_period: secondaryUsagePeriod || "불가",
+                secondary_usage_fee: secondaryUsageFee ? parseInt(secondaryUsageFee.replace(/[^0-9]/g, '')) : 0,
                 date_flexible: dateFlexible,
                 message: proposalMessage,
                 video_guide: videoGuide,
@@ -260,12 +267,15 @@ ${u.name}의 담당자입니다.
                         compensation_amount: compensationAmount,
                         has_incentive: hasIncentive,
                         incentive_detail: incentiveDetail,
-                        content_type: [...selectedContentTypes, customContentType.trim()].filter(Boolean).join(', '),
+                        content_type: undefined, // deprecated
+                        channel_name: channelName,
+                        channel_subtype: channelSubtype || null,
                         desired_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
                         condition_draft_submission_date: draftSubmissionDate ? format(draftSubmissionDate, "yyyy-MM-dd") : null,
                         condition_final_submission_date: finalSubmissionDate ? format(finalSubmissionDate, "yyyy-MM-dd") : null,
                         condition_upload_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
                         condition_secondary_usage_period: secondaryUsagePeriod || "불가",
+                        secondary_usage_fee: secondaryUsageFee ? parseInt(secondaryUsageFee.replace(/[^0-9]/g, '')) : 0,
                         video_guide: videoGuide,
                         product_url: productUrl
                     },
@@ -277,8 +287,11 @@ ${u.name}의 담당자입니다.
                     condition_final_submission_date: finalSubmissionDate ? format(finalSubmissionDate, "yyyy-MM-dd") : null,
                     condition_upload_date: desiredDate ? format(desiredDate, "yyyy-MM-dd") : null,
                     condition_secondary_usage_period: secondaryUsagePeriod || "불가",
+                    secondary_usage_fee: secondaryUsageFee ? parseInt(secondaryUsageFee.replace(/[^0-9]/g, '')) : 0,
                     product_url: productUrl,
-                    product_type: productType
+                    product_type: productType,
+                    channel_name: channelName,
+                    channel_subtype: channelSubtype || null,
                 }
                 addMomentProposal(optimisticProposal)
             }
@@ -297,11 +310,12 @@ ${u.name}의 담당자입니다.
             setCompensationAmount("")
             setHasIncentive(false)
             setIncentiveDetail("")
-            setCustomContentType("")
-            setSelectedContentTypes([])
+            setChannelName("instagram")
+            setChannelSubtype("")
             setDraftSubmissionDate(undefined)
             setFinalSubmissionDate(undefined)
             setSecondaryUsagePeriod("")
+            setSecondaryUsageFee("")
             setProposalMessage("")
 
 
@@ -810,49 +824,110 @@ ${u.name}의 담당자입니다.
                             )}
                         </div>
 
-                        {/* Content Type (Multi-select) */}
+                        {/* Channel Selection (replaces Content Type checkboxes) */}
                         <div className="space-y-3">
-                            <Label>희망 콘텐츠 형식 (중복 선택 가능)</Label>
-                            <div className="grid grid-cols-3 gap-2">
-                                {['릴스 (Reels)', '숏츠 (Shorts)', '틱톡 (TikTok)'].map((type) => (
-                                    <div key={type} className="flex items-center space-x-2 border rounded-md p-2 hover:bg-muted/50 transition-colors">
-                                        <Checkbox
-                                            id={type}
-                                            checked={selectedContentTypes.includes(type)}
-                                            onCheckedChange={(checked) => {
-                                                if (checked) {
-                                                    setSelectedContentTypes([...selectedContentTypes, type])
-                                                } else {
-                                                    setSelectedContentTypes(selectedContentTypes.filter(t => t !== type))
-                                                }
-                                            }}
-                                        />
-                                        <Label htmlFor={type} className="font-normal cursor-pointer text-xs w-full">{type}</Label>
-                                    </div>
+                            <Label>진행 채널 선택</Label>
+                            <div className="grid grid-cols-5 gap-1.5">
+                                {(['instagram', 'youtube', 'tiktok', 'blog', 'other'] as const).map(ch => (
+                                    <button
+                                        type="button"
+                                        key={ch}
+                                        onClick={() => { setChannelName(ch); setChannelSubtype('') }}
+                                        className={`py-2 rounded-md border text-xs font-medium transition-all duration-200
+                                            ${channelName === ch
+                                                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                                : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                                            }`}
+                                    >
+                                        {ch === 'instagram' ? 'Instagram' : ch === 'youtube' ? 'YouTube' : ch === 'tiktok' ? 'TikTok' : ch === 'blog' ? 'Blog' : '기타'}
+                                    </button>
                                 ))}
                             </div>
-                            <div className="pt-1">
-                                <Label htmlFor="customContentType" className="text-xs text-muted-foreground mb-1 block">기타 (직접 입력)</Label>
-                                <Input
-                                    id="customContentType"
-                                    value={customContentType}
-                                    onChange={(e) => setCustomContentType(e.target.value)}
-                                    placeholder="예: 유튜브 브랜디드 콘텐츠, 블로그 리뷰 등"
-                                    className="h-9 text-sm"
-                                />
-                            </div>
+
+                            {/* Subtypes */}
+                            {channelName === 'instagram' && (
+                                <div className="flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                                    <span className="text-xs text-muted-foreground min-w-[36px]">형태</span>
+                                    <div className="flex gap-1.5">
+                                        {[{ id: 'instagram_reels', label: '릴스', emoji: '🎞️' }, { id: 'instagram_feed', label: '피드', emoji: '📷' }, { id: 'instagram_story', label: '스토리', emoji: '⭕' }].map(sub => (
+                                            <button type="button" key={sub.id}
+                                                onClick={() => setChannelSubtype(channelSubtype === sub.id ? '' : sub.id)}
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 ${channelSubtype === sub.id
+                                                    ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 border-transparent text-white shadow-md scale-105'
+                                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                <span>{sub.emoji}</span><span>{sub.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {channelName === 'youtube' && (
+                                <div className="flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                                    <span className="text-xs text-muted-foreground min-w-[36px]">형태</span>
+                                    <div className="flex gap-1.5">
+                                        {[{ id: 'youtube_longform', label: '롱폼', emoji: '▶️' }, { id: 'youtube_shorts', label: '숏츠', emoji: '⚡' }].map(sub => (
+                                            <button type="button" key={sub.id}
+                                                onClick={() => setChannelSubtype(channelSubtype === sub.id ? '' : sub.id)}
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 ${channelSubtype === sub.id
+                                                    ? 'bg-gradient-to-r from-red-600 to-red-700 border-transparent text-white shadow-md scale-105'
+                                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                <span>{sub.emoji}</span><span>{sub.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {channelName === 'other' && (
+                                <div className="flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                                    <span className="text-xs text-muted-foreground min-w-[36px]">채널명</span>
+                                    <Input
+                                        value={channelSubtype.startsWith('other:') ? channelSubtype.slice(6) : ''}
+                                        onChange={e => setChannelSubtype(e.target.value ? `other:${e.target.value}` : '')}
+                                        placeholder="예: 팟캐스트, 카카오뷰, 네이버 클립..."
+                                        className="h-8 text-xs max-w-xs rounded-full"
+                                    />
+                                </div>
+                            )}
                         </div>
 
-                        {/* Secondary Usage Period (New) */}
                         <div className="space-y-2">
-                            <Label htmlFor="secondaryUsage">2차 활용 기간 (선택)</Label>
-                            <Input
-                                id="secondaryUsage"
-                                value={secondaryUsagePeriod}
-                                onChange={(e) => setSecondaryUsagePeriod(e.target.value)}
-                                placeholder="예: 3개월, 6개월 (협의 가능)"
-                                className="h-9 text-sm"
-                            />
+                            <Label htmlFor="secondaryUsage">2차 활용 기간 및 비용 (선택)</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <select
+                                    id="secondaryUsage"
+                                    value={secondaryUsagePeriod}
+                                    onChange={(e) => setSecondaryUsagePeriod(e.target.value)}
+                                    className="h-9 text-sm rounded-md border border-input bg-background px-3 focus:ring-1 focus:ring-ring"
+                                >
+                                    <option value="">기간 선택</option>
+                                    <option value="불가">불가 (2차 활용 안 함)</option>
+                                    <option value="3개월">3개월</option>
+                                    <option value="6개월">6개월</option>
+                                    <option value="12개월">12개월</option>
+                                    <option value="영구">영구</option>
+                                    <option value="협의">협의 필요</option>
+                                </select>
+                                <div className="relative">
+                                    <Input
+                                        type="text"
+                                        value={secondaryUsageFee}
+                                        onChange={(e) => setSecondaryUsageFee(e.target.value.replace(/[^0-9]/g, ''))}
+                                        placeholder="2차 활용 비용 (원)"
+                                        className="h-9 text-sm pr-6"
+                                        disabled={secondaryUsagePeriod === '불가' || !secondaryUsagePeriod}
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">원</span>
+                                </div>
+                            </div>
+                            {secondaryUsagePeriod && secondaryUsagePeriod !== '불가' && secondaryUsageFee && (
+                                <p className="text-[10px] text-muted-foreground">
+                                    → {secondaryUsagePeriod}간 2차 활용, 비용 {parseInt(secondaryUsageFee).toLocaleString()}원
+                                </p>
+                            )}
                         </div>
 
                         {/* Date Pickers Group */}

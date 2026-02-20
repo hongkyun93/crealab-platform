@@ -35,8 +35,10 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
         specialTerms: '',
         // [New] Additional Fields
         incentive: '',
-        contentType: '',
+        channelName: '' as string,
+        channelSubtype: '' as string,
         secondaryUsage: '',
+        secondaryUsageFee: 0,
         productType: 'gift' as 'gift' | 'loan'
     });
 
@@ -97,8 +99,10 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                 specialTerms: proposal.special_terms || proposal.specialTerms || '',
                 // [New] Init Additional Fields
                 incentive: (proposal.has_incentive ? (proposal.incentive_detail || '인센티브 제공') : '') || proposal.incentive || '',
-                contentType: proposal.content_type || proposal.contentType || '',
+                channelName: proposal.channel_name || '',
+                channelSubtype: proposal.channel_subtype || '',
                 secondaryUsage: proposal.condition_secondary_usage_period || proposal.secondaryUsage || '',
+                secondaryUsageFee: proposal.secondary_usage_fee || 0,
                 productType: (proposal.product_type as 'gift' | 'loan') || 'gift'
             });
         }
@@ -117,8 +121,10 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
             // [New] Persist Additional Fields
             incentive_detail: editValues.incentive,
             has_incentive: !!editValues.incentive,
-            content_type: editValues.contentType,
+            channel_name: editValues.channelName || undefined,
+            channel_subtype: editValues.channelSubtype || undefined,
             condition_secondary_usage_period: editValues.secondaryUsage,
+            secondary_usage_fee: editValues.secondaryUsageFee || 0,
             product_type: editValues.productType,
 
 
@@ -153,8 +159,12 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
     const specialTerms = proposal?.special_terms || proposal?.specialTerms; // [FIX] Prioritize special_terms
     // [New] View Data
     const incentive = (proposal?.has_incentive ? (proposal?.incentive_detail || '제공') : '') || proposal?.incentive;
-    const contentType = proposal?.content_type || proposal?.contentType || '협의 필요';
+    // Channel name label
+    const CHANNEL_LABELS: Record<string, string> = {
+        instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', blog: 'Blog', other: '기타',
+    };
     const secondaryUsage = proposal?.condition_secondary_usage_period || proposal?.secondaryUsage || '협의 필요';
+    const secondaryUsageFee = proposal?.secondary_usage_fee || 0;
 
     // [NEW] 채널 서브타입 레이블 파싱 (여러 개 지원)
     const channelSubtypeRaw = proposal?.channel_subtype || '';
@@ -242,20 +252,80 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
 
                     <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">콘텐츠 타입</Label>
-                            <Input
-                                value={editValues.contentType}
-                                onChange={(e) => setEditValues({ ...editValues, contentType: e.target.value })}
-                                className="h-8 text-xs bg-background"
-                            />
+                            <Label className="text-xs text-muted-foreground">진행 채널</Label>
+                            <div className="grid grid-cols-5 gap-1">
+                                {(['instagram', 'youtube', 'tiktok', 'blog', 'other'] as const).map(ch => (
+                                    <button
+                                        type="button"
+                                        key={ch}
+                                        onClick={() => setEditValues({ ...editValues, channelName: ch, channelSubtype: '' })}
+                                        className={`py-1.5 rounded-md border text-[10px] font-medium transition-all duration-200
+                                            ${editValues.channelName === ch
+                                                ? 'bg-primary text-primary-foreground border-primary'
+                                                : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                                            }`}
+                                    >
+                                        {ch === 'instagram' ? 'IG' : ch === 'youtube' ? 'YT' : ch === 'tiktok' ? 'TT' : ch === 'blog' ? 'Blog' : '기타'}
+                                    </button>
+                                ))}
+                            </div>
+                            {/* Subtypes in edit mode */}
+                            {editValues.channelName === 'instagram' && (
+                                <div className="flex gap-1 flex-wrap">
+                                    {[{ id: 'instagram_reels', label: '릴스' }, { id: 'instagram_feed', label: '피드' }, { id: 'instagram_story', label: '스토리' }].map(sub => (
+                                        <button type="button" key={sub.id}
+                                            onClick={() => setEditValues({ ...editValues, channelSubtype: editValues.channelSubtype === sub.id ? '' : sub.id })}
+                                            className={`px-2 py-0.5 rounded-full border text-[10px] font-medium transition-all ${editValues.channelSubtype === sub.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'}`}
+                                        >{sub.label}</button>
+                                    ))}
+                                </div>
+                            )}
+                            {editValues.channelName === 'youtube' && (
+                                <div className="flex gap-1 flex-wrap">
+                                    {[{ id: 'youtube_longform', label: '롱폼' }, { id: 'youtube_shorts', label: '숏츠' }].map(sub => (
+                                        <button type="button" key={sub.id}
+                                            onClick={() => setEditValues({ ...editValues, channelSubtype: editValues.channelSubtype === sub.id ? '' : sub.id })}
+                                            className={`px-2 py-0.5 rounded-full border text-[10px] font-medium transition-all ${editValues.channelSubtype === sub.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'}`}
+                                        >{sub.label}</button>
+                                    ))}
+                                </div>
+                            )}
+                            {editValues.channelName === 'other' && (
+                                <Input
+                                    value={editValues.channelSubtype.startsWith('other:') ? editValues.channelSubtype.slice(6) : ''}
+                                    onChange={e => setEditValues({ ...editValues, channelSubtype: e.target.value ? `other:${e.target.value}` : '' })}
+                                    placeholder="채널명 입력"
+                                    className="h-7 text-xs bg-background"
+                                />
+                            )}
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">2차 활용 기간</Label>
-                            <Input
+                            <Label className="text-xs text-muted-foreground">2차 활용</Label>
+                            <select
                                 value={editValues.secondaryUsage}
                                 onChange={(e) => setEditValues({ ...editValues, secondaryUsage: e.target.value })}
-                                className="h-8 text-xs bg-background"
-                            />
+                                className="w-full h-8 text-xs rounded-md border border-input bg-background px-2"
+                            >
+                                <option value="">기간 선택</option>
+                                <option value="불가">불가</option>
+                                <option value="3개월">3개월</option>
+                                <option value="6개월">6개월</option>
+                                <option value="12개월">12개월</option>
+                                <option value="영구">영구</option>
+                                <option value="협의">협의 필요</option>
+                            </select>
+                            {editValues.secondaryUsage && editValues.secondaryUsage !== '불가' && (
+                                <div className="relative">
+                                    <Input
+                                        type="number"
+                                        value={editValues.secondaryUsageFee || ''}
+                                        onChange={(e) => setEditValues({ ...editValues, secondaryUsageFee: Number(e.target.value) })}
+                                        placeholder="2차 활용 비용 (원)"
+                                        className="h-7 text-xs bg-background pr-6"
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">원</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -375,12 +445,12 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                 </div>
             </div>
 
-            {/* Content & Usage Info */}
+            {/* Channel & Usage Info */}
             <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground font-medium">콘텐츠 타입</label>
-                    <div className="p-2 bg-background rounded-md border border-border/50 text-xs font-medium truncate" title={contentType}>
-                        {contentType}
+                    <label className="text-xs text-muted-foreground font-medium">진행 채널</label>
+                    <div className="p-2 bg-background rounded-md border border-border/50 text-xs font-medium truncate">
+                        {proposal?.channel_name ? (CHANNEL_LABELS[proposal.channel_name] || proposal.channel_name) : '협의 필요'}
                     </div>
                     {channelSubtypeLabels.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">
@@ -396,6 +466,9 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                     <label className="text-xs text-muted-foreground font-medium">2차 활용</label>
                     <div className="p-2 bg-background rounded-md border border-border/50 text-xs font-medium truncate">
                         {secondaryUsage}
+                        {secondaryUsageFee > 0 && (
+                            <span className="ml-1 text-emerald-600">· {secondaryUsageFee.toLocaleString()}원</span>
+                        )}
                     </div>
                 </div>
             </div>

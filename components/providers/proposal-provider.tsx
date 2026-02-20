@@ -148,9 +148,10 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         condition_final_submission_date: p.condition_final_submission_date,
                         condition_upload_date: p.condition_upload_date,
                         condition_secondary_usage_period: p.condition_secondary_usage_period,
+                        secondary_usage_fee: p.secondary_usage_fee,
                         has_incentive: p.has_incentive,
                         incentive_detail: p.incentive_detail,
-                        content_type: p.content_type,
+
                         message: p.message,
                         status: p.status,
                         date: new Date(p.created_at).toISOString().split('T')[0],
@@ -176,7 +177,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         delivery_status: p.delivery_status,
 
                         content_submission_url: p.content_submission_url,
+                        content_submission_file_url: p.content_submission_file_url,
                         content_submission_status: p.content_submission_status,
+                        content_submission_version: p.content_submission_version,
+                        content_submission_date: p.content_submission_date,
+                        content_final_url: p.content_final_url,
+                        content_clean_url: p.content_clean_url,
                         workspace_id: p.workspace_id, // [Workspaces]
                         campaign: p.campaigns
                     }
@@ -262,7 +268,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 compensation_amount: p.compensation_amount,
                 has_incentive: p.has_incentive,
                 incentive_detail: p.incentive_detail,
-                content_type: p.content_type,
+
                 status: p.status,
                 message: p.message,
                 motivation: p.motivation,
@@ -297,6 +303,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 condition_final_submission_date: p.condition_final_submission_date,
                 condition_upload_date: p.condition_upload_date,
                 condition_secondary_usage_period: p.condition_secondary_usage_period,
+                secondary_usage_fee: p.secondary_usage_fee,
                 content_submission_url: p.content_submission_url,
                 content_submission_status: p.content_submission_status,
                 product_url: p.products?.image_url,
@@ -318,7 +325,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 compensation_amount: p.compensation_amount || (p.price_offer ? String(p.price_offer) : undefined),
                 has_incentive: p.has_incentive || p.conditions?.has_incentive,
                 incentive_detail: p.incentive_detail || p.conditions?.incentive_detail,
-                content_type: p.content_type || p.conditions?.content_type,
+
                 status: p.status,
                 message: p.message,
 
@@ -334,6 +341,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 condition_final_submission_date: p.condition_final_submission_date || p.conditions?.condition_final_submission_date,
                 condition_upload_date: p.condition_upload_date || p.conditions?.condition_upload_date,
                 condition_secondary_usage_period: p.condition_secondary_usage_period || p.conditions?.condition_secondary_usage_period,
+                secondary_usage_fee: p.secondary_usage_fee || p.conditions?.secondary_usage_fee,
                 brand_condition_confirmed: p.brand_condition_confirmed,
                 influencer_condition_confirmed: p.influencer_condition_confirmed,
                 // Contract
@@ -721,13 +729,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                             product_type: "gift",
                             has_incentive: false,
                             incentive_detail: null,
-                            content_type: proposal.content_plan,
+
                             desired_date: proposal.date,
                             date_flexible: false,
                             condition_draft_submission_date: proposal.condition_draft_submission_date,
                             condition_final_submission_date: proposal.condition_final_submission_date,
                             condition_upload_date: proposal.condition_upload_date,
-                            condition_secondary_usage_period: proposal.condition_secondary_usage_period
+                            condition_secondary_usage_period: proposal.condition_secondary_usage_period,
+                            secondary_usage_fee: proposal.secondary_usage_fee || 0,
                         }
                     })
                     .select()
@@ -871,7 +880,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.shipping_phone) dbUpdates.shipping_phone = updates.shipping_phone
             if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
             if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
+            if (updates.content_submission_file_url) dbUpdates.content_submission_file_url = updates.content_submission_file_url
             if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
+            if (updates.content_submission_version) dbUpdates.content_submission_version = updates.content_submission_version
+            if (updates.content_submission_date) dbUpdates.content_submission_date = updates.content_submission_date
+            if (updates.content_final_url) dbUpdates.content_final_url = updates.content_final_url
+            if (updates.content_clean_url) dbUpdates.content_clean_url = updates.content_clean_url
 
             // Contract & Signatures — use !== undefined to allow null (undo)
             if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
@@ -889,6 +903,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if ((updates as any).condition_final_submission_date) dbUpdates.condition_final_submission_date = (updates as any).condition_final_submission_date
             if ((updates as any).condition_upload_date) dbUpdates.condition_upload_date = (updates as any).condition_upload_date
             if ((updates as any).condition_secondary_usage_period) dbUpdates.condition_secondary_usage_period = (updates as any).condition_secondary_usage_period
+            if ((updates as any).secondary_usage_fee !== undefined) dbUpdates.secondary_usage_fee = (updates as any).secondary_usage_fee
+            if ((updates as any).channel_name) dbUpdates.channel_name = (updates as any).channel_name
+            if ((updates as any).channel_subtype !== undefined) dbUpdates.channel_subtype = (updates as any).channel_subtype
             if ((updates as any).brand_condition_confirmed !== undefined) dbUpdates.brand_condition_confirmed = (updates as any).brand_condition_confirmed
             if ((updates as any).influencer_condition_confirmed !== undefined) dbUpdates.influencer_condition_confirmed = (updates as any).influencer_condition_confirmed
 
@@ -928,7 +945,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
             if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
             if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
+            if (updates.content_submission_file_url) dbUpdates.content_submission_file_url = updates.content_submission_file_url
             if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
+            if (updates.content_submission_version) dbUpdates.content_submission_version = updates.content_submission_version
+            if (updates.content_submission_date) dbUpdates.content_submission_date = updates.content_submission_date
+            if (updates.content_final_url) dbUpdates.content_final_url = updates.content_final_url
+            if (updates.content_clean_url) dbUpdates.content_clean_url = updates.content_clean_url
 
             // Contract & Signatures — use !== undefined to allow null (undo)
             if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
@@ -950,13 +972,15 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.special_terms !== undefined) dbUpdates.special_terms = updates.special_terms
             if (updates.has_incentive !== undefined) dbUpdates.has_incentive = updates.has_incentive
             if (updates.incentive_detail !== undefined) dbUpdates.incentive_detail = updates.incentive_detail
-            if (updates.content_type) dbUpdates.content_type = updates.content_type
+            if ((updates as any).channel_name) dbUpdates.channel_name = (updates as any).channel_name
+            if ((updates as any).channel_subtype !== undefined) dbUpdates.channel_subtype = (updates as any).channel_subtype
             // Dates
             if (updates.condition_product_receipt_date) dbUpdates.condition_product_receipt_date = updates.condition_product_receipt_date
             if (updates.condition_draft_submission_date) dbUpdates.condition_draft_submission_date = updates.condition_draft_submission_date
             if (updates.condition_final_submission_date) dbUpdates.condition_final_submission_date = updates.condition_final_submission_date
             if (updates.condition_upload_date) dbUpdates.condition_upload_date = updates.condition_upload_date
             if (updates.condition_secondary_usage_period) dbUpdates.condition_secondary_usage_period = updates.condition_secondary_usage_period
+            if (updates.secondary_usage_fee !== undefined) dbUpdates.secondary_usage_fee = updates.secondary_usage_fee
 
             const { error } = await supabase
                 .from('brand_proposals')
@@ -1009,7 +1033,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.product_type) dbUpdates.product_type = updates.product_type
             if (updates.has_incentive !== undefined) dbUpdates.has_incentive = updates.has_incentive
             if (updates.incentive_detail !== undefined) dbUpdates.incentive_detail = updates.incentive_detail
-            if (updates.content_type) dbUpdates.content_type = updates.content_type
+            if ((updates as any).channel_name) dbUpdates.channel_name = (updates as any).channel_name
+            if ((updates as any).channel_subtype !== undefined) dbUpdates.channel_subtype = (updates as any).channel_subtype
             if (updates.message) dbUpdates.message = updates.message
             if (updates.special_terms !== undefined) dbUpdates.special_terms = updates.special_terms
 
@@ -1019,6 +1044,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.condition_final_submission_date) dbUpdates.condition_final_submission_date = updates.condition_final_submission_date
             if (updates.condition_upload_date) dbUpdates.condition_upload_date = updates.condition_upload_date
             if (updates.condition_secondary_usage_period) dbUpdates.condition_secondary_usage_period = updates.condition_secondary_usage_period
+            if (updates.secondary_usage_fee !== undefined) dbUpdates.secondary_usage_fee = updates.secondary_usage_fee
             if (updates.condition_maintenance_period) dbUpdates.condition_maintenance_period = updates.condition_maintenance_period
 
             // Confirmations
@@ -1027,7 +1053,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             // Submissions
             if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
+            if ((updates as any).content_submission_file_url) dbUpdates.content_submission_file_url = (updates as any).content_submission_file_url
             if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
+            if ((updates as any).content_submission_version) dbUpdates.content_submission_version = (updates as any).content_submission_version
+            if ((updates as any).content_submission_date) dbUpdates.content_submission_date = (updates as any).content_submission_date
+            if ((updates as any).content_final_url) dbUpdates.content_final_url = (updates as any).content_final_url
+            if ((updates as any).content_clean_url) dbUpdates.content_clean_url = (updates as any).content_clean_url
 
             const { error } = await supabase
                 .from('moment_proposals')

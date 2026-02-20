@@ -3,7 +3,7 @@ export type ProposalType = 'brand_invite' | 'brand_offer' | 'creator_apply' | 'c
 export type DealType = 'ad' | 'gonggu'
 export type ProposalStatus = 'applied' | 'accepted' | 'rejected' | 'negotiating' | 'pending' | 'hold' | 'offered' | 'cancelled' | 'completed'
 export type ContractStatus = 'draft' | 'sent' | 'signed' | 'negotiating' | 'rejected'
-export type ContentSubmissionStatus = 'pending' | 'submitted' | 'approved' | 'rejected'
+export type ContentSubmissionStatus = 'pending' | 'submitted' | 'approved' | 'revision_requested' | 'completed' | 'rejected'
 
 export interface Proposal {
     id: number | string
@@ -103,10 +103,13 @@ export interface Proposal {
     content_submission_status_2?: ContentSubmissionStatus
     content_submission_date_2?: string
     content_submission_version_2?: number
+    content_final_url?: string
+    content_clean_url?: string
 
     // Condition Fields
 
     condition_secondary_usage_period?: string
+    secondary_usage_fee?: number // [NEW] 2차 활용 비용 (원)
 
     // Creator Details (for brand view)
     tags?: string[]
@@ -124,8 +127,6 @@ export interface Proposal {
     has_incentive?: boolean
     incentive_detail?: string
     incentive?: string // Legacy incentive string
-    content_type?: string
-    contentType?: string // camelCase alias
     secondaryUsage?: string // camelCase alias for condition_secondary_usage_period
     product_type?: string // 제품 제공 방식: 'gift' | 'loan'
 }
@@ -148,7 +149,6 @@ export interface BrandProposal {
     compensation_amount?: string
     has_incentive?: boolean
     incentive_detail?: string
-    content_type?: string
 
     status: string
     message?: string
@@ -202,6 +202,7 @@ export interface BrandProposal {
     condition_final_submission_date?: string
     condition_upload_date?: string
     condition_secondary_usage_period?: string
+    secondary_usage_fee?: number // [NEW] 2차 활용 비용 (원)
     condition_maintenance_period?: string
 
     // Content Submission
@@ -216,6 +217,8 @@ export interface BrandProposal {
     content_submission_status_2?: ContentSubmissionStatus
     content_submission_date_2?: string
     content_submission_version_2?: number
+    content_final_url?: string
+    content_clean_url?: string
 
     completed_at?: string
 
@@ -266,11 +269,11 @@ export interface MomentProposal {
     condition_upload_date?: string
     condition_maintenance_period?: string
     condition_secondary_usage_period?: string
+    secondary_usage_fee?: number // [NEW] 2차 활용 비용 (원)
 
     // [Added] Proposal Details
     has_incentive?: boolean
     incentive_detail?: string
-    content_type?: string
     product_url?: string
     product_type?: string
     compensation_amount?: string // [Fallback] For legacy data
@@ -287,10 +290,14 @@ export interface MomentProposal {
     influencer_condition_confirmed?: boolean
     special_terms?: string
 
-    // [Added] Submissions
     content_submission_url?: string
     content_submission_status?: string
+    content_submission_file_url?: string
     content_submission_date?: string
+    content_submission_version?: number
+    content_final_url?: string
+    content_clean_url?: string
     channel_name?: string
     channel_url?: string
+    channel_subtype?: string
 }

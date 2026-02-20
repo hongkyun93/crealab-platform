@@ -83,3 +83,50 @@ export function getFileIcon(fileType: string): string {
 export function isImage(fileType: string): boolean {
     return fileType.startsWith('image/')
 }
+
+/**
+ * Check if file is a video
+ * @param fileType - MIME type
+ * @returns true if video
+ */
+export function isVideo(fileType: string): boolean {
+    return fileType.startsWith('video/')
+}
+
+// Content upload limits (videos + images for content submission)
+const MAX_CONTENT_FILE_SIZE = 500 * 1024 * 1024 // 500MB
+const CONTENT_ALLOWED_TYPES = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'video/mp4',
+    'video/quicktime',
+    'video/webm',
+    'video/x-msvideo',
+    'application/pdf',
+] as const
+
+/**
+ * Validate content file before upload (videos, images — 500MB limit)
+ * @param file - File object to validate
+ * @returns Validation result with error message if invalid
+ */
+export function validateContentFile(file: File): FileValidationResult {
+    if (file.size > MAX_CONTENT_FILE_SIZE) {
+        return {
+            valid: false,
+            error: `파일 크기는 ${formatFileSize(MAX_CONTENT_FILE_SIZE)} 이하여야 합니다. (현재: ${formatFileSize(file.size)})`
+        }
+    }
+
+    if (!CONTENT_ALLOWED_TYPES.includes(file.type as any)) {
+        return {
+            valid: false,
+            error: '지원하지 않는 파일 형식입니다. (영상: MP4/MOV/WebM, 이미지: JPG/PNG/GIF/WebP, PDF)'
+        }
+    }
+
+    return { valid: true }
+}

@@ -37,7 +37,7 @@ export async function POST(req: Request) {
         const productName = proposal?.product_name || proposal?.productName || "협업 제품";
         const productType = proposal?.product_type === 'gift' ? '제품 협찬(무상 제공)' : proposal?.product_type === 'rental' ? '제품 대여' : '광고 협업';
         const priceOffer = proposal?.price_offer || proposal?.compensation_amount || "미정";
-        const contentType = proposal?.content_type || "미정";
+        const channelInfo = proposal?.channel_name || "미정";
         const specialTerms = proposal?.special_terms || "없음";
         const hasIncentive = proposal?.has_incentive ? "있음" : "없음";
         const incentiveDetail = proposal?.incentive_detail || "없음";
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 
 [합의된 조건]
 - 원고료/보상: ${priceOffer}원
-- 콘텐츠 유형: ${contentType}
+- 콘텐츠 유형: ${channelInfo}
 - 인센티브 유무: ${hasIncentive}${hasIncentive === "있음" ? ` (${incentiveDetail})` : ""}
 - 특약 사항: ${specialTerms}
 
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
 - 초안 제출일: ${dateDraft}
 - 최종 제출일: ${dateFinal}
 - 콘텐츠 업로드일: ${dateUpload}
-- 2차 활용 기간: ${secondaryUsagePeriod}
+- 2차 활용 기간: ${secondaryUsagePeriod}${proposal?.secondary_usage_fee ? ` (비용: ${proposal.secondary_usage_fee.toLocaleString()}원)` : ''}
 
 [대화 내용]
 ${historyText || "(대화 내용 없음)"}
@@ -102,7 +102,7 @@ ${historyText || "(대화 내용 없음)"}
 function getFallbackContract(brand: string, creator: string, proposal: any) {
     const productName = proposal.product_name || proposal.productName || "협업 제품";
     const cost = proposal.price_offer || proposal.compensation_amount || "협의된 금액";
-    const contentType = proposal.content_type || "협의된 형태";
+    const channelInfo = proposal.channel_name || "협의된 형태";
     const specialTerms = proposal.special_terms || null;
     const hasIncentive = proposal.has_incentive;
     const incentiveDetail = proposal.incentive_detail || "";
@@ -127,7 +127,7 @@ function getFallbackContract(brand: string, creator: string, proposal: any) {
 ${hasIncentive ? `3. 추가 인센티브: ${incentiveDetail}` : ""}
 
 **제4조 [콘텐츠 제작 가이드]**
-1. 콘텐츠 유형: **${contentType}**
+1. 콘텐츠 유형: **${channelInfo}**
 2. "을"은 "갑"이 제공하는 가이드라인을 준수하여 콘텐츠를 제작해야 한다.
 3. 콘텐츠에는 공정위 지침에 따른 '광고 포함' 표시를 명확히 해야 한다.
 
@@ -139,7 +139,7 @@ ${hasIncentive ? `3. 추가 인센티브: ${incentiveDetail}` : ""}
 
 **제6조 [저작권 및 2차 활용]**
 1. 콘텐츠의 저작권은 "을"에게 있으나, "갑"은 이를 홍보 목적으로 2차 활용할 수 있다.
-2. 2차 활용 기간: **${secondaryUsage}**
+2. 2차 활용 기간: **${secondaryUsage}**${proposal.secondary_usage_fee ? ` (2차 활용 비용: ${proposal.secondary_usage_fee.toLocaleString()}원)` : ''}
 
 **제7조 [계약 해지]**
 어느 일방이 계약 내용을 위반하는 경우, 상대방은 시정을 요구할 수 있으며 불이행 시 계약을 해지할 수 있다.

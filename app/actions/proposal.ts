@@ -103,13 +103,17 @@ export async function submitDirectProposal(data: any) {
             message: data.message,
             price_offer: data.compensation_amount ? parseInt(data.compensation_amount.replace(/[^0-9]/g, '')) : 0,
             status: 'offered',
+            channel_name: data.channel_name || null,
+            channel_subtype: data.channel_subtype || null,
+            secondary_usage_fee: data.secondary_usage_fee || 0,
             conditions: {
                 group: 'moment_proposal',
                 product_name: data.product_name,
                 product_type: data.product_type,
                 has_incentive: data.has_incentive,
                 incentive_detail: data.incentive_detail,
-                content_type: data.content_type,
+                channel_name: data.channel_name,
+                channel_subtype: data.channel_subtype,
                 product_url: data.product_url,
                 desired_date: data.desired_date,
                 date_flexible: data.date_flexible,
@@ -118,6 +122,7 @@ export async function submitDirectProposal(data: any) {
                 condition_final_submission_date: data.condition_final_submission_date,
                 condition_upload_date: data.condition_upload_date,
                 condition_secondary_usage_period: data.condition_secondary_usage_period,
+                secondary_usage_fee: data.secondary_usage_fee || 0,
                 product_id: data.product_id || null,
             }
         }
