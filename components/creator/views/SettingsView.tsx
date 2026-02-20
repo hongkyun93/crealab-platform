@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Save, Loader2, Lock, Plus, Edit2, Trash2, Instagram, Youtube, Globe, Pencil, Music2, BookOpen } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { AccountDeleteDialog } from "@/components/account-delete-dialog"
 
 const PROFILE_CATEGORIES = [
     "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
@@ -700,6 +701,21 @@ export function SettingsView() {
                         </CardFooter>
                     </Card>
                 </>
+            )}
+
+            {/* 위험 구역 - 프록시 모드에서는 숨김 */}
+            {!isProxyMode && (
+                <Card className="border-destructive/30">
+                    <CardHeader>
+                        <CardTitle className="text-destructive text-base">위험 구역</CardTitle>
+                        <CardDescription>
+                            계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <AccountDeleteDialog />
+                    </CardContent>
+                </Card>
             )}
         </div>
     )

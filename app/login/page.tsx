@@ -214,6 +214,17 @@ export default function LoginPage() {
                                 {isLoading ? "로그인 중..." : "로그인하기"}
                             </Button>
 
+                            <div className="text-center">
+                                <Button
+                                    variant="link"
+                                    type="button"
+                                    className="text-xs text-muted-foreground p-0 h-auto"
+                                    onClick={() => router.push('/forgot-password')}
+                                >
+                                    비밀번호를 잊으셨나요?
+                                </Button>
+                            </div>
+
                             <div className="relative my-4">
                                 <div className="absolute inset-0 flex items-center">
                                     <span className="w-full border-t" />

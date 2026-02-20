@@ -93,9 +93,10 @@ export const config = {
          * Match all request paths except for the ones starting with:
          * - _next/static, _next/image, favicon.ico, static assets
          * - /onboarding, /terms, /privacy (public routes)
+         * - /forgot-password, /reset-password (auth recovery routes)
          * - /api (API routes)
          * NOTE: /login and /signup ARE included — middleware clears stale cookies
          */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|onboarding|terms|privacy|api).*)',
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|onboarding|terms|privacy|forgot-password|reset-password|api).*)',
     ],
 }

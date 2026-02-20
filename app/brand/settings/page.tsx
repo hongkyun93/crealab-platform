@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Camera } from "lucide-react"
+import { AccountDeleteDialog } from "@/components/account-delete-dialog"
 import Link from "next/link"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { useEffect, useRef, useState } from "react"
@@ -208,6 +209,19 @@ export default function BrandSettingsPage() {
                         </Button>
                         <Button onClick={handleSave}>저장하기</Button>
                     </CardFooter>
+                </Card>
+
+                {/* 위험 구역 */}
+                <Card className="mt-6 border-destructive/30">
+                    <CardHeader>
+                        <CardTitle className="text-destructive text-base">위험 구역</CardTitle>
+                        <CardDescription>
+                            계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <AccountDeleteDialog />
+                    </CardContent>
                 </Card>
             </main>
         </div>
