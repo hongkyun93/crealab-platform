@@ -162,7 +162,7 @@ function MatchingPanel({ moment }: { moment: typeof MOMENT_EXAMPLES[number] }) {
                     <div><p className="font-bold text-[13px] leading-snug">{moment.example.title}</p><p className="text-[11px] text-muted-foreground mt-0.5">{moment.example.date}</p></div>
                     <div className="pt-1 border-t border-violet-100 dark:border-violet-900/30"><p className="text-[10px] text-muted-foreground mb-1">📦 광고 가능 제품</p><p className="text-[11px] font-medium text-violet-700 dark:text-violet-300">{moment.products}</p></div>
                 </div>
-                <Button size="sm" className="mt-2.5 text-xs h-7 bg-gradient-to-r from-violet-500 to-purple-600 text-white border-0 w-full">바로 제안 보내기 <ArrowRight className="ml-1 h-3 w-3" /></Button>
+                <Button size="sm" className="mt-2.5 text-xs h-7 bg-gradient-to-r from-violet-500 to-purple-600 text-white border-0 w-full" asChild><Link href="/signup?role=brand">바로 제안 보내기 <ArrowRight className="ml-1 h-3 w-3" /></Link></Button>
             </div>
             <p className="text-center text-[10px] text-muted-foreground">⚡ <strong>타이밍 매칭</strong> — 제품이 필요한 바로 그 순간에 연결</p>
         </div>
@@ -194,7 +194,7 @@ export default function ServicesDesignPage() {
             <main>
                 {/* ─── Hero (Dark Premium) ─── */}
                 <section className="relative overflow-hidden bg-slate-950 text-white">
-                    <div className="absolute inset-0">
+                    <div className="absolute inset-0 pointer-events-none">
                         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(79,70,229,0.3),transparent)]" />
                         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_100%,rgba(5,150,105,0.15),transparent)]" />
                     </div>
@@ -209,7 +209,7 @@ export default function ServicesDesignPage() {
                             CreadyPick은 <strong className="text-white">&quot;누구&quot;</strong>에게는 물론,<br /><strong className="text-white">&quot;언제&quot;</strong> 맡길지에 집중합니다.
                         </p>
                     </div>
-                    <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-background to-transparent" />
+                    <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none" />
                 </section>
 
                 {/* ─── Before vs After (Story) ─── */}
@@ -361,8 +361,8 @@ export default function ServicesDesignPage() {
 
                 {/* ─── Global CTA ─── */}
                 <section className="relative py-24 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700" />
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 pointer-events-none" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
                     <Reveal className="relative container mx-auto px-6 md:px-8 max-w-3xl text-center space-y-8 text-white">
                         <h2 className="text-3xl md:text-4xl font-black">지금 시작하세요</h2>
                         <p className="text-lg text-white/70">크리에이터, MCN, 브랜드 — 누구든 무료로 가입하고 바로 시작할 수 있습니다.</p>
