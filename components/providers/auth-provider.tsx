@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setIsInitialized(true)
                 window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '인증 확인 시간 초과 (강제 진행)', type: 'error' } }))
             }
-        }, 3000)
+        }, 15000)
 
         const initAuth = async () => {
             console.log('[AuthProvider] Initializing auth...')
@@ -270,15 +270,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data.session?.user) {
-                // 3. Always fetch fresh user info from DB
-                const profile = await fetchUserProfile(data.session.user)
+                // 3. Try to fetch fresh user info from DB (but don't fail login if RPC errors)
+                let profile: User
+                try {
+                    profile = await fetchUserProfile(data.session.user)
+                } catch (profileError) {
+                    console.warn('[AuthProvider] Profile fetch failed during login, using metadata fallback:', profileError)
+                    // Fallback: use session metadata so login still succeeds
+                    profile = {
+                        id: data.session.user.id,
+                        email: data.session.user.email,
+                        name: data.session.user.user_metadata?.name || data.session.user.email?.split('@')[0] || 'User',
+                        role: data.session.user.user_metadata?.role as any,
+                        avatar: data.session.user.user_metadata?.avatar_url,
+                        tags: [],
+                        _isFallback: true
+                    } as User
+                }
 
                 // 4. SYNC METADATA (Critical for Middleware Optimization)
                 // This ensures the role is baked into the session token for fast middleware checks
-                if (profile && profile.role) {
-                    await supabase.auth.updateUser({
-                        data: { role: profile.role, onboarding_completed: profile.onboardingCompleted }
-                    })
+                try {
+                    if (profile && profile.role) {
+                        await supabase.auth.updateUser({
+                            data: { role: profile.role, onboarding_completed: profile.onboardingCompleted }
+                        })
+                    }
+                } catch (metaError) {
+                    console.warn('[AuthProvider] Metadata sync failed (non-critical):', metaError)
                 }
 
                 return profile
