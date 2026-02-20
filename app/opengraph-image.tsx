@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
 
-export const alt = 'Creadypick - 브랜드와 크리에이터의 타이밍 매칭'
+export const alt = 'CreadyPick - 제품이 필요한 바로 그 순간에 연결합니다'
 export const size = {
     width: 1200,
     height: 630,
@@ -21,8 +21,8 @@ export default async function Image() {
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: 'white',
-                    backgroundImage: 'linear-gradient(to bottom right, #fff 50%, #f0f9ff 100%)',
+                    backgroundColor: '#0f172a',
+                    backgroundImage: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #0f172a 100%)',
                 }}
             >
                 <div
@@ -31,59 +31,50 @@ export default async function Image() {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: '4px solid #000',
-                        borderRadius: '20px',
                         padding: '40px 80px',
-                        boxShadow: '10px 10px 0px 0px rgba(0,0,0,1)',
-                        backgroundColor: '#fff',
                     }}
                 >
                     <div
                         style={{
-                            fontSize: 64,
+                            fontSize: 72,
                             fontWeight: 900,
-                            letterSpacing: '-0.05em',
-                            marginBottom: 20,
-                            color: 'black',
+                            letterSpacing: '-0.03em',
+                            marginBottom: 24,
+                            color: 'white',
                             display: 'flex',
                             alignItems: 'center',
                         }}
                     >
-                        {/* Simple SVG Logo Icon */}
-                        <svg
-                            width="64"
-                            height="64"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            style={{ marginRight: 20 }}
-                        >
-                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                            <path d="M2 17l10 5 10-5" />
-                            <path d="M2 12l10 5 10-5" />
-                        </svg>
-                        Creadypick
+                        CreadyPick
                     </div>
                     <div
                         style={{
-                            fontSize: 32,
-                            fontWeight: 600,
-                            color: '#4b5563',
+                            fontSize: 36,
+                            fontWeight: 700,
+                            color: '#a5b4fc',
+                            textAlign: 'center',
+                            marginBottom: 16,
+                        }}
+                    >
+                        제품이 필요한 바로 그 순간에 연결합니다
+                    </div>
+                    <div
+                        style={{
+                            fontSize: 22,
+                            fontWeight: 500,
+                            color: '#94a3b8',
                             textAlign: 'center',
                         }}
                     >
-                        광고는 타이밍! 라이프 모먼트 매칭
+                        라이프 모먼트 기반 크리에이터 매칭 플랫폼 | 가입비 무료 · 수수료 0%
                     </div>
                 </div>
                 <div
                     style={{
                         position: 'absolute',
                         bottom: 40,
-                        fontSize: 24,
-                        color: '#9ca3af',
+                        fontSize: 20,
+                        color: '#64748b',
                     }}
                 >
                     www.creadypick.com
