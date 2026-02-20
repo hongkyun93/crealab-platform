@@ -12,12 +12,35 @@ import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { AlertCircle, ArrowRight, Briefcase, UserCircle2 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
+import { useEffect } from "react"
+
+// 로그인 페이지 진입 시 이전 세션 자동 정리
+const supabaseCleanup = createClient()
 
 export default function LoginPage() {
     const router = useRouter()
     const { login } = useUnifiedProvider()
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
+
+    // 로그인 페이지 진입 시: 오래된 세션/캐시 자동 정리
+    useEffect(() => {
+        const clearStaleSession = async () => {
+            try {
+                // 이전 세션 토큰이 남아있으면 정리
+                const { data: { user } } = await supabaseCleanup.auth.getUser()
+                if (user) {
+                    console.log('[Login] Clearing stale session for clean login')
+                    await supabaseCleanup.auth.signOut()
+                }
+            } catch {
+                // 세션 확인 실패해도 무시 - 어차피 로그인 페이지
+            }
+            // 캐시된 사용자 데이터도 정리
+            localStorage.removeItem("creadypick_user")
+        }
+        clearStaleSession()
+    }, [])
 
     // We can use same state for both forms since they replace each other
     const [id, setId] = useState("")
