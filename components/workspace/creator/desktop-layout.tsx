@@ -15,7 +15,7 @@ interface CreatorDesktopLayoutProps {
 export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
     const contractViewOpen = useWorkspaceStore((state) => state.contractViewOpen);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateBrandProposal, updateMomentProposal, updateProposal } = useUnifiedProvider();
+    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
 
     // Sign handler for creator
     const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
@@ -33,7 +33,10 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
-        if (success) useWorkspaceStore.getState().updateProposal(updates);
+        if (success) {
+            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        }
     };
 
     // Save contract content
@@ -65,7 +68,10 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
-        if (success) useWorkspaceStore.getState().updateProposal(updates);
+        if (success) {
+            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        }
     };
 
     return (

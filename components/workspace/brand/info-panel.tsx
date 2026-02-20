@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 export function InfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateBrandProposal, updateMomentProposal, updateProposal } = useUnifiedProvider();
+    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
     const [trackingInput, setTrackingInput] = useState('');
     const [isShipping, setIsShipping] = useState(false);
 
@@ -153,6 +153,7 @@ export function InfoPanel() {
             if (updates.contract_status === 'signed') {
                 useWorkspaceStore.getState().setCurrentStage('shipping');
             }
+            refreshData(); // Sync archive cards + cross-user data
         }
     };
 
@@ -185,6 +186,7 @@ export function InfoPanel() {
         }
         if (success) {
             useWorkspaceStore.getState().updateProposal(updates);
+            refreshData(); // Sync archive cards + cross-user data
         }
     };
 
@@ -390,6 +392,7 @@ export function InfoPanel() {
                                                         useWorkspaceStore.getState().updateProposal(updates);
                                                         toast.success('발송 정보가 등록되었습니다.');
                                                         setTrackingInput('');
+                                                        refreshData(); // Sync archive cards + cross-user data
                                                     }
                                                 } catch (e) {
                                                     console.error('Shipping update failed:', e);

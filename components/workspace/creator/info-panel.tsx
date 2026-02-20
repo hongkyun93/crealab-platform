@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 export function CreatorInfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateProposal, updateMomentProposal, updateBrandProposal, sendNotification, user } = useUnifiedProvider();
+    const { updateProposal, updateMomentProposal, updateBrandProposal, sendNotification, user, refreshData } = useUnifiedProvider();
 
     // Helper to determine stage status
     const getStageStatus = (stageId: string) => {
@@ -167,6 +167,7 @@ export function CreatorInfoPanel() {
             if (updates.contract_status === 'signed') {
                 useWorkspaceStore.getState().setCurrentStage('shipping');
             }
+            refreshData(); // Sync archive cards + cross-user data
         }
     };
 
@@ -201,6 +202,7 @@ export function CreatorInfoPanel() {
         }
         if (success) {
             useWorkspaceStore.getState().updateProposal(updates);
+            refreshData(); // Sync archive cards + cross-user data
         }
     };
 
@@ -382,6 +384,7 @@ export function CreatorInfoPanel() {
                                                             useWorkspaceStore.getState().updateProposal(updates);
                                                             toast.success('배송지가 저장되었습니다.');
                                                             setIsEditing(false);
+                                                            refreshData(); // Sync archive cards + brand sees shipping
                                                         }
                                                     } catch (e) {
                                                         console.error('Shipping save failed:', e);
@@ -472,6 +475,7 @@ export function CreatorInfoPanel() {
                                                         useWorkspaceStore.getState().updateProposal(updates);
                                                         useWorkspaceStore.getState().setCurrentStage('content');
                                                         toast.success('수령이 확인되었습니다. 콘텐츠 제작을 시작하세요!');
+                                                        refreshData(); // Sync archive cards + cross-user data
 
                                                         // Notify brand
                                                         const brandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;

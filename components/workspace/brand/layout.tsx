@@ -16,7 +16,7 @@ interface BrandWorkspaceLayoutProps {
 export function BrandWorkspaceLayout({ className }: BrandWorkspaceLayoutProps) {
     const contractViewOpen = useWorkspaceStore((state) => state.contractViewOpen);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateBrandProposal, updateMomentProposal, updateProposal } = useUnifiedProvider();
+    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
 
     // Sign handler for brand
     const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
@@ -34,7 +34,10 @@ export function BrandWorkspaceLayout({ className }: BrandWorkspaceLayoutProps) {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
-        if (success) useWorkspaceStore.getState().updateProposal(updates);
+        if (success) {
+            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        }
     };
 
     // Save contract content
@@ -66,7 +69,10 @@ export function BrandWorkspaceLayout({ className }: BrandWorkspaceLayoutProps) {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
-        if (success) useWorkspaceStore.getState().updateProposal(updates);
+        if (success) {
+            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        }
     };
 
     return (
