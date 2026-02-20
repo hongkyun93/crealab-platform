@@ -12,6 +12,7 @@ interface WorkspaceState {
     isChatOpen: boolean;
     activeMobileTab: 'chat' | 'info' | 'contract';
     expandedSections: string[]; // e.g., ['conditions']
+    contractViewOpen: boolean; // When true, contract panel replaces chat+files area
 
     // Actions
     setProposal: (proposal: any) => void;
@@ -20,6 +21,7 @@ interface WorkspaceState {
     setIsChatOpen: (isOpen: boolean) => void;
     toggleSection: (sectionId: string) => void;
     setMobileTab: (tab: WorkspaceState['activeMobileTab']) => void;
+    setContractViewOpen: (isOpen: boolean) => void;
     reset: () => void;
 }
 
@@ -30,6 +32,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     isChatOpen: false,
     activeMobileTab: 'chat',
     expandedSections: ['current_stage'],
+    contractViewOpen: false,
 
     // Actions
     setProposal: (proposal) => set({ proposal }),
@@ -49,6 +52,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             };
         }),
     setMobileTab: (tab) => set({ activeMobileTab: tab }),
+    setContractViewOpen: (isOpen) => set({ contractViewOpen: isOpen }),
     reset: () =>
         set({
             proposal: null,
@@ -56,5 +60,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             isChatOpen: false,
             activeMobileTab: 'chat',
             expandedSections: ['current_stage'],
+            contractViewOpen: false,
         }),
 }));

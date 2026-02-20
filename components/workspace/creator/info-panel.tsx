@@ -8,6 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { ConditionsPanel } from '../common/conditions-panel';
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { SmartContractPanel } from '../common/smart-contract-panel';
+import { FileText, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function CreatorInfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
@@ -152,6 +154,27 @@ export function CreatorInfoPanel() {
         }
     };
 
+    // 크리에이터 서명 취소
+    const handleUndoSign = async (role: 'brand' | 'creator') => {
+        if (!proposal?.id) return;
+        const updates: any = {
+            influencer_signature: null,
+            influencer_signed_at: null,
+            contract_status: proposal.brand_signature ? 'partial' : null,
+        };
+        let success = false;
+        if ((proposal as any).moment_id || (proposal as any).momentId) {
+            success = await updateMomentProposal(proposal.id, updates);
+        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            success = await updateProposal(proposal.id, updates);
+        } else {
+            success = await updateBrandProposal(proposal.id, updates);
+        }
+        if (success) {
+            useWorkspaceStore.getState().updateProposal(updates);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full">
             {/* 1. Workspace Header */}
@@ -218,20 +241,36 @@ export function CreatorInfoPanel() {
                         title="전자 계약서"
                         isActive={currentStage === 'contract'}
                         isCompleted={getStageStatus('contract') === 'completed'}
-                        summary="표준 광고 계약서 서명"
+                        summary={
+                            proposal?.brand_signature && proposal?.influencer_signature
+                                ? '✅ 양측 서명 완료'
+                                : proposal?.brand_signature
+                                    ? '✍️ 브랜드 서명 완료 · 크리에이터 대기 중'
+                                    : proposal?.influencer_signature
+                                        ? '✍️ 크리에이터 서명 완료 · 브랜드 대기 중'
+                                        : '표준 광고 계약서 서명'
+                        }
                     >
-                        {proposal ? (
-                            <SmartContractPanel
-                                proposal={proposal}
-                                userType="creator"
-                                onSign={handleSign}
-                                onSaveContract={handleSaveContract}
-                            />
-                        ) : (
-                            <div className="text-sm text-muted-foreground p-2 text-center bg-muted/20 rounded-lg">
-                                조건 확정 후 계약서를 확인하고 서명합니다.
+                        <div className="space-y-3">
+                            {/* Signature status badges */}
+                            <div className="flex gap-2">
+                                <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${proposal?.brand_signature ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-muted text-muted-foreground'}`}>
+                                    {proposal?.brand_signature ? <CheckCircle2 className="h-3 w-3" /> : null}
+                                    브랜드 {proposal?.brand_signature ? '서명됨' : '미서명'}
+                                </div>
+                                <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${proposal?.influencer_signature ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-muted text-muted-foreground'}`}>
+                                    {proposal?.influencer_signature ? <CheckCircle2 className="h-3 w-3" /> : null}
+                                    크리에이터 {proposal?.influencer_signature ? '서명됨' : '미서명'}
+                                </div>
                             </div>
-                        )}
+                            {/* Toggle button to open contract in main area */}
+                            <Button
+                                className="w-full bg-indigo-600 hover:bg-indigo-700"
+                                onClick={() => useWorkspaceStore.getState().setContractViewOpen(true)}
+                            >
+                                <FileText className="h-4 w-4 mr-2" /> 전자 계약서 열기
+                            </Button>
+                        </div>
                     </StageCard>
 
                     {/* Stage 3: Shipping */}

@@ -287,7 +287,7 @@ export default function HomeLandingPage() {
                                     </div>
                                     <div className="border-t pt-4 space-y-1.5">
                                         <p className="font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1.5 text-sm"><Sparkles className="h-3.5 w-3.5" /> CreadyPick으로 해결!</p>
-                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">일상을 등록하면 원하는 광고가 먼저 찾아옵니다.</strong> 크레디픽이 원하는 제품/서비스의 광고주와 매칭시켜드려요.</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">일상을 등록하면 원하는 광고가 먼저 찾아옵니다!</strong> 크레디픽에 크리에이터의 일상 모먼트를 등록하면, 크레디픽이 크리에이터에게 필요한 제품/서비스를 홍보하고싶은 광고주와 매칭시켜드려요!</p>
                                     </div>
                                 </div>
                             </RevealSection>
@@ -309,7 +309,7 @@ export default function HomeLandingPage() {
                                     </div>
                                     <div className="border-t pt-4 space-y-1.5">
                                         <p className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-sm"><Sparkles className="h-3.5 w-3.5" /> CreadyPick으로 해결!</p>
-                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">프록시 모드로 모든 크리에이터를 대리 관리.</strong> 전용 메시징·제안·계약·일정을 하나의 대시보드에서 통합 처리하세요.</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">소속사 크리에이터의 모든 일정, 광고, 계약, 소통을 한곳에서 관리하세요!</strong> 크레디픽의 MCN 전용 크리에이터 매니징 툴과 워크스테이션으로 메시징·제안·계약·일정을 하나의 대시보드에서 통합 관리하세요!</p>
                                     </div>
                                 </div>
                             </RevealSection>
@@ -331,7 +331,7 @@ export default function HomeLandingPage() {
                                     </div>
                                     <div className="border-t pt-4 space-y-1.5">
                                         <p className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5 text-sm"><Sparkles className="h-3.5 w-3.5" /> CreadyPick으로 해결!</p>
-                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">제품이 필요한 크리에이터</strong>가 이미 모여있습니다. 전용 메시징으로 협업 대화를 분리하고, 모먼트 검색으로 최적의 파트너를 찾으세요.</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">제품이 필요한 크리에이터가 이미 모여있습니다!</strong> 이젠 콜드메일, 콜드디엠으로 힘들게 크리에이터 찾지 마세요! 모먼트 검색으로 준비된 파트너를 빠르게 찾아보세요!</p>
                                     </div>
                                 </div>
                             </RevealSection>

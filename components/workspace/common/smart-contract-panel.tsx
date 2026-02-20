@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,9 @@ interface SmartContractPanelProps {
     userType: 'brand' | 'creator';
     onSign: (role: 'brand' | 'creator', signatureData: string) => Promise<void>;
     onSaveContract?: (content: string) => Promise<void>;
+    onUndoSign?: (role: 'brand' | 'creator') => Promise<void>;
     isSigning?: boolean;
+    fullWidth?: boolean; // When true, renders in main workspace area (larger)
 }
 
 type ContractTab = 'view' | 'brand_sign' | 'creator_sign';
@@ -24,17 +26,21 @@ type ContractTab = 'view' | 'brand_sign' | 'creator_sign';
 // ───── Signature Canvas Component ─────
 function SignatureCanvas({
     onSign,
+    onUndo,
     existingSignature,
     signedAt,
     signerName,
     disabled,
+    isOwner, // True if this user owns this signature tab
     isSigning,
 }: {
     onSign: (data: string) => void;
+    onUndo?: () => void;
     existingSignature?: string | null;
     signedAt?: string | null;
     signerName: string;
     disabled: boolean;
+    isOwner: boolean;
     isSigning?: boolean;
 }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -102,7 +108,7 @@ function SignatureCanvas({
         onSign(dataUrl);
     };
 
-    // If already signed, show the signature image
+    // If already signed, show the signature image + undo button for owner
     if (existingSignature) {
         return (
             <div className="space-y-4">
@@ -119,6 +125,17 @@ function SignatureCanvas({
                     <p className="text-xs text-muted-foreground mt-3">
                         {signerName} · {signedAt ? new Date(signedAt).toLocaleString('ko-KR') : ''}
                     </p>
+                    {/* Undo button — only for the owner of this signature */}
+                    {isOwner && onUndo && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-4 text-xs text-red-500 border-red-200 hover:bg-red-50"
+                            onClick={onUndo}
+                        >
+                            <RotateCcw className="h-3 w-3 mr-1" /> 서명 취소
+                        </Button>
+                    )}
                 </div>
             </div>
         );
@@ -132,7 +149,7 @@ function SignatureCanvas({
             )}>
                 <p className="text-sm text-muted-foreground mb-3 text-center">
                     {disabled
-                        ? "상대방이 먼저 서명해야 합니다."
+                        ? (isOwner ? "서명 패드" : "상대방만 서명할 수 있습니다.")
                         : "아래 영역에 서명해주세요"}
                 </p>
                 <canvas
@@ -177,7 +194,7 @@ function SignatureCanvas({
 }
 
 // ───── Main Panel ─────
-export function SmartContractPanel({ proposal, userType, onSign, onSaveContract, isSigning }: SmartContractPanelProps) {
+export function SmartContractPanel({ proposal, userType, onSign, onSaveContract, onUndoSign, isSigning, fullWidth }: SmartContractPanelProps) {
     const [activeTab, setActiveTab] = useState<ContractTab>('view');
     const [contractContent, setContractContent] = useState<string>(proposal.contract_content || '');
     const [isEditing, setIsEditing] = useState(false);
@@ -187,6 +204,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     const [isPdfGenerating, setIsPdfGenerating] = useState(false);
     const contractRef = useRef<HTMLDivElement>(null);
     const updateProposal = useWorkspaceStore((state) => state.updateProposal);
+    const setContractViewOpen = useWorkspaceStore((state) => state.setContractViewOpen);
 
     // Status Logic
     const isBrandSigned = !!proposal.brand_signature;
@@ -215,13 +233,12 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                     proposal,
                     brandName,
                     influencerName,
-                    messages: [], // Could pass chat messages if available
+                    messages: [],
                 }),
             });
             const data = await res.json();
             if (data.result) {
                 setContractContent(data.result);
-                // Save to DB
                 if (onSaveContract) {
                     await onSaveContract(data.result);
                 }
@@ -258,15 +275,10 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
         setEditContent('');
     };
 
-    const handleSignature = async (signatureData: string) => {
-        await onSign(userType, signatureData);
-    };
-
     const handleDownloadPdf = async () => {
         if (!contractRef.current) return;
         setIsPdfGenerating(true);
         try {
-            // Dynamic import for client-side only
             const html2pdf = (await import('html2pdf.js')).default;
             const productName = proposal.productName || proposal.product_name || '협업';
             const filename = `CreadyPick_계약서_${productName}.pdf`;
@@ -282,29 +294,24 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             await html2pdf().set(opt).from(contractRef.current).save();
         } catch (err) {
             console.error('[SmartContractPanel] PDF generation failed:', err);
-            // Fallback to window.print
             window.print();
         } finally {
             setIsPdfGenerating(false);
         }
     };
 
-    // Simple markdown-to-HTML renderer (handles headers, bold, lists, paragraphs)
+    // Simple markdown-to-HTML renderer
     const renderMarkdown = (md: string) => {
         if (!md) return '';
         return md
             .split('\n')
             .map(line => {
-                // Headers
                 if (line.startsWith('# ')) return `<h1 class="text-xl font-bold mt-6 mb-2 text-primary">${line.slice(2)}</h1>`;
                 if (line.startsWith('## ')) return `<h2 class="text-lg font-bold mt-5 mb-2 text-primary">${line.slice(3)}</h2>`;
                 if (line.startsWith('### ')) return `<h3 class="text-base font-bold mt-4 mb-1 text-primary">${line.slice(4)}</h3>`;
-                // Bold
                 line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-                // List items
                 if (line.match(/^\d+\.\s/)) return `<p class="ml-4 my-1">${line}</p>`;
                 if (line.startsWith('- ')) return `<p class="ml-4 my-1">• ${line.slice(2)}</p>`;
-                // Empty line
                 if (line.trim() === '') return '<br />';
                 return `<p class="my-1">${line}</p>`;
             })
@@ -319,7 +326,10 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     ];
 
     return (
-        <div className="w-full flex flex-col border rounded-xl overflow-hidden bg-background/50 backdrop-blur-sm">
+        <div className={cn(
+            "w-full flex flex-col border rounded-xl overflow-hidden bg-background/50 backdrop-blur-sm",
+            fullWidth && "h-full"
+        )}>
             {/* Header */}
             <div className="px-4 py-3 border-b flex items-center justify-between bg-card/50">
                 <div className="flex items-center gap-2">
@@ -328,11 +338,23 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                         전자 계약서
                     </span>
                 </div>
-                {isFullySigned && (
-                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800/40 text-xs px-2 py-0.5 flex items-center gap-1">
-                        <ShieldCheck className="h-3 w-3" /> 체결 완료
-                    </Badge>
-                )}
+                <div className="flex items-center gap-2">
+                    {isFullySigned && (
+                        <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800/40 text-xs px-2 py-0.5 flex items-center gap-1">
+                            <ShieldCheck className="h-3 w-3" /> 체결 완료
+                        </Badge>
+                    )}
+                    {fullWidth && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={() => setContractViewOpen(false)}
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Tab Navigation */}
@@ -346,7 +368,6 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                             activeTab === tab.id
                                 ? "border-indigo-600 text-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20"
                                 : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                            // Show green indicator if signed
                             tab.id === 'brand_sign' && isBrandSigned && "text-green-600",
                             tab.id === 'creator_sign' && isInfluencerSigned && "text-green-600",
                         )}
@@ -361,7 +382,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             </div>
 
             {/* Tab Content */}
-            <div className="flex-1 min-h-0">
+            <div className={cn("flex-1 min-h-0", fullWidth && "overflow-auto")}>
                 {/* ───── Tab: 계약서 보기 ───── */}
                 {activeTab === 'view' && (
                     <div className="flex flex-col h-full">
@@ -403,7 +424,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                         </div>
 
                         {/* Contract Content */}
-                        <ScrollArea className="flex-1 max-h-[400px]">
+                        <ScrollArea className={cn("flex-1", fullWidth ? "max-h-none" : "max-h-[400px]")}>
                             {isGenerating ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                                     <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-3" />
@@ -415,12 +436,12 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                                     <Textarea
                                         value={editContent}
                                         onChange={(e) => setEditContent(e.target.value)}
-                                        className="min-h-[300px] font-mono text-xs leading-relaxed"
+                                        className={cn("font-mono text-xs leading-relaxed", fullWidth ? "min-h-[500px]" : "min-h-[300px]")}
                                         placeholder="계약서 내용을 수정하세요..."
                                     />
                                 </div>
                             ) : (
-                                <div ref={contractRef} className="p-6">
+                                <div ref={contractRef} className={cn("p-6", fullWidth && "max-w-4xl mx-auto")}>
                                     <div
                                         className="prose dark:prose-invert max-w-none text-sm leading-relaxed select-text"
                                         dangerouslySetInnerHTML={{ __html: renderMarkdown(contractContent) }}
@@ -464,13 +485,15 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
 
                 {/* ───── Tab: 브랜드 서명 ───── */}
                 {activeTab === 'brand_sign' && (
-                    <div className="p-4">
+                    <div className={cn("p-4", fullWidth && "max-w-xl mx-auto py-8")}>
                         <SignatureCanvas
                             onSign={async (data) => { await onSign('brand', data); }}
+                            onUndo={onUndoSign ? () => onUndoSign('brand') : undefined}
                             existingSignature={proposal.brand_signature}
                             signedAt={proposal.brand_signed_at}
                             signerName={brandName}
                             disabled={userType !== 'brand'}
+                            isOwner={userType === 'brand'}
                             isSigning={isSigning}
                         />
                         {userType !== 'brand' && !isBrandSigned && (
@@ -483,13 +506,15 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
 
                 {/* ───── Tab: 크리에이터 서명 ───── */}
                 {activeTab === 'creator_sign' && (
-                    <div className="p-4">
+                    <div className={cn("p-4", fullWidth && "max-w-xl mx-auto py-8")}>
                         <SignatureCanvas
                             onSign={async (data) => { await onSign('creator', data); }}
+                            onUndo={onUndoSign ? () => onUndoSign('creator') : undefined}
                             existingSignature={proposal.influencer_signature}
                             signedAt={proposal.influencer_signed_at}
                             signerName={influencerName}
                             disabled={userType !== 'creator'}
+                            isOwner={userType === 'creator'}
                             isSigning={isSigning}
                         />
                         {userType !== 'creator' && !isInfluencerSigned && (
