@@ -234,7 +234,7 @@ export default function ServicesDesignPage() {
                                 <span className="inline-block text-xs font-bold uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full">CreadyPick 방식</span>
                                 <h3 className="text-xl font-bold text-primary">&quot;누구(Who) + 언제(When) 둘 다&quot;</h3>
                                 <div className="space-y-2 text-sm">
-                                    {["모먼트 검색으로 최적 크리에이터 발견", "수락 확률 ⬆️⬆️", "\"필요해서 쓰는 제품\" → 진정성 극대화", "시청자도 공감하며 구매 전환"].map((t, i) => (
+                                    {["모먼트 검색으로 최적 크리에이터 발견", "수락 확률 ↑↑", "\"필요해서 쓰는 제품\" → 진정성 극대화", "시청자도 공감하며 구매 전환"].map((t, i) => (
                                         <div key={i} className="flex gap-2 items-start"><span className="text-green-500">✓</span>{t}</div>
                                     ))}
                                 </div>
