@@ -37,12 +37,12 @@ BEGIN
         'tags', COALESCE(p.tags, '{}'::text[]),
         'phone', p.phone,
         'address', p.shipping_address,
-        'website', p.website_url,
+        'website', p.website,
         'primaryRegion', p.primary_region,
         
         -- Rate Card
         'priceVideo', COALESCE(p.price_video, 0),
-        'priceFeed', COALESCE(p.price_feed, 0),
+        'priceFeed', 0,
         'priceStory', COALESCE(p.price_story, 0),
         'priceUsageRights', COALESCE(p.price_usage_rights, 0),
         'priceAutoDm', COALESCE(p.price_auto_dm, 0),
