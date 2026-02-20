@@ -8,6 +8,24 @@ export async function middleware(request: NextRequest) {
     // 세션 갱신 (Supabase SSR 필수)
     const response = await updateSession(request)
 
+    // /login, /signup 접속 시: 서버 사이드에서 오래된 쿠키 강제 삭제
+    // (브라우저 JS 캐시와 무관하게 동작)
+    if (pathname === '/login' || pathname === '/signup') {
+        const cookieNames = request.cookies.getAll().map(c => c.name)
+        cookieNames.forEach(name => {
+            if (name.startsWith('sb-')) {
+                response.cookies.set(name, '', {
+                    expires: new Date(0),
+                    path: '/',
+                })
+            }
+        })
+        // 브라우저 캐시 방지 — 항상 최신 번들 로드
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+        response.headers.set('Pragma', 'no-cache')
+        return response
+    }
+
     // /brand 또는 /creator 경로 보호
     if (pathname.startsWith('/brand') || pathname.startsWith('/creator')) {
         const supabase = createServerClient(
@@ -85,9 +103,10 @@ export const config = {
         /*
          * Match all request paths except for the ones starting with:
          * - _next/static, _next/image, favicon.ico, static assets
-         * - /login, /signup, /onboarding, /terms, /privacy (public routes)
+         * - /onboarding, /terms, /privacy (public routes)
          * - /api (API routes)
+         * NOTE: /login and /signup ARE included — middleware clears stale cookies
          */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|login|signup|onboarding|terms|privacy|api).*)',
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|onboarding|terms|privacy|api).*)',
     ],
 }
