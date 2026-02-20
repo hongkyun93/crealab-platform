@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ProgressBar } from '../common/progress-bar';
 import { StageCard } from '../common/stage-card';
 import { CtaButton } from '../common/cta-button';
@@ -12,13 +12,18 @@ import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { Proposal } from '@/lib/types';
 
 import { SmartContractPanel } from '../common/smart-contract-panel';
-import { FileText, CheckCircle2 } from 'lucide-react';
+import { FileText, CheckCircle2, Package, Truck, MapPin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 export function InfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
     const { updateBrandProposal, updateMomentProposal, updateProposal } = useUnifiedProvider();
+    const [trackingInput, setTrackingInput] = useState('');
+    const [isShipping, setIsShipping] = useState(false);
 
     // Helper to determine stage status
     const getStageStatus = (stageId: string) => {
@@ -283,10 +288,119 @@ export function InfoPanel() {
                         title="제품 배송"
                         isActive={currentStage === 'shipping'}
                         isCompleted={getStageStatus('shipping') === 'completed'}
-                        summary="배송지 정보 및 운송장 번호"
+                        summary={proposal?.delivery_status === 'delivered' ? '✅ 수령 완료' : proposal?.delivery_status === 'shipped' ? '📦 발송됨 · 수령 대기' : '배송지 정보 및 운송장 번호'}
                     >
-                        <div className="text-sm text-muted-foreground p-2 text-center bg-muted/20 rounded-lg">
-                            계약이 완료되면 배송 정보를 입력할 수 있습니다.
+                        <div className="space-y-4">
+                            {/* Creator Shipping Info (read-only) */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-xs font-semibold text-muted-foreground">크리에이터 배송지</span>
+                                </div>
+                                {proposal?.shipping_name ? (
+                                    <div className="bg-muted/30 rounded-lg p-3 space-y-1.5 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground text-xs">받는 사람</span>
+                                            <span className="font-medium">{proposal.shipping_name}</span>
+                                        </div>
+                                        {(proposal as any).shipping_phone && (
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground text-xs">연락처</span>
+                                                <span>{(proposal as any).shipping_phone}</span>
+                                            </div>
+                                        )}
+                                        {(proposal as any).shipping_address && (
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground text-xs">주소</span>
+                                                <span className="text-right max-w-[180px]">{(proposal as any).shipping_address}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3 text-center">
+                                        크리에이터가 배송지를 아직 입력하지 않았습니다.
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Tracking Number + Status */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-xs font-semibold text-muted-foreground">운송장 번호</span>
+                                    {proposal?.delivery_status && (
+                                        <Badge variant="outline" className={`text-[10px] h-5 ml-auto ${proposal.delivery_status === 'delivered' ? 'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20' :
+                                                proposal.delivery_status === 'shipped' ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20' :
+                                                    'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20'
+                                            }`}>
+                                            {proposal.delivery_status === 'delivered' ? '수령 완료' :
+                                                proposal.delivery_status === 'shipped' ? '발송됨' : '대기중'}
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {proposal?.delivery_status === 'shipped' || proposal?.delivery_status === 'delivered' ? (
+                                    <div className="bg-muted/30 rounded-lg p-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-muted-foreground">운송장</span>
+                                            <span className="font-mono text-sm font-medium">{proposal.tracking_number}</span>
+                                        </div>
+                                        {proposal.delivery_status === 'delivered' && (
+                                            <div className="flex items-center gap-1.5 mt-2 text-emerald-600 text-xs">
+                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                크리에이터가 수령을 완료했습니다
+                                            </div>
+                                        )}
+                                        {proposal.delivery_status === 'shipped' && (
+                                            <div className="text-xs text-muted-foreground mt-2">
+                                                크리에이터 수령 대기 중...
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <Input
+                                            value={trackingInput}
+                                            onChange={(e) => setTrackingInput(e.target.value)}
+                                            placeholder="운송장 번호 입력"
+                                            className="text-sm h-9"
+                                        />
+                                        <Button
+                                            size="sm"
+                                            className="h-9 shrink-0"
+                                            disabled={!trackingInput.trim() || isShipping}
+                                            onClick={async () => {
+                                                if (!proposal?.id || !trackingInput.trim()) return;
+                                                setIsShipping(true);
+                                                try {
+                                                    const updates: any = { tracking_number: trackingInput.trim(), delivery_status: 'shipped' };
+                                                    let success = false;
+                                                    if ((proposal as any).moment_id || (proposal as any).event_id) {
+                                                        success = await updateMomentProposal(proposal.id, updates);
+                                                    } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                                        success = await updateProposal(proposal.id, updates);
+                                                    } else {
+                                                        success = await updateBrandProposal(proposal.id, updates);
+                                                    }
+                                                    if (success) {
+                                                        useWorkspaceStore.getState().updateProposal(updates);
+                                                        toast.success('발송 정보가 등록되었습니다.');
+                                                        setTrackingInput('');
+                                                    }
+                                                } catch (e) {
+                                                    console.error('Shipping update failed:', e);
+                                                    toast.error('오류가 발생했습니다.');
+                                                } finally {
+                                                    setIsShipping(false);
+                                                }
+                                            }}
+                                        >
+                                            {isShipping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4 mr-1" />}
+                                            발송
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </StageCard>
 

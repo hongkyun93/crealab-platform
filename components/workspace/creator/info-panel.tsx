@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProgressBar } from '../common/progress-bar';
 import { StageCard } from '../common/stage-card';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
@@ -8,8 +8,12 @@ import { Separator } from '@/components/ui/separator';
 import { ConditionsPanel } from '../common/conditions-panel';
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { SmartContractPanel } from '../common/smart-contract-panel';
-import { FileText, CheckCircle2 } from 'lucide-react';
+import { FileText, CheckCircle2, MapPin, Truck, Package, Loader2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 export function CreatorInfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
@@ -26,6 +30,27 @@ export function CreatorInfoPanel() {
         if (stageIndex === currentIndex) return 'active';
         return 'pending';
     };
+
+    // Shipping state
+    const [shipName, setShipName] = useState('');
+    const [shipPhone, setShipPhone] = useState('');
+    const [shipAddress, setShipAddress] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSavingShip, setIsSavingShip] = useState(false);
+    const [isConfirming, setIsConfirming] = useState(false);
+
+    // Pre-fill from proposal data or user profile
+    useEffect(() => {
+        if (proposal?.shipping_name) {
+            setShipName(proposal.shipping_name);
+            setShipPhone((proposal as any).shipping_phone || '');
+            setShipAddress((proposal as any).shipping_address || '');
+        } else if (user) {
+            setShipName(user.name || '');
+            setShipPhone(user.phone || '');
+            setShipAddress(user.address || '');
+        }
+    }, [proposal?.shipping_name, user]);
 
     const handleConditionSave = async (updates: any) => {
         if (!proposal?.id) return;
@@ -279,10 +304,184 @@ export function CreatorInfoPanel() {
                         title="제품 배송"
                         isActive={currentStage === 'shipping'}
                         isCompleted={getStageStatus('shipping') === 'completed'}
-                        summary="배송 현황 및 수령 확인"
+                        summary={proposal?.delivery_status === 'delivered' ? '✅ 수령 완료' : proposal?.delivery_status === 'shipped' ? '📦 배송 중 · 수령 확인 필요' : '배송 현황 및 수령 확인'}
                     >
-                        <div className="text-sm text-muted-foreground p-2 text-center bg-muted/20 rounded-lg">
-                            운송장 번호를 확인하고 제품 수령을 완료합니다.
+                        <div className="space-y-4">
+                            {/* Shipping Address Section */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-xs font-semibold text-muted-foreground">배송지 정보</span>
+                                    {proposal?.shipping_name && !isEditing && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' && (
+                                        <button onClick={() => setIsEditing(true)} className="ml-auto text-muted-foreground hover:text-foreground">
+                                            <Pencil className="h-3 w-3" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Show form if no shipping info saved yet, or editing */}
+                                {(!proposal?.shipping_name || isEditing) && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' ? (
+                                    <div className="space-y-2">
+                                        <div>
+                                            <Label className="text-xs">받는 사람</Label>
+                                            <Input value={shipName} onChange={(e) => setShipName(e.target.value)} placeholder="홍길동" className="h-8 text-sm mt-1" />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">연락처</Label>
+                                            <Input value={shipPhone} onChange={(e) => setShipPhone(e.target.value)} placeholder="010-0000-0000" className="h-8 text-sm mt-1" />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">주소</Label>
+                                            <Input value={shipAddress} onChange={(e) => setShipAddress(e.target.value)} placeholder="도로명 주소 입력" className="h-8 text-sm mt-1" />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {isEditing && (
+                                                <Button variant="outline" size="sm" className="h-8 flex-1" onClick={() => setIsEditing(false)}>취소</Button>
+                                            )}
+                                            <Button
+                                                size="sm"
+                                                className="h-8 flex-1"
+                                                disabled={!shipName.trim() || !shipPhone.trim() || !shipAddress.trim() || isSavingShip}
+                                                onClick={async () => {
+                                                    if (!proposal?.id) return;
+                                                    setIsSavingShip(true);
+                                                    try {
+                                                        const updates: any = {
+                                                            shipping_name: shipName.trim(),
+                                                            shipping_phone: shipPhone.trim(),
+                                                            shipping_address: shipAddress.trim(),
+                                                        };
+                                                        let success = false;
+                                                        if ((proposal as any).moment_id || (proposal as any).momentId) {
+                                                            success = await updateMomentProposal(proposal.id, updates);
+                                                        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                                            success = await updateProposal(proposal.id, updates);
+                                                        } else {
+                                                            success = await updateBrandProposal(proposal.id, updates);
+                                                        }
+                                                        if (success) {
+                                                            useWorkspaceStore.getState().updateProposal(updates);
+                                                            toast.success('배송지가 저장되었습니다.');
+                                                            setIsEditing(false);
+                                                        }
+                                                    } catch (e) {
+                                                        console.error('Shipping save failed:', e);
+                                                        toast.error('저장 중 오류가 발생했습니다.');
+                                                    } finally {
+                                                        setIsSavingShip(false);
+                                                    }
+                                                }}
+                                            >
+                                                {isSavingShip ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                                                배송지 저장
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-muted/30 rounded-lg p-3 space-y-1.5 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground text-xs">받는 사람</span>
+                                            <span className="font-medium">{proposal?.shipping_name}</span>
+                                        </div>
+                                        {(proposal as any)?.shipping_phone && (
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground text-xs">연락처</span>
+                                                <span>{(proposal as any).shipping_phone}</span>
+                                            </div>
+                                        )}
+                                        {(proposal as any)?.shipping_address && (
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground text-xs">주소</span>
+                                                <span className="text-right max-w-[180px]">{(proposal as any).shipping_address}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Tracking + Delivery Status */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-xs font-semibold text-muted-foreground">배송 현황</span>
+                                    {proposal?.delivery_status && (
+                                        <Badge variant="outline" className={`text-[10px] h-5 ml-auto ${proposal.delivery_status === 'delivered' ? 'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20' :
+                                                proposal.delivery_status === 'shipped' ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20' :
+                                                    'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20'
+                                            }`}>
+                                            {proposal.delivery_status === 'delivered' ? '수령 완료' :
+                                                proposal.delivery_status === 'shipped' ? '배송 중' : '발송 대기'}
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {proposal?.delivery_status === 'delivered' ? (
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3">
+                                        <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            수령 완료
+                                        </div>
+                                        {proposal.tracking_number && (
+                                            <div className="text-xs text-muted-foreground mt-1">운송장: {proposal.tracking_number}</div>
+                                        )}
+                                    </div>
+                                ) : proposal?.delivery_status === 'shipped' ? (
+                                    <div className="space-y-2">
+                                        <div className="bg-muted/30 rounded-lg p-3">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-muted-foreground">운송장 번호</span>
+                                                <span className="font-mono text-sm font-medium">{proposal.tracking_number}</span>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            className="w-full h-9"
+                                            disabled={isConfirming}
+                                            onClick={async () => {
+                                                if (!proposal?.id) return;
+                                                setIsConfirming(true);
+                                                try {
+                                                    const updates: any = { delivery_status: 'delivered' };
+                                                    let success = false;
+                                                    if ((proposal as any).moment_id || (proposal as any).momentId) {
+                                                        success = await updateMomentProposal(proposal.id, updates);
+                                                    } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                                        success = await updateProposal(proposal.id, updates);
+                                                    } else {
+                                                        success = await updateBrandProposal(proposal.id, updates);
+                                                    }
+                                                    if (success) {
+                                                        useWorkspaceStore.getState().updateProposal(updates);
+                                                        useWorkspaceStore.getState().setCurrentStage('content');
+                                                        toast.success('수령이 확인되었습니다. 콘텐츠 제작을 시작하세요!');
+
+                                                        // Notify brand
+                                                        const brandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
+                                                        if (brandId) {
+                                                            try {
+                                                                await sendNotification(brandId, `${user?.name || '크리에이터'}님이 제품을 수령했습니다.`, 'delivery_confirmed', proposal.id?.toString());
+                                                            } catch (notifErr) {
+                                                                console.warn('Notification failed:', notifErr);
+                                                            }
+                                                        }
+                                                    }
+                                                } catch (e) {
+                                                    console.error('Delivery confirm failed:', e);
+                                                    toast.error('오류가 발생했습니다.');
+                                                } finally {
+                                                    setIsConfirming(false);
+                                                }
+                                            }}
+                                        >
+                                            {isConfirming ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Package className="h-4 w-4 mr-1" />}
+                                            수령 확인
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3 text-center">
+                                        브랜드가 제품을 발송하면 운송장 번호가 여기에 표시됩니다.
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </StageCard>
 

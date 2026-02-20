@@ -866,6 +866,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.delivery_status) dbUpdates.delivery_status = updates.delivery_status
             if (updates.shipping_name) dbUpdates.shipping_name = updates.shipping_name
             if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
+            if (updates.shipping_phone) dbUpdates.shipping_phone = updates.shipping_phone
+            if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
             if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
             if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
 
@@ -919,6 +921,10 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             // Status & Logistics
             if (updates.status) dbUpdates.status = updates.status
             if (updates.delivery_status) dbUpdates.delivery_status = updates.delivery_status
+            if (updates.shipping_name) dbUpdates.shipping_name = updates.shipping_name
+            if (updates.shipping_phone) dbUpdates.shipping_phone = updates.shipping_phone
+            if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
+            if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
             if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
             if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
 

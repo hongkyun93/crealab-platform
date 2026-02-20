@@ -83,6 +83,8 @@ export interface Proposal {
 
     // Delivery
     shipping_name?: string
+    shipping_phone?: string
+    shipping_address?: string
     tracking_number?: string
     delivery_status?: string
     payout_status?: string
@@ -185,6 +187,10 @@ export interface BrandProposal {
     // Delivery
     payout_status?: string
     delivery_status?: string
+    shipping_name?: string
+    shipping_phone?: string
+    shipping_address?: string
+    tracking_number?: string
     brand_condition_confirmed?: boolean
     influencer_condition_confirmed?: boolean
 
