@@ -34,7 +34,7 @@ BEGIN
         'bio', p.description,
         'handle', p.instagram_handle,
         'followers', COALESCE(p.followers_count, 0),
-        'tags', COALESCE(p.tags, '[]'::jsonb),
+        'tags', COALESCE(p.tags, '{}'::text[]),
         'phone', p.phone,
         'address', p.shipping_address,
         'website', p.website_url,
