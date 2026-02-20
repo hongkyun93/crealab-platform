@@ -863,17 +863,21 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             const dbUpdates: any = {}
             if (updates.status) dbUpdates.status = updates.status
-            if (updates.contract_status) dbUpdates.contract_status = updates.contract_status
-            if (updates.contract_content) dbUpdates.contract_content = updates.contract_content
-            if (updates.influencer_signature) dbUpdates.influencer_signature = updates.influencer_signature
-            if (updates.brand_signature) dbUpdates.brand_signature = updates.brand_signature
             if (updates.delivery_status) dbUpdates.delivery_status = updates.delivery_status
             if (updates.shipping_name) dbUpdates.shipping_name = updates.shipping_name
             if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
             if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
             if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
 
-            // [FIX] Condition fields (previously missing from campaign_applications whitelist)
+            // Contract & Signatures — use !== undefined to allow null (undo)
+            if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
+            if ((updates as any).contract_content !== undefined) dbUpdates.contract_content = (updates as any).contract_content
+            if ((updates as any).brand_signature !== undefined) dbUpdates.brand_signature = (updates as any).brand_signature
+            if ((updates as any).influencer_signature !== undefined) dbUpdates.influencer_signature = (updates as any).influencer_signature
+            if ((updates as any).brand_signed_at !== undefined) dbUpdates.brand_signed_at = (updates as any).brand_signed_at
+            if ((updates as any).influencer_signed_at !== undefined) dbUpdates.influencer_signed_at = (updates as any).influencer_signed_at
+
+            // Condition fields
             if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
             if ((updates as any).special_terms !== undefined) dbUpdates.special_terms = (updates as any).special_terms
             if ((updates as any).condition_product_receipt_date) dbUpdates.condition_product_receipt_date = (updates as any).condition_product_receipt_date
@@ -914,16 +918,23 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             const dbUpdates: any = {}
             // Status & Logistics
             if (updates.status) dbUpdates.status = updates.status
-            if (updates.contract_status) dbUpdates.contract_status = updates.contract_status
-            if (updates.contract_content) dbUpdates.contract_content = updates.contract_content
-            if (updates.influencer_signature) dbUpdates.influencer_signature = updates.influencer_signature
-            if (updates.brand_signature) dbUpdates.brand_signature = updates.brand_signature
             if (updates.delivery_status) dbUpdates.delivery_status = updates.delivery_status
-            if (updates.brand_condition_confirmed !== undefined) dbUpdates.brand_condition_confirmed = updates.brand_condition_confirmed
-            if (updates.influencer_condition_confirmed !== undefined) dbUpdates.influencer_condition_confirmed = updates.influencer_condition_confirmed
             if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
             if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
-            // [FIX] Conditions - were missing from whitelist, causing brand edits to not persist to DB
+
+            // Contract & Signatures — use !== undefined to allow null (undo)
+            if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
+            if ((updates as any).contract_content !== undefined) dbUpdates.contract_content = (updates as any).contract_content
+            if ((updates as any).brand_signature !== undefined) dbUpdates.brand_signature = (updates as any).brand_signature
+            if ((updates as any).influencer_signature !== undefined) dbUpdates.influencer_signature = (updates as any).influencer_signature
+            if ((updates as any).brand_signed_at !== undefined) dbUpdates.brand_signed_at = (updates as any).brand_signed_at
+            if ((updates as any).influencer_signed_at !== undefined) dbUpdates.influencer_signed_at = (updates as any).influencer_signed_at
+
+            // Confirmations
+            if (updates.brand_condition_confirmed !== undefined) dbUpdates.brand_condition_confirmed = updates.brand_condition_confirmed
+            if (updates.influencer_condition_confirmed !== undefined) dbUpdates.influencer_condition_confirmed = updates.influencer_condition_confirmed
+
+            // Conditions
             if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
             if (updates.compensation_amount !== undefined) dbUpdates.compensation_amount = updates.compensation_amount
             if (updates.product_name) dbUpdates.product_name = updates.product_name
@@ -974,6 +985,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
             if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
             if (updates.shipping_phone) dbUpdates.shipping_phone = updates.shipping_phone
+
+            // Contract & Signatures — use !== undefined to allow null (undo)
+            if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
+            if ((updates as any).contract_content !== undefined) dbUpdates.contract_content = (updates as any).contract_content
+            if ((updates as any).brand_signature !== undefined) dbUpdates.brand_signature = (updates as any).brand_signature
+            if ((updates as any).influencer_signature !== undefined) dbUpdates.influencer_signature = (updates as any).influencer_signature
+            if ((updates as any).brand_signed_at !== undefined) dbUpdates.brand_signed_at = (updates as any).brand_signed_at
+            if ((updates as any).influencer_signed_at !== undefined) dbUpdates.influencer_signed_at = (updates as any).influencer_signed_at
 
             // Conditions
             if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
