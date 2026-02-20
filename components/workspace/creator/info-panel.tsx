@@ -163,6 +163,10 @@ export function CreatorInfoPanel() {
 
         if (success) {
             useWorkspaceStore.getState().updateProposal(updates);
+            // Auto-advance to shipping stage when fully signed
+            if (updates.contract_status === 'signed') {
+                useWorkspaceStore.getState().setCurrentStage('shipping');
+            }
         }
     };
 
@@ -406,8 +410,8 @@ export function CreatorInfoPanel() {
                                     <span className="text-xs font-semibold text-muted-foreground">배송 현황</span>
                                     {proposal?.delivery_status && (
                                         <Badge variant="outline" className={`text-[10px] h-5 ml-auto ${proposal.delivery_status === 'delivered' ? 'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20' :
-                                                proposal.delivery_status === 'shipped' ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20' :
-                                                    'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20'
+                                            proposal.delivery_status === 'shipped' ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20' :
+                                                'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20'
                                             }`}>
                                             {proposal.delivery_status === 'delivered' ? '수령 완료' :
                                                 proposal.delivery_status === 'shipped' ? '배송 중' : '발송 대기'}
