@@ -203,7 +203,7 @@ export default function ServicesDesignPage() {
                             <Sparkles className="h-4 w-4" />세계 유일의 라이프 모먼트 기반 매칭 플랫폼
                         </div>
                         <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
-                            제품이 필요한{" "}<span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">바로 그 순간</span>에<br />연결합니다
+                            제품이 필요한{" "}<span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">바로 그 순간</span>에 연결합니다
                         </h1>
                         <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
                             CreadyPick은 <strong className="text-white">&quot;누구&quot;</strong>에게는 물론,<br /><strong className="text-white">&quot;언제&quot;</strong> 맡길지에 집중합니다.
