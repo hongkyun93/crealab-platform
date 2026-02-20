@@ -260,12 +260,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null)
 
             // 2. Sign in — this is the ONLY Supabase call we make during login
-            console.log('[AuthProvider] signInWithPassword starting...')
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password
             })
-            console.log('[AuthProvider] signInWithPassword done, error:', error?.message || 'none')
 
             if (error) {
                 throw error

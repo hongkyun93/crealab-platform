@@ -109,21 +109,16 @@ export default function LoginPage() {
         setIsLoading(true)
         setError("")
         try {
-            console.log('[doLogin] Calling login()...')
             const user = await login(email, pw)
-            console.log('[doLogin] login() returned, user role:', user?.role)
             // Small delay to ensure auth cookies are fully set by the browser
             // before the hard redirect triggers server-side middleware
-            console.log('[doLogin] Waiting 500ms for cookies...')
             await new Promise(resolve => setTimeout(resolve, 500))
-            console.log('[doLogin] Redirecting...')
             if (user.role === 'brand' || user.role === 'agency') {
                 window.location.href = '/brand'
             } else {
                 window.location.href = '/creator'
             }
         } catch (err: any) {
-            console.error('[doLogin] Error:', err)
             setError(err.message || "로그인에 실패했습니다.")
             setIsLoading(false)
         }
