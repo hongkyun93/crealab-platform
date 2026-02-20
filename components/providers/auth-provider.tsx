@@ -187,6 +187,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 lastUserId.current = session.user.id
                 if (mounted) {
+                    // On login/signup pages, skip RPC to avoid lock contention.
+                    // The hard redirect (window.location.href) from doLogin will reload the page,
+                    // and initAuth on the target page will load the full profile.
+                    const currentPath = window.location.pathname
+                    if (currentPath === '/login' || currentPath === '/signup') {
+                        console.log('[AuthProvider] SIGNED_IN on login page, using metadata only (skip RPC)')
+                        const basicUser = {
+                            id: session.user.id,
+                            email: session.user.email,
+                            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                            role: session.user.user_metadata?.role as any,
+                            avatar: session.user.user_metadata?.avatar_url,
+                            tags: [],
+                            _isFallback: true
+                        } as User
+                        setUser(basicUser)
+                        return // doLogin handles redirect
+                    }
+
                     const fetchedUser = await fetchUserProfile(session.user)
                     setUser(fetchedUser)
 
@@ -199,7 +218,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             role: fetchedUser.role
                         });
 
-                        // Redirect to onboarding ONLY if not completed AND not already there
                         const needsOnboarding = !fetchedUser.onboardingCompleted &&
                             fetchedUser.role !== 'admin' &&
                             fetchedUser.role !== 'mcn' &&
@@ -210,15 +228,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         if (needsOnboarding && window.location.pathname !== '/onboarding') {
                             console.log('[AuthProvider] Onboarding required - redirecting')
                             router.push('/onboarding')
-                        }
-                        // After login/signup, redirect to appropriate dashboard
-                        else if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
-                            if (fetchedUser.role === 'brand' || fetchedUser.role === 'agency') {
-                                window.location.href = '/brand'
-                            } else {
-                                // creator, mcn, admin go to creator dashboard
-                                window.location.href = '/creator'
-                            }
                         }
                     }
                 }
@@ -241,10 +250,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [supabase])
 
-    // Login function
+    // Login function — SIMPLIFIED to avoid navigator lock contention on Vercel
+    // Only does signInWithPassword + redirect. Profile loading is handled by initAuth on the target page.
     const login = async (email: string, password: string): Promise<User> => {
         try {
-            // 1. Clear ALL caches before login (stale data prevention)
+            // 1. Clear stale caches
             localStorage.removeItem("creadypick_user")
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('sb-')) localStorage.removeItem(key)
@@ -259,7 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             })
             setUser(null)
 
-            // 2. Sign in
+            // 2. Sign in — this is the ONLY Supabase call we make during login
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -270,36 +280,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data.session?.user) {
-                // 3. Try to fetch fresh user info from DB (but don't fail login if RPC errors)
-                let profile: User
-                try {
-                    profile = await fetchUserProfile(data.session.user)
-                } catch (profileError) {
-                    console.warn('[AuthProvider] Profile fetch failed during login, using metadata fallback:', profileError)
-                    // Fallback: use session metadata so login still succeeds
-                    profile = {
-                        id: data.session.user.id,
-                        email: data.session.user.email,
-                        name: data.session.user.user_metadata?.name || data.session.user.email?.split('@')[0] || 'User',
-                        role: data.session.user.user_metadata?.role as any,
-                        avatar: data.session.user.user_metadata?.avatar_url,
-                        tags: [],
-                        _isFallback: true
-                    } as User
-                }
+                // 3. Build basic user from session metadata (NO RPC call — avoids lock contention)
+                const sessionUser = data.session.user
+                const profile = {
+                    id: sessionUser.id,
+                    email: sessionUser.email,
+                    name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'User',
+                    role: sessionUser.user_metadata?.role as any,
+                    avatar: sessionUser.user_metadata?.avatar_url,
+                    tags: [],
+                    _isFallback: true
+                } as User
 
-                // 4. SYNC METADATA (Critical for Middleware Optimization)
-                // This ensures the role is baked into the session token for fast middleware checks
-                try {
-                    if (profile && profile.role) {
-                        await supabase.auth.updateUser({
-                            data: { role: profile.role, onboarding_completed: profile.onboardingCompleted }
-                        })
-                    }
-                } catch (metaError) {
-                    console.warn('[AuthProvider] Metadata sync failed (non-critical):', metaError)
-                }
-
+                setUser(profile)
                 return profile
             }
         } catch (e) {
