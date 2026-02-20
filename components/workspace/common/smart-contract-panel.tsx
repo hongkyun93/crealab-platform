@@ -139,13 +139,13 @@ function SignatureCanvas({
     }
 
     return (
-        <div className="flex flex-col h-full p-3">
-            <p className="text-xs font-semibold text-muted-foreground mb-2 text-center">{label}</p>
+        <div className="flex flex-col h-full p-3 overflow-hidden">
+            <p className="text-xs font-semibold text-muted-foreground mb-2 text-center shrink-0">{label}</p>
             <div className={cn(
-                "flex-1 border-2 border-dashed rounded-xl transition-colors flex flex-col",
+                "flex-1 min-h-0 border-2 border-dashed rounded-xl transition-colors flex flex-col overflow-hidden",
                 disabled ? "border-muted bg-muted/10 opacity-50" : "border-indigo-200 bg-indigo-50/30 dark:bg-indigo-950/10 dark:border-indigo-800/30"
             )}>
-                <p className="text-[10px] text-muted-foreground text-center pt-2">
+                <p className="text-[10px] text-muted-foreground text-center pt-2 shrink-0">
                     {disabled ? (isOwner ? "서명 패드" : "상대방만 서명 가능") : "아래에 서명해주세요"}
                 </p>
                 <canvas
@@ -153,7 +153,7 @@ function SignatureCanvas({
                     width={600}
                     height={400}
                     className={cn(
-                        "flex-1 w-full rounded-lg bg-white dark:bg-zinc-900 touch-none",
+                        "flex-1 min-h-0 w-full rounded-lg bg-white dark:bg-zinc-900 touch-none",
                         disabled ? "cursor-not-allowed" : "cursor-crosshair"
                     )}
                     onMouseDown={startDraw}
@@ -165,7 +165,7 @@ function SignatureCanvas({
                     onTouchEnd={endDraw}
                 />
             </div>
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-2 mt-2 shrink-0">
                 <Button variant="outline" size="sm" onClick={clearCanvas} disabled={disabled || !hasDrawn} className="flex-1 h-8 text-xs">
                     <RotateCcw className="h-3 w-3 mr-1" /> 지우기
                 </Button>

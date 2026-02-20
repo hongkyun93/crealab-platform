@@ -252,15 +252,15 @@ export function CreatorInfoPanel() {
                         }
                     >
                         <div className="space-y-3">
-                            {/* Signature status badges */}
-                            <div className="flex gap-2">
-                                <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${proposal?.brand_signature ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-muted text-muted-foreground'}`}>
-                                    {proposal?.brand_signature ? <CheckCircle2 className="h-3 w-3" /> : null}
-                                    브랜드 {proposal?.brand_signature ? '서명됨' : '미서명'}
+                            {/* Signature status tabs (non-clickable) */}
+                            <div className="grid grid-cols-2 gap-2 select-none">
+                                <div className={`flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2.5 rounded-lg border cursor-default ${proposal?.brand_signature ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/40' : 'bg-muted/50 text-muted-foreground border-border'}`}>
+                                    {proposal?.brand_signature ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border-2 border-current inline-block" />}
+                                    브랜드 {proposal?.brand_signature ? '서명완료' : '미서명'}
                                 </div>
-                                <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${proposal?.influencer_signature ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-muted text-muted-foreground'}`}>
-                                    {proposal?.influencer_signature ? <CheckCircle2 className="h-3 w-3" /> : null}
-                                    크리에이터 {proposal?.influencer_signature ? '서명됨' : '미서명'}
+                                <div className={`flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2.5 rounded-lg border cursor-default ${proposal?.influencer_signature ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/40' : 'bg-muted/50 text-muted-foreground border-border'}`}>
+                                    {proposal?.influencer_signature ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border-2 border-current inline-block" />}
+                                    크리에이터 {proposal?.influencer_signature ? '서명완료' : '미서명'}
                                 </div>
                             </div>
                             {/* Toggle button to open contract in main area */}
