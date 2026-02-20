@@ -122,7 +122,7 @@ function SignatureCanvas({
                     <div className="font-script text-xl text-indigo-700 dark:text-indigo-400">{existingSignature}</div>
                 )}
                 <p className="text-[10px] text-muted-foreground mt-2">
-                    {signerName} · {signedAt ? new Date(signedAt).toLocaleString('ko-KR') : ''}
+                    {signerName} · {signedAt ? new Date(signedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) + ' KST' : ''}
                 </p>
                 {isOwner && onUndo && (
                     <Button
@@ -200,6 +200,17 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
 
     const brandName = proposal.brandName || proposal.brand_name || "브랜드(갑)";
     const influencerName = proposal.influencerName || "크리에이터(을)";
+
+    // Format date/time in KST
+    const formatKST = (dateStr: string | null | undefined) => {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleString('ko-KR', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit',
+            hour12: false,
+        }) + ' KST';
+    };
 
     // Generate AI contract on first load if no content exists
     useEffect(() => {
@@ -411,9 +422,51 @@ body { background: #fff !important; color: #111 !important; }
                             </div>
                         ) : (
                             <div ref={contractRef} className={cn("p-6", fullWidth && "max-w-4xl mx-auto")}>
+                                {/* Top Signature Boxes (duplicate for PDF safety) */}
+                                <div className="flex items-start gap-4 mb-6">
+                                    <div className="flex-1">
+                                        <div
+                                            className="prose dark:prose-invert max-w-none text-sm leading-relaxed select-text"
+                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(contractContent.split('\n').slice(0, 1).join('\n')) }}
+                                        />
+                                    </div>
+                                    {/* Brand signature box (red border) */}
+                                    <div className="shrink-0 w-[140px] h-[70px] border-2 border-red-400 rounded-lg flex flex-col items-center justify-center bg-white dark:bg-zinc-900 overflow-hidden">
+                                        {isBrandSigned && proposal.brand_signature?.startsWith('data:image') ? (
+                                            <>
+                                                <img src={proposal.brand_signature} alt="갑 서명" className="h-8 w-auto" />
+                                                <p className="text-[8px] text-muted-foreground mt-0.5">갑(브랜드) · {formatKST(proposal.brand_signed_at)}</p>
+                                            </>
+                                        ) : isBrandSigned ? (
+                                            <>
+                                                <p className="font-bold text-xs text-indigo-700">{proposal.brand_signature || brandName}</p>
+                                                <p className="text-[8px] text-muted-foreground mt-0.5">{formatKST(proposal.brand_signed_at)}</p>
+                                            </>
+                                        ) : (
+                                            <p className="text-[9px] text-muted-foreground">갑(브랜드) 서명란</p>
+                                        )}
+                                    </div>
+                                    {/* Creator signature box (blue border) */}
+                                    <div className="shrink-0 w-[140px] h-[70px] border-2 border-blue-400 rounded-lg flex flex-col items-center justify-center bg-white dark:bg-zinc-900 overflow-hidden">
+                                        {isInfluencerSigned && proposal.influencer_signature?.startsWith('data:image') ? (
+                                            <>
+                                                <img src={proposal.influencer_signature} alt="을 서명" className="h-8 w-auto" />
+                                                <p className="text-[8px] text-muted-foreground mt-0.5">을(크리에이터) · {formatKST(proposal.influencer_signed_at)}</p>
+                                            </>
+                                        ) : isInfluencerSigned ? (
+                                            <>
+                                                <p className="font-bold text-xs text-indigo-700">{proposal.influencer_signature || influencerName}</p>
+                                                <p className="text-[8px] text-muted-foreground mt-0.5">{formatKST(proposal.influencer_signed_at)}</p>
+                                            </>
+                                        ) : (
+                                            <p className="text-[9px] text-muted-foreground">을(크리에이터) 서명란</p>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Contract body (skip first line since it's rendered above) */}
                                 <div
                                     className="prose dark:prose-invert max-w-none text-sm leading-relaxed select-text"
-                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(contractContent) }}
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(contractContent.split('\n').slice(1).join('\n')) }}
                                 />
                                 {/* Signature section for PDF */}
                                 {(isBrandSigned || isInfluencerSigned) && (
@@ -428,7 +481,7 @@ body { background: #fff !important; color: #111 !important; }
                                                 <p className="text-muted-foreground text-xs">서명 대기 중</p>
                                             )}
                                             {proposal.brand_signed_at && (
-                                                <p className="text-[10px] text-muted-foreground mt-1">{new Date(proposal.brand_signed_at).toLocaleString('ko-KR')}</p>
+                                                <p className="text-[10px] text-muted-foreground mt-1">{formatKST(proposal.brand_signed_at)}</p>
                                             )}
                                         </div>
                                         <div className="text-center p-4 border rounded-lg">
@@ -441,7 +494,7 @@ body { background: #fff !important; color: #111 !important; }
                                                 <p className="text-muted-foreground text-xs">서명 대기 중</p>
                                             )}
                                             {proposal.influencer_signed_at && (
-                                                <p className="text-[10px] text-muted-foreground mt-1">{new Date(proposal.influencer_signed_at).toLocaleString('ko-KR')}</p>
+                                                <p className="text-[10px] text-muted-foreground mt-1">{formatKST(proposal.influencer_signed_at)}</p>
                                             )}
                                         </div>
                                     </div>
