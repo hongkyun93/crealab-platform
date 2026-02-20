@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, FileSignature, ShieldCheck, Download, Pencil, Save, X, Loader2, RotateCcw, FileText, PenTool } from "lucide-react";
+import { CheckCircle2, FileSignature, ShieldCheck, Download, Pencil, Save, X, Loader2, RotateCcw, PenTool } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Proposal } from "@/lib/types/proposal";
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
@@ -18,10 +18,8 @@ interface SmartContractPanelProps {
     onSaveContract?: (content: string) => Promise<void>;
     onUndoSign?: (role: 'brand' | 'creator') => Promise<void>;
     isSigning?: boolean;
-    fullWidth?: boolean; // When true, renders in main workspace area (larger)
+    fullWidth?: boolean;
 }
-
-type ContractTab = 'view' | 'brand_sign' | 'creator_sign';
 
 // ───── Signature Canvas Component ─────
 function SignatureCanvas({
@@ -30,8 +28,9 @@ function SignatureCanvas({
     existingSignature,
     signedAt,
     signerName,
+    label,
     disabled,
-    isOwner, // True if this user owns this signature tab
+    isOwner,
     isSigning,
 }: {
     onSign: (data: string) => void;
@@ -39,6 +38,7 @@ function SignatureCanvas({
     existingSignature?: string | null;
     signedAt?: string | null;
     signerName: string;
+    label: string;
     disabled: boolean;
     isOwner: boolean;
     isSigning?: boolean;
@@ -111,53 +111,49 @@ function SignatureCanvas({
     // If already signed, show the signature image + undo button for owner
     if (existingSignature) {
         return (
-            <div className="space-y-4">
-                <div className="border-2 border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800/40 rounded-xl p-6 text-center">
-                    <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-3" />
-                    <p className="font-bold text-green-700 dark:text-green-400 mb-2">서명 완료</p>
-                    {existingSignature.startsWith('data:image') ? (
-                        <div className="bg-white dark:bg-zinc-800 rounded-lg p-3 border inline-block">
-                            <img src={existingSignature} alt="서명" className="h-16 w-auto" />
-                        </div>
-                    ) : (
-                        <div className="font-script text-2xl text-indigo-700 dark:text-indigo-400">{existingSignature}</div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-3">
-                        {signerName} · {signedAt ? new Date(signedAt).toLocaleString('ko-KR') : ''}
-                    </p>
-                    {/* Undo button — only for the owner of this signature */}
-                    {isOwner && onUndo && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-4 text-xs text-red-500 border-red-200 hover:bg-red-50"
-                            onClick={onUndo}
-                        >
-                            <RotateCcw className="h-3 w-3 mr-1" /> 서명 취소
-                        </Button>
-                    )}
-                </div>
+            <div className="flex flex-col items-center justify-center h-full p-4">
+                <CheckCircle2 className="h-6 w-6 text-green-500 mb-2" />
+                <p className="font-bold text-green-700 dark:text-green-400 text-sm mb-2">서명 완료</p>
+                {existingSignature.startsWith('data:image') ? (
+                    <div className="bg-white dark:bg-zinc-800 rounded-lg p-2 border inline-block">
+                        <img src={existingSignature} alt="서명" className="h-14 w-auto" />
+                    </div>
+                ) : (
+                    <div className="font-script text-xl text-indigo-700 dark:text-indigo-400">{existingSignature}</div>
+                )}
+                <p className="text-[10px] text-muted-foreground mt-2">
+                    {signerName} · {signedAt ? new Date(signedAt).toLocaleString('ko-KR') : ''}
+                </p>
+                {isOwner && onUndo && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 text-xs text-red-500 border-red-200 hover:bg-red-50"
+                        onClick={onUndo}
+                    >
+                        <RotateCcw className="h-3 w-3 mr-1" /> 서명 취소
+                    </Button>
+                )}
             </div>
         );
     }
 
     return (
-        <div className="space-y-4">
+        <div className="flex flex-col h-full p-3">
+            <p className="text-xs font-semibold text-muted-foreground mb-2 text-center">{label}</p>
             <div className={cn(
-                "border-2 border-dashed rounded-xl p-4 transition-colors",
+                "flex-1 border-2 border-dashed rounded-xl transition-colors flex flex-col",
                 disabled ? "border-muted bg-muted/10 opacity-50" : "border-indigo-200 bg-indigo-50/30 dark:bg-indigo-950/10 dark:border-indigo-800/30"
             )}>
-                <p className="text-sm text-muted-foreground mb-3 text-center">
-                    {disabled
-                        ? (isOwner ? "서명 패드" : "상대방만 서명할 수 있습니다.")
-                        : "아래 영역에 서명해주세요"}
+                <p className="text-[10px] text-muted-foreground text-center pt-2">
+                    {disabled ? (isOwner ? "서명 패드" : "상대방만 서명 가능") : "아래에 서명해주세요"}
                 </p>
                 <canvas
                     ref={canvasRef}
                     width={600}
-                    height={200}
+                    height={400}
                     className={cn(
-                        "w-full h-[120px] sm:h-[150px] rounded-lg border bg-white dark:bg-zinc-900 touch-none",
+                        "flex-1 w-full rounded-lg bg-white dark:bg-zinc-900 touch-none",
                         disabled ? "cursor-not-allowed" : "cursor-crosshair"
                     )}
                     onMouseDown={startDraw}
@@ -168,26 +164,15 @@ function SignatureCanvas({
                     onTouchMove={draw}
                     onTouchEnd={endDraw}
                 />
-                <div className="flex gap-2 mt-3">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={clearCanvas}
-                        disabled={disabled || !hasDrawn}
-                        className="flex-1"
-                    >
-                        <RotateCcw className="h-3.5 w-3.5 mr-1" /> 지우기
-                    </Button>
-                    <Button
-                        size="sm"
-                        onClick={handleSign}
-                        disabled={disabled || !hasDrawn || isSigning}
-                        className="flex-1 bg-indigo-600 hover:bg-indigo-700"
-                    >
-                        {isSigning ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <PenTool className="h-3.5 w-3.5 mr-1" />}
-                        {isSigning ? "처리 중..." : "서명 완료"}
-                    </Button>
-                </div>
+            </div>
+            <div className="flex gap-2 mt-2">
+                <Button variant="outline" size="sm" onClick={clearCanvas} disabled={disabled || !hasDrawn} className="flex-1 h-8 text-xs">
+                    <RotateCcw className="h-3 w-3 mr-1" /> 지우기
+                </Button>
+                <Button size="sm" onClick={handleSign} disabled={disabled || !hasDrawn || isSigning} className="flex-1 h-8 text-xs bg-indigo-600 hover:bg-indigo-700">
+                    {isSigning ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <PenTool className="h-3 w-3 mr-1" />}
+                    {isSigning ? "처리 중..." : "서명 완료"}
+                </Button>
             </div>
         </div>
     );
@@ -195,7 +180,6 @@ function SignatureCanvas({
 
 // ───── Main Panel ─────
 export function SmartContractPanel({ proposal, userType, onSign, onSaveContract, onUndoSign, isSigning, fullWidth }: SmartContractPanelProps) {
-    const [activeTab, setActiveTab] = useState<ContractTab>('view');
     const [contractContent, setContractContent] = useState<string>(proposal.contract_content || '');
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState('');
@@ -229,19 +213,12 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             const res = await fetch('/api/generate-contract', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    proposal,
-                    brandName,
-                    influencerName,
-                    messages: [],
-                }),
+                body: JSON.stringify({ proposal, brandName, influencerName, messages: [] }),
             });
             const data = await res.json();
             if (data.result) {
                 setContractContent(data.result);
-                if (onSaveContract) {
-                    await onSaveContract(data.result);
-                }
+                if (onSaveContract) await onSaveContract(data.result);
                 updateProposal({ contract_content: data.result } as any);
             }
         } catch (err) {
@@ -251,29 +228,17 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
         }
     };
 
-    const handleStartEdit = () => {
-        setEditContent(contractContent);
-        setIsEditing(true);
-    };
-
+    const handleStartEdit = () => { setEditContent(contractContent); setIsEditing(true); };
     const handleSaveEdit = async () => {
         setIsSaving(true);
         try {
             setContractContent(editContent);
-            if (onSaveContract) {
-                await onSaveContract(editContent);
-            }
+            if (onSaveContract) await onSaveContract(editContent);
             updateProposal({ contract_content: editContent } as any);
             setIsEditing(false);
-        } finally {
-            setIsSaving(false);
-        }
+        } finally { setIsSaving(false); }
     };
-
-    const handleCancelEdit = () => {
-        setIsEditing(false);
-        setEditContent('');
-    };
+    const handleCancelEdit = () => { setIsEditing(false); setEditContent(''); };
 
     const handleDownloadPdf = async () => {
         if (!contractRef.current) return;
@@ -282,7 +247,6 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             const html2pdf = (await import('html2pdf.js')).default;
             const productName = proposal.productName || proposal.product_name || '협업';
             const filename = `CreadyPick_계약서_${productName}.pdf`;
-
             const opt = {
                 margin: [10, 10, 10, 10] as [number, number, number, number],
                 filename,
@@ -290,48 +254,32 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                 html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
             };
-
             await html2pdf().set(opt).from(contractRef.current).save();
         } catch (err) {
             console.error('[SmartContractPanel] PDF generation failed:', err);
             window.print();
-        } finally {
-            setIsPdfGenerating(false);
-        }
+        } finally { setIsPdfGenerating(false); }
     };
 
     // Simple markdown-to-HTML renderer
     const renderMarkdown = (md: string) => {
         if (!md) return '';
-        return md
-            .split('\n')
-            .map(line => {
-                if (line.startsWith('# ')) return `<h1 class="text-xl font-bold mt-6 mb-2 text-primary">${line.slice(2)}</h1>`;
-                if (line.startsWith('## ')) return `<h2 class="text-lg font-bold mt-5 mb-2 text-primary">${line.slice(3)}</h2>`;
-                if (line.startsWith('### ')) return `<h3 class="text-base font-bold mt-4 mb-1 text-primary">${line.slice(4)}</h3>`;
-                line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-                if (line.match(/^\d+\.\s/)) return `<p class="ml-4 my-1">${line}</p>`;
-                if (line.startsWith('- ')) return `<p class="ml-4 my-1">• ${line.slice(2)}</p>`;
-                if (line.trim() === '') return '<br />';
-                return `<p class="my-1">${line}</p>`;
-            })
-            .join('');
+        return md.split('\n').map(line => {
+            if (line.startsWith('# ')) return `<h1 class="text-xl font-bold mt-6 mb-2 text-primary">${line.slice(2)}</h1>`;
+            if (line.startsWith('## ')) return `<h2 class="text-lg font-bold mt-5 mb-2 text-primary">${line.slice(3)}</h2>`;
+            if (line.startsWith('### ')) return `<h3 class="text-base font-bold mt-4 mb-1 text-primary">${line.slice(4)}</h3>`;
+            line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            if (line.match(/^\d+\.\s/)) return `<p class="ml-4 my-1">${line}</p>`;
+            if (line.startsWith('- ')) return `<p class="ml-4 my-1">• ${line.slice(2)}</p>`;
+            if (line.trim() === '') return '<br />';
+            return `<p class="my-1">${line}</p>`;
+        }).join('');
     };
 
-    // ───── Tabs ─────
-    const tabs: { id: ContractTab; label: string; icon: React.ReactNode }[] = [
-        { id: 'view', label: '계약서 보기', icon: <FileText className="h-3.5 w-3.5" /> },
-        { id: 'brand_sign', label: '브랜드 서명', icon: <PenTool className="h-3.5 w-3.5" /> },
-        { id: 'creator_sign', label: '크리에이터 서명', icon: <PenTool className="h-3.5 w-3.5" /> },
-    ];
-
     return (
-        <div className={cn(
-            "w-full flex flex-col border rounded-xl overflow-hidden bg-background/50 backdrop-blur-sm",
-            fullWidth && "h-full"
-        )}>
+        <div className={cn("w-full flex flex-col border rounded-xl overflow-hidden bg-background/50 backdrop-blur-sm", fullWidth && "h-full")}>
             {/* Header */}
-            <div className="px-4 py-3 border-b flex items-center justify-between bg-card/50">
+            <div className="px-4 py-3 border-b flex items-center justify-between bg-card/50 shrink-0">
                 <div className="flex items-center gap-2">
                     <FileSignature className="h-4 w-4 text-indigo-600" />
                     <span className="font-bold text-sm bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -345,185 +293,138 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                         </Badge>
                     )}
                     {fullWidth && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            onClick={() => setContractViewOpen(false)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setContractViewOpen(false)}>
                             <X className="h-4 w-4" />
                         </Button>
                     )}
                 </div>
             </div>
 
-            {/* Tab Navigation */}
-            <div className="flex border-b bg-muted/30">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={cn(
-                            "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-all border-b-2",
-                            activeTab === tab.id
-                                ? "border-indigo-600 text-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20"
-                                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                            tab.id === 'brand_sign' && isBrandSigned && "text-green-600",
-                            tab.id === 'creator_sign' && isInfluencerSigned && "text-green-600",
-                        )}
-                    >
-                        {(tab.id === 'brand_sign' && isBrandSigned) || (tab.id === 'creator_sign' && isInfluencerSigned)
-                            ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                            : tab.icon
-                        }
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            {/* ───── 3-Section Layout ───── */}
+            <div className={cn("flex-1 min-h-0 flex flex-col", fullWidth && "overflow-hidden")}>
+                {/* Top Section: 계약서 보기 */}
+                <div className="flex-1 min-h-0 flex flex-col border-b">
+                    {/* Contract Toolbar */}
+                    <div className="px-4 py-2 border-b flex items-center justify-between bg-background/80 shrink-0">
+                        <span className="text-xs text-muted-foreground">
+                            {isAnySigned ? '🔒 서명이 완료되어 수정할 수 없습니다' : '📄 AI가 자동 생성한 계약서'}
+                        </span>
+                        <div className="flex gap-1.5">
+                            {canEdit && !isEditing && (
+                                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleStartEdit}>
+                                    <Pencil className="h-3 w-3 mr-1" /> 수정
+                                </Button>
+                            )}
+                            {isEditing && (
+                                <>
+                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancelEdit}>
+                                        <X className="h-3 w-3 mr-1" /> 취소
+                                    </Button>
+                                    <Button size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700" onClick={handleSaveEdit} disabled={isSaving}>
+                                        {isSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
+                                        저장
+                                    </Button>
+                                </>
+                            )}
+                            {!isEditing && contractContent && (
+                                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleDownloadPdf} disabled={isPdfGenerating}>
+                                    {isPdfGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
+                                    PDF
+                                </Button>
+                            )}
+                        </div>
+                    </div>
 
-            {/* Tab Content */}
-            <div className={cn("flex-1 min-h-0", fullWidth && "overflow-auto")}>
-                {/* ───── Tab: 계약서 보기 ───── */}
-                {activeTab === 'view' && (
-                    <div className="flex flex-col h-full">
-                        {/* Toolbar */}
-                        <div className="px-4 py-2 border-b flex items-center justify-between bg-background/80">
-                            <span className="text-xs text-muted-foreground">
-                                {isAnySigned ? '🔒 서명이 완료되어 수정할 수 없습니다' : 'AI가 자동 생성한 계약서입니다'}
-                            </span>
-                            <div className="flex gap-1.5">
-                                {canEdit && !isEditing && (
-                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleStartEdit}>
-                                        <Pencil className="h-3 w-3 mr-1" /> 수정
-                                    </Button>
-                                )}
-                                {isEditing && (
-                                    <>
-                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancelEdit}>
-                                            <X className="h-3 w-3 mr-1" /> 취소
-                                        </Button>
-                                        <Button size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700" onClick={handleSaveEdit} disabled={isSaving}>
-                                            {isSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
-                                            저장
-                                        </Button>
-                                    </>
-                                )}
-                                {!isEditing && contractContent && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-xs"
-                                        onClick={handleDownloadPdf}
-                                        disabled={isPdfGenerating}
-                                    >
-                                        {isPdfGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
-                                        PDF
-                                    </Button>
+                    {/* Contract Content */}
+                    <ScrollArea className="flex-1">
+                        {isGenerating ? (
+                            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                                <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-3" />
+                                <p className="text-sm font-medium">AI가 계약서를 생성하고 있습니다...</p>
+                                <p className="text-xs mt-1">약 5~10초 소요됩니다</p>
+                            </div>
+                        ) : isEditing ? (
+                            <div className="p-4">
+                                <Textarea
+                                    value={editContent}
+                                    onChange={(e) => setEditContent(e.target.value)}
+                                    className="font-mono text-xs leading-relaxed min-h-[200px]"
+                                    placeholder="계약서 내용을 수정하세요..."
+                                />
+                            </div>
+                        ) : (
+                            <div ref={contractRef} className={cn("p-6", fullWidth && "max-w-4xl mx-auto")}>
+                                <div
+                                    className="prose dark:prose-invert max-w-none text-sm leading-relaxed select-text"
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(contractContent) }}
+                                />
+                                {/* Signature section for PDF */}
+                                {(isBrandSigned || isInfluencerSigned) && (
+                                    <div className="mt-8 pt-6 border-t grid grid-cols-2 gap-6">
+                                        <div className="text-center p-4 border rounded-lg">
+                                            <p className="text-xs text-muted-foreground mb-2">"갑" (브랜드)</p>
+                                            {isBrandSigned && proposal.brand_signature?.startsWith('data:image') ? (
+                                                <img src={proposal.brand_signature} alt="브랜드 서명" className="h-12 mx-auto" />
+                                            ) : isBrandSigned ? (
+                                                <p className="font-bold text-indigo-700">{proposal.brand_signature || brandName}</p>
+                                            ) : (
+                                                <p className="text-muted-foreground text-xs">서명 대기 중</p>
+                                            )}
+                                            {proposal.brand_signed_at && (
+                                                <p className="text-[10px] text-muted-foreground mt-1">{new Date(proposal.brand_signed_at).toLocaleString('ko-KR')}</p>
+                                            )}
+                                        </div>
+                                        <div className="text-center p-4 border rounded-lg">
+                                            <p className="text-xs text-muted-foreground mb-2">"을" (크리에이터)</p>
+                                            {isInfluencerSigned && proposal.influencer_signature?.startsWith('data:image') ? (
+                                                <img src={proposal.influencer_signature} alt="크리에이터 서명" className="h-12 mx-auto" />
+                                            ) : isInfluencerSigned ? (
+                                                <p className="font-bold text-indigo-700">{proposal.influencer_signature || influencerName}</p>
+                                            ) : (
+                                                <p className="text-muted-foreground text-xs">서명 대기 중</p>
+                                            )}
+                                            {proposal.influencer_signed_at && (
+                                                <p className="text-[10px] text-muted-foreground mt-1">{new Date(proposal.influencer_signed_at).toLocaleString('ko-KR')}</p>
+                                            )}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
-                        </div>
+                        )}
+                    </ScrollArea>
+                </div>
 
-                        {/* Contract Content */}
-                        <ScrollArea className={cn("flex-1", fullWidth ? "max-h-none" : "max-h-[400px]")}>
-                            {isGenerating ? (
-                                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                                    <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-3" />
-                                    <p className="text-sm font-medium">AI가 계약서를 생성하고 있습니다...</p>
-                                    <p className="text-xs mt-1">약 5~10초 소요됩니다</p>
-                                </div>
-                            ) : isEditing ? (
-                                <div className="p-4">
-                                    <Textarea
-                                        value={editContent}
-                                        onChange={(e) => setEditContent(e.target.value)}
-                                        className={cn("font-mono text-xs leading-relaxed", fullWidth ? "min-h-[500px]" : "min-h-[300px]")}
-                                        placeholder="계약서 내용을 수정하세요..."
-                                    />
-                                </div>
-                            ) : (
-                                <div ref={contractRef} className={cn("p-6", fullWidth && "max-w-4xl mx-auto")}>
-                                    <div
-                                        className="prose dark:prose-invert max-w-none text-sm leading-relaxed select-text"
-                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(contractContent) }}
-                                    />
-                                    {/* Signature section for PDF */}
-                                    {(isBrandSigned || isInfluencerSigned) && (
-                                        <div className="mt-8 pt-6 border-t grid grid-cols-2 gap-6">
-                                            <div className="text-center p-4 border rounded-lg">
-                                                <p className="text-xs text-muted-foreground mb-2">"갑" (브랜드)</p>
-                                                {isBrandSigned && proposal.brand_signature?.startsWith('data:image') ? (
-                                                    <img src={proposal.brand_signature} alt="브랜드 서명" className="h-12 mx-auto" />
-                                                ) : isBrandSigned ? (
-                                                    <p className="font-bold text-indigo-700">{proposal.brand_signature || brandName}</p>
-                                                ) : (
-                                                    <p className="text-muted-foreground text-xs">서명 대기 중</p>
-                                                )}
-                                                {proposal.brand_signed_at && (
-                                                    <p className="text-[10px] text-muted-foreground mt-1">{new Date(proposal.brand_signed_at).toLocaleString('ko-KR')}</p>
-                                                )}
-                                            </div>
-                                            <div className="text-center p-4 border rounded-lg">
-                                                <p className="text-xs text-muted-foreground mb-2">"을" (크리에이터)</p>
-                                                {isInfluencerSigned && proposal.influencer_signature?.startsWith('data:image') ? (
-                                                    <img src={proposal.influencer_signature} alt="크리에이터 서명" className="h-12 mx-auto" />
-                                                ) : isInfluencerSigned ? (
-                                                    <p className="font-bold text-indigo-700">{proposal.influencer_signature || influencerName}</p>
-                                                ) : (
-                                                    <p className="text-muted-foreground text-xs">서명 대기 중</p>
-                                                )}
-                                                {proposal.influencer_signed_at && (
-                                                    <p className="text-[10px] text-muted-foreground mt-1">{new Date(proposal.influencer_signed_at).toLocaleString('ko-KR')}</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </div>
-                )}
-
-                {/* ───── Tab: 브랜드 서명 ───── */}
-                {activeTab === 'brand_sign' && (
-                    <div className={cn("p-4", fullWidth && "max-w-xl mx-auto py-8")}>
+                {/* Bottom Section: 서명 2개 나란히 */}
+                <div className="shrink-0 grid grid-cols-2 divide-x border-t" style={{ height: fullWidth ? '45%' : '280px' }}>
+                    {/* 브랜드 서명 (좌) */}
+                    <div className="bg-background/50">
                         <SignatureCanvas
                             onSign={async (data) => { await onSign('brand', data); }}
                             onUndo={onUndoSign ? () => onUndoSign('brand') : undefined}
                             existingSignature={proposal.brand_signature}
                             signedAt={proposal.brand_signed_at}
                             signerName={brandName}
+                            label={`"갑" 브랜드 서명`}
                             disabled={userType !== 'brand'}
                             isOwner={userType === 'brand'}
                             isSigning={isSigning}
                         />
-                        {userType !== 'brand' && !isBrandSigned && (
-                            <p className="text-xs text-muted-foreground text-center mt-3">
-                                브랜드만 이 탭에서 서명할 수 있습니다.
-                            </p>
-                        )}
                     </div>
-                )}
-
-                {/* ───── Tab: 크리에이터 서명 ───── */}
-                {activeTab === 'creator_sign' && (
-                    <div className={cn("p-4", fullWidth && "max-w-xl mx-auto py-8")}>
+                    {/* 크리에이터 서명 (우) */}
+                    <div className="bg-background/50">
                         <SignatureCanvas
                             onSign={async (data) => { await onSign('creator', data); }}
                             onUndo={onUndoSign ? () => onUndoSign('creator') : undefined}
                             existingSignature={proposal.influencer_signature}
                             signedAt={proposal.influencer_signed_at}
                             signerName={influencerName}
+                            label={`"을" 크리에이터 서명`}
                             disabled={userType !== 'creator'}
                             isOwner={userType === 'creator'}
                             isSigning={isSigning}
                         />
-                        {userType !== 'creator' && !isInfluencerSigned && (
-                            <p className="text-xs text-muted-foreground text-center mt-3">
-                                크리에이터만 이 탭에서 서명할 수 있습니다.
-                            </p>
-                        )}
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );
