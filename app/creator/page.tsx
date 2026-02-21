@@ -2363,6 +2363,7 @@ function InfluencerDashboardContent() {
                         handleOpenDetails={handleOpenDetails}
                         deleteEvent={deleteEvent}
                         updateEvent={updateEvent}
+                        user={user}
                     />
                 )
 
