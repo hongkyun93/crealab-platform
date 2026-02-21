@@ -100,13 +100,15 @@ export interface MomentGridCardProps {
     onAdminDelete?: (id: string) => void
     /** User role for admin checks */
     userRole?: string
+    /** Optional custom footer rendered at card bottom */
+    renderFooter?: () => React.ReactNode
 }
 
 export function MomentGridCard({
     item, creator, isPast = false, offerCount = 0,
     onClick, isFavorite, toggleFavorite,
     onDelete, onComplete, showProfileCard = false,
-    href, onAdminDelete, userRole,
+    href, onAdminDelete, userRole, renderFooter,
 }: MomentGridCardProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false)
@@ -343,6 +345,7 @@ export function MomentGridCard({
                     </div>
                 )}
             </CardContent>
+            {renderFooter && renderFooter()}
             <div className="pb-4"></div>
         </Card>
     )
