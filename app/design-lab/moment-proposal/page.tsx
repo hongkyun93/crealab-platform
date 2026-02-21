@@ -205,15 +205,15 @@ function DesignA() {
                 <div className="bg-muted/30 rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-center">
                         <span className="text-xs text-muted-foreground">진행 채널</span>
-                        <div className="flex items-center gap-2">
-                            <span className={`text-[11px] font-medium text-white px-2.5 py-1 rounded-full shadow-sm ${CHANNEL_BG[p.channel_name] || 'bg-slate-600'}`}>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className={`text-[11px] font-medium text-white px-2.5 py-1 rounded-full shadow-sm shrink-0 ${CHANNEL_BG[p.channel_name] || 'bg-slate-600'}`}>
                                 {CHANNEL_LABELS[p.channel_name]}
                             </span>
-                            {p.channel_subtype && (
-                                <span className="text-xs text-muted-foreground">
-                                    ({SUBTYPE_LABELS[p.channel_subtype] || p.channel_subtype})
+                            {p.channel_subtype && p.channel_subtype.split(',').map((s: string) => s.trim()).filter(Boolean).map((sub: string, i: number) => (
+                                <span key={i} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted border border-border">
+                                    ({SUBTYPE_LABELS[sub] || sub})
                                 </span>
-                            )}
+                            ))}
                         </div>
                     </div>
                     <div className="flex justify-between items-center border-t border-border/50 pt-3">
@@ -339,13 +339,13 @@ function DesignB() {
                         <div className="rounded-xl border bg-card p-5 space-y-3">
                             <div className="flex justify-between items-center">
                                 <span className="text-xs text-muted-foreground">진행 채널</span>
-                                <div className="flex items-center gap-1.5">
-                                    <span className={`text-[10px] font-medium text-white px-2 py-0.5 rounded-full ${CHANNEL_BG[p.channel_name]}`}>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className={`text-[10px] font-medium text-white px-2 py-0.5 rounded-full shrink-0 ${CHANNEL_BG[p.channel_name]}`}>
                                         {CHANNEL_LABELS[p.channel_name]}
                                     </span>
-                                    {p.channel_subtype && (
-                                        <span className="text-xs font-medium">· {SUBTYPE_LABELS[p.channel_subtype]}</span>
-                                    )}
+                                    {p.channel_subtype && p.channel_subtype.split(',').map((s: string) => s.trim()).filter(Boolean).map((sub: string, i: number) => (
+                                        <span key={i} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted border border-border">{SUBTYPE_LABELS[sub] || sub}</span>
+                                    ))}
                                 </div>
                             </div>
                             <div className="flex justify-between items-center border-t border-border/50 pt-3">
@@ -574,11 +574,13 @@ function DesignC() {
                             <tr className="border-b border-border/40">
                                 <td className="py-3 text-muted-foreground w-32">진행 채널</td>
                                 <td className="py-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className={`text-[10px] font-medium text-white px-2 py-0.5 rounded-full ${CHANNEL_BG[p.channel_name]}`}>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`text-[10px] font-medium text-white px-2 py-0.5 rounded-full shrink-0 ${CHANNEL_BG[p.channel_name]}`}>
                                             {CHANNEL_LABELS[p.channel_name]}
                                         </span>
-                                        {p.channel_subtype && <span className="text-xs">· {SUBTYPE_LABELS[p.channel_subtype]}</span>}
+                                        {p.channel_subtype && p.channel_subtype.split(',').map((s: string) => s.trim()).filter(Boolean).map((sub: string, i: number) => (
+                                            <span key={i} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted border border-border">{SUBTYPE_LABELS[sub] || sub}</span>
+                                        ))}
                                     </div>
                                 </td>
                             </tr>

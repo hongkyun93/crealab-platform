@@ -205,7 +205,7 @@ function CreatorProfileCardContent({
             {/* Channels */}
             {profile.channels.length > 0 && (
                 <div className="px-6 py-3">
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         {profile.channels.map((ch) => {
                             const cfg = PLATFORM_CONFIG[ch.platform] || PLATFORM_CONFIG.other
                             return (

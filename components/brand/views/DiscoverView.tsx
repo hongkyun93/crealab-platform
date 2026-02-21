@@ -41,6 +41,7 @@ interface DiscoverViewProps {
     deleteEvent: (id: string) => Promise<void>
     channelFilter?: string[]
     setChannelFilter?: (filter: string[] | ((prev: string[]) => string[])) => void
+    sentMomentIds?: Set<string>
 }
 
 
@@ -65,6 +66,7 @@ export const DiscoverView = React.memo(function DiscoverView({
     deleteEvent,
     channelFilter,
     setChannelFilter,
+    sentMomentIds,
 }: DiscoverViewProps) {
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -304,6 +306,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                 onAdminDelete={(id) => setConfirmDeleteId(id)}
                                 userRole={user?.role}
                                 isPast={item.status === 'completed'}
+                                hasSentProposal={sentMomentIds?.has(item.id)}
                             />
                         )
                     })}

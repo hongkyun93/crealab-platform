@@ -103,40 +103,42 @@ function DialogA({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bool
                     <div className="rounded-xl border p-4 space-y-2">
                         <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Tv className="h-3.5 w-3.5" /> 채널 및 가이드</h4>
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                                <span className={`text-[10px] font-medium text-white px-2 py-0.5 rounded-full ${CH_BG[P.channel_name]}`}>{CH[P.channel_name]}</span>
-                                {P.channel_subtype && <span className="text-xs">· {SUB[P.channel_subtype]}</span>}
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <span className={`text-[10px] font-medium text-white px-2 py-0.5 rounded-full shrink-0 ${CH_BG[P.channel_name]}`}>{CH[P.channel_name]}</span>
+                                {P.channel_subtype && P.channel_subtype.split(',').map((s: string) => s.trim()).filter(Boolean).map((sub: string, i: number) => (
+                                    <span key={i} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted border border-border">{SUB[sub] || sub}</span>
+                                ))}
                             </div>
-                            <Badge variant="outline" className="text-[10px] gap-1"><Clapperboard className="h-3 w-3" />{P.video_guide === 'brand_provided' ? '브랜드 제공' : '크리에이터 기획'}</Badge>
+                            <Badge variant="outline" className="text-[10px] gap-1 shrink-0"><Clapperboard className="h-3 w-3" />{P.video_guide === 'brand_provided' ? '브랜드 제공' : '크리에이터 기획'}</Badge>
                         </div>
-                    </div>
 
-                    {/* Schedule */}
-                    <div className="rounded-xl border p-4 space-y-1.5">
-                        <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-2"><Calendar className="h-3.5 w-3.5" /> 일정</h4>
-                        {[
-                            { l: '초안 제출', d: P.draft_submission_date, I: FileText },
-                            { l: '최종 제출', d: P.final_submission_date, I: Send },
-                            { l: '업로드', d: P.upload_date, I: ArrowUpRight, flex: P.date_flexible },
-                        ].map(({ l, d, I, flex }) => (
-                            <div key={l} className="flex justify-between items-center py-1 border-b border-border/30 last:border-0">
-                                <span className="text-xs text-muted-foreground flex items-center gap-1"><I className="h-3 w-3" /> {l}</span>
-                                <div className="flex items-center gap-1">
-                                    <span className="text-xs font-medium">{fmtFull(d)}</span>
-                                    {flex && <Badge variant="outline" className="text-[9px] h-4 px-1.5 text-primary border-primary/30">유동</Badge>}
+                        {/* Schedule */}
+                        <div className="rounded-xl border p-4 space-y-1.5">
+                            <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-2"><Calendar className="h-3.5 w-3.5" /> 일정</h4>
+                            {[
+                                { l: '초안 제출', d: P.draft_submission_date, I: FileText },
+                                { l: '최종 제출', d: P.final_submission_date, I: Send },
+                                { l: '업로드', d: P.upload_date, I: ArrowUpRight, flex: P.date_flexible },
+                            ].map(({ l, d, I, flex }) => (
+                                <div key={l} className="flex justify-between items-center py-1 border-b border-border/30 last:border-0">
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1"><I className="h-3 w-3" /> {l}</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-xs font-medium">{fmtFull(d)}</span>
+                                        {flex && <Badge variant="outline" className="text-[9px] h-4 px-1.5 text-primary border-primary/30">유동</Badge>}
+                                    </div>
                                 </div>
+                            ))}
+                            <div className="flex justify-between items-center pt-1.5 border-t border-border/50">
+                                <span className="text-xs text-muted-foreground flex items-center gap-1"><Repeat2 className="h-3 w-3" /> 2차 활용</span>
+                                <span className="text-xs font-medium">{P.secondary_usage_period}{P.secondary_usage_fee > 0 && <span className="text-emerald-600"> · {fmt(P.secondary_usage_fee)}</span>}</span>
                             </div>
-                        ))}
-                        <div className="flex justify-between items-center pt-1.5 border-t border-border/50">
-                            <span className="text-xs text-muted-foreground flex items-center gap-1"><Repeat2 className="h-3 w-3" /> 2차 활용</span>
-                            <span className="text-xs font-medium">{P.secondary_usage_period}{P.secondary_usage_fee > 0 && <span className="text-emerald-600"> · {fmt(P.secondary_usage_fee)}</span>}</span>
                         </div>
-                    </div>
 
-                    {/* Message */}
-                    <div className="rounded-xl border p-4">
-                        <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-2"><MessageCircle className="h-3.5 w-3.5" /> 제안 메시지</h4>
-                        <p className="text-xs leading-[1.8] whitespace-pre-wrap text-foreground/80">{P.message}</p>
+                        {/* Message */}
+                        <div className="rounded-xl border p-4">
+                            <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-2"><MessageCircle className="h-3.5 w-3.5" /> 제안 메시지</h4>
+                            <p className="text-xs leading-[1.8] whitespace-pre-wrap text-foreground/80">{P.message}</p>
+                        </div>
                     </div>
                 </div>
 
@@ -195,9 +197,11 @@ function DialogB({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bool
                         </div>
                         <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
                             <p className="text-[10px] text-muted-foreground mb-1">📺 진행 채널</p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className={`text-[9px] font-medium text-white px-1.5 py-0.5 rounded-full ${CH_BG[P.channel_name]}`}>{CH[P.channel_name]}</span>
-                                {P.channel_subtype && <span className="text-xs">· {SUB[P.channel_subtype]}</span>}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <span className={`text-[9px] font-medium text-white px-1.5 py-0.5 rounded-full shrink-0 ${CH_BG[P.channel_name]}`}>{CH[P.channel_name]}</span>
+                                {P.channel_subtype && P.channel_subtype.split(',').map((s: string) => s.trim()).filter(Boolean).map((sub: string, i: number) => (
+                                    <span key={i} className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-muted border border-border">{SUB[sub] || sub}</span>
+                                ))}
                             </div>
                             <Badge variant="outline" className="text-[9px] mt-1.5 gap-1"><Clapperboard className="h-2.5 w-2.5" />{P.video_guide === 'brand_provided' ? '브랜드 가이드' : '크리에이터 기획'}</Badge>
                         </div>
@@ -314,11 +318,13 @@ function DialogC({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bool
                                     <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground/60 flex items-center gap-1.5">
                                         <Tv className="h-3.5 w-3.5 text-pink-400" /> 진행 채널
                                     </p>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`text-[11px] font-semibold text-white px-2.5 py-1 rounded-full shadow-sm ${CH_BG[P.channel_name]}`}>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`text-[11px] font-semibold text-white px-2.5 py-1 rounded-full shadow-sm shrink-0 ${CH_BG[P.channel_name]}`}>
                                             {CH[P.channel_name]}
                                         </span>
-                                        {P.channel_subtype && <span className="text-sm font-medium">· {SUB[P.channel_subtype]}</span>}
+                                        {P.channel_subtype && P.channel_subtype.split(',').map((s: string) => s.trim()).filter(Boolean).map((sub: string, i: number) => (
+                                            <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted border border-border">{SUB[sub] || sub}</span>
+                                        ))}
                                     </div>
                                 </div>
                             </div>

@@ -102,13 +102,15 @@ export interface MomentGridCardProps {
     userRole?: string
     /** Optional custom footer rendered at card bottom */
     renderFooter?: () => React.ReactNode
+    /** Whether this moment already has a sent proposal from the brand */
+    hasSentProposal?: boolean
 }
 
 export function MomentGridCard({
     item, creator, isPast = false, offerCount = 0,
     onClick, isFavorite, toggleFavorite,
     onDelete, onComplete, showProfileCard = false,
-    href, onAdminDelete, userRole, renderFooter,
+    href, onAdminDelete, userRole, renderFooter, hasSentProposal = false,
 }: MomentGridCardProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false)
@@ -143,6 +145,15 @@ export function MomentGridCard({
                         fill={isFavorite ? 'currentColor' : 'none'}
                     />
                 </Button>
+            )}
+
+            {/* Sent proposal badge */}
+            {hasSentProposal && (
+                <div className={`absolute ${toggleFavorite ? 'top-2 right-12' : 'top-2 right-2'} z-10`}>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500 text-white shadow-sm">
+                        ✓ 제안됨
+                    </span>
+                </div>
             )}
 
             {/* Non-favorite badges (offer count, past, private) */}

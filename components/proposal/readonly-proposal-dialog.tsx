@@ -176,13 +176,15 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                                     <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground/60 flex items-center gap-1.5">
                                         <Tv className="h-3.5 w-3.5 text-pink-400" /> 진행 채널
                                     </p>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`text-[11px] font-semibold text-white px-2.5 py-1 rounded-full shadow-sm ${CH_BG[data.channel_name] || CH_BG['협의']}`}>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`text-[11px] font-semibold text-white px-2.5 py-1 rounded-full shadow-sm shrink-0 ${CH_BG[data.channel_name] || CH_BG['협의']}`}>
                                             {CH[data.channel_name] || data.channel_name}
                                         </span>
-                                        {data.channel_subtype && (
-                                            <span className="text-sm font-medium">· {SUB[data.channel_subtype] || data.channel_subtype}</span>
-                                        )}
+                                        {data.channel_subtype && data.channel_subtype.split(',').map((s: string) => s.trim()).filter(Boolean).map((sub: string, i: number) => (
+                                            <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted border border-border">
+                                                {SUB[sub] || (sub.startsWith('other:') ? `기타: ${sub.slice(6)}` : sub)}
+                                            </span>
+                                        ))}
                                     </div>
                                 </div>
                             </div>

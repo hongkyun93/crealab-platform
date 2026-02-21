@@ -165,6 +165,17 @@ function BrandDashboardContent() {
         }
     }, [currentView])
 
+    // Compute set of moment IDs where the brand has already sent a proposal
+    const sentMomentIds = useMemo(() => {
+        const ids = new Set<string>()
+        if (momentProposals) {
+            momentProposals.forEach((p: any) => {
+                if (p.moment_id) ids.add(p.moment_id)
+            })
+        }
+        return ids
+    }, [momentProposals])
+
 
     // Filter Query States
     const [selectedTag, setSelectedTag] = useState<string | null>(null)
@@ -1416,6 +1427,7 @@ function BrandDashboardContent() {
                         deleteEvent={deleteEvent as any}
                         channelFilter={channelFilter}
                         setChannelFilter={setChannelFilter}
+                        sentMomentIds={sentMomentIds}
                     />
                 )
             case "my-campaigns":

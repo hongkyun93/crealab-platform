@@ -158,7 +158,7 @@ export function ChannelSelector({
                     )}
                 </label>
                 {selected.length > 0 && (
-                    <span className="text-xs text-primary font-medium">
+                    <span className="text-xs text-primary font-medium truncate max-w-[200px]" title={selected.map(s => getChannelSubtypeLabel(s)).join(", ")}>
                         {selected.map(s => getChannelSubtypeLabel(s)).join(", ")}
                     </span>
                 )}
