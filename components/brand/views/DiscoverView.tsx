@@ -147,8 +147,8 @@ export const DiscoverView = React.memo(function DiscoverView({
 
             {/* Filters */}
             <Card className="bg-background/50 backdrop-blur-sm">
-                <CardContent className="p-6 space-y-3">
-                    <div className="flex flex-col md:flex-row gap-4 md:items-center">
+                <CardContent className="p-4 space-y-1">
+                    <div className="flex flex-col md:flex-row gap-2 md:items-center">
                         <span className="text-sm font-semibold w-24">팔로워 규모</span>
                         <div className="flex flex-wrap gap-2">
                             {[
@@ -174,8 +174,8 @@ export const DiscoverView = React.memo(function DiscoverView({
                             ))}
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-3 border-t border-border/40">
-                        <span className="text-sm font-semibold w-24 pt-2">모먼트 상태</span>
+                    <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
+                        <span className="text-sm font-semibold w-24 pt-1">모먼트 상태</span>
                         <div className="flex flex-wrap gap-2 flex-1">
                             <Button
                                 variant="ghost"
@@ -215,8 +215,8 @@ export const DiscoverView = React.memo(function DiscoverView({
                             </Button>
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-3 border-t border-border/40">
-                        <span className="text-sm font-semibold w-24 pt-2">영상 단가</span>
+                    <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
+                        <span className="text-sm font-semibold w-24 pt-1">영상 단가</span>
                         <div className="flex flex-wrap gap-2 flex-1">
                             {PRICE_FILTER_RANGES.map(range => (
                                 <Button
@@ -232,8 +232,8 @@ export const DiscoverView = React.memo(function DiscoverView({
                             ))}
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-3 border-t border-border/40">
-                        <span className="text-sm font-semibold w-24 pt-2">희망 채널</span>
+                    <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
+                        <span className="text-sm font-semibold w-24 pt-1">희망 채널</span>
                         <div className="flex flex-wrap gap-2 flex-1">
                             {[
                                 { k: 'all', l: '전체', icon: null },
@@ -256,8 +256,8 @@ export const DiscoverView = React.memo(function DiscoverView({
                             ))}
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-3 border-t border-border/40">
-                        <span className="text-sm font-semibold w-24 pt-2">전문 분야</span>
+                    <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
+                        <span className="text-sm font-semibold w-24 pt-1">전문 분야</span>
                         <div className="flex flex-wrap gap-2 flex-1">
                             <Button
                                 variant="ghost"
