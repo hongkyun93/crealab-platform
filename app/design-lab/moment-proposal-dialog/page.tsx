@@ -248,168 +248,115 @@ function DialogB({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bool
 }
 
 // ═══════════════════════════════════════════════════════════
-// DIALOG C: "Two-Zone" — 좌측 액센트바 + 구조화된 560px
+// DIALOG C: "Two-Column Dialog" — 좌우 분리형 (560px)
 // ═══════════════════════════════════════════════════════════
 function DialogC({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[560px] max-h-[88vh] overflow-hidden p-0 flex flex-col gap-0">
-                {/* ── Header ── */}
-                <div className="px-6 pt-6 pb-4">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3.5">
-                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500/15 to-pink-500/15 ring-1 ring-violet-200/50 flex items-center justify-center text-base font-black text-violet-600 shrink-0">
+            <DialogContent className="max-w-[560px] max-h-[85vh] overflow-hidden p-0 flex flex-col">
+                <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-100 to-pink-100 flex items-center justify-center text-sm font-black text-violet-600 shrink-0">
                                 {P.brand_name[0]}
                             </div>
                             <div>
-                                <DialogTitle className="text-lg font-bold tracking-tight">{P.brand_name}</DialogTitle>
-                                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                                    {fmtFull(P.created_at)} 제안
-                                </DialogDescription>
+                                <DialogTitle className="text-base">{P.brand_name}</DialogTitle>
+                                <DialogDescription className="text-xs">{fmtFull(P.created_at)} · {MOMENT_TITLE}</DialogDescription>
                             </div>
                         </div>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 text-[10px] font-semibold gap-1 px-2.5 py-1">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] gap-1">
                             <Timer className="h-3 w-3" /> 검토 대기
                         </Badge>
                     </div>
-                    {/* Moment Context */}
-                    <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg border border-violet-100/60 dark:border-violet-900/20">
-                        <Sparkles className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                        <span className="text-xs text-violet-700 dark:text-violet-300 font-medium">{MOMENT_TITLE}</span>
-                    </div>
-                </div>
+                </DialogHeader>
 
-                {/* ── Scrollable Body ── */}
-                <div className="flex-1 overflow-y-auto px-6 pb-5 space-y-3">
-
-                    {/* 💰 Compensation — Hero */}
-                    <div className="rounded-xl overflow-hidden border border-emerald-200/60 dark:border-emerald-800/30">
-                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50/80 dark:from-emerald-900/15 dark:to-teal-900/10 px-5 py-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-[10px] uppercase tracking-widest text-emerald-600/70 font-semibold mb-0.5">고정 광고비</p>
-                                    <p className="text-[28px] font-black text-emerald-600 leading-none tracking-tight">{fmt(P.compensation_amount)}</p>
-                                </div>
-                                <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                                    <Banknote className="h-5 w-5 text-emerald-600" />
-                                </div>
-                            </div>
-                        </div>
-                        {P.has_incentive && P.incentive_detail && (
-                            <div className="px-5 py-3 bg-emerald-50/30 dark:bg-emerald-900/5 border-t border-emerald-100/50 dark:border-emerald-900/20">
-                                <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 mb-1">
-                                    <TrendingUp className="h-3 w-3" /> 성과 인센티브
-                                </p>
-                                <p className="text-xs text-emerald-800/80 dark:text-emerald-200 leading-relaxed">{P.incentive_detail}</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* 📦 Product + 📺 Channel — 2-Grid */}
-                    <div className="grid grid-cols-2 gap-3">
-                        {/* Product */}
-                        <div className="rounded-xl border p-4 space-y-2.5 relative overflow-hidden">
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-400 to-purple-600 rounded-l-xl" />
-                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground/70 font-semibold flex items-center gap-1.5 pl-2">
-                                <Package className="h-3 w-3 text-purple-500" /> 제안 제품
-                            </p>
-                            <p className="text-[13px] font-bold leading-snug pl-2">{P.product_name}</p>
-                            <div className="flex items-center gap-2 pl-2">
-                                <Badge variant="secondary" className="text-[10px] gap-1 font-medium">
-                                    <Gift className="h-3 w-3" />{P.product_type === 'gift' ? '증정' : '대여'}
-                                </Badge>
-                                {P.product_url && (
-                                    <a href={P.product_url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-0.5">
-                                        <ExternalLink className="h-2.5 w-2.5" /> 링크
-                                    </a>
+                <div className="flex-1 overflow-y-auto">
+                    <div className="grid grid-cols-[280px_1fr] min-h-0">
+                        {/* Left: Conditions Summary */}
+                        <div className="border-r bg-muted/20 p-5 space-y-4">
+                            {/* Price */}
+                            <div className="text-center py-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
+                                <p className="text-[10px] text-muted-foreground mb-1">광고비</p>
+                                <p className="text-2xl font-black text-emerald-600">{fmt(P.compensation_amount)}</p>
+                                {P.has_incentive && (
+                                    <p className="text-[10px] text-emerald-600 mt-1 flex items-center justify-center gap-1"><TrendingUp className="h-3 w-3" /> 인센티브 있음</p>
                                 )}
                             </div>
-                        </div>
 
-                        {/* Channel */}
-                        <div className="rounded-xl border p-4 space-y-2.5 relative overflow-hidden">
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-pink-400 to-pink-600 rounded-l-xl" />
-                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground/70 font-semibold flex items-center gap-1.5 pl-2">
-                                <Tv className="h-3 w-3 text-pink-500" /> 진행 채널
-                            </p>
-                            <div className="pl-2">
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <span className={`text-[10px] font-semibold text-white px-2 py-0.5 rounded-full shadow-sm ${CH_BG[P.channel_name]}`}>
-                                        {CH[P.channel_name]}
-                                    </span>
-                                    {P.channel_subtype && <span className="text-xs font-medium">· {SUB[P.channel_subtype]}</span>}
+                            {P.has_incentive && P.incentive_detail && (
+                                <div className="bg-emerald-50/50 dark:bg-emerald-800/20 rounded-lg p-2.5 text-xs text-emerald-800 dark:text-emerald-200">
+                                    💡 {P.incentive_detail}
                                 </div>
-                                <Badge variant="outline" className="text-[10px] gap-1 font-medium">
-                                    <Clapperboard className="h-3 w-3" />
-                                    {P.video_guide === 'brand_provided' ? '브랜드 가이드' : '크리에이터 기획'}
-                                </Badge>
-                            </div>
-                        </div>
-                    </div>
+                            )}
 
-                    {/* 📅 Schedule */}
-                    <div className="rounded-xl border p-4 relative overflow-hidden">
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-orange-500 rounded-l-xl" />
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/70 font-semibold flex items-center gap-1.5 pl-2 mb-3">
-                            <Calendar className="h-3 w-3 text-amber-500" /> 일정 및 조건
-                        </p>
-                        <div className="pl-2 space-y-0">
-                            {[
-                                { label: '초안 제출', date: P.draft_submission_date, Icon: FileText, color: 'text-blue-500' },
-                                { label: '최종 제출', date: P.final_submission_date, Icon: Send, color: 'text-amber-500' },
-                                { label: '업로드', date: P.upload_date, Icon: ArrowUpRight, color: 'text-emerald-500', flexible: P.date_flexible },
-                            ].map(({ label, date, Icon, color, flexible }) => (
-                                <div key={label} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                        <Icon className={`h-3 w-3 ${color}`} /> {label}
-                                    </span>
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-xs font-semibold tabular-nums">{fmtFull(date)}</span>
-                                        {flexible && (
-                                            <Badge variant="outline" className="text-[9px] h-[18px] px-1.5 text-primary border-primary/30 font-medium">유동</Badge>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                            <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-border/50">
-                                <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                    <Repeat2 className="h-3 w-3 text-purple-500" /> 2차 활용
-                                </span>
-                                <span className="text-xs font-semibold">
-                                    {P.secondary_usage_period}
-                                    {P.secondary_usage_fee > 0 && (
-                                        <span className="text-emerald-600 ml-1.5">· {fmt(P.secondary_usage_fee)}</span>
+                            {/* Product */}
+                            <div className="space-y-1.5">
+                                <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1"><Package className="h-3 w-3" /> 제품</p>
+                                <p className="text-xs font-bold">{P.product_name}</p>
+                                <div className="flex items-center gap-1.5">
+                                    <Badge variant="secondary" className="text-[9px] gap-1"><Gift className="h-2.5 w-2.5" />{P.product_type === 'gift' ? '증정' : '대여'}</Badge>
+                                    {P.product_url && (
+                                        <a href={P.product_url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 hover:underline">링크</a>
                                     )}
-                                </span>
+                                </div>
+                            </div>
+
+                            {/* Channel */}
+                            <div className="space-y-1.5">
+                                <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1"><Tv className="h-3 w-3" /> 채널</p>
+                                <div className="flex items-center gap-1.5">
+                                    <span className={`text-[9px] font-medium text-white px-1.5 py-0.5 rounded-full ${CH_BG[P.channel_name]}`}>{CH[P.channel_name]}</span>
+                                    {P.channel_subtype && <span className="text-xs">· {SUB[P.channel_subtype]}</span>}
+                                </div>
+                                <Badge variant="outline" className="text-[9px] gap-1"><Clapperboard className="h-2.5 w-2.5" />{P.video_guide === 'brand_provided' ? '브랜드 가이드' : '크리에이터 기획'}</Badge>
+                            </div>
+
+                            {/* Schedule */}
+                            <div className="space-y-1.5">
+                                <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> 일정</p>
+                                <div className="space-y-1 text-xs">
+                                    <div className="flex justify-between"><span className="text-muted-foreground">초안</span><span className="font-medium">{fmtFull(P.draft_submission_date)}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">최종</span><span className="font-medium">{fmtFull(P.final_submission_date)}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">업로드</span>
+                                        <span className="font-medium">{fmtFull(P.upload_date)}{P.date_flexible && <span className="text-primary ml-1">(유동)</span>}</span>
+                                    </div>
+                                    <div className="flex justify-between pt-1.5 border-t border-border/50 mt-1">
+                                        <span className="text-muted-foreground">2차 활용</span>
+                                        <span className="font-medium">{P.secondary_usage_period}</span>
+                                    </div>
+                                    {P.secondary_usage_fee > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">2차 비용</span>
+                                            <span className="font-medium text-emerald-600">{fmt(P.secondary_usage_fee)}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* 💬 Message */}
-                    <div className="rounded-xl border p-4 relative overflow-hidden">
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-sky-500 rounded-l-xl" />
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/70 font-semibold flex items-center gap-1.5 pl-2 mb-3">
-                            <MessageCircle className="h-3 w-3 text-blue-500" /> 제안 메시지
-                        </p>
-                        <div className="pl-2">
-                            <p className="text-[13px] leading-[1.9] whitespace-pre-wrap text-foreground/85">{P.message}</p>
+                        {/* Right: Message (narrower) */}
+                        <div className="p-5">
+                            <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3"><MessageCircle className="h-3.5 w-3.5" /> 제안 메시지</h4>
+                            <div className="bg-blue-50/30 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100/50 dark:border-blue-900/20">
+                                <p className="text-sm leading-[1.85] whitespace-pre-wrap">{P.message}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* ── Footer CTA ── */}
-                <div className="px-6 py-4 border-t bg-muted/10 flex items-center gap-2 shrink-0">
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground hover:text-foreground">
+                <DialogFooter className="px-6 py-4 border-t flex gap-2 shrink-0">
+                    <Button variant="ghost" className="gap-1.5 text-xs text-muted-foreground">
                         상세 보기 <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
                     <div className="flex-1" />
-                    <Button variant="outline" size="default" className="gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200 dark:hover:bg-red-950/20">
+                    <Button variant="outline" className="gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200">
                         <XCircle className="h-4 w-4" /> 거절
                     </Button>
-                    <Button size="default" className="bg-emerald-600 hover:bg-emerald-700 gap-1.5 shadow-sm shadow-emerald-600/20">
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 gap-1.5">
                         <CheckCircle2 className="h-4 w-4" /> 수락
                     </Button>
-                </div>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     )
