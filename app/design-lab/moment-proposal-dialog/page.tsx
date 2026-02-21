@@ -248,24 +248,24 @@ function DialogB({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bool
 }
 
 // ═══════════════════════════════════════════════════════════
-// DIALOG C: "Two-Column Dialog" — 좌우 분리형 (560px)
+// DIALOG C: "Two-Column Dialog" — 좌우 분리형
 // ═══════════════════════════════════════════════════════════
 function DialogC({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[560px] max-h-[85vh] overflow-hidden p-0 flex flex-col">
+            <DialogContent className="max-w-[840px] max-h-[85vh] overflow-hidden p-0 flex flex-col">
                 <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-100 to-pink-100 flex items-center justify-center text-sm font-black text-violet-600 shrink-0">
+                        <div className="flex items-center gap-3.5">
+                            <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-violet-100 to-pink-100 ring-1 ring-violet-200/40 flex items-center justify-center text-sm font-black text-violet-600 shrink-0">
                                 {P.brand_name[0]}
                             </div>
                             <div>
-                                <DialogTitle className="text-base">{P.brand_name}</DialogTitle>
-                                <DialogDescription className="text-xs">{fmtFull(P.created_at)} · {MOMENT_TITLE}</DialogDescription>
+                                <DialogTitle className="text-base font-bold tracking-tight">{P.brand_name}</DialogTitle>
+                                <DialogDescription className="text-xs mt-0.5">{fmtFull(P.created_at)} · {MOMENT_TITLE}</DialogDescription>
                             </div>
                         </div>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] gap-1">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 text-[10px] font-semibold gap-1 px-2.5 py-1">
                             <Timer className="h-3 w-3" /> 검토 대기
                         </Badge>
                     </div>
@@ -274,72 +274,118 @@ function DialogC({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bool
                 <div className="flex-1 overflow-y-auto">
                     <div className="grid grid-cols-[280px_1fr] min-h-0">
                         {/* Left: Conditions Summary */}
-                        <div className="border-r bg-muted/20 p-5 space-y-4">
+                        <div className="border-r bg-muted/15 px-5 py-5 space-y-3.5">
                             {/* Price */}
-                            <div className="text-center py-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
-                                <p className="text-[10px] text-muted-foreground mb-1">광고비</p>
-                                <p className="text-2xl font-black text-emerald-600">{fmt(P.compensation_amount)}</p>
+                            <div className="text-center py-4 bg-gradient-to-b from-emerald-50 to-emerald-50/30 dark:from-emerald-900/15 dark:to-emerald-900/5 rounded-xl border border-emerald-100/80 dark:border-emerald-900/20">
+                                <p className="text-[11px] uppercase tracking-wider text-emerald-600/60 font-semibold mb-1">광고비</p>
+                                <p className="text-[26px] font-black text-emerald-600 leading-none tracking-tight">{fmt(P.compensation_amount)}</p>
                                 {P.has_incentive && (
-                                    <p className="text-[10px] text-emerald-600 mt-1 flex items-center justify-center gap-1"><TrendingUp className="h-3 w-3" /> 인센티브 있음</p>
+                                    <p className="text-[10px] text-emerald-600/80 mt-1.5 flex items-center justify-center gap-1 font-medium"><TrendingUp className="h-3 w-3" /> 인센티브 있음</p>
                                 )}
                             </div>
 
                             {P.has_incentive && P.incentive_detail && (
-                                <div className="bg-emerald-50/50 dark:bg-emerald-800/20 rounded-lg p-2.5 text-xs text-emerald-800 dark:text-emerald-200">
+                                <div className="bg-emerald-50/60 dark:bg-emerald-800/15 rounded-lg px-3 py-2.5 text-[13px] text-emerald-800/90 dark:text-emerald-200 leading-relaxed border border-emerald-100/50 dark:border-emerald-900/15">
                                     💡 {P.incentive_detail}
                                 </div>
                             )}
 
-                            {/* Product */}
-                            <div className="space-y-1.5">
-                                <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1"><Package className="h-3 w-3" /> 제품</p>
-                                <p className="text-xs font-bold">{P.product_name}</p>
-                                <div className="flex items-center gap-1.5">
-                                    <Badge variant="secondary" className="text-[9px] gap-1"><Gift className="h-2.5 w-2.5" />{P.product_type === 'gift' ? '증정' : '대여'}</Badge>
-                                    {P.product_url && (
-                                        <a href={P.product_url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 hover:underline">링크</a>
-                                    )}
+                            <div className="border-t border-border/40 pt-3.5 space-y-3.5">
+                                {/* Product */}
+                                <div className="space-y-2">
+                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground/60 flex items-center gap-1.5">
+                                        <Package className="h-3.5 w-3.5 text-purple-400" /> 제안 제품
+                                    </p>
+                                    <p className="text-sm font-bold leading-snug">{P.product_name}</p>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="secondary" className="text-[11px] gap-1 font-medium">
+                                            <Gift className="h-3.5 w-3.5" />{P.product_type === 'gift' ? '증정' : '대여'}
+                                        </Badge>
+                                        {P.product_url && (
+                                            <a href={P.product_url} target="_blank" rel="noreferrer" className="text-[11px] text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-0.5 transition-colors">
+                                                <ExternalLink className="h-3 w-3" /> 제품 링크
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Channel */}
-                            <div className="space-y-1.5">
-                                <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1"><Tv className="h-3 w-3" /> 채널</p>
-                                <div className="flex items-center gap-1.5">
-                                    <span className={`text-[9px] font-medium text-white px-1.5 py-0.5 rounded-full ${CH_BG[P.channel_name]}`}>{CH[P.channel_name]}</span>
-                                    {P.channel_subtype && <span className="text-xs">· {SUB[P.channel_subtype]}</span>}
+                                {/* Channel */}
+                                <div className="space-y-2">
+                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground/60 flex items-center gap-1.5">
+                                        <Tv className="h-3.5 w-3.5 text-pink-400" /> 진행 채널
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-[11px] font-semibold text-white px-2.5 py-1 rounded-full shadow-sm ${CH_BG[P.channel_name]}`}>
+                                            {CH[P.channel_name]}
+                                        </span>
+                                        {P.channel_subtype && <span className="text-sm font-medium">· {SUB[P.channel_subtype]}</span>}
+                                    </div>
                                 </div>
-                                <Badge variant="outline" className="text-[9px] gap-1"><Clapperboard className="h-2.5 w-2.5" />{P.video_guide === 'brand_provided' ? '브랜드 가이드' : '크리에이터 기획'}</Badge>
                             </div>
 
                             {/* Schedule */}
-                            <div className="space-y-1.5">
-                                <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> 일정</p>
-                                <div className="space-y-1 text-xs">
-                                    <div className="flex justify-between"><span className="text-muted-foreground">초안</span><span className="font-medium">{fmtFull(P.draft_submission_date)}</span></div>
-                                    <div className="flex justify-between"><span className="text-muted-foreground">최종</span><span className="font-medium">{fmtFull(P.final_submission_date)}</span></div>
-                                    <div className="flex justify-between"><span className="text-muted-foreground">업로드</span>
-                                        <span className="font-medium">{fmtFull(P.upload_date)}{P.date_flexible && <span className="text-primary ml-1">(유동)</span>}</span>
+                            <div className="border-t border-border/40 pt-3.5 space-y-2">
+                                <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground/60 flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5 text-amber-400" /> 일정
+                                </p>
+                                <div className="space-y-0 text-[13px]">
+                                    {[
+                                        { label: '초안 제출', value: fmtFull(P.draft_submission_date) },
+                                        { label: '최종 제출', value: fmtFull(P.final_submission_date) },
+                                    ].map(({ label, value }) => (
+                                        <div key={label} className="flex justify-between py-1.5 border-b border-border/25">
+                                            <span className="text-muted-foreground">{label}</span>
+                                            <span className="font-semibold tabular-nums">{value}</span>
+                                        </div>
+                                    ))}
+                                    <div className="flex justify-between py-1.5 border-b border-border/25">
+                                        <span className="text-muted-foreground">업로드</span>
+                                        <span className="font-semibold tabular-nums">
+                                            {fmtFull(P.upload_date)}
+                                            {P.date_flexible && <span className="text-primary/80 font-medium ml-1 text-[10px]">(유동)</span>}
+                                        </span>
                                     </div>
-                                    <div className="flex justify-between pt-1.5 border-t border-border/50 mt-1">
-                                        <span className="text-muted-foreground">2차 활용</span>
-                                        <span className="font-medium">{P.secondary_usage_period}</span>
+                                    <div className="flex justify-between py-1.5 mt-1 border-t border-border/40">
+                                        <span className="text-muted-foreground flex items-center gap-1"><Repeat2 className="h-3 w-3" /> 2차 활용</span>
+                                        <span className="font-semibold">{P.secondary_usage_period}</span>
                                     </div>
                                     {P.secondary_usage_fee > 0 && (
-                                        <div className="flex justify-between">
+                                        <div className="flex justify-between py-1">
                                             <span className="text-muted-foreground">2차 비용</span>
-                                            <span className="font-medium text-emerald-600">{fmt(P.secondary_usage_fee)}</span>
+                                            <span className="font-semibold text-emerald-600">{fmt(P.secondary_usage_fee)}</span>
                                         </div>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Right: Message (narrower) */}
-                        <div className="p-5">
-                            <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3"><MessageCircle className="h-3.5 w-3.5" /> 제안 메시지</h4>
-                            <div className="bg-blue-50/30 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100/50 dark:border-blue-900/20">
-                                <p className="text-sm leading-[1.85] whitespace-pre-wrap">{P.message}</p>
+                        {/* Right: Message + Guide */}
+                        <div className="p-6 space-y-5">
+                            <div>
+                                <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-4">
+                                    <MessageCircle className="h-3.5 w-3.5 text-blue-400" /> 제안 메시지
+                                </h4>
+                                <div className="bg-blue-50/30 dark:bg-blue-900/10 rounded-xl p-5 border border-blue-100/40 dark:border-blue-900/20">
+                                    <p className="text-sm leading-[1.9] whitespace-pre-wrap text-foreground/85">{P.message}</p>
+                                </div>
+                            </div>
+
+                            {/* Video Guide */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3">
+                                    <Clapperboard className="h-3.5 w-3.5 text-amber-400" /> 영상 가이드
+                                </h4>
+                                {P.video_guide === 'brand_provided' ? (
+                                    <div className="bg-amber-50/40 dark:bg-amber-900/10 rounded-xl p-4 border border-amber-100/50 dark:border-amber-900/20">
+                                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">📋 브랜드 가이드 제공</p>
+                                        <p className="text-xs text-amber-700/70 dark:text-amber-300/60">브랜드에서 제공하는 가이드라인에 따라 제작해주세요.</p>
+                                    </div>
+                                ) : (
+                                    <div className="bg-muted/30 rounded-xl p-4 border border-border/40">
+                                        <p className="text-sm font-medium text-foreground/80 mb-1">🎨 크리에이터 재량</p>
+                                        <p className="text-xs text-muted-foreground">별도 가이드 없이 크리에이터님의 스타일대로 자유롭게 제작해주세요.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

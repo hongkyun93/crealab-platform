@@ -3,211 +3,270 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Package, Banknote } from "lucide-react"
+import {
+    Calendar, Package, Banknote, Tv, Gift, ExternalLink, Clapperboard,
+    TrendingUp, MessageCircle, Timer, Repeat2, CheckCircle2, XCircle
+} from "lucide-react"
 import { useMemo, useState } from "react"
 
 interface ReadonlyProposalDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    proposal: any // Using any to support both MomentProposal and BrandProposal
+    proposal: any
     onAccept?: (proposalId: string) => void | Promise<void>
     onReject?: (proposalId: string) => void | Promise<void>
-    onCancel?: (proposalId: string) => void | Promise<void> // [NEW] Cancel for sender
-    currentUserId?: string // To determine if user can accept/reject
+    onCancel?: (proposalId: string) => void | Promise<void>
+    currentUserId?: string
+}
+
+const CH: Record<string, string> = { instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', blog: 'Blog', '협의': '협의' }
+const SUB: Record<string, string> = { instagram_reels: '릴스', instagram_feed: '피드', instagram_story: '스토리', youtube_longform: '롱폼', youtube_shorts: '숏츠' }
+const CH_BG: Record<string, string> = {
+    instagram: 'bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600',
+    youtube: 'bg-gradient-to-r from-red-600 to-red-700',
+    tiktok: 'bg-gradient-to-r from-black to-slate-800',
+    blog: 'bg-gradient-to-r from-green-500 to-green-600',
+    '협의': 'bg-gradient-to-r from-gray-500 to-gray-600'
+}
+
+const fmt = (n: number) => n > 0 ? `₩${n.toLocaleString()}` : '협의 필요'
+const fmtDate = (d: string | undefined | null) => {
+    if (!d || d === '미정') return '미정'
+    try {
+        const dt = new Date(d)
+        if (isNaN(dt.getTime())) return d
+        return `${dt.getFullYear()}.${dt.getMonth() + 1}.${dt.getDate()}`
+    } catch { return d }
+}
+
+const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'outline' | 'secondary' | 'destructive'; bg: string }> = {
+    offered: { label: '검토 대기', variant: 'outline', bg: 'bg-blue-50 text-blue-600 border-blue-200' },
+    pending: { label: '검토 대기', variant: 'outline', bg: 'bg-blue-50 text-blue-600 border-blue-200' },
+    applied: { label: '지원 완료', variant: 'outline', bg: 'bg-blue-50 text-blue-600 border-blue-200' },
+    accepted: { label: '수락됨', variant: 'default', bg: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+    rejected: { label: '거절됨', variant: 'destructive', bg: 'bg-red-50 text-red-600 border-red-200' },
+    cancelled: { label: '취소됨', variant: 'secondary', bg: 'bg-gray-50 text-gray-600 border-gray-200' },
+    completed: { label: '완료', variant: 'default', bg: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
 }
 
 export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept, onReject, onCancel, currentUserId }: ReadonlyProposalDialogProps) {
     const [isAccepting, setIsAccepting] = useState(false)
     const [isRejecting, setIsRejecting] = useState(false)
 
-    // Data Normalization (정규화)
-    // MomentProposal has details in 'conditions' object
-    // BrandProposal has details in top-level fields
-    // We unify them into a single structure for rendering
+    // Data Normalization — supports MomentProposal, BrandProposal, CampaignApplication
     const data = useMemo(() => {
         if (!proposal) return null
 
         const c = proposal.conditions || {}
 
+        const rawAmount = c.compensation_amount || proposal.compensation_amount || proposal.price_offer || proposal.cost || 0
+        const amount = typeof rawAmount === 'string' ? parseInt(rawAmount.replace(/[^0-9]/g, '')) || 0 : rawAmount
+
         return {
             // Meta
-            brand_name: proposal.brand_name || proposal.brand?.name || 'Brand',
-            brand_avatar: proposal.brand_avatar || proposal.brand?.avatar,
+            brand_name: proposal.brand_name || proposal.brand?.display_name || proposal.brand?.name || 'Brand',
+            brand_avatar: proposal.brand_avatar || proposal.brandAvatar || proposal.brand?.avatar_url,
             created_at: proposal.created_at,
             status: proposal.status,
             message: proposal.message,
 
             // Product
             product_name: c.product_name || proposal.product_name || proposal.product?.name || '-',
-            product_image: c.product_image || proposal.product?.image || proposal.product_url || null, // product_url might be an image in some contexts or link
-            product_type: c.product_type || proposal.product_type || 'benefit',
+            product_type: c.product_type || proposal.product_type || 'gift',
             product_url: c.product_url || proposal.product?.link || proposal.product_url,
 
             // Compensation
-            compensation_amount: c.compensation_amount || proposal.compensation_amount || proposal.price_offer || proposal.cost || 0,
+            compensation_amount: amount,
             has_incentive: c.has_incentive !== undefined ? c.has_incentive : proposal.has_incentive,
             incentive_detail: c.incentive_detail || proposal.incentive_detail,
 
             // Channel
             channel_name: c.channel_name || proposal.channel_name || '협의',
             channel_subtype: c.channel_subtype || proposal.channel_subtype || '',
+
+            // Schedule
             draft_date: c.condition_draft_submission_date || proposal.condition_draft_submission_date || '미정',
             final_date: c.condition_final_submission_date || proposal.condition_final_submission_date || '미정',
             upload_date: c.condition_upload_date || proposal.condition_upload_date || '미정',
+            date_flexible: c.date_flexible || proposal.date_flexible || false,
             secondary_usage: c.condition_secondary_usage_period || proposal.condition_secondary_usage_period,
             secondary_usage_fee: c.secondary_usage_fee || proposal.secondary_usage_fee || 0,
+
+            // Video Guide
+            video_guide: c.video_guide || proposal.video_guide || 'creator_planned',
+
+            // Context
+            moment_title: proposal.moment_title || proposal.moment?.title || proposal.campaignName || proposal.product?.name,
         }
     }, [proposal])
 
     if (!proposal || !data) return null
 
+    const statusInfo = STATUS_MAP[data.status] || STATUS_MAP.offered
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-                <DialogHeader className="px-6 pt-6 pb-4 border-b">
-                    <DialogTitle>제안서 상세</DialogTitle>
-                    <DialogDescription>
-                        제안 내용을 확인하고 협업 여부를 결정하세요.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-                    {/* 1. Brand & Status Info */}
+            <DialogContent className="max-w-[840px] max-h-[85vh] overflow-hidden p-0 flex flex-col">
+                {/* Header */}
+                <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                        <div className="flex items-center gap-3.5">
+                            <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-violet-100 to-pink-100 ring-1 ring-violet-200/40 flex items-center justify-center text-sm font-black text-violet-600 shrink-0 overflow-hidden">
                                 {data.brand_avatar ? (
-                                    <img src={data.brand_avatar} alt="Brand" className="h-full w-full object-cover" />
+                                    <img src={data.brand_avatar} alt="" className="h-full w-full object-cover" />
                                 ) : (
-                                    <span className="text-sm font-bold">{data.brand_name?.substring(0, 1) || 'B'}</span>
+                                    data.brand_name?.substring(0, 1) || 'B'
                                 )}
                             </div>
                             <div>
-                                <p className="font-bold">{data.brand_name}</p>
-                                <p className="text-xs text-muted-foreground">{new Date(data.created_at).toLocaleDateString()} 제안</p>
+                                <DialogTitle className="text-base font-bold tracking-tight">{data.brand_name}</DialogTitle>
+                                <DialogDescription className="text-xs mt-0.5">
+                                    {fmtDate(data.created_at)}
+                                    {data.moment_title && ` · ${data.moment_title}`}
+                                </DialogDescription>
                             </div>
                         </div>
-                        <Badge variant={data.status === 'accepted' ? 'default' : 'outline'}>
-                            {data.status === 'offered' ? '대기중' :
-                                data.status === 'accepted' ? '수락됨' :
-                                    data.status === 'rejected' ? '거절됨' : data.status}
+                        <Badge variant={statusInfo.variant} className={`${statusInfo.bg} text-[10px] font-semibold gap-1 px-2.5 py-1`}>
+                            <Timer className="h-3 w-3" /> {statusInfo.label}
                         </Badge>
                     </div>
+                </DialogHeader>
 
-                    {/* 2. Message */}
-                    <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-                        <p className="text-sm font-medium">제안 메시지</p>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {data.message || "메시지 없음"}
-                        </p>
-                    </div>
+                {/* Two-Column Body */}
+                <div className="flex-1 overflow-y-auto">
+                    <div className="grid grid-cols-[280px_1fr] min-h-0">
+                        {/* ── Left: Conditions Summary ── */}
+                        <div className="border-r bg-muted/15 px-5 py-5 space-y-3.5">
+                            {/* Price */}
+                            <div className="text-center py-4 bg-gradient-to-b from-emerald-50 to-emerald-50/30 dark:from-emerald-900/15 dark:to-emerald-900/5 rounded-xl border border-emerald-100/80 dark:border-emerald-900/20">
+                                <p className="text-[11px] uppercase tracking-wider text-emerald-600/60 font-semibold mb-1">광고비</p>
+                                <p className="text-[26px] font-black text-emerald-600 leading-none tracking-tight">{fmt(data.compensation_amount)}</p>
+                                {data.has_incentive && (
+                                    <p className="text-[10px] text-emerald-600/80 mt-1.5 flex items-center justify-center gap-1 font-medium"><TrendingUp className="h-3 w-3" /> 인센티브 있음</p>
+                                )}
+                            </div>
 
-                    {/* 3. Product Info */}
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-semibold flex items-center gap-2">
-                            <Package className="h-4 w-4" /> 제안 제품
-                        </h4>
-                        <div className="bg-card border rounded-lg p-4 space-y-2">
-                            <div className="flex justify-between items-start">
-                                <span className="text-xs text-muted-foreground">제품명</span>
-                                <span className="text-sm font-semibold text-right flex-1 ml-2">{data.product_name}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-muted-foreground">제공 방식</span>
-                                <Badge variant="secondary" className="text-[10px] h-5">
-                                    {data.product_type === 'gift' ? '제품 증정' : '제품 대여'}
-                                </Badge>
-                            </div>
-                            {(data.product_url) && (
-                                <div className="pt-2 border-t border-border">
-                                    <a
-                                        href={data.product_url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-xs text-blue-500 hover:text-blue-600 hover:underline inline-flex items-center gap-1"
-                                    >
-                                        <span>🔗</span> 제품 링크 확인하기
-                                    </a>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 4. Compensation */}
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-semibold flex items-center gap-2">
-                            <Banknote className="h-4 w-4" /> 제안 고료
-                        </h4>
-                        <div className="bg-card border rounded-lg p-3 space-y-2">
-                            <div className="flex justify-between">
-                                <span className="text-sm text-muted-foreground">고정 고료</span>
-                                <span className="text-sm font-bold">
-                                    {(() => {
-                                        const amount = data.compensation_amount ? parseInt(data.compensation_amount.toString().replace(/[^0-9]/g, '')) : 0
-                                        return amount > 0 ? `${amount.toLocaleString()}원` : '협의 필요'
-                                    })()}
-                                </span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-sm text-muted-foreground">인센티브</span>
-                                <span className="text-sm">
-                                    {data.has_incentive ? (
-                                        <span className="text-green-600 font-medium">있음</span>
-                                    ) : (
-                                        <span className="text-muted-foreground">없음</span>
-                                    )}
-                                </span>
-                            </div>
                             {data.has_incentive && data.incentive_detail && (
-                                <div className="mt-2 text-xs bg-muted p-2 rounded text-muted-foreground">
-                                    {data.incentive_detail}
+                                <div className="bg-emerald-50/60 dark:bg-emerald-800/15 rounded-lg px-3 py-2.5 text-[13px] text-emerald-800/90 dark:text-emerald-200 leading-relaxed border border-emerald-100/50 dark:border-emerald-900/15">
+                                    💡 {data.incentive_detail}
                                 </div>
                             )}
+
+                            <div className="border-t border-border/40 pt-3.5 space-y-3.5">
+                                {/* Product */}
+                                <div className="space-y-2">
+                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground/60 flex items-center gap-1.5">
+                                        <Package className="h-3.5 w-3.5 text-purple-400" /> 제안 제품
+                                    </p>
+                                    <p className="text-sm font-bold leading-snug">{data.product_name}</p>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="secondary" className="text-[11px] gap-1 font-medium">
+                                            <Gift className="h-3.5 w-3.5" />{data.product_type === 'gift' ? '증정' : data.product_type === 'rental' ? '대여' : '제공'}
+                                        </Badge>
+                                        {data.product_url && (
+                                            <a href={data.product_url} target="_blank" rel="noreferrer" className="text-[11px] text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-0.5 transition-colors">
+                                                <ExternalLink className="h-3 w-3" /> 제품 링크
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Channel */}
+                                <div className="space-y-2">
+                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground/60 flex items-center gap-1.5">
+                                        <Tv className="h-3.5 w-3.5 text-pink-400" /> 진행 채널
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-[11px] font-semibold text-white px-2.5 py-1 rounded-full shadow-sm ${CH_BG[data.channel_name] || CH_BG['협의']}`}>
+                                            {CH[data.channel_name] || data.channel_name}
+                                        </span>
+                                        {data.channel_subtype && (
+                                            <span className="text-sm font-medium">· {SUB[data.channel_subtype] || data.channel_subtype}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Schedule */}
+                            <div className="border-t border-border/40 pt-3.5 space-y-2">
+                                <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground/60 flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5 text-amber-400" /> 일정
+                                </p>
+                                <div className="space-y-0 text-[13px]">
+                                    {[
+                                        { label: '초안 제출', value: fmtDate(data.draft_date) },
+                                        { label: '최종 제출', value: fmtDate(data.final_date) },
+                                    ].map(({ label, value }) => (
+                                        <div key={label} className="flex justify-between py-1.5 border-b border-border/25">
+                                            <span className="text-muted-foreground">{label}</span>
+                                            <span className="font-semibold tabular-nums">{value}</span>
+                                        </div>
+                                    ))}
+                                    <div className="flex justify-between py-1.5 border-b border-border/25">
+                                        <span className="text-muted-foreground">업로드</span>
+                                        <span className="font-semibold tabular-nums">
+                                            {fmtDate(data.upload_date)}
+                                            {data.date_flexible && <span className="text-primary/80 font-medium ml-1 text-[10px]">(유동)</span>}
+                                        </span>
+                                    </div>
+                                    {data.secondary_usage && (
+                                        <div className="flex justify-between py-1.5 mt-1 border-t border-border/40">
+                                            <span className="text-muted-foreground flex items-center gap-1"><Repeat2 className="h-3 w-3" /> 2차 활용</span>
+                                            <span className="font-semibold">{data.secondary_usage}</span>
+                                        </div>
+                                    )}
+                                    {data.secondary_usage_fee > 0 && (
+                                        <div className="flex justify-between py-1">
+                                            <span className="text-muted-foreground">2차 비용</span>
+                                            <span className="font-semibold text-emerald-600">{fmt(data.secondary_usage_fee)}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* 5. Schedule & Conditions */}
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-semibold flex items-center gap-2">
-                            <Calendar className="h-4 w-4" /> 일정 및 조건
-                        </h4>
-                        <div className="bg-card border rounded-lg p-3 space-y-1">
-                            {/* Channel */}
-                            <div className="flex justify-between py-1 border-b border-border/50">
-                                <span className="text-sm text-muted-foreground">진행 채널</span>
-                                <span className="text-sm font-medium">{data.channel_name}{data.channel_subtype ? ` (${data.channel_subtype})` : ''}</span>
-                            </div>
-
-                            {/* Dates */}
-                            <div className="flex justify-between py-1">
-                                <span className="text-sm text-muted-foreground">초안 제출 희망일</span>
-                                <span className="text-sm">{data.draft_date}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-sm text-muted-foreground">최종 제출 희망일</span>
-                                <span className="text-sm">{data.final_date}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-sm text-muted-foreground">업로드 희망일</span>
-                                <span className="text-sm">{data.upload_date}</span>
-                            </div>
-                            {data.secondary_usage && (
-                                <div className="flex justify-between py-1 border-t border-border/50 mt-1 pt-2">
-                                    <span className="text-sm text-muted-foreground">2차 활용 기간</span>
-                                    <span className="text-sm font-medium">{data.secondary_usage}{data.secondary_usage_fee > 0 && ` · ${data.secondary_usage_fee.toLocaleString()}원`}</span>
+                        {/* ── Right: Message + Guide ── */}
+                        <div className="p-6 space-y-5">
+                            <div>
+                                <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-4">
+                                    <MessageCircle className="h-3.5 w-3.5 text-blue-400" /> 제안 메시지
+                                </h4>
+                                <div className="bg-blue-50/30 dark:bg-blue-900/10 rounded-xl p-5 border border-blue-100/40 dark:border-blue-900/20">
+                                    <p className="text-sm leading-[1.9] whitespace-pre-wrap text-foreground/85">
+                                        {data.message || "메시지 없음"}
+                                    </p>
                                 </div>
-                            )}
+                            </div>
+
+                            {/* Video Guide */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3">
+                                    <Clapperboard className="h-3.5 w-3.5 text-amber-400" /> 영상 가이드
+                                </h4>
+                                {data.video_guide === 'brand_provided' ? (
+                                    <div className="bg-amber-50/40 dark:bg-amber-900/10 rounded-xl p-4 border border-amber-100/50 dark:border-amber-900/20">
+                                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">📋 브랜드 가이드 제공</p>
+                                        <p className="text-xs text-amber-700/70 dark:text-amber-300/60">브랜드에서 제공하는 가이드라인에 따라 제작해주세요.</p>
+                                    </div>
+                                ) : (
+                                    <div className="bg-muted/30 rounded-xl p-4 border border-border/40">
+                                        <p className="text-sm font-medium text-foreground/80 mb-1">🎨 크리에이터 재량</p>
+                                        <p className="text-xs text-muted-foreground">별도 가이드 없이 크리에이터님의 스타일대로 자유롭게 제작해주세요.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <DialogFooter className="px-6 py-4 border-t flex gap-2">
-                    {/* Sender Actions (Brand) - Cancel Proposal */}
+                {/* Footer — status-based actions */}
+                <DialogFooter className="px-6 py-4 border-t flex gap-2 shrink-0">
+                    {/* Sender (Brand) — Cancel */}
                     {currentUserId && (proposal?.brand_id === currentUserId || proposal?.sender_id === currentUserId) && proposal?.status === 'offered' ? (
                         <div className="flex w-full gap-2">
                             <Button
                                 variant="outline"
-                                className="flex-1 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
+                                className="flex-1 gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
                                 onClick={async () => {
                                     if (!onCancel) return
                                     if (!confirm("정말로 이 제안을 취소하시겠습니까? 안심하세요, 상대방에게는 삭제된 것으로 보입니다.")) return
@@ -215,35 +274,18 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                                     onOpenChange(false)
                                 }}
                             >
-                                제안 취소하기
+                                <XCircle className="h-4 w-4" /> 제안 취소하기
                             </Button>
                             <Button onClick={() => onOpenChange(false)} className="flex-1">닫기</Button>
                         </div>
                     ) :
-
-                        /* Receiver Actions (Creator/Influencer) */
+                        /* Receiver (Creator) — Accept / Reject */
                         (proposal?.status === 'offered' || proposal?.status === 'pending' || !proposal?.status) &&
                             currentUserId && proposal?.influencer_id === currentUserId ? (
-                            <>
+                            <div className="flex w-full gap-2">
                                 <Button
-                                    onClick={async () => {
-                                        if (!onAccept) return
-                                        setIsAccepting(true)
-                                        try {
-                                            await onAccept(proposal.id)
-                                            onOpenChange(false)
-                                        } catch (e) {
-                                            console.error('Accept error:', e)
-                                        } finally {
-                                            setIsAccepting(false)
-                                        }
-                                    }}
-                                    disabled={isAccepting || isRejecting}
-                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                                >
-                                    {isAccepting ? '수락 중...' : '수락하기'}
-                                </Button>
-                                <Button
+                                    variant="outline"
+                                    className="flex-1 gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200 dark:hover:bg-red-950/20"
                                     onClick={async () => {
                                         if (!onReject) return
                                         setIsRejecting(true)
@@ -257,17 +299,33 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                                         }
                                     }}
                                     disabled={isAccepting || isRejecting}
-                                    variant="destructive"
-                                    className="flex-1"
                                 >
-                                    {isRejecting ? '거절 중...' : '거절하기'}
+                                    <XCircle className="h-4 w-4" /> {isRejecting ? '거절 중...' : '거절'}
                                 </Button>
-                            </>
+                                <Button
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-1.5"
+                                    onClick={async () => {
+                                        if (!onAccept) return
+                                        setIsAccepting(true)
+                                        try {
+                                            await onAccept(proposal.id)
+                                            onOpenChange(false)
+                                        } catch (e) {
+                                            console.error('Accept error:', e)
+                                        } finally {
+                                            setIsAccepting(false)
+                                        }
+                                    }}
+                                    disabled={isAccepting || isRejecting}
+                                >
+                                    <CheckCircle2 className="h-4 w-4" /> {isAccepting ? '수락 중...' : '수락'}
+                                </Button>
+                            </div>
                         ) : (
                             <Button onClick={() => onOpenChange(false)} className="flex-1">닫기</Button>
                         )}
                 </DialogFooter>
-            </DialogContent >
-        </Dialog >
+            </DialogContent>
+        </Dialog>
     )
 }
