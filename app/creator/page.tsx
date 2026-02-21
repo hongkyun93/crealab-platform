@@ -949,7 +949,15 @@ function InfluencerDashboardContent() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                        <div className="flex items-center gap-1">
+                                            {item.moment_id && (
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" title="제안서 보기"
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedProposal(item); setShowReadonlyDialog(true); }}>
+                                                    <FileText className="h-3.5 w-3.5 text-blue-500" />
+                                                </Button>
+                                            )}
+                                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -1026,9 +1034,17 @@ function InfluencerDashboardContent() {
                                     ></div>
                                 </div>
                             </CardContent>
-                            <CardFooter className="pt-0 pb-3 text-[10px] text-muted-foreground flex justify-between">
+                            <CardFooter className="pt-0 pb-3 text-[10px] text-muted-foreground flex justify-between items-center">
                                 <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                                <span className="group-hover:text-primary transition-colors">상세보기 →</span>
+                                <div className="flex items-center gap-2">
+                                    {item.moment_id && (
+                                        <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                                            onClick={(e) => { e.stopPropagation(); setSelectedProposal(item); setShowReadonlyDialog(true); }}>
+                                            <FileText className="h-3 w-3 mr-1" /> 제안서
+                                        </Button>
+                                    )}
+                                    <span className="group-hover:text-primary transition-colors">상세보기 →</span>
+                                </div>
                             </CardFooter>
                         </Card>
                     ))}
@@ -1105,6 +1121,16 @@ function InfluencerDashboardContent() {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {/* 제안서 보기 button for moment proposals */}
+                                        {proposal.moment_id && (
+                                            <Button size="sm" variant="outline" className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hidden md:flex" onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedProposal(proposal);
+                                                setShowReadonlyDialog(true);
+                                            }}>
+                                                <FileText className="mr-1 h-3 w-3" /> 제안서 보기
+                                            </Button>
+                                        )}
                                         {/* Contextual Actions based on type/status */}
                                         {type === 'active' && (
                                             <Button size="sm" variant="outline" className="border-border hidden md:flex" onClick={(e) => {
