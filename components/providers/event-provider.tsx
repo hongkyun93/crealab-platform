@@ -115,7 +115,13 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
             return false
         }
         const effectiveTeamId = teamId === 'ALL' ? undefined : teamId
-        return eventMutations.deleteEvent(effectiveTeamId, userId, id)
+        try {
+            return await eventMutations.deleteEvent(effectiveTeamId, userId, id)
+        } catch (error: any) {
+            console.error('[EventProvider] Delete failed:', error)
+            // Error will propagate to caller for toast display
+            throw error
+        }
     }
 
     const refreshEvents = async (targetUserId?: string) => {

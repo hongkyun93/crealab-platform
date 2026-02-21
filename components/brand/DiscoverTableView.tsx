@@ -8,9 +8,9 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Star, Trash2, ExternalLink } from "lucide-react"
+import { Star, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { formatDateToMonth } from "@/lib/utils"
+import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
 
 interface DiscoverTableViewProps {
     filteredEvents: any[]
@@ -20,17 +20,18 @@ interface DiscoverTableViewProps {
     user: any
 }
 
-import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
-import { useState } from "react"
+const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
+    instagram: { label: 'Instagram', color: 'bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 text-white' },
+    youtube: { label: 'YouTube', color: 'bg-red-600 text-white' },
+    tiktok: { label: 'TikTok', color: 'bg-black text-white' },
+    blog: { label: 'Blog', color: 'bg-green-600 text-white' },
+}
 
 export function DiscoverTableView({
     filteredEvents,
     favorites,
     toggleFavorite,
-    deleteEvent,
-    user
 }: DiscoverTableViewProps) {
-    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
     return (
         <div className="rounded-md border bg-card">
             <Table>
@@ -40,15 +41,18 @@ export function DiscoverTableView({
                         <TableHead>크리에이터</TableHead>
                         <TableHead>모먼트 제목</TableHead>
                         <TableHead>희망 제품</TableHead>
+                        <TableHead>예상 단가</TableHead>
+                        <TableHead>채널</TableHead>
                         <TableHead>팔로워</TableHead>
                         <TableHead>일정</TableHead>
-                        <TableHead className="text-right">관리</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {filteredEvents.length > 0 ? (
                         filteredEvents.map((item) => {
                             const isFavorite = favorites.some(f => f.target_id === item.id && f.target_type === 'event')
+                            const pc = (item as any).primaryChannel
+                            const platform = pc?.platform || ''
                             return (
                                 <TableRow key={item.id} className="group hover:bg-muted/50">
                                     <TableCell className="text-center">
@@ -78,7 +82,9 @@ export function DiscoverTableView({
                                             </div>
                                             <div>
                                                 <div className="font-medium text-sm">{item.influencer}</div>
-                                                <div className="text-xs text-muted-foreground">{item.handle}</div>
+                                                {item.category && (
+                                                    <span className="text-[10px] text-primary/80 font-medium">{item.category}</span>
+                                                )}
                                             </div>
                                         </div>
                                     </TableCell>
@@ -94,6 +100,20 @@ export function DiscoverTableView({
                                         </div>
                                     </TableCell>
                                     <TableCell>
+                                        <span className="text-sm font-medium whitespace-nowrap">
+                                            {formatPriceRange(item.priceVideo)}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
+                                        {platform ? (
+                                            <Badge className={`text-[10px] font-medium border-0 ${PLATFORM_LABELS[platform]?.color || 'bg-slate-600 text-white'}`}>
+                                                {PLATFORM_LABELS[platform]?.label || platform}
+                                            </Badge>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">-</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
                                         <Badge variant="secondary" className="font-normal text-xs bg-muted">
                                             {(item.followers || 0).toLocaleString()}
                                         </Badge>
@@ -104,45 +124,18 @@ export function DiscoverTableView({
                                             <div>{item.dateFlexible ? '협의가능' : formatDateToMonth(item.postingDate)} (업로드)</div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                        {user?.role === 'admin' && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                                onClick={() => setConfirmDeleteId(item.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4 text-red-500" />
-                                            </Button>
-                                        )}
-                                    </TableCell>
                                 </TableRow>
                             )
                         })
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                            <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                                 검색된 모먼트가 없습니다.
                             </TableCell>
                         </TableRow>
                     )}
                 </TableBody>
             </Table>
-
-            <ConfirmDialog
-                open={!!confirmDeleteId}
-                onOpenChange={(open) => !open && setConfirmDeleteId(null)}
-                title="정말 삭제하시겠습니까?"
-                description="삭제된 데이터는 복구할 수 없습니다."
-                onConfirm={() => {
-                    if (confirmDeleteId) {
-                        deleteEvent(confirmDeleteId)
-                        setConfirmDeleteId(null)
-                    }
-                }}
-                confirmText="삭제"
-                variant="destructive"
-            />
         </div>
     )
 }

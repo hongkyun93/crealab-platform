@@ -3,7 +3,9 @@
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, User, BadgeCheck, MessageCircle, Share2, MapPin, Package, Send, SearchX, Loader2, Lock, Banknote } from "lucide-react"
+import { ArrowLeft, Calendar, User, BadgeCheck, MessageCircle, Share2, MapPin, Package, Send, SearchX, Loader2, Lock, Banknote, Tv, Instagram, Youtube, Music, FileText, MoreHorizontal, Globe, Sparkles, Clock } from "lucide-react"
+import { CHANNELS, CHANNEL_SUBTYPES, getChannelSubtypeLabel } from "@/components/shared/ChannelSelector"
+import { CreatorProfileCard } from "@/components/profile/CreatorProfileCard"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
@@ -118,7 +120,8 @@ export default function EventDetailPage() {
                                 role,
                                 instagram_handle,
                                 followers_count,
-                                price_video
+                                price_video,
+                                social_channels(*)
                             )
                         `)
                         .eq('id', params.id)
@@ -148,7 +151,13 @@ export default function EventDetailPage() {
                             status: e.status || ((e.event_date && new Date(e.event_date) < new Date()) ? 'completed' : 'recruiting'),
                             isPrivate: e.is_private,
                             dateFlexible: e.date_flexible || false,
-                            schedule: e.schedule
+                            schedule: e.schedule,
+                            channels: e.channels || [],
+                            socialChannels: (profile.social_channels || []).map((c: any) => ({
+                                platform: c.channel_type || c.platform || '',
+                                handle: c.handle || '',
+                                followersCount: c.followers_count || 0,
+                            }))
                         }
                     }
                 } catch (err) {
@@ -185,6 +194,15 @@ ${u.name}의 담당자입니다.
         if (!user) {
             router.push("/login")
             return
+        }
+        // Pre-fill channel from creator's preferred channels
+        if (event?.channels && event.channels.length > 0) {
+            const firstChannel = event.channels[0]
+            // Check if it's a subtype (e.g., "instagram_reels") or base channel (e.g., "tiktok")
+            const baseCh = firstChannel.split("_")[0]
+            const hasSubtype = firstChannel.includes("_") && firstChannel !== baseCh
+            setChannelName(baseCh)
+            setChannelSubtype(hasSubtype ? firstChannel : "")
         }
         if (event && !proposalMessage) {
             setProposalMessage(generateDefaultMessage(event, user))
@@ -382,302 +400,311 @@ ${u.name}의 담당자입니다.
         )
     }
 
+    // Helper: group channels by platform for display
+    const channelsByPlatform = (event.channels || []).reduce<Record<string, string[]>>((acc, ch) => {
+        const base = ch.split("_")[0]
+        if (!acc[base]) acc[base] = []
+        acc[base].push(ch)
+        return acc
+    }, {})
+
+    const CHANNEL_DISPLAY: Record<string, { Icon: any; bg: string; label: string }> = {
+        instagram: { Icon: Instagram, bg: "from-purple-600 via-pink-600 to-orange-600", label: "Instagram" },
+        youtube: { Icon: Youtube, bg: "from-red-600 to-red-700", label: "YouTube" },
+        tiktok: { Icon: Music, bg: "from-black to-slate-800", label: "TikTok" },
+        blog: { Icon: FileText, bg: "from-green-500 to-green-600", label: "Blog" },
+    }
+
+    const CONTENT_TYPE_LABELS: Record<string, string> = {
+        instagram_reels: "🎞️ 릴스", instagram_feed: "📷 피드", instagram_story: "⭕ 스토리",
+        youtube_longform: "▶️ 롱폼", youtube_shorts: "⚡ 숏츠",
+    }
+
+    const formatFollowers = (n: number) => {
+        if (n >= 10000) return `${(n / 10000).toFixed(1)}만`
+        if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
+        return String(n)
+    }
+
     return (
         <div className="min-h-screen bg-muted/30">
             <SiteHeader />
-            <main className="container py-8 max-w-4xl px-4 mx-auto">
-                <div className="mb-6">
-                    <Button variant="ghost" size="sm" asChild className="gap-2">
-                        <Link href="/brand">
-                            <ArrowLeft className="h-4 w-4" /> 목록으로
-                        </Link>
-                    </Button>
-                </div>
+            <main className="container max-w-7xl mx-auto px-4 py-4">
+                <Button variant="ghost" size="sm" asChild className="gap-2 mb-3">
+                    <Link href="/brand">
+                        <ArrowLeft className="h-4 w-4" /> 목록으로
+                    </Link>
+                </Button>
 
-                <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
-                    {/* Main Content */}
-                    <div className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center font-bold text-primary text-lg">
-                                            {event.influencer[0]}
+                {/* ===== Design E: 3-Column Layout ===== */}
+                <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_320px] gap-5">
+
+                    {/* ─── COL 1: Profile + Meta ─── */}
+                    <div className="space-y-4">
+                        {/* Profile Card */}
+                        <CreatorProfileCard
+                            creatorId={event.influencerId || ''}
+                            trigger={
+                                <div className="rounded-xl border bg-card p-5 text-center cursor-pointer hover:border-primary/40 transition-all">
+                                    {event.avatar ? (
+                                        <img src={event.avatar} alt="" className="h-24 w-24 rounded-full object-cover border-3 border-primary/20 mx-auto mb-3 shadow-lg" />
+                                    ) : (
+                                        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary to-violet-600 flex items-center justify-center font-bold text-white text-3xl mx-auto mb-3 shadow-lg">
+                                            {event.handle?.[1]?.toUpperCase() || event.influencer?.[0] || 'C'}
                                         </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold">{event.influencer}</h3>
-                                                {event.verified && <BadgeCheck className="h-4 w-4 text-blue-500" />}
-                                            </div>
-                                            <p className="text-sm text-muted-foreground">{event.handle}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm text-muted-foreground">팔로워</p>
-                                        <p className="font-bold">{event.followers?.toLocaleString()}</p>
+                                    )}
+                                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                                        <span className="font-bold text-xl">{event.handle || event.influencer}</span>
+                                        {event.verified && <BadgeCheck className="h-5 w-5 text-blue-500" />}
                                     </div>
                                 </div>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div>
-                                    <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full mb-3">
-                                        {event.category}
-                                    </span>
-                                    <h1 className="text-3xl font-bold mb-4">{event.event}</h1>
-                                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                        {event.description}
-                                    </p>
-                                </div>
+                            }
+                        />
 
-                                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
-                                    <div>
-                                        <p className="text-xs text-muted-foreground mb-1">모먼트 일정</p>
-                                        <p className="font-semibold">{formatDateToMonth(event.eventDate) || "미정"}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-muted-foreground mb-1">콘텐츠 업로드</p>
-                                        <div className="font-semibold">
-                                            {event.dateFlexible ? (
-                                                <span className="flex items-center gap-1">
-                                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
-                                                </span>
-                                            ) : (formatDateToMonth(event.postingDate) || "미정")}
-                                        </div>
-                                    </div>
+                        {/* Schedule */}
+                        <div className="rounded-xl border bg-card p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Calendar className="h-4 w-4 text-primary" /> 모먼트 일정
                                 </div>
+                                <span className="text-base font-bold text-primary">{formatDateToMonth(event.eventDate) || "미정"}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Clock className="h-4 w-4 text-emerald-600" /> 업로드 시기
+                                </div>
+                                <span className="text-base font-bold text-emerald-600">
+                                    {event.dateFlexible ? "협의 가능" : (formatDateToMonth(event.postingDate) || "미정")}
+                                </span>
+                            </div>
+                        </div>
 
-                                <div>
-                                    <p className="text-sm font-semibold mb-2 flex items-center gap-2">
-                                        <Package className="h-4 w-4" /> 광고 가능 아이템
-                                    </p>
-                                    <p className="text-muted-foreground">{event.targetProduct}</p>
-                                </div>
-
-                                <div className="flex flex-wrap gap-2">
-                                    {event.tags.map(tag => (
-                                        <span key={tag} className="px-3 py-1 border rounded-full text-sm text-muted-foreground">
-                                            #{tag}
-                                        </span>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Sidebar / Action */}
-                    <div className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>일정 및 액션</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg">
-                                    <Calendar className="h-5 w-5 text-primary" />
-                                    <div>
-                                        <p className="text-xs text-muted-foreground">모먼트 일정</p>
-                                        <p className="font-semibold">{event.date}</p>
-                                    </div>
-                                </div>
-                                <div className="pt-2 space-y-2">
-                                    {/* Creator View: Received Proposals List */}
-                                    {user?.id === event.influencerId ? (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-semibold">받은 제안 ({momentProposals.filter(p => p.moment_id === event.id).length})</span>
-                                            </div>
-                                            {momentProposals.filter(p => p.moment_id === event.id).length > 0 ? (
-                                                <div className="space-y-2">
-                                                    {momentProposals.filter(p => p.moment_id === event.id).map(prop => (
-                                                        <div key={prop.id} className="bg-background border rounded-lg p-3 space-y-2">
-                                                            <div className="flex items-center gap-2">
-                                                                {prop.brand_avatar ? (
-                                                                    <img src={prop.brand_avatar} alt={prop.brand_name} className="w-6 h-6 rounded-full object-cover" />
-                                                                ) : (
-                                                                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold">
-                                                                        {prop.brand_name?.substring(0, 1) || 'B'}
-                                                                    </div>
-                                                                )}
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="text-sm font-medium truncate">{prop.brand_name}</p>
-                                                                    <p className="text-xs text-muted-foreground truncate">{formatDateToMonth(prop.created_at)}</p>
-                                                                </div>
-                                                                <Badge variant={prop.status === 'accepted' ? 'default' : 'outline'} className="text-[10px]">
-                                                                    {prop.status === 'offered' ? '대기' : prop.status}
-                                                                </Badge>
-                                                            </div>
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="w-full text-xs h-8"
-                                                                onClick={() => {
-                                                                    setSelectedProposal(prop)
-                                                                    setShowReadonlyDialog(true)
-                                                                }}
-                                                            >
-                                                                제안 확인하기
-                                                            </Button>
-                                                        </div>
+                        {/* Channels: handle + followers + content types */}
+                        {Object.keys(channelsByPlatform).length > 0 && (
+                            <div className="rounded-xl border bg-card p-4">
+                                <p className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                                    <Tv className="h-4 w-4" /> 희망 채널 · 형태
+                                </p>
+                                <div className="space-y-3">
+                                    {Object.entries(channelsByPlatform).map(([platform, subtypes]) => {
+                                        const chInfo = CHANNEL_DISPLAY[platform] || { Icon: Globe, bg: "from-slate-600 to-slate-700", label: platform }
+                                        const ChIcon = chInfo.Icon
+                                        const social = event.socialChannels?.find(sc => sc.platform === platform)
+                                        return (
+                                            <div key={platform} className="p-3 rounded-lg bg-muted/50">
+                                                <div className="flex items-center gap-2.5 mb-2">
+                                                    <div className={`h-8 w-8 rounded-full bg-gradient-to-r ${chInfo.bg} flex items-center justify-center shrink-0`}>
+                                                        <ChIcon className="h-4 w-4 text-white" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold truncate">{social?.handle || chInfo.label}</p>
+                                                        {social && (
+                                                            <p className="text-xs text-muted-foreground">팔로워 {formatFollowers(social.followersCount)}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5 pl-10">
+                                                    {subtypes.map(st => (
+                                                        <span key={st} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-white bg-gradient-to-r ${chInfo.bg} shadow-sm`}>
+                                                            {CONTENT_TYPE_LABELS[st] || st}
+                                                        </span>
                                                     ))}
                                                 </div>
-                                            ) : (
-                                                <div className="text-center py-4 bg-muted/30 rounded-lg text-xs text-muted-foreground border border-dashed">
-                                                    아직 도착한 제안이 없습니다.
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        // Brand View / Visitor View
-                                        <>
-                                            {momentProposals.find(p => p.moment_id === event.id && (user?.role === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id)) ? (
-                                                (() => {
-                                                    const prop = momentProposals.find(p => p.moment_id === event.id && (user?.role === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id))!;
-                                                    return (
-                                                        <Card className="border-primary/50 bg-primary/5 shadow-sm">
-                                                            <CardHeader className="p-4 pb-2">
-                                                                <CardTitle className="text-sm font-medium flex justify-between items-center text-primary">
-                                                                    <span className="flex items-center gap-2"><Send className="h-4 w-4" /> 제안 보냄</span>
-                                                                    <Badge variant={prop.status === 'accepted' ? 'default' : 'outline'} className="text-xs">
-                                                                        {prop.status === 'offered' ? '대기중' :
-                                                                            prop.status === 'accepted' ? '수락됨' :
-                                                                                prop.status === 'rejected' ? '거절됨' : prop.status}
-                                                                    </Badge>
-                                                                </CardTitle>
-                                                            </CardHeader>
-                                                            <CardContent className="p-4 pt-2 space-y-3">
-                                                                <div>
-                                                                    <p className="text-xs text-muted-foreground">제안 제품</p>
-                                                                    <p className="text-sm font-semibold truncate">
-                                                                        {prop.conditions?.product_name || '제품명 없음'}
-                                                                    </p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs text-muted-foreground">보낸 날짜</p>
-                                                                    <p className="text-xs font-medium">
-                                                                        {new Date(prop.created_at).toLocaleDateString()}
-                                                                    </p>
-                                                                </div>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="w-full bg-background"
-                                                                    onClick={() => {
-                                                                        setSelectedProposal(prop)
-                                                                        setShowReadonlyDialog(true)
-                                                                    }}
-                                                                >
-                                                                    제안서 보기
-                                                                </Button>
-                                                            </CardContent>
-                                                        </Card>
-                                                    )
-                                                })()
-                                            ) : (
-                                                <Button className="w-full gap-2" size="lg" onClick={handlePropose}>
-                                                    <MessageCircle className="h-5 w-5" /> 협업 제안하기
-                                                </Button>
-                                            )}
-                                        </>
-                                    )}
-
-                                    <Button variant="outline" className="w-full gap-2" onClick={() => alert("링크가 복사되었습니다!")}>
-                                        <Share2 className="h-4 w-4" /> 공유하기
-                                    </Button>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        )}
 
-                        {/* Rate Card (New) */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <BadgeCheck className="h-5 w-5 text-emerald-600" />
-                                    예상 단가표 <span className="text-xs font-normal text-muted-foreground ml-1">(Rate Card)</span>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4 relative">
-                                {/* Lock Overlay or just visual blur */}
-                                <div className="space-y-3">
-                                    <div className="flex justify-between items-center pb-2 border-b border-dashed">
-                                        <span className="text-sm font-medium text-muted-foreground">숏폼 영상 (Reels)</span>
+                        {/* Target Product */}
+                        <div className="rounded-xl border bg-card p-4">
+                            <p className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+                                <Package className="h-4 w-4" /> 광고 가능 아이템
+                            </p>
+                            <p className="text-base font-medium leading-snug">{event.targetProduct}</p>
+                        </div>
+
+                        {/* Tags */}
+                        <div className="flex flex-wrap gap-1.5">
+                            {event.tags.map(tag => (
+                                <Badge key={tag} variant="outline" className="text-sm px-3 py-1">{tag}</Badge>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ─── COL 2: Title + Description + Guide ─── */}
+                    <div className="space-y-5">
+                        <h1 className="text-3xl font-bold tracking-tight leading-tight">{event.event}</h1>
+
+                        <div className="rounded-xl border bg-card p-6">
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">상세 설명</h3>
+                            <p className="text-base leading-[1.85] whitespace-pre-wrap">{event.description}</p>
+                        </div>
+
+                        {event.guide && (
+                            <div className="rounded-xl border bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-900/10 dark:to-orange-900/5 border-amber-200/50 p-6">
+                                <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4" /> 제작 가이드
+                                </h3>
+                                <p className="text-base leading-relaxed whitespace-pre-wrap text-amber-900 dark:text-amber-100">{event.guide}</p>
+                                <p className="text-xs text-amber-600/60 mt-3 pt-3 border-t border-amber-200/40">💡 크리에이터 제안 가이드입니다. 언제든지 협의 가능합니다.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ─── COL 3: Rate Card + CTA ─── */}
+                    <div>
+                        <div className="sticky top-20 space-y-4">
+                            {/* Rate Card */}
+                            <div className="rounded-xl border overflow-hidden">
+                                <div className="px-5 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-b">
+                                    <h3 className="text-base font-bold flex items-center gap-2">
+                                        <BadgeCheck className="h-5 w-5 text-emerald-600" />
+                                        예상 단가표
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Rate Card</p>
+                                </div>
+                                <div className="p-5 space-y-0">
+                                    <div className="flex justify-between items-center py-3 border-b border-dashed">
+                                        <span className="text-sm text-muted-foreground">숏폼 영상 (Reels)</span>
                                         <div className="flex items-center gap-1.5">
-                                            <Lock className="h-3 w-3 text-muted-foreground/70" />
-                                            <span className="font-bold text-emerald-700 blur-[6px] select-none hover:blur-sm transition-all text-sm">
+                                            <Lock className="h-3 w-3 text-muted-foreground/50" />
+                                            <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none">
                                                 {/* @ts-ignore */}
                                                 {event.priceVideo ? `₩${event.priceVideo.toLocaleString()}` : '협의 필요'}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex justify-between items-center pb-2 border-b border-dashed">
-                                        <span className="text-sm font-medium text-muted-foreground">이미지 (Feed)</span>
+                                    <div className="flex justify-between items-center py-3 border-b border-dashed">
+                                        <span className="text-sm text-muted-foreground">이미지 (Feed)</span>
                                         <div className="flex items-center gap-1.5">
-                                            <Lock className="h-3 w-3 text-muted-foreground/70" />
-                                            <span className="font-bold text-emerald-700 blur-[6px] select-none hover:blur-sm transition-all text-sm">
+                                            <Lock className="h-3 w-3 text-muted-foreground/50" />
+                                            <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none">
                                                 {/* @ts-ignore */}
-                                                {event.priceFeed ? `₩${event.priceFeed.toLocaleString()}` : '협의 필요'}
+                                                {event.priceFeed ? `₩${(event as any).priceFeed.toLocaleString()}` : '협의 필요'}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex justify-between items-center pb-2 border-b border-dashed">
-                                        <span className="text-sm font-medium text-muted-foreground">2차 활용 권한</span>
+                                    <div className="flex justify-between items-center py-3 border-b border-dashed">
+                                        <span className="text-sm text-muted-foreground">2차 활용 권한</span>
                                         <div className="flex items-center gap-1.5">
-                                            <Lock className="h-3 w-3 text-muted-foreground/70" />
-                                            <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none hover:blur-sm transition-all">
+                                            <Lock className="h-3 w-3 text-muted-foreground/50" />
+                                            <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none">
                                                 {/* @ts-ignore */}
-                                                {event.usageRightsPrice ? (
-                                                    <>{/* @ts-ignore */}
-                                                        {event.usageRightsMonth}개월 / ₩{event.usageRightsPrice.toLocaleString()}
-                                                    </>
-                                                ) : (
-                                                    '협의 필요'
-                                                )}
+                                                {(event as any).usageRightsPrice ? `${(event as any).usageRightsMonth}개월 / ₩${(event as any).usageRightsPrice.toLocaleString()}` : '협의 필요'}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm font-medium text-muted-foreground">자동 DM (Auto Reply)</span>
+                                    <div className="flex justify-between items-center py-3">
+                                        <span className="text-sm text-muted-foreground">자동 DM (Auto Reply)</span>
                                         <div className="flex items-center gap-1.5">
-                                            <Lock className="h-3 w-3 text-muted-foreground/70" />
-                                            <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none hover:blur-sm transition-all">
+                                            <Lock className="h-3 w-3 text-muted-foreground/50" />
+                                            <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none">
                                                 {/* @ts-ignore */}
-                                                {event.autoDmPrice ? (
-                                                    <>{/* @ts-ignore */}
-                                                        {event.autoDmMonth}개월 / ₩{event.autoDmPrice.toLocaleString()}
-                                                    </>
-                                                ) : (
-                                                    '협의 필요'
-                                                )}
+                                                {(event as any).autoDmPrice ? `${(event as any).autoDmMonth}개월 / ₩${(event as any).autoDmPrice.toLocaleString()}` : '협의 필요'}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="p-3 bg-muted/50 rounded-md border border-dashed flex items-start gap-2">
-                                    <Lock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                                    <p className="text-xs text-muted-foreground">
-                                        <strong>단가표 비공개 보호</strong><br />
-                                        정확한 단가는 협업 제안이 수락되어 <strong>워크스페이스가 생성된 후</strong> 공개됩니다.
+                                <div className="px-5 py-4 bg-muted/40 border-t">
+                                    <p className="text-xs text-muted-foreground leading-relaxed flex items-start gap-2">
+                                        <Lock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                        <span>정확한 단가는 협업 제안 수락 후 워크스페이스에서 공개됩니다.</span>
                                     </p>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
 
-                        {/* Production Guide */}
-                        {event.guide && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-base">제작 가이드</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                        {event.guide}
-                                    </p>
-                                    <div className="p-3 bg-muted/50 rounded-md border border-dashed">
-                                        <p className="text-xs text-muted-foreground">
-                                            💡 크리에이터가 예시로 제시한 제작가이드입니다. 언제든지 협의 가능합니다.
-                                        </p>
+                            {/* CTA & Proposal Status */}
+                            <div className="space-y-2">
+                                {/* Creator View: Received Proposals List */}
+                                {user?.id === event.influencerId ? (
+                                    <div className="rounded-xl border bg-card p-4 space-y-3">
+                                        <span className="text-sm font-semibold">받은 제안 ({momentProposals.filter(p => p.moment_id === event.id).length})</span>
+                                        {momentProposals.filter(p => p.moment_id === event.id).length > 0 ? (
+                                            <div className="space-y-2">
+                                                {momentProposals.filter(p => p.moment_id === event.id).map(prop => (
+                                                    <div key={prop.id} className="bg-background border rounded-lg p-3 space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            {prop.brand_avatar ? (
+                                                                <img src={prop.brand_avatar} alt={prop.brand_name} className="w-6 h-6 rounded-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold">
+                                                                    {prop.brand_name?.substring(0, 1) || 'B'}
+                                                                </div>
+                                                            )}
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium truncate">{prop.brand_name}</p>
+                                                                <p className="text-xs text-muted-foreground truncate">{formatDateToMonth(prop.created_at)}</p>
+                                                            </div>
+                                                            <Badge variant={prop.status === 'accepted' ? 'default' : 'outline'} className="text-[10px]">
+                                                                {prop.status === 'offered' ? '대기' : prop.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="w-full text-xs h-8"
+                                                            onClick={() => { setSelectedProposal(prop); setShowReadonlyDialog(true) }}
+                                                        >
+                                                            제안 확인하기
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 bg-muted/30 rounded-lg text-xs text-muted-foreground border border-dashed">
+                                                아직 도착한 제안이 없습니다.
+                                            </div>
+                                        )}
                                     </div>
-                                </CardContent>
-                            </Card>
-                        )}
+                                ) : (
+                                    // Brand View / Visitor View
+                                    <>
+                                        {momentProposals.find(p => p.moment_id === event.id && (user?.role === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id)) ? (
+                                            (() => {
+                                                const prop = momentProposals.find(p => p.moment_id === event.id && (user?.role === 'brand' ? p.brand_id === user.id : p.influencer_id === user?.id))!;
+                                                return (
+                                                    <Card className="border-primary/50 bg-primary/5 shadow-sm">
+                                                        <CardHeader className="p-4 pb-2">
+                                                            <CardTitle className="text-sm font-medium flex justify-between items-center text-primary">
+                                                                <span className="flex items-center gap-2"><Send className="h-4 w-4" /> 제안 보냄</span>
+                                                                <Badge variant={prop.status === 'accepted' ? 'default' : 'outline'} className="text-xs">
+                                                                    {prop.status === 'offered' ? '대기중' : prop.status === 'accepted' ? '수락됨' : prop.status === 'rejected' ? '거절됨' : prop.status}
+                                                                </Badge>
+                                                            </CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent className="p-4 pt-2 space-y-3">
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">제안 제품</p>
+                                                                <p className="text-sm font-semibold truncate">{prop.conditions?.product_name || '제품명 없음'}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">보낸 날짜</p>
+                                                                <p className="text-xs font-medium">{new Date(prop.created_at).toLocaleDateString()}</p>
+                                                            </div>
+                                                            <Button variant="outline" size="sm" className="w-full bg-background"
+                                                                onClick={() => { setSelectedProposal(prop); setShowReadonlyDialog(true) }}
+                                                            >
+                                                                제안서 보기
+                                                            </Button>
+                                                        </CardContent>
+                                                    </Card>
+                                                )
+                                            })()
+                                        ) : (
+                                            <Button className="w-full gap-2" size="lg" onClick={handlePropose}>
+                                                <MessageCircle className="h-5 w-5" /> 협업 제안하기
+                                            </Button>
+                                        )}
+                                    </>
+                                )}
+
+                                <Button variant="outline" className="w-full gap-2" onClick={() => alert("링크가 복사되었습니다!")}>
+                                    <Share2 className="h-4 w-4" /> 공유하기
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>

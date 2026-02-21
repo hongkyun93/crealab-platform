@@ -36,6 +36,12 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
             isPrivate: e.is_private || false,
             dateFlexible: e.date_flexible || false,
             schedule: e.schedule,
+            channels: e.channels || [],
+            socialChannels: socialChannels.map((c: any) => ({
+                platform: c.channel_type || c.platform || '',
+                handle: c.handle || '',
+                followersCount: c.followers_count || 0,
+            })),
             isMock: false,
             createdAt: e.created_at,
             primaryChannel: primaryChannel ? {
@@ -352,25 +358,33 @@ export const eventMutations = {
             console.log('[eventMutations] Deleting event:', id)
 
             // [FIX] Manually cascade delete moment_proposals
-            // life_moments has foreign keys from moment_proposals without ON DELETE CASCADE
+            // This may fail due to RLS (proposals made by brands, not the creator)
+            // We make this non-blocking — the DB FK constraint or ON DELETE CASCADE should handle it
             const { error: proposalError } = await supabase
                 .from('moment_proposals')
                 .delete()
                 .eq('moment_id', id)
 
             if (proposalError) {
-                console.error('[eventMutations] Failed to delete associated proposals:', proposalError)
-                return false
+                // Non-fatal: log warning but continue with moment deletion
+                console.warn('[eventMutations] Warning: could not pre-delete proposals (RLS may restrict this):', proposalError.message)
             }
 
-            const { error } = await supabase
+            const { error, data: deletedRows } = await supabase
                 .from('life_moments')
                 .delete()
                 .eq('id', id)
+                .select('id')
 
             if (error) {
                 console.error('[eventMutations] Delete error:', error)
-                return false
+                throw new Error(error.message || '삭제에 실패했습니다.')
+            }
+
+            // If RLS silently blocks (0 rows deleted), also treat as failure
+            if (!deletedRows || deletedRows.length === 0) {
+                console.warn('[eventMutations] Delete returned 0 rows affected — likely RLS restriction')
+                throw new Error('삭제 권한이 없거나, 이미 삭제된 모먼트입니다.')
             }
 
             // Revalidate caches
@@ -383,7 +397,7 @@ export const eventMutations = {
             return true
         } catch (error: any) {
             console.error('[eventMutations] Delete error:', error)
-            return false
+            throw error  // Re-throw so callers can show toast
         }
     },
 }

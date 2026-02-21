@@ -25,6 +25,7 @@ export interface InfluencerEvent {
     schedule?: EventSchedule
     createdAt?: string
     channels?: string[]
+    socialChannels?: { platform: string; handle: string; followersCount: number }[]
 }
 
 export interface EventSchedule {

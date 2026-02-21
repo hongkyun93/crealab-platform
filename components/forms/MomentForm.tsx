@@ -34,12 +34,7 @@ import { ChannelSelector } from "@/components/shared/ChannelSelector"
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}월`)
 
-const POPULAR_TAGS = [
-    "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
-    "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
-    "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
-    "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
-]
+import { POPULAR_TAGS } from "@/lib/constants/categories"
 
 interface MomentFormProps {
     mode: 'create' | 'edit'

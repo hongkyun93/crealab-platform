@@ -127,12 +127,7 @@ import { MyCampaignsView } from "@/components/brand/views/MyCampaignsView"
 import { WorkspaceView } from "@/components/brand/views/WorkspaceView"
 import { ReadonlyProposalDialog } from "@/components/proposal/readonly-proposal-dialog"
 
-const POPULAR_TAGS = [
-    "✈️ 여행", "💄 뷰티", "👗 패션", "🍽️ 맛집",
-    "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
-    "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
-    "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
-]
+import { POPULAR_TAGS } from "@/lib/constants/categories"
 
 function BrandDashboardContent() {
 
@@ -173,7 +168,7 @@ function BrandDashboardContent() {
 
     // Filter Query States
     const [selectedTag, setSelectedTag] = useState<string | null>(null)
-    const [followerFilter, setFollowerFilter] = useState<string>("all")
+    const [followerFilter, setFollowerFilter] = useState<string[]>(["all"])
     const [statusFilter, setStatusFilter] = useState<string>("all") // all, upcoming, past, favorites
     const [minFollowers, setMinFollowers] = useState<string>("")
     const [maxFollowers, setMaxFollowers] = useState<string>("")
@@ -828,7 +823,8 @@ function BrandDashboardContent() {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [productSearchQuery, setProductSearchQuery] = useState("")
     const [selectedBrandProduct, setSelectedBrandProduct] = useState<any>(null) // Brand Detail View State
-    const [priceFilter, setPriceFilter] = useState("all")
+    const [priceFilter, setPriceFilter] = useState<string[]>(["all"])
+    const [channelFilter, setChannelFilter] = useState<string[]>(["all"])
 
     const PRICE_FILTER_RANGES = [
         { k: 'all', l: '전체', min: 0, max: Infinity },
@@ -963,39 +959,37 @@ function BrandDashboardContent() {
         }
     }, [searchParams]) // Remove currentView from dependency array
 
+    const FOLLOWER_RANGES: Record<string, [number, number]> = {
+        starter: [0, 1000], nano: [1000, 10000], micro: [10000, 100000],
+        growing: [100000, 300000], mid: [300000, 500000], macro: [500000, 1000000], mega: [1000000, Infinity]
+    }
     const handlePresetClick = useCallback((key: string) => {
-        setFollowerFilter(key)
-        if (key === "all") {
-            setMinFollowers("")
-            setMaxFollowers("")
-        } else if (key === "starter") {
-            setMinFollowers("0")
-            setMaxFollowers("1000")
-        } else if (key === "nano") {
-            setMinFollowers("1000")
-            setMaxFollowers("10000")
-        } else if (key === "micro") {
-            setMinFollowers("10000")
-            setMaxFollowers("100000")
-        } else if (key === "growing") {
-            setMinFollowers("100000")
-            setMaxFollowers("300000")
-        } else if (key === "mid") {
-            setMinFollowers("300000")
-            setMaxFollowers("500000")
-        } else if (key === "macro") {
-            setMinFollowers("500000")
-            setMaxFollowers("1000000")
-        } else if (key === "mega") {
-            setMinFollowers("1000000")
-            setMaxFollowers("")
+        if (key === 'all') {
+            setFollowerFilter(['all'])
+            setMinFollowers('')
+            setMaxFollowers('')
+            return
         }
+        setFollowerFilter(prev => {
+            const withoutAll = prev.filter(k => k !== 'all')
+            if (withoutAll.includes(key)) {
+                // Deselect - but keep min 1
+                const next = withoutAll.filter(k => k !== key)
+                if (next.length === 0) return ['all']
+                return next
+            } else {
+                return [...withoutAll, key]
+            }
+        })
+        // Clear manual input when using presets
+        setMinFollowers('')
+        setMaxFollowers('')
     }, [])
 
     const handleManualChange = useCallback((type: 'min' | 'max', value: string) => {
         if (type === 'min') setMinFollowers(value)
         else setMaxFollowers(value)
-        setFollowerFilter("custom")
+        setFollowerFilter(["custom"])
     }, [])
 
     const getFilteredAndSortedEvents = () => {
@@ -1014,23 +1008,41 @@ function BrandDashboardContent() {
         } else if (statusFilter === "favorites") {
             result = result.filter(e => favorites.some(f => f.target_id === e.id && f.target_type === 'event'))
         }
-        if (minFollowers !== "" || maxFollowers !== "") {
-            const min = minFollowers === "" ? 0 : parseInt(minFollowers)
-            const max = maxFollowers === "" ? Infinity : parseInt(maxFollowers)
+        // Multi-select follower filter
+        if (!followerFilter.includes('all') && followerFilter.length > 0) {
+            result = result.filter(e => {
+                const count = e.followers || 0
+                return followerFilter.some(key => {
+                    const range = FOLLOWER_RANGES[key]
+                    if (!range) return false
+                    return count >= range[0] && count <= range[1]
+                })
+            })
+        } else if (minFollowers !== '' || maxFollowers !== '') {
+            const min = minFollowers === '' ? 0 : parseInt(minFollowers)
+            const max = maxFollowers === '' ? Infinity : parseInt(maxFollowers)
             result = result.filter(e => {
                 const count = e.followers || 0
                 return count >= min && count <= max
             })
         }
-        if (priceFilter !== 'all') {
-            const range = PRICE_FILTER_RANGES.find(r => r.k === priceFilter)
-            if (range) {
-                result = result.filter(e => {
-                    const price = e.priceVideo || 0
-                    // 경계값은 양쪽 범위에 모두 포함 (예: 30만원 → "10~30만" & "30~50만")
+        // Multi-select price filter
+        if (!priceFilter.includes('all') && priceFilter.length > 0) {
+            result = result.filter(e => {
+                const price = e.priceVideo || 0
+                return priceFilter.some(key => {
+                    const range = PRICE_FILTER_RANGES.find(r => r.k === key)
+                    if (!range) return false
                     return price >= range.min && price <= range.max
                 })
-            }
+            })
+        }
+        // Multi-select channel filter
+        if (!channelFilter.includes('all') && channelFilter.length > 0) {
+            result = result.filter(e => {
+                const channels: string[] = e.channels || []
+                return channelFilter.some(cf => channels.some(ch => ch.startsWith(cf)))
+            })
         }
         if (sortOrder === "deadline") result.reverse()
         else if (sortOrder === "match") result.sort(() => Math.random() - 0.5)
@@ -1402,6 +1414,8 @@ function BrandDashboardContent() {
                         PRICE_FILTER_RANGES={PRICE_FILTER_RANGES}
                         user={user}
                         deleteEvent={deleteEvent as any}
+                        channelFilter={channelFilter}
+                        setChannelFilter={setChannelFilter}
                     />
                 )
             case "my-campaigns":
@@ -2014,23 +2028,26 @@ function BrandDashboardContent() {
                                                 <SelectValue placeholder="선택" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="뷰티">💄 뷰티</SelectItem>
-                                                <SelectItem value="패션">👗 패션</SelectItem>
-                                                <SelectItem value="푸드">🍽️ 푸드</SelectItem>
-                                                <SelectItem value="여행">✈️ 여행</SelectItem>
-                                                <SelectItem value="라이프">🏡 라이프</SelectItem>
-                                                <SelectItem value="테크">💻 테크</SelectItem>
-                                                <SelectItem value="육아">👶 육아</SelectItem>
-                                                <SelectItem value="반려동물">🐶 반려동물</SelectItem>
-                                                <SelectItem value="운동">💪 운동</SelectItem>
-                                                <SelectItem value="다이어트">🥗 다이어트</SelectItem>
-                                                <SelectItem value="건강">💊 건강</SelectItem>
-                                                <SelectItem value="게임">🎮 게임</SelectItem>
-                                                <SelectItem value="도서">📚 도서</SelectItem>
-                                                <SelectItem value="취미">🎨 취미</SelectItem>
-                                                <SelectItem value="교육">🎓 교육</SelectItem>
-                                                <SelectItem value="문화">🎬 문화</SelectItem>
-                                                <SelectItem value="재테크">💰 재테크</SelectItem>
+                                                <SelectItem value="💄 뷰티">💄 뷰티</SelectItem>
+                                                <SelectItem value="👗 패션">👗 패션</SelectItem>
+                                                <SelectItem value="🍽️ 맛집">🍽️ 맛집</SelectItem>
+                                                <SelectItem value="✈️ 여행">✈️ 여행</SelectItem>
+                                                <SelectItem value="🏡 리빙/인테리어">🏡 리빙/인테리어</SelectItem>
+                                                <SelectItem value="💻 테크/IT">💻 테크/IT</SelectItem>
+                                                <SelectItem value="👶 육아">👶 육아</SelectItem>
+                                                <SelectItem value="🐶 반려동물">🐶 반려동물</SelectItem>
+                                                <SelectItem value="🏋️ 헬스/운동">🏋️ 헬스/운동</SelectItem>
+                                                <SelectItem value="🥗 다이어트">🥗 다이어트</SelectItem>
+                                                <SelectItem value="💊 건강">💊 건강</SelectItem>
+                                                <SelectItem value="💉 시술/병원">💉 시술/병원</SelectItem>
+                                                <SelectItem value="💍 웨딩/결혼">💍 웨딩/결혼</SelectItem>
+                                                <SelectItem value="🎮 게임">🎮 게임</SelectItem>
+                                                <SelectItem value="📚 도서/자기계발">📚 도서/자기계발</SelectItem>
+                                                <SelectItem value="🎨 취미/DIY">🎨 취미/DIY</SelectItem>
+                                                <SelectItem value="🎓 교육/강의">🎓 교육/강의</SelectItem>
+                                                <SelectItem value="🎬 영화/문화">🎬 영화/문화</SelectItem>
+                                                <SelectItem value="💰 재테크">💰 재테크</SelectItem>
+                                                <SelectItem value="📌 기타">📌 기타</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

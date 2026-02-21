@@ -1,8 +1,9 @@
 "use client"
 
 import React from "react"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { Filter, Star, Calendar, Gift, Send, Trash2, Banknote } from "lucide-react"
+import { Filter, Star, Calendar, Gift, Send, Trash2, Banknote, Instagram, Youtube, Music, FileText, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +20,7 @@ import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
 import { DiscoverTableView } from "@/components/brand/DiscoverTableView"
 import { LayoutGrid, Table as TableIcon } from "lucide-react"
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { CreatorProfileCard } from "@/components/profile/CreatorProfileCard"
 import { toast } from "sonner"
 import { useState } from "react"
 
@@ -26,7 +28,7 @@ interface DiscoverViewProps {
     filteredEvents: any[]
     sortOrder: string
     setSortOrder: (order: string) => void
-    followerFilter: string
+    followerFilter: string[]
     statusFilter: string
     setStatusFilter: (status: string) => void
     selectedTag: string | null
@@ -34,12 +36,14 @@ interface DiscoverViewProps {
     handlePresetClick: (key: string) => void
     favorites: any[]
     toggleFavorite: (id: string, type: string) => void
-    priceFilter: string
-    setPriceFilter: (filter: string) => void
-    POPULAR_TAGS: string[]
+    priceFilter: string[]
+    setPriceFilter: (filter: string[] | ((prev: string[]) => string[])) => void
+    POPULAR_TAGS: readonly string[]
     PRICE_FILTER_RANGES: any[]
     user: any
     deleteEvent: (id: string) => Promise<void>
+    channelFilter?: string[]
+    setChannelFilter?: (filter: string[] | ((prev: string[]) => string[])) => void
 }
 
 
@@ -61,10 +65,35 @@ export const DiscoverView = React.memo(function DiscoverView({
     POPULAR_TAGS,
     PRICE_FILTER_RANGES,
     user,
-    deleteEvent
+    deleteEvent,
+    channelFilter,
+    setChannelFilter,
 }: DiscoverViewProps) {
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+    // Multi-select toggle helper (min 1 selection)
+    const toggleMulti = (setter: (fn: (prev: string[]) => string[]) => void, key: string, allOptions?: string[]) => {
+        if (key === 'all') {
+            setter(() => ['all'])
+            return
+        }
+        setter((prev: string[]) => {
+            const withoutAll = prev.filter(k => k !== 'all')
+            if (withoutAll.includes(key)) {
+                const next = withoutAll.filter(k => k !== key)
+                if (next.length === 0) return ['all']
+                // If all non-all options are selected, auto-switch to 'all'
+                if (allOptions && next.length === allOptions.length) return ['all']
+                return next
+            } else {
+                const next = [...withoutAll, key]
+                // If all non-all options are selected, auto-switch to 'all'
+                if (allOptions && next.length === allOptions.length) return ['all']
+                return next
+            }
+        })
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -118,7 +147,7 @@ export const DiscoverView = React.memo(function DiscoverView({
 
             {/* Filters */}
             <Card className="bg-background/50 backdrop-blur-sm">
-                <CardContent className="p-6 space-y-6">
+                <CardContent className="p-6 space-y-3">
                     <div className="flex flex-col md:flex-row gap-4 md:items-center">
                         <span className="text-sm font-semibold w-24">팔로워 규모</span>
                         <div className="flex flex-wrap gap-2">
@@ -134,85 +163,121 @@ export const DiscoverView = React.memo(function DiscoverView({
                             ].map(opt => (
                                 <Button
                                     key={opt.k}
-                                    variant={followerFilter === opt.k ? "default" : "outline"}
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => handlePresetClick(opt.k)}
-                                    className="rounded-full"
+                                    className={cn('gap-1.5', followerFilter.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}
                                 >
                                     {opt.l}
+                                    {followerFilter.includes(opt.k) && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                                 </Button>
                             ))}
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-4 md:items-start">
+                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-3 border-t border-border/40">
                         <span className="text-sm font-semibold w-24 pt-2">모먼트 상태</span>
                         <div className="flex flex-wrap gap-2 flex-1">
                             <Button
-                                variant={statusFilter === "all" ? "secondary" : "ghost"}
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => setStatusFilter("all")}
+                                className={cn('gap-1.5', statusFilter === "all" && 'bg-primary/10 text-primary font-medium')}
                             >
                                 전체보기
+                                {statusFilter === "all" && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                             </Button>
                             <Button
-                                variant={statusFilter === "upcoming" ? "secondary" : "ghost"}
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => setStatusFilter("upcoming")}
+                                className={cn('gap-1.5', statusFilter === "upcoming" && 'bg-primary/10 text-primary font-medium')}
                             >
-                                나의 모먼트
+                                모집중인 모먼트
+                                {statusFilter === "upcoming" && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                             </Button>
                             <Button
-                                variant={statusFilter === "past" ? "secondary" : "ghost"}
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => setStatusFilter("past")}
+                                className={cn('gap-1.5', statusFilter === "past" && 'bg-primary/10 text-primary font-medium')}
                             >
                                 완료된 모먼트
+                                {statusFilter === "past" && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                             </Button>
                             <Button
-                                variant={statusFilter === "favorites" ? "secondary" : "ghost"}
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => setStatusFilter("favorites")}
-                                className="gap-1.5"
+                                className={cn("gap-1.5", statusFilter === "favorites" && 'bg-primary/10 text-primary font-medium')}
                             >
                                 <Star className="h-3.5 w-3.5 text-yellow-500" fill={statusFilter === "favorites" ? "currentColor" : "none"} />
                                 즐겨찾기만 보기
                             </Button>
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-2 border-t border-border/40">
+                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-3 border-t border-border/40">
                         <span className="text-sm font-semibold w-24 pt-2">영상 단가</span>
                         <div className="flex flex-wrap gap-2 flex-1">
                             {PRICE_FILTER_RANGES.map(range => (
                                 <Button
                                     key={range.k}
-                                    variant={priceFilter === range.k ? "secondary" : "ghost"}
+                                    variant="ghost"
                                     size="sm"
-                                    onClick={() => setPriceFilter(range.k)}
+                                    onClick={() => toggleMulti(setPriceFilter as any, range.k, PRICE_FILTER_RANGES.filter(r => r.k !== 'all').map(r => r.k))}
+                                    className={cn('gap-1.5', priceFilter.includes(range.k) && 'bg-primary/10 text-primary font-medium')}
                                 >
                                     {range.l}
+                                    {priceFilter.includes(range.k) && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                                 </Button>
                             ))}
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-2 border-t border-border/40">
+                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-3 border-t border-border/40">
+                        <span className="text-sm font-semibold w-24 pt-2">희망 채널</span>
+                        <div className="flex flex-wrap gap-2 flex-1">
+                            {[
+                                { k: 'all', l: '전체', icon: null },
+                                { k: 'instagram', l: 'Instagram', icon: <Instagram className="h-3.5 w-3.5" /> },
+                                { k: 'youtube', l: 'YouTube', icon: <Youtube className="h-3.5 w-3.5" /> },
+                                { k: 'tiktok', l: 'TikTok', icon: <Music className="h-3.5 w-3.5" /> },
+                                { k: 'blog', l: 'Blog', icon: <FileText className="h-3.5 w-3.5" /> },
+                            ].map(opt => (
+                                <Button
+                                    key={opt.k}
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setChannelFilter && toggleMulti(setChannelFilter as any, opt.k, ['instagram', 'youtube', 'tiktok', 'blog'])}
+                                    className={cn("gap-1.5", channelFilter?.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}
+                                >
+                                    {opt.icon}
+                                    {opt.l}
+                                    {channelFilter?.includes(opt.k) && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex flex-col md:flex-row gap-4 md:items-start pt-3 border-t border-border/40">
                         <span className="text-sm font-semibold w-24 pt-2">전문 분야</span>
                         <div className="flex flex-wrap gap-2 flex-1">
                             <Button
-                                variant={selectedTag === null ? "secondary" : "ghost"}
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => setSelectedTag(null)}
+                                className={cn('gap-1.5', selectedTag === null && 'bg-primary/10 text-primary font-medium')}
                             >
                                 전체
+                                {selectedTag === null && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                             </Button>
                             {POPULAR_TAGS.map(tag => (
                                 <Button
                                     key={tag}
-                                    variant={selectedTag === tag ? "secondary" : "ghost"}
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                                    className={selectedTag === tag ? 'bg-primary/10 text-primary' : ''}
+                                    className={cn('gap-1.5', selectedTag === tag && 'bg-primary/10 text-primary font-medium')}
                                 >
                                     {tag}
+                                    {selectedTag === tag && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                                 </Button>
                             ))}
                         </div>
@@ -243,16 +308,34 @@ export const DiscoverView = React.memo(function DiscoverView({
                                         />
                                     </Button>
                                     <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
-                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg overflow-hidden">
-                                            {item.avatar && item.avatar.startsWith('http') ? (
-                                                <img src={item.avatar} alt={item.influencer} className="h-full w-full object-cover" />
-                                            ) : (
-                                                item.avatar
-                                            )}
-                                        </div>
+                                        <CreatorProfileCard
+                                            creatorId={item.influencerId || item.id}
+                                            trigger={
+                                                <div
+                                                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all"
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                >
+                                                    {item.avatar && item.avatar.startsWith('http') ? (
+                                                        <img src={item.avatar} alt={item.influencer} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        item.avatar
+                                                    )}
+                                                </div>
+                                            }
+                                        />
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between gap-2">
-                                                <h4 className="font-bold truncate">{item.influencer}</h4>
+                                                <CreatorProfileCard
+                                                    creatorId={item.influencerId || item.id}
+                                                    trigger={
+                                                        <h4
+                                                            className="font-bold truncate cursor-pointer hover:text-primary transition-colors"
+                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                        >
+                                                            {item.influencer}
+                                                        </h4>
+                                                    }
+                                                />
                                                 {user?.role === 'admin' && (
                                                     <Button
                                                         variant="ghost"
@@ -316,9 +399,17 @@ export const DiscoverView = React.memo(function DiscoverView({
                                                     </svg>
                                                 )
                                                 return (
-                                                    <span className="flex items-center gap-1.5 mt-1 text-[11px] font-medium text-muted-foreground">
+                                                    <span className="flex items-center gap-1.5 mt-1 text-[11px] font-medium text-muted-foreground flex-wrap">
                                                         {icon}
                                                         <span>{fmt(followers)} 팔로워</span>
+                                                        {item.tags && item.tags.length > 0 && (
+                                                            <>
+                                                                <span className="text-border">·</span>
+                                                                {item.tags.slice(0, 1).map((t: string) => (
+                                                                    <span key={t} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">#{t}</span>
+                                                                ))}
+                                                            </>
+                                                        )}
                                                     </span>
                                                 )
                                             })()}
@@ -378,11 +469,30 @@ export const DiscoverView = React.memo(function DiscoverView({
                                                 {item.guide || "브랜드 가이드를 따르겠습니다."}
                                             </p>
                                         </div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {item.tags.slice(0, 5).map((t: string) => (
-                                                <span key={t} className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">#{t}</span>
-                                            ))}
-                                        </div>
+
+                                        {/* Preferred content types */}
+                                        {item.channels && item.channels.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {item.channels.map((ch: string) => {
+                                                    const base = ch.split('_')[0]
+                                                    const LABELS: Record<string, string> = {
+                                                        instagram_reels: '🎞️ 릴스', instagram_feed: '📷 피드', instagram_story: '⭕ 스토리',
+                                                        youtube_longform: '▶️ 롱폼', youtube_shorts: '⚡ 숏츠',
+                                                    }
+                                                    const BG: Record<string, string> = {
+                                                        instagram: 'bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600',
+                                                        youtube: 'bg-gradient-to-r from-red-600 to-red-700',
+                                                        tiktok: 'bg-gradient-to-r from-black to-slate-800',
+                                                        blog: 'bg-gradient-to-r from-green-500 to-green-600',
+                                                    }
+                                                    return (
+                                                        <span key={ch} className={`text-[10px] font-medium text-white px-2 py-0.5 rounded-full shadow-sm ${BG[base] || 'bg-slate-600'}`}>
+                                                            {LABELS[ch] || ch}
+                                                        </span>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
                                     </CardContent>
                                     <div className="pb-4"></div>
                                 </Card>

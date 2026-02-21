@@ -23,12 +23,7 @@ import { createCampaign, updateCampaign } from "@/app/actions/campaign"
 import { createClient } from "@/lib/supabase/client"
 import { ChannelSelector } from "@/components/shared/ChannelSelector"
 
-const POPULAR_TAGS = [
-    "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",
-    "🏡 리빙/인테리어", "💍 웨딩/결혼", "🏋️ 헬스/운동", "🥗 다이어트", "👶 육아",
-    "🐶 반려동물", "💻 테크/IT", "🎮 게임", "📚 도서/자기계발",
-    "🎨 취미/DIY", "🎓 교육/강의", "🎬 영화/문화", "💰 재테크"
-]
+import { POPULAR_TAGS } from "@/lib/constants/categories"
 
 interface CampaignFormProps {
     mode: 'create' | 'edit'
