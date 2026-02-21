@@ -128,6 +128,7 @@ import { WorkspaceView } from "@/components/brand/views/WorkspaceView"
 import { ReadonlyProposalDialog } from "@/components/proposal/readonly-proposal-dialog"
 
 import { POPULAR_TAGS } from "@/lib/constants/categories"
+import { DemoBanner } from "@/components/demo-banner"
 
 function BrandDashboardContent() {
 
@@ -178,7 +179,7 @@ function BrandDashboardContent() {
 
 
     // Filter Query States
-    const [selectedTag, setSelectedTag] = useState<string | null>(null)
+    const [selectedTags, setSelectedTags] = useState<string[]>([])
     const [followerFilter, setFollowerFilter] = useState<string[]>(["all"])
     const [statusFilter, setStatusFilter] = useState<string>("all") // all, upcoming, past, favorites
     const [minFollowers, setMinFollowers] = useState<string>("")
@@ -254,7 +255,7 @@ function BrandDashboardContent() {
 
     // Auto-scroll for Main Workspace Chat
     useEffect(() => {
-        if (workspaceChatRef.current) {
+        if (isChatOpen && workspaceChatRef.current) {
             workspaceChatRef.current.scrollTop = workspaceChatRef.current.scrollHeight
         }
     }, [messages, isChatOpen, workspaceTab])
@@ -1012,10 +1013,12 @@ function BrandDashboardContent() {
     const getFilteredAndSortedEvents = () => {
         // Use allEvents for discovery, default empty array if undefined
         let result = [...(allEvents || [])]
-        if (selectedTag) {
+        if (selectedTags.length > 0) {
             result = result.filter(e =>
-                e.category === selectedTag ||
-                e.tags.some(t => t.includes(selectedTag) || selectedTag.includes(t))
+                selectedTags.some(tag =>
+                    e.category === tag ||
+                    e.tags.some((t: string) => t.includes(tag) || tag.includes(t))
+                )
             )
         }
         if (statusFilter === "upcoming") {
@@ -1423,8 +1426,8 @@ function BrandDashboardContent() {
                         followerFilter={followerFilter}
                         statusFilter={statusFilter}
                         setStatusFilter={setStatusFilter}
-                        selectedTag={selectedTag}
-                        setSelectedTag={setSelectedTag}
+                        selectedTags={selectedTags}
+                        setSelectedTags={setSelectedTags}
                         handlePresetClick={handlePresetClick}
                         favorites={favorites}
                         toggleFavorite={toggleFavorite as any}
@@ -2501,6 +2504,7 @@ function BrandDashboardContent() {
 export default function BrandDashboardPage() {
     return (
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>}>
+            <DemoBanner />
             <BrandDashboardContent />
         </Suspense>
     )

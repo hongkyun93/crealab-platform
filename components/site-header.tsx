@@ -71,6 +71,9 @@ export function SiteHeader() {
             } else if (user?.role === 'brand') {
                 router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
             }
+        } else if (n.type === 'settlement_paid') {
+            // Creator views their settlement history
+            router.push('/creator?view=settlement')
         }
     }
 
@@ -81,7 +84,7 @@ export function SiteHeader() {
 
     const handleProfileClick = () => {
         if (user?.role === 'brand') router.push('/brand/settings')
-        else if (user?.role === 'mcn') router.push('/creator?view=settings')
+        else if (user?.role === 'mcn' || user?.role === 'agency') router.push('/mcn')
         else router.push('/creator?view=settings')
     }
 
@@ -93,7 +96,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-3 sm:mr-6 flex items-center space-x-2">
                         <Image src="/logo.png" alt="CreadyPick" width={238} height={48} className="h-12 w-auto" priority />
-                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V4.0.2</span>
+                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V4.0.4</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link
@@ -112,12 +115,12 @@ export function SiteHeader() {
                             </Link>
                         )}
 
-                        {(!user || user.role === 'creator' || user.role === 'mcn' || user.role === 'admin') && (
+                        {(!user || user.role === 'creator' || user.role === 'mcn' || user.role === 'agency' || user.role === 'admin') && (
                             <Link
-                                href="/creator"
-                                className={`transition-colors hover:text-foreground/80 ${isActive('/creator') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
+                                href={user?.role === 'mcn' || user?.role === 'agency' ? '/mcn' : '/creator'}
+                                className={`transition-colors hover:text-foreground/80 ${(isActive('/creator') || isActive('/mcn')) ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
                             >
-                                {user?.role === 'mcn' ? 'MCN 관리' : '크리에이터'}
+                                {(user?.role === 'mcn' || user?.role === 'agency') ? 'MCN 관리' : '크리에이터'}
                             </Link>
                         )}
 
@@ -151,9 +154,9 @@ export function SiteHeader() {
                                         <Link href="/brand" className="w-full">브랜드</Link>
                                     </DropdownMenuItem>
                                 )}
-                                {(!user || user.role === 'creator' || user.role === 'mcn' || user.role === 'admin') && (
+                                {(!user || user.role === 'creator' || user.role === 'mcn' || user.role === 'agency' || user.role === 'admin') && (
                                     <DropdownMenuItem asChild>
-                                        <Link href="/creator" className="w-full">{user?.role === 'mcn' ? 'MCN 관리' : '크리에이터'}</Link>
+                                        <Link href={(user?.role === 'mcn' || user?.role === 'agency') ? '/mcn' : '/creator'} className="w-full">{(user?.role === 'mcn' || user?.role === 'agency') ? 'MCN 관리' : '크리에이터'}</Link>
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem asChild>

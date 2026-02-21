@@ -28,9 +28,10 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight, LayoutGrid, List, Banknote, Table as TableIcon, Menu, Building2 } from "lucide-react"
+import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight, LayoutGrid, List, Banknote, Table as TableIcon, Menu, Building2, Shield } from "lucide-react"
 import Link from "next/link"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { useTeam } from "@/components/providers/team-provider"
 import { MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
@@ -111,6 +112,7 @@ import { CampaignListRow } from "@/components/creator/CampaignListRow"
 import { POPULAR_TAGS } from "@/lib/constants/categories"
 
 import { Suspense } from "react"
+import { DemoBanner } from "@/components/demo-banner"
 const INITIAL_CAMPAIGNS: Campaign[] = []
 
 // Dialog components imported from @/components/dialogs/
@@ -161,6 +163,7 @@ function InfluencerDashboardContent() {
     const isMCN = user?.role === 'mcn' || user?.role === 'agency'
 
     const router = useRouter()
+    const { switchToMember } = useTeam()
     const searchParams = useSearchParams()
     const initialView = searchParams.get('view') || "dashboard"
 
@@ -410,11 +413,11 @@ function InfluencerDashboardContent() {
                     // 2. 브랜드에게 알림 발송
                     try {
                         const brandId = (proposal as any).brand_id
-                        const creatorName = (user as any)?.display_name || user?.name || '크리에이터'
+                        const creatorName = (displayUser as any)?.display_name || displayUser?.name || '크리에이터'
                         if (brandId) {
                             await supabase.from('notifications').insert({
                                 recipient_id: brandId,
-                                sender_id: user?.id,
+                                sender_id: (displayUser as any)?.id || user?.id,
                                 type: 'proposal_accepted',
                                 content: `${creatorName}님이 "${(proposal as any).product_name || '제안'}"을 수락했습니다. 협업을 시작하세요!`,
                                 reference_id: proposalId
@@ -1245,10 +1248,10 @@ function InfluencerDashboardContent() {
             if (brandId) {
                 try {
                     const notifContent = status === 'signed'
-                        ? `${user?.name}님이 계약서에 서명했습니다. 협업을 시작하세요!`
+                        ? `${displayUser?.name}님이 계약서에 서명했습니다. 협업을 시작하세요!`
                         : status === 'negotiating'
-                            ? `${user?.name}님이 계약서 내용 수정을 요청했습니다.`
-                            : `${user?.name}님이 계약 제안을 거절했습니다.`
+                            ? `${displayUser?.name}님이 계약서 내용 수정을 요청했습니다.`
+                            : `${displayUser?.name}님이 계약 제안을 거절했습니다.`
                     const notifType = status === 'signed' ? 'contract_signed'
                         : status === 'negotiating' ? 'contract_negotiating'
                             : 'contract_rejected'
@@ -1521,7 +1524,7 @@ function InfluencerDashboardContent() {
             // 🔔 Send notification to brand
             await sendNotification(
                 brandId,
-                `${user?.name}님이 콘텐츠를 제출했습니다.`,
+                `${displayUser?.name}님이 콘텐츠를 제출했습니다.`,
                 'content_submission',
                 proposalId
             )
@@ -1589,7 +1592,7 @@ function InfluencerDashboardContent() {
                     messages: influencerMessages,
                     proposal: chatProposal,
                     brandName: chatProposal.brand_name || "브랜드",
-                    influencerName: user.name || "크리에이터"
+                    influencerName: displayUser?.name || "크리에이터"
                 })
             })
 
@@ -3210,6 +3213,40 @@ function InfluencerDashboardContent() {
 
                             {/* ... skipping sidebar code ... */}
                             <aside className="hidden lg:flex flex-col gap-4">
+                                {/* Proxy Mode Banner */}
+                                {isMCN && isProxyMode && effectiveUser && (
+                                    <div className="mx-1 mt-3 rounded-2xl overflow-hidden border border-violet-500/25 bg-gradient-to-br from-violet-950/70 via-purple-950/50 to-indigo-950/60 shadow-xl shadow-violet-950/30">
+                                        <div className="px-4 pt-4 pb-3 space-y-3">
+                                            {/* Badge */}
+                                            <div className="flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full bg-violet-500/20 border border-violet-400/30">
+                                                <Shield className="h-3 w-3 text-violet-400" />
+                                                <span className="text-[10px] font-bold text-violet-300 tracking-widest uppercase">대리 관리 모드</span>
+                                            </div>
+                                            {/* Creator info */}
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-10 w-10 border-2 border-violet-400/40 shadow-md shadow-violet-900/50">
+                                                    <AvatarImage src={effectiveUser.avatar || ''} className="object-cover" />
+                                                    <AvatarFallback className="bg-violet-900/80 text-violet-200 font-bold text-sm">
+                                                        {effectiveUser.name?.[0] || '?'}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] text-violet-400/70 font-medium">현재 관리 중인 계정</p>
+                                                    <p className="font-bold text-sm text-foreground truncate">{effectiveUser.name}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {/* Exit button */}
+                                        <button
+                                            onClick={() => { switchToMember(null); router.push('/mcn') }}
+                                            className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-violet-300 bg-violet-950/50 hover:bg-violet-800/30 border-t border-violet-500/20 transition-all duration-200 hover:text-violet-200"
+                                        >
+                                            <Building2 className="h-3.5 w-3.5" />
+                                            MCN 대시보드로 돌아가기
+                                        </button>
+                                    </div>
+                                )}
+
                                 <div className="flex items-center gap-3 px-2 py-4">
                                     <Avatar className="h-12 w-12">
                                         <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
@@ -3335,19 +3372,27 @@ function InfluencerDashboardContent() {
 
                             {/* Main Content */}
                             {isMCN && !isProxyMode ? (
-                                /* MCN 본인 모드: 크리에이터 기능 차단 */
+                                /* MCN 본인 모드: MCN 대시보드로 안내 */
                                 <div className="flex-1 p-8 pt-0">
                                     <Card className="p-12 text-center bg-muted/20 border-dashed">
                                         <UsersIcon className="h-20 w-20 mx-auto mb-6 text-muted-foreground/40" />
                                         <h2 className="text-3xl font-bold mb-3">
-                                            소속 크리에이터를 선택해주세요
+                                            MCN 대시보드를 이용하세요
                                         </h2>
                                         <p className="text-muted-foreground text-lg mb-2">
-                                            헤더에서 관리할 크리에이터를 선택하시면
+                                            소속 크리에이터 현황을 한 눈에 확인하고 관리할 수 있습니다
                                         </p>
-                                        <p className="text-muted-foreground text-lg">
-                                            해당 크리에이터의 모먼트와 협업을 관리할 수 있습니다
+                                        <p className="text-muted-foreground text-lg mb-6">
+                                            또는 헤더에서 크리에이터를 선택해 대리 관리할 수 있습니다
                                         </p>
+                                        <Button
+                                            size="lg"
+                                            onClick={() => router.push('/mcn')}
+                                            className="gap-2"
+                                        >
+                                            <Building2 className="h-5 w-5" />
+                                            MCN 대시보드 이동
+                                        </Button>
                                     </Card>
                                 </div>
                             ) : (
@@ -3804,6 +3849,7 @@ function InfluencerDashboardContent() {
 export default function CreatorDashboardPage() {
     return (
         <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-indigo-600" /></div>}>
+            <DemoBanner />
             <InfluencerDashboardContent />
         </Suspense>
     )

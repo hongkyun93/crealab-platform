@@ -115,6 +115,8 @@ export default function LoginPage() {
             await new Promise(resolve => setTimeout(resolve, 500))
             if (user.role === 'brand' || user.role === 'agency') {
                 window.location.href = '/brand'
+            } else if (user.role === 'mcn') {
+                window.location.href = '/mcn'
             } else {
                 window.location.href = '/creator'
             }

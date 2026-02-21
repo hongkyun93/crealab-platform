@@ -131,8 +131,9 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             // Usually we want to switch to CREATORS.
             // The MCN admin is usually an 'owner'. 
             // We might want to filter only 'creator' role? 
-            // For now, let's keep all except self to match legacy behavior.
-            setTeamMembers(members.filter(m => m.user_id !== user.id && m.role === 'creator'))
+            // team_members.role CHECK: ('owner', 'admin', 'member') — 'creator' does NOT exist in DB
+            // Show all non-owner members (MCN admin is 'owner', soloists are 'member')
+            setTeamMembers(members.filter(m => m.user_id !== user.id && m.role !== 'owner'))
         }
 
         loadMembers()
@@ -183,23 +184,32 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
                 .select(`
                     *,
                     profile:profiles(
-                        display_name, 
-                        avatar_url, 
+                        display_name,
+                        avatar_url,
                         email,
+                        description,
                         instagram_handle,
                         followers_count,
                         tags,
                         phone,
+                        shipping_address,
+                        primary_region,
                         bank_name,
                         account_number,
                         account_holder,
                         price_video,
                         price_feed,
+                        price_story,
                         secondary_rights,
                         usage_rights_month,
                         usage_rights_price,
                         auto_dm_month,
-                        auto_dm_price
+                        auto_dm_price,
+                        legal_name,
+                        birth_date,
+                        legal_address,
+                        is_business_registered,
+                        creator_business_number
                     )
                 `)
                 .eq('team_id', teamId)

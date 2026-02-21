@@ -18,9 +18,9 @@ export function useEffectiveUser() {
             name: selectedMember.profile?.display_name,
             avatar: selectedMember.profile?.avatar_url,
             role: 'creator' as const,
-            bio: undefined as string | undefined,
-            primaryRegion: undefined as string | undefined,
-            address: undefined as string | undefined,
+            bio: (selectedMember.profile as any)?.description,
+            primaryRegion: (selectedMember.profile as any)?.primary_region,
+            address: (selectedMember.profile as any)?.shipping_address,
             // Map DB fields to User interface fields
             handle: selectedMember.profile?.instagram_handle,
             followers: selectedMember.profile?.followers_count,
@@ -31,13 +31,13 @@ export function useEffectiveUser() {
             accountHolder: selectedMember.profile?.account_holder,
             priceVideo: selectedMember.profile?.price_video,
             priceFeed: selectedMember.profile?.price_feed,
-            priceStory: undefined as number | undefined,
+            priceStory: (selectedMember.profile as any)?.price_story,
             secondaryRights: selectedMember.profile?.secondary_rights,
             usageRightsMonth: selectedMember.profile?.usage_rights_month,
             usageRightsPrice: selectedMember.profile?.usage_rights_price,
             autoDmMonth: selectedMember.profile?.auto_dm_month,
             autoDmPrice: selectedMember.profile?.auto_dm_price,
-            // Creator Legal/Tax fields (cast: profile type doesn't include new cols yet)
+            // Creator Legal/Tax fields
             legalName: (selectedMember.profile as any)?.legal_name,
             birthDate: (selectedMember.profile as any)?.birth_date,
             legalAddress: (selectedMember.profile as any)?.legal_address,

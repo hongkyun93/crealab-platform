@@ -5,6 +5,15 @@ import { createClient } from "@/lib/supabase/client"
 import { SupabaseClient } from "@supabase/supabase-js"
 import type { User } from "@/lib/types"
 import { useRouter } from "next/navigation"
+import { isDemoModeActive } from "@/lib/contexts/demo-context"
+
+// Demo mode constants
+const DEMO_ACCOUNTS: Record<string, string> = {
+    creator: 'mock_haeunbeauty@mock.creadypick.com',
+    brand: 'mock_brand_demo@mock.creadypick.com',
+    mcn: 'mock_mcn_demo@mock.creadypick.com',
+}
+const DEMO_PASSWORD = 'MockUser2026!'
 
 // Auth Context Type
 interface AuthContextType {
@@ -100,6 +109,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const initAuth = async () => {
             console.log('[AuthProvider] Initializing auth...')
+
+            // ── Demo Mode Auto-Login ──
+            const isDemo = isDemoModeActive()
+            if (isDemo && mounted) {
+                console.log('[AuthProvider] Demo mode detected, auto-login...')
+                try {
+                    // Pick demo email based on current path
+                    const path = window.location.pathname
+                    const demoRole = path.startsWith('/brand') ? 'brand'
+                        : path.startsWith('/mcn') ? 'mcn'
+                            : 'creator'
+                    const demoEmail = DEMO_ACCOUNTS[demoRole] || DEMO_ACCOUNTS.creator
+
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: demoEmail,
+                        password: DEMO_PASSWORD,
+                    })
+
+                    if (error) {
+                        console.warn('[AuthProvider] Demo login failed:', error.message)
+                        // Fall through to normal no-session handling
+                    } else if (data.session?.user) {
+                        const sessionUser = data.session.user
+                        const basicUser = {
+                            id: sessionUser.id,
+                            email: sessionUser.email,
+                            name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Demo User',
+                            role: demoRole as any,
+                            avatar: sessionUser.user_metadata?.avatar_url,
+                            tags: [],
+                            _isFallback: true,
+                            _isDemoMode: true,
+                        } as User
+
+                        setUser(basicUser)
+                        lastUserId.current = sessionUser.id
+                        setIsAuthChecked(true)
+                        setIsInitialized(true)
+                        isInitAuthDone.current = true
+                        clearTimeout(timer)
+
+                        // Background fetch full profile
+                        fetchUserProfile(sessionUser).then(fetchedUser => {
+                            if (mounted && fetchedUser) {
+                                // Override role to match demo context
+                                setUser({ ...fetchedUser, role: demoRole as any, _isDemoMode: true } as any)
+                            }
+                        }).catch(() => { })
+
+                        return
+                    }
+                } catch (e) {
+                    console.warn('[AuthProvider] Demo auto-login error:', e)
+                }
+            }
 
             try {
                 // Use getSession() instead of getUser() — getUser() makes a server call

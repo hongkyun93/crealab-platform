@@ -28,8 +28,8 @@ interface DiscoverViewProps {
     followerFilter: string[]
     statusFilter: string
     setStatusFilter: (status: string) => void
-    selectedTag: string | null
-    setSelectedTag: (tag: string | null) => void
+    selectedTags: string[]
+    setSelectedTags: (tags: string[] | ((prev: string[]) => string[])) => void
     handlePresetClick: (key: string) => void
     favorites: any[]
     toggleFavorite: (id: string, type: string) => void
@@ -53,8 +53,8 @@ export const DiscoverView = React.memo(function DiscoverView({
     followerFilter,
     statusFilter,
     setStatusFilter,
-    selectedTag,
-    setSelectedTag,
+    selectedTags,
+    setSelectedTags,
     handlePresetClick,
     favorites,
     toggleFavorite,
@@ -261,22 +261,30 @@ export const DiscoverView = React.memo(function DiscoverView({
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setSelectedTag(null)}
-                                className={cn('gap-1.5', selectedTag === null && 'bg-primary/10 text-primary font-medium')}
+                                onClick={() => setSelectedTags([])}
+                                className={cn('gap-1.5', selectedTags.length === 0 && 'bg-primary/10 text-primary font-medium')}
                             >
                                 전체
-                                {selectedTag === null && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
+                                {selectedTags.length === 0 && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                             </Button>
                             {POPULAR_TAGS.map(tag => (
                                 <Button
                                     key={tag}
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                                    className={cn('gap-1.5', selectedTag === tag && 'bg-primary/10 text-primary font-medium')}
+                                    onClick={() => {
+                                        setSelectedTags((prev: string[]) => {
+                                            if (prev.includes(tag)) {
+                                                return prev.filter(t => t !== tag)
+                                            } else {
+                                                return [...prev, tag]
+                                            }
+                                        })
+                                    }}
+                                    className={cn('gap-1.5', selectedTags.includes(tag) && 'bg-primary/10 text-primary font-medium')}
                                 >
                                     {tag}
-                                    {selectedTag === tag && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
+                                    {selectedTags.includes(tag) && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                                 </Button>
                             ))}
                         </div>
