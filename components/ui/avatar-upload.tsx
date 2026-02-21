@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Camera, Loader2, X } from "lucide-react"
@@ -20,6 +20,11 @@ export function AvatarUpload({ uid, url, onUpload, size = 150, className }: Avat
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [uploading, setUploading] = useState(false)
     const [avatarUrl, setAvatarUrl] = useState<string | null>(url || null)
+
+    // Sync avatarUrl when the url prop changes (async user data load)
+    useEffect(() => {
+        if (url) setAvatarUrl(url)
+    }, [url])
 
     const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         try {
@@ -51,8 +56,9 @@ export function AvatarUpload({ uid, url, onUpload, size = 150, className }: Avat
                 .getPublicUrl(filePath)
 
             if (data) {
-                setAvatarUrl(data.publicUrl)
-                onUpload(data.publicUrl)
+                const freshUrl = `${data.publicUrl}?t=${Date.now()}`
+                setAvatarUrl(freshUrl)
+                onUpload(freshUrl)
             }
 
         } catch (error: any) {
