@@ -307,47 +307,9 @@ function DesignB() {
                 </div>
             </div>
 
-            {/* Two-Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
-                {/* Left: Message + Product */}
-                <div className="space-y-5">
-                    {/* Message */}
-                    <div className="rounded-xl border bg-card p-6">
-                        <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                            <MessageCircle className="h-4 w-4 text-blue-500" /> 제안 메시지
-                        </h4>
-                        <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-5 border border-blue-100/50 dark:border-blue-900/20">
-                            <p className="text-sm leading-[1.9] whitespace-pre-wrap">{p.message}</p>
-                        </div>
-                    </div>
-
-                    {/* Product Row */}
-                    <div className="rounded-xl border bg-card p-6">
-                        <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                            <Package className="h-4 w-4 text-purple-500" /> 제안 제품 정보
-                        </h4>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
-                                <p className="text-[10px] text-muted-foreground mb-1">제품명</p>
-                                <p className="text-sm font-bold">{p.product_name}</p>
-                            </div>
-                            <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
-                                <p className="text-[10px] text-muted-foreground mb-1">제공 방식</p>
-                                <div className="flex items-center gap-1.5">
-                                    <Gift className="h-3.5 w-3.5 text-pink-500" />
-                                    <span className="text-sm font-medium">{p.product_type === 'gift' ? '제품 증정' : '제품 대여'}</span>
-                                </div>
-                            </div>
-                        </div>
-                        {p.product_url && (
-                            <a href={p.product_url} target="_blank" rel="noreferrer" className="mt-3 text-xs text-blue-500 hover:underline inline-flex items-center gap-1">
-                                <ExternalLink className="h-3 w-3" /> 제품 링크 확인
-                            </a>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right: Sticky Summary Panel */}
+            {/* Two-Column Layout — Summary Left, Content Right */}
+            <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
+                {/* Left: Sticky Summary Panel */}
                 <div>
                     <div className="sticky top-20 space-y-4">
                         {/* Compensation Card */}
@@ -437,6 +399,44 @@ function DesignB() {
                                 <XCircle className="h-4 w-4" /> 거절하기
                             </Button>
                         </div>
+                    </div>
+                </div>
+
+                {/* Right: Message + Product */}
+                <div className="space-y-5">
+                    {/* Message */}
+                    <div className="rounded-xl border bg-card p-6">
+                        <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                            <MessageCircle className="h-4 w-4 text-blue-500" /> 제안 메시지
+                        </h4>
+                        <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-5 border border-blue-100/50 dark:border-blue-900/20">
+                            <p className="text-sm leading-[1.9] whitespace-pre-wrap">{p.message}</p>
+                        </div>
+                    </div>
+
+                    {/* Product Row */}
+                    <div className="rounded-xl border bg-card p-6">
+                        <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                            <Package className="h-4 w-4 text-purple-500" /> 제안 제품 정보
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
+                                <p className="text-[10px] text-muted-foreground mb-1">제품명</p>
+                                <p className="text-sm font-bold">{p.product_name}</p>
+                            </div>
+                            <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
+                                <p className="text-[10px] text-muted-foreground mb-1">제공 방식</p>
+                                <div className="flex items-center gap-1.5">
+                                    <Gift className="h-3.5 w-3.5 text-pink-500" />
+                                    <span className="text-sm font-medium">{p.product_type === 'gift' ? '제품 증정' : '제품 대여'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {p.product_url && (
+                            <a href={p.product_url} target="_blank" rel="noreferrer" className="mt-3 text-xs text-blue-500 hover:underline inline-flex items-center gap-1">
+                                <ExternalLink className="h-3 w-3" /> 제품 링크 확인
+                            </a>
+                        )}
                     </div>
                 </div>
             </div>
