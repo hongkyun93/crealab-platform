@@ -34,7 +34,10 @@ interface BrandProfileViewProps {
     editContactPersonName: string; setEditContactPersonName: (v: string) => void
     editContactPersonPhone: string; setEditContactPersonPhone: (v: string) => void
     editContactPersonEmail: string; setEditContactPersonEmail: (v: string) => void
-    editSettlementBank: string; setEditSettlementBank: (v: string) => void
+    // Bank fields (3 separate)
+    editBankName: string; setEditBankName: (v: string) => void
+    editAccountNumber: string; setEditAccountNumber: (v: string) => void
+    editAccountHolder: string; setEditAccountHolder: (v: string) => void
     handleSaveProfile: () => void
     updateUser: (data: any) => Promise<void>
     switchRole: (role: string) => Promise<void>
@@ -59,7 +62,9 @@ export const BrandProfileView = React.memo(function BrandProfileView({
     editContactPersonName, setEditContactPersonName,
     editContactPersonPhone, setEditContactPersonPhone,
     editContactPersonEmail, setEditContactPersonEmail,
-    editSettlementBank, setEditSettlementBank,
+    editBankName, setEditBankName,
+    editAccountNumber, setEditAccountNumber,
+    editAccountHolder, setEditAccountHolder,
     handleSaveProfile,
     updateUser,
     switchRole
@@ -182,9 +187,46 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                         <Label htmlFor="b-tax-email">세금계산서 발행 이메일</Label>
                         <Input id="b-tax-email" value={editTaxEmail} onChange={(e) => setEditTaxEmail(e.target.value)} placeholder="tax@brand.com" />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="b-settlement">정산 계좌 (은행 / 계좌번호 / 예금주)</Label>
-                        <Input id="b-settlement" value={editSettlementBank} onChange={(e) => setEditSettlementBank(e.target.value)} placeholder="신한은행 110-000-000000 (주)브랜드" />
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="b-bank-name">은행명</Label>
+                            <select
+                                id="b-bank-name"
+                                value={editBankName}
+                                onChange={(e) => setEditBankName(e.target.value)}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                                <option value="">선택</option>
+                                <option value="KB국민">KB국민</option>
+                                <option value="신한">신한</option>
+                                <option value="우리">우리</option>
+                                <option value="하나">하나</option>
+                                <option value="NH농협">NH농협</option>
+                                <option value="IBK기업">IBK기업</option>
+                                <option value="카카오뱅크">카카오뱅크</option>
+                                <option value="토스뱅크">토스뱅크</option>
+                                <option value="케이뱅크">케이뱅크</option>
+                                <option value="SC제일">SC제일</option>
+                                <option value="대구">대구</option>
+                                <option value="부산">부산</option>
+                                <option value="경남">경남</option>
+                                <option value="광주">광주</option>
+                                <option value="전북">전북</option>
+                                <option value="제주">제주</option>
+                                <option value="수협">수협</option>
+                                <option value="새마을금고">새마을금고</option>
+                                <option value="신협">신협</option>
+                                <option value="우체국">우체국</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="b-account-number">계좌번호</Label>
+                            <Input id="b-account-number" value={editAccountNumber} onChange={(e) => setEditAccountNumber(e.target.value.replace(/[^0-9-]/g, ''))} placeholder="110-000-000000" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="b-account-holder">예금주</Label>
+                            <Input id="b-account-holder" value={editAccountHolder} onChange={(e) => setEditAccountHolder(e.target.value)} placeholder="(주)브랜드명" />
+                        </div>
                     </div>
                 </CardContent>
                 <CardFooter>

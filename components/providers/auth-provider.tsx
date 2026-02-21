@@ -374,7 +374,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (data.contactPersonName !== undefined) updates.contact_person_name = data.contactPersonName
             if (data.contactPersonPhone !== undefined) updates.contact_person_phone = data.contactPersonPhone
             if (data.contactPersonEmail !== undefined) updates.contact_person_email = data.contactPersonEmail
+            // Brand-specific settlement bank (legacy single field)
             if (data.settlementBank !== undefined) updates.settlement_bank = data.settlementBank
+
+            // Bank Info (shared between brand and creator)
+            if (data.bankName !== undefined) updates.bank_name = data.bankName
+            if (data.accountNumber !== undefined) updates.account_number = data.accountNumber
+            if (data.accountHolder !== undefined) updates.account_holder = data.accountHolder
 
             // Determine role/type for logic (If updating self, use local user.type, else fetch or assume creator)
             // For now, if targetId is different, we assume we are updating a creator as MCN
@@ -407,11 +413,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (data.usageRightsPrice !== undefined) updates.usage_rights_price = data.usageRightsPrice
                 if (data.autoDmMonth !== undefined) updates.auto_dm_month = data.autoDmMonth
                 if (data.autoDmPrice !== undefined) updates.auto_dm_price = data.autoDmPrice
-
-                // Bank Info
-                if (data.bankName !== undefined) updates.bank_name = data.bankName
-                if (data.accountNumber !== undefined) updates.account_number = data.accountNumber
-                if (data.accountHolder !== undefined) updates.account_holder = data.accountHolder
 
                 // Creator Legal/Tax fields
                 if (data.legalName !== undefined) updates.legal_name = data.legalName

@@ -932,7 +932,10 @@ function BrandDashboardContent() {
     const [editContactPersonName, setEditContactPersonName] = useState("")
     const [editContactPersonPhone, setEditContactPersonPhone] = useState("")
     const [editContactPersonEmail, setEditContactPersonEmail] = useState("")
-    const [editSettlementBank, setEditSettlementBank] = useState("")
+    // Bank fields (3 separate inputs)
+    const [editBankName, setEditBankName] = useState("")
+    const [editAccountNumber, setEditAccountNumber] = useState("")
+    const [editAccountHolder, setEditAccountHolder] = useState("")
 
     useEffect(() => {
         if (displayUser) {
@@ -952,7 +955,10 @@ function BrandDashboardContent() {
             setEditContactPersonName(displayUser.contactPersonName || "")
             setEditContactPersonPhone(displayUser.contactPersonPhone || "")
             setEditContactPersonEmail(displayUser.contactPersonEmail || "")
-            setEditSettlementBank(displayUser.settlementBank || "")
+            // Bank fields
+            setEditBankName(displayUser.bankName || "")
+            setEditAccountNumber(displayUser.accountNumber || "")
+            setEditAccountHolder(displayUser.accountHolder || "")
         }
     }, [displayUser])
 
@@ -1312,7 +1318,10 @@ function BrandDashboardContent() {
                 contactPersonName: editContactPersonName,
                 contactPersonPhone: editContactPersonPhone,
                 contactPersonEmail: editContactPersonEmail,
-                settlementBank: editSettlementBank,
+                // Bank fields (3 separate)
+                bankName: editBankName,
+                accountNumber: editAccountNumber,
+                accountHolder: editAccountHolder,
             })
             toast.success("프로필 정보가 저장되었습니다.")
         } catch (e: any) {
@@ -1649,8 +1658,12 @@ function BrandDashboardContent() {
                         setEditContactPersonPhone={setEditContactPersonPhone}
                         editContactPersonEmail={editContactPersonEmail}
                         setEditContactPersonEmail={setEditContactPersonEmail}
-                        editSettlementBank={editSettlementBank}
-                        setEditSettlementBank={setEditSettlementBank}
+                        editBankName={editBankName}
+                        setEditBankName={setEditBankName}
+                        editAccountNumber={editAccountNumber}
+                        setEditAccountNumber={setEditAccountNumber}
+                        editAccountHolder={editAccountHolder}
+                        setEditAccountHolder={setEditAccountHolder}
                         handleSaveProfile={handleSaveProfile}
                         updateUser={updateUser}
                         switchRole={switchRole as any}
