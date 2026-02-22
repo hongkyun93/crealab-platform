@@ -5,7 +5,7 @@
 -- =====================================================
 
 -- 1. 테이블명 변경
-ALTER TABLE public.brand_proposals RENAME TO public.product_applications;
+ALTER TABLE public.brand_proposals RENAME TO product_applications;
 
 -- 2. messages 테이블: brand_proposal_id 컬럼명 변경
 ALTER TABLE public.messages
