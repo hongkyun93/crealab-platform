@@ -14,8 +14,9 @@ const ALLOWED_MIME = [
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/gif',
 ]
-const ALLOWED_EXT = ['.pdf', '.doc', '.docx']
+const ALLOWED_EXT = ['.pdf', '.doc', '.docx', '.gif']
 const BUCKET = 'workspace-files'
 
 interface WorkspaceFile {
@@ -81,7 +82,7 @@ export function FileSharePanel() {
 
         // Validate type
         if (!ALLOWED_MIME.includes(file.type)) {
-            toast.error(`PDF, DOC, DOCX 파일만 업로드할 수 있습니다.`)
+            toast.error(`PDF, DOC, DOCX, GIF 파일만 업로드할 수 있습니다.`)
             return
         }
 
@@ -222,7 +223,7 @@ export function FileSharePanel() {
                     <p className="text-xs font-medium mb-0.5">
                         {isUploading ? '업로드 중...' : '클릭하여 파일 업로드'}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">PDF, DOC, DOCX · 최대 10MB</p>
+                    <p className="text-[10px] text-muted-foreground">PDF, DOC, DOCX, GIF · 최대 10MB</p>
                 </div>
             </div>
         </div>
@@ -239,12 +240,13 @@ function FileItem({
     onDelete: () => void
 }) {
     const isPdf = file.file_type === 'application/pdf'
+    const isGif = file.file_type === 'image/gif'
 
     return (
         <div className="group flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50">
             <div className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
-                isPdf ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
+                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 overflow-hidden",
+                isPdf ? "bg-red-50 text-red-600" : isGif ? "bg-purple-50 text-purple-600" : "bg-blue-50 text-blue-600"
             )}>
                 <FileIcon className="w-4 h-4" />
             </div>

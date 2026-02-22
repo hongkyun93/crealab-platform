@@ -34,4 +34,5 @@ CREATE POLICY "workspace_files_delete" ON workspace_files
 -- Public: true (URL로 직접 접근 가능)
 -- Max file size: 10 MB
 -- Allowed MIME types: application/pdf, application/msword,
---   application/vnd.openxmlformats-officedocument.wordprocessingml.document
+--   application/vnd.openxmlformats-officedocument.wordprocessingml.document,
+--   image/gif
