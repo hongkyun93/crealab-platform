@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Star, ExternalLink, Trash2 } from "lucide-react"
+import { Star, ExternalLink, Trash2, Pencil } from "lucide-react"
 import Link from "next/link"
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
 
@@ -96,6 +96,8 @@ export interface MomentTableViewProps {
     onClick?: (item: any) => void
     /** Delete handler */
     onDelete?: (id: string) => void
+    /** Edit handler (navigates to edit page) */
+    onEdit?: (id: string) => void
     /** Is past tab? */
     isPast?: boolean
     /** Brand proposals for offer count */
@@ -110,6 +112,7 @@ export function MomentTableView({
     linkToEvent = false,
     onClick,
     onDelete,
+    onEdit,
     isPast = false,
     brandProposals = [],
     emptyMessage = "모먼트가 없습니다."
@@ -131,7 +134,7 @@ export function MomentTableView({
                         <TableHead className="w-[80px]">팔로워</TableHead>
                         <TableHead className="w-[110px]">일정</TableHead>
                         {hasOfferCount && <TableHead className="w-[50px]">제안</TableHead>}
-                        {isPast && onDelete && <TableHead className="w-[44px]"></TableHead>}
+                        {(onDelete || onEdit) && <TableHead className="w-[80px]"></TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -250,15 +253,28 @@ export function MomentTableView({
                                             )}
                                         </TableCell>
                                     )}
-                                    {isPast && onDelete && (
+                                    {(onDelete || onEdit) && (
                                         <TableCell className="py-2">
-                                            <Button
-                                                variant="ghost" size="icon"
-                                                className="h-7 w-7 text-muted-foreground hover:text-red-500"
-                                                onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
+                                            <div className="flex gap-1">
+                                                {onEdit && (
+                                                    <Button
+                                                        variant="ghost" size="icon"
+                                                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                                        onClick={(e) => { e.stopPropagation(); onEdit(item.id); }}
+                                                    >
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                )}
+                                                {onDelete && (
+                                                    <Button
+                                                        variant="ghost" size="icon"
+                                                        className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                                                        onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     )}
                                 </TableRow>

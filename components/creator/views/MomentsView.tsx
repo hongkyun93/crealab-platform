@@ -1,4 +1,5 @@
 import React from "react"
+import { useRouter } from "next/navigation"
 import { ChevronRight, Info, ArrowLeft, Calendar, Clock, Tv, Package, Sparkles, MessageCircle, BadgeCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -53,6 +54,7 @@ export const MomentsView = React.memo(function MomentsView({
     updateEvent,
     user
 }: MomentsViewProps) {
+    const router = useRouter()
     const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid')
     const [selectedMoment, setSelectedMoment] = React.useState<any | null>(null)
 
@@ -355,6 +357,8 @@ export const MomentsView = React.memo(function MomentsView({
                                         isPast={false}
                                         offerCount={getActiveProposalCount(moment.id)}
                                         onClick={() => setSelectedMoment(moment)}
+                                        onEdit={(id) => router.push(`/creator/moment/${id}`)}
+                                        onDelete={deleteEvent}
                                         onComplete={(id) => updateEvent(id, { status: 'completed' })}
                                         renderFooter={() => renderProposalFooter(moment.id)}
                                     />
@@ -371,6 +375,8 @@ export const MomentsView = React.memo(function MomentsView({
                             getCreator={() => creatorProfile}
                             brandProposals={brandProposals}
                             onClick={(m) => setSelectedMoment(m)}
+                            onEdit={(id) => router.push(`/creator/moment/${id}`)}
+                            onDelete={deleteEvent}
                         />
                     )}
                 </TabsContent>
@@ -387,6 +393,7 @@ export const MomentsView = React.memo(function MomentsView({
                                         creator={creatorProfile}
                                         isPast={true}
                                         onClick={() => setSelectedMoment(moment)}
+                                        onEdit={(id) => router.push(`/creator/moment/${id}`)}
                                         onDelete={deleteEvent}
                                         renderFooter={() => renderProposalFooter(moment.id)}
                                     />
@@ -403,6 +410,7 @@ export const MomentsView = React.memo(function MomentsView({
                             getCreator={() => creatorProfile}
                             isPast={true}
                             onClick={(m) => setSelectedMoment(m)}
+                            onEdit={(id) => router.push(`/creator/moment/${id}`)}
                             onDelete={deleteEvent}
                         />
                     )}

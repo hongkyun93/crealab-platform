@@ -5,7 +5,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-    Calendar, Gift, Send, Banknote, Star, Lock, MoreVertical, Trash2,
+    Calendar, Gift, Send, Banknote, Star, Lock, MoreVertical, Trash2, Pencil,
 } from "lucide-react"
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -88,8 +88,10 @@ export interface MomentGridCardProps {
     /** Favorite state & toggle */
     isFavorite?: boolean
     toggleFavorite?: (id: string, type: string) => void
-    /** Delete handler (shows dropdown menu for past moments) */
+    /** Delete handler */
     onDelete?: (id: string) => void
+    /** Edit handler (navigates to edit page) */
+    onEdit?: (id: string) => void
     /** Complete handler (shows button for active moments) */
     onComplete?: (id: string) => void
     /** Whether to show CreatorProfileCard dialog on avatar/name click */
@@ -109,7 +111,7 @@ export interface MomentGridCardProps {
 export function MomentGridCard({
     item, creator, isPast = false, offerCount = 0,
     onClick, isFavorite, toggleFavorite,
-    onDelete, onComplete, showProfileCard = false,
+    onDelete, onEdit, onComplete, showProfileCard = false,
     href, onAdminDelete, userRole, renderFooter, hasSentProposal = false,
 }: MomentGridCardProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -233,8 +235,8 @@ export function MomentGridCard({
                             </Button>
                         )}
 
-                        {/* Creator delete menu (past moments) */}
-                        {isPast && onDelete && !onAdminDelete && (
+                        {/* Creator edit/delete menu */}
+                        {(onDelete || onEdit) && !onAdminDelete && (
                             <div onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -243,12 +245,21 @@ export function MomentGridCard({
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                            className="text-red-600 focus:text-red-600"
-                                            onClick={(e) => { e.stopPropagation(); setIsDeleteDialogOpen(true); }}
-                                        >
-                                            <Trash2 className="mr-2 h-4 w-4" /> 기록 삭제
-                                        </DropdownMenuItem>
+                                        {onEdit && (
+                                            <DropdownMenuItem
+                                                onClick={(e) => { e.stopPropagation(); onEdit(item.id); }}
+                                            >
+                                                <Pencil className="mr-2 h-4 w-4" /> 수정
+                                            </DropdownMenuItem>
+                                        )}
+                                        {onDelete && (
+                                            <DropdownMenuItem
+                                                className="text-red-600 focus:text-red-600"
+                                                onClick={(e) => { e.stopPropagation(); setIsDeleteDialogOpen(true); }}
+                                            >
+                                                <Trash2 className="mr-2 h-4 w-4" /> 삭제
+                                            </DropdownMenuItem>
+                                        )}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
