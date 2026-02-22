@@ -276,8 +276,40 @@ function InfluencerDashboardContent() {
 
     // NOTE: MCN no-team check moved below all hooks (React rules: no early returns before hooks)
 
+    // [URL Sync] workspace에 chatProposal 열릴 때 URL에 proposalId 기록, 닫힐 때 제거
+    // → 새로고침해도 아래 auto-open 로직이 proposalId를 읽어 dialog 복원
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString())
+        if (currentView === 'workspace' && chatProposal?.id) {
+            params.set('proposalId', chatProposal.id.toString())
+        } else {
+            params.delete('proposalId')
+        }
+        const newUrl = `${window.location.pathname}?${params.toString()}`
+        router.replace(newUrl, { scroll: false })
+    }, [currentView, chatProposal?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // [URL Auto-open] 새로고침 시 URL proposalId 기반 workspace 자동 복원
+    useEffect(() => {
+        const proposalId = searchParams.get('proposalId')
+        if (!proposalId || isAuthLoading) return
+        if (chatProposal) return // 이미 열려있으면 무시
+
+        const allProposals = [
+            ...(brandProposals || []),
+            ...(campaignProposals || []),
+            ...(momentProposals as any[] || []),
+        ]
+        const target = allProposals.find((p: any) => p.id === proposalId || p.id?.toString() === proposalId)
+        if (target) {
+            setChatProposal(target)
+            setCurrentView('workspace')
+        }
+    }, [searchParams, brandProposals, campaignProposals, momentProposals, isAuthLoading, chatProposal]) // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         const fetchTeamMembers = async () => {
+
             if (user?.role === 'agency' || user?.role === 'mcn') {
                 const { data, error } = await supabase
                     .from('team_members')

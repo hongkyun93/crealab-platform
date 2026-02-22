@@ -318,7 +318,22 @@ function BrandDashboardContent() {
         }
     }, [searchParams, brandProposals, campaigns, isAuthLoading, chatProposal])
 
+    // [URL Sync] dialog 열릴 때 URL에 proposalId 기록, 닫힐 때 제거
+    // → 새로고침해도 위 auto-open 로직이 proposalId를 읽어 dialog 복원
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString())
+        if (isChatOpen && chatProposal?.id) {
+            params.set('proposalId', chatProposal.id.toString())
+        } else {
+            params.delete('proposalId')
+        }
+        const newUrl = `${window.location.pathname}?${params.toString()}`
+        // scroll:false, replace(not push) — 뒤로가기 기록에 안 남음
+        router.replace(newUrl, { scroll: false })
+    }, [isChatOpen, chatProposal?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
     // Fetch Messages when Chat Opens, workspaceTab])
+
 
     // Auto-scroll for Work Feedback Chat
     useEffect(() => {
