@@ -188,6 +188,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         content_final_approved_at: p.content_final_approved_at,
                         content_revision_requested_at: p.content_revision_requested_at,
                         workspace_id: p.workspace_id, // [Workspaces]
+                        payment_confirmed_at: p.payment_confirmed_at, // [입금 확인 게이트]
                         campaign: p.campaigns
                     }
                 })
@@ -319,7 +320,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 content_revision_requested_at: p.content_revision_requested_at,
                 product_url: p.products?.image_url,
                 product: p.products,
-                workspace_id: p.workspace_id // [Workspaces]
+                workspace_id: p.workspace_id, // [Workspaces]
+                payment_confirmed_at: p.payment_confirmed_at // [입금 확인 게이트]
             }))
 
             const mappedMoment: BrandProposal[] = momentData.map((p: any) => ({
@@ -387,7 +389,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     ? p.moment.channels.join(',')   // e.g. "instagram_reels,youtube_shorts"
                     : null,
                 channel_name: p.moment?.channels?.[0]?.split('_')[0] || null,
-                workspace_id: p.workspace_id // [Workspaces]
+                workspace_id: p.workspace_id, // [Workspaces]
+                payment_confirmed_at: p.payment_confirmed_at // [입금 확인 게이트]
             }))
 
             // [NEW] Separate Moment Proposals State Population

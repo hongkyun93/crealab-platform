@@ -186,9 +186,15 @@ export function CreatorInfoPanel() {
 
         if (success) {
             useWorkspaceStore.getState().updateProposal(updates);
-            // Auto-advance to shipping stage when fully signed
+            // [입금 확인 게이트] contract_status === 'signed' 이후
+            // → payment_confirmed_at이 있을 때만 shipping, 없으면 contract 단계 유지 (입금 대기)
             if (updates.contract_status === 'signed') {
-                useWorkspaceStore.getState().setCurrentStage('shipping');
+                const currentProposal = useWorkspaceStore.getState().proposal as any;
+                if (currentProposal?.payment_confirmed_at) {
+                    useWorkspaceStore.getState().setCurrentStage('shipping');
+                } else {
+                    useWorkspaceStore.getState().setCurrentStage('contract'); // 입금 대기
+                }
             }
             refreshData(); // Sync archive cards + cross-user data
         }
