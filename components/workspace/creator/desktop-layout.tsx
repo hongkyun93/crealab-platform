@@ -76,48 +76,46 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
     };
 
     return (
-        <div className={cn("h-full w-full max-w-[1600px] bg-background rounded-xl overflow-hidden shadow-2xl border border-border/50 flex", className)}>
+        <div className={cn("grid grid-cols-[390px_minmax(200px,1fr)_260px] h-full w-full max-w-[1500px] bg-background rounded-xl overflow-hidden shadow-2xl border border-border/50", className)}>
             {/* Left Column: Information Panel */}
             <div className="h-full border-r border-border/50 bg-background/50 relative z-10 flex flex-col min-w-0 overflow-hidden">
                 <CreatorInfoPanel />
             </div>
 
-            {/* Center: Contract View OR Video Review OR Chat + FileSharePanel */}
-            <div className="flex-1 flex min-w-0 overflow-hidden">
-                {contractViewOpen && proposal ? (
-                    /* Contract Mode: Contract(넓게) + Chat(우측) */
-                    <div className="grid grid-cols-[1fr_260px] h-full w-full">
-                        <div className="h-full bg-background relative flex flex-col min-w-0 overflow-hidden">
-                            <SmartContractPanel
-                                proposal={proposal}
-                                userType="creator"
-                                onSign={handleSign}
-                                onSaveContract={handleSaveContract}
-                                onUndoSign={handleUndoSign}
-                                fullWidth
-                            />
-                        </div>
-                        <div className="h-full bg-muted/20 relative flex flex-col min-w-0 overflow-hidden border-l border-border/50">
-                            <ChatArea className="h-full" />
-                        </div>
+            {/* Center + Right: Contract View OR Video Review OR Chat + Files */}
+            {contractViewOpen && proposal ? (
+                <>
+                    {/* Center: Contract */}
+                    <div className="h-full bg-background relative flex flex-col min-w-0 overflow-hidden">
+                        <SmartContractPanel
+                            proposal={proposal}
+                            userType="creator"
+                            onSign={handleSign}
+                            onSaveContract={handleSaveContract}
+                            onUndoSign={handleUndoSign}
+                            fullWidth
+                        />
                     </div>
-                ) : videoReviewOpen ? (
-                    /* Video Review Mode: 전체 폭 사용 */
-                    <div className="flex-1 h-full bg-background relative flex flex-col min-w-0 overflow-hidden">
-                        <VideoReviewPanel userType="creator" />
+                    {/* Right: Chat (so creator can discuss while viewing contract) */}
+                    <div className="h-full bg-muted/20 relative flex flex-col min-w-0 overflow-hidden border-l border-border/50">
+                        <ChatArea className="h-full" />
                     </div>
-                ) : (
-                    /* Default Chat Mode: Chat(넓게) + FileSharePanel(항상 고정) */
-                    <>
-                        <div className="flex-1 h-full bg-muted/20 relative flex flex-col min-w-0 overflow-hidden">
-                            <ChatArea className="h-full" />
-                        </div>
-                        <div className="w-[220px] h-full bg-background relative z-10 min-w-0 overflow-hidden shrink-0">
-                            <FileSharePanel />
-                        </div>
-                    </>
-                )}
-            </div>
+                </>
+            ) : videoReviewOpen ? (
+                /* Video Review: spans center + right columns merged */
+                <div className="col-span-2 h-full bg-background relative flex flex-col min-w-0 overflow-hidden">
+                    <VideoReviewPanel userType="creator" />
+                </div>
+            ) : (
+                <>
+                    <div className="h-full bg-muted/20 relative flex flex-col min-w-0 overflow-hidden">
+                        <ChatArea className="h-full" />
+                    </div>
+                    <div className="h-full bg-background relative z-10 min-w-0 overflow-hidden">
+                        <FileSharePanel />
+                    </div>
+                </>
+            )}
         </div>
     );
 }
