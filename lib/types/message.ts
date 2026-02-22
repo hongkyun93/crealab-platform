@@ -4,7 +4,7 @@ export interface Message {
     senderId: string
     receiverId: string
     proposalId?: string
-    brandProposalId?: string
+    productApplicationId?: string
     workspaceId?: string // [Workspaces] Unified workspace UUID for message isolation
     content: string
     timestamp: string
@@ -36,7 +36,7 @@ export interface Notification {
 export interface SubmissionFeedback {
     id: string
     proposal_id?: string
-    brand_proposal_id?: string
+    product_application_id?: string
     sender_id: string
     content: string
     created_at: string

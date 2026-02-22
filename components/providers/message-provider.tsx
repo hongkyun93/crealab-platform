@@ -84,7 +84,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     senderId: msg.sender_id,
                     receiverId: msg.receiver_id,
                     proposalId: msg.proposal_id,
-                    brandProposalId: msg.brand_proposal_id,
+                    productApplicationId: msg.product_application_id,
                     workspaceId: msg.workspace_id,
                     content: msg.content || '',
                     timestamp: msg.created_at,
@@ -278,7 +278,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     sender_id: userId,
                     receiver_id: receiverId,
                     proposal_id: proposalId,
-                    brand_proposal_id: brandProposalId,
+                    product_application_id: brandProposalId,
                     workspace_id: workspaceId || null,
                     content: content || '',
                     file_url: file?.url,
@@ -348,7 +348,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
             // 42703 에러(column not found) 시에도 타임스탬프 없이 재시도해 plain text는 항상 저장됨.
             const basePayload: any = {
                 proposal_id: proposalId,
-                brand_proposal_id: brandProposalId,
+                product_application_id: brandProposalId,
                 sender_id: userId,
                 content,
             }
@@ -411,7 +411,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
             if (proposalId) {
                 query = query.eq('proposal_id', proposalId)
             } else if (brandProposalId) {
-                query = query.eq('brand_proposal_id', brandProposalId)
+                query = query.eq('product_application_id', brandProposalId)
             }
 
             const { data, error } = await query
@@ -436,7 +436,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 const feedback: SubmissionFeedback[] = data.map((f: any) => ({
                     id: f.id,
                     proposal_id: f.proposal_id,
-                    brand_proposal_id: f.brand_proposal_id,
+                    product_application_id: f.product_application_id,
                     sender_id: f.sender_id,
                     content: f.content,
                     created_at: f.created_at,

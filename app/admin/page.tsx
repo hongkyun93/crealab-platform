@@ -27,7 +27,7 @@ interface AdminMoment {
 
 interface AdminProposal {
     id: string
-    type: 'brand_proposal' | 'moment_proposal' | 'campaign_application'
+    type: 'product_application' | 'moment_proposal' | 'campaign_application'
     brand_name?: string
     creator_name?: string
     price_offer?: number
@@ -97,7 +97,7 @@ export default function AdminPage() {
         try {
             // brand_proposals
             const { data: bp, error: bpErr } = await supabase
-                .from('brand_proposals')
+                .from('product_applications')
                 .select('id, price_offer, status, content_submission_status, created_at, brand_id, influencer_id')
                 .order('created_at', { ascending: false })
                 .limit(100)
@@ -122,7 +122,7 @@ export default function AdminPage() {
 
             const mapped: AdminProposal[] = [
                 ...(bp ?? []).map((p: any) => ({
-                    id: p.id, type: 'brand_proposal' as const,
+                    id: p.id, type: 'product_application' as const,
                     brand_name: p.brand_id,
                     creator_name: p.influencer_id,
                     price_offer: p.price_offer,
@@ -170,7 +170,7 @@ export default function AdminPage() {
         setLoadingPayments(true)
         try {
             const { data, error } = await supabase
-                .from('brand_proposals')
+                .from('product_applications')
                 .select('id, price_offer, contract_status, payment_confirmed_at, created_at, brand_id, influencer_id')
                 .eq('contract_status', 'signed')
                 .is('payment_confirmed_at', null)
@@ -218,7 +218,7 @@ export default function AdminPage() {
     const handleConfirmPayment = async (proposalId: string) => {
         setConfirmingId(proposalId)
         const { error } = await supabase
-            .from('brand_proposals')
+            .from('product_applications')
             .update({ payment_confirmed_at: new Date().toISOString() })
             .eq('id', proposalId)
         if (error) toast.error(error.message)

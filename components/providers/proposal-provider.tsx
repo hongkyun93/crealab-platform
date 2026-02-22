@@ -3,21 +3,21 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
 import { useAuth } from "./auth-provider"
-import type { Proposal, BrandProposal, MomentProposal } from "@/lib/types"
+import type { Proposal, ProductApplication, MomentProposal } from "@/lib/types"
 
 interface ProposalContextType {
     campaignProposals: Proposal[]
-    brandProposals: BrandProposal[]
+    productApplications: ProductApplication[]
     momentProposals: MomentProposal[] // [NEW]
     addMomentProposal: (proposal: MomentProposal) => void // [NEW] Optimistic Add
     isLoading: boolean
     addProposal: (proposal: Partial<Proposal>) => Promise<void>
     updateProposal: (id: string | number, updates: Partial<Proposal>) => Promise<boolean>
-    updateBrandProposal: (id: string | number, updates: Partial<BrandProposal>) => Promise<boolean>
+    updateProductApplication: (id: string | number, updates: Partial<ProductApplication>) => Promise<boolean>
     updateMomentProposal: (id: string | number, updates: Partial<MomentProposal>) => Promise<boolean> // [NEW]
-    deleteBrandProposal: (id: string | number) => Promise<void>
+    deleteProductApplication: (id: string | number) => Promise<void>
     deleteMomentProposal: (id: string | number) => Promise<void> // [NEW]
-    createBrandProposal: (proposal: any) => Promise<any> // [NEW]
+    createProductApplication: (proposal: any) => Promise<any> // [NEW]
     createMomentProposal: (proposal: any) => Promise<any> // [NEW]
     refreshProposals: (userId?: string) => Promise<void>
 }
@@ -41,7 +41,7 @@ const isIgnorableError = (error: any) => {
 export function ProposalProvider({ children, userId, userType }: { children: React.ReactNode, userId?: string, userType?: string }) {
     const { supabase } = useAuth()
     const [campaignProposals, setCampaignProposals] = useState<Proposal[]>([])
-    const [brandProposals, setBrandProposals] = useState<BrandProposal[]>([])
+    const [productApplications, setProductApplications] = useState<ProductApplication[]>([])
     const [momentProposals, setMomentProposals] = useState<MomentProposal[]>([]) // [NEW] // FIXED
     const [isLoading, setIsLoading] = useState(false)
     const isFetching = useRef(false)
@@ -204,7 +204,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     }
 
     // Fetch brand proposals (offers to influencers)
-    const fetchBrandProposals = async (targetUserId?: string, signal?: AbortSignal) => {
+    const fetchProductApplications = async (targetUserId?: string, signal?: AbortSignal) => {
         const id = targetUserId || userId
         if (!id) return
 
@@ -213,7 +213,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             const [brandRes, momentRes] = await Promise.all([
                 supabase
-                    .from('brand_proposals')
+                    .from('product_applications')
                     .select(`
                         *,
                         brand:profiles!brand_id(display_name, avatar_url),
@@ -261,7 +261,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 if (!isIgnorable) console.error('[ProposalProvider] Moment proposals error:', error)
             }
 
-            const mappedBrand: BrandProposal[] = brandData.map((p: any) => ({
+            const mappedBrand: ProductApplication[] = brandData.map((p: any) => ({
                 id: p.id,
                 type: 'brand_offer',
                 brand_id: p.brand_id,
@@ -324,7 +324,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 payment_confirmed_at: p.payment_confirmed_at // [입금 확인 게이트]
             }))
 
-            const mappedMoment: BrandProposal[] = momentData.map((p: any) => ({
+            const mappedMoment: ProductApplication[] = momentData.map((p: any) => ({
                 id: p.id,
                 type: 'brand_offer', // Treated same as brand offer for now
                 brand_id: p.brand_id,
@@ -429,7 +429,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             )
 
-            setBrandProposals(finalBrand)
+            setProductApplications(finalBrand)
             console.log('[ProposalProvider] Loaded proposals:', {
                 brand: mappedBrand.length,
                 moment: mappedMoment.length
@@ -449,7 +449,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             setIsLoading(true)
             Promise.all([
                 fetchCampaignProposals(userId, signal),
-                fetchBrandProposals(userId, signal)
+                fetchProductApplications(userId, signal)
             ]).finally(() => {
                 if (!signal.aborted) {
                     setIsLoading(false)
@@ -457,7 +457,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             })
         } else {
             setCampaignProposals([])
-            setBrandProposals([])
+            setProductApplications([])
             setMomentProposals([])
             setIsLoading(false)
         }
@@ -479,13 +479,13 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 {
                     event: 'UPDATE',
                     schema: 'public',
-                    table: 'brand_proposals',
+                    table: 'product_applications',
                     filter: `influencer_id=eq.${userId}`
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Realtime brand_proposal update:', payload.new.id)
-                    // Update brandProposals local state
-                    setBrandProposals(prev => prev.map(p =>
+                    // Update productApplications local state
+                    setProductApplications(prev => prev.map(p =>
                         p.id === payload.new.id ? { ...p, ...payload.new } : p
                     ))
                     // Also update workspace store if this proposal is currently open
@@ -505,7 +505,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Realtime moment_proposal update:', payload.new.id)
-                    // Update momentProposals local state only (no longer merged into brandProposals)
+                    // Update momentProposals local state only (no longer merged into productApplications)
                     setMomentProposals(prev => prev.map(p =>
                         p.id === payload.new.id ? { ...p, ...payload.new } : p
                     ))
@@ -559,12 +559,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 {
                     event: 'UPDATE',
                     schema: 'public',
-                    table: 'brand_proposals',
+                    table: 'product_applications',
                     filter: `brand_id=eq.${userId}`
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Brand-side brand_proposal update:', payload.new.id)
-                    setBrandProposals(prev => prev.map(p =>
+                    setProductApplications(prev => prev.map(p =>
                         p.id === payload.new.id ? { ...p, ...payload.new } : p
                     ))
                     const currentProposal = useWorkspaceStore.getState().proposal
@@ -583,7 +583,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Brand-side moment_proposal update:', payload.new.id)
-                    // Update momentProposals only (no longer merged into brandProposals)
+                    // Update momentProposals only (no longer merged into productApplications)
                     setMomentProposals(prev => prev.map(p =>
                         p.id === payload.new.id ? { ...p, ...payload.new } : p
                     ))
@@ -636,7 +636,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         try {
             await Promise.all([
                 fetchCampaignProposals(id),
-                fetchBrandProposals(id)
+                fetchProductApplications(id)
             ])
         } finally {
             setIsLoading(false)
@@ -822,7 +822,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     throw new Error('brand_id(toId) is required for brand product proposal')
                 }
                 const { data, error } = await supabase
-                    .from('brand_proposals')
+                    .from('product_applications')
                     .insert({
                         influencer_id: userId,
                         influencer_team_id: myTeamId,
@@ -875,7 +875,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                             .single()
                         if (ws?.id) {
                             await supabase
-                                .from('brand_proposals')
+                                .from('product_applications')
                                 .update({ workspace_id: ws.id })
                                 .eq('id', data.id)
                         }
@@ -886,7 +886,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             } // end else if (proposal.productId)
 
             await fetchCampaignProposals(userId)
-            await fetchBrandProposals(userId)
+            await fetchProductApplications(userId)
         } catch (error: any) {
             console.error('[ProposalProvider] Add error (full):', JSON.stringify(error, null, 2))
             console.error('[ProposalProvider] Add error message:', error?.message)
@@ -965,7 +965,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     }
 
     // Update brand proposal
-    const updateBrandProposal = async (id: string | number, updates: Partial<BrandProposal>): Promise<boolean> => {
+    const updateProductApplication = async (id: string | number, updates: Partial<ProductApplication>): Promise<boolean> => {
         try {
             console.log('[ProposalProvider] Updating brand proposal:', id, updates)
 
@@ -1019,7 +1019,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.secondary_usage_fee !== undefined) dbUpdates.secondary_usage_fee = updates.secondary_usage_fee
 
             const { error } = await supabase
-                .from('brand_proposals')
+                .from('product_applications')
                 .update(dbUpdates)
                 .eq('id', id)
 
@@ -1029,7 +1029,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             }
 
             // Update local state
-            setBrandProposals(prev => prev.map(p =>
+            setProductApplications(prev => prev.map(p =>
                 p.id === id ? { ...p, ...updates } : p
             ))
 
@@ -1122,12 +1122,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     }
 
     // Delete brand proposal
-    const deleteBrandProposal = async (id: string | number) => {
+    const deleteProductApplication = async (id: string | number) => {
         try {
             console.log('[ProposalProvider] Deleting brand proposal:', id)
 
             const { error } = await supabase
-                .from('brand_proposals')
+                .from('product_applications')
                 .delete()
                 .eq('id', id)
 
@@ -1136,7 +1136,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 throw error
             }
 
-            setBrandProposals(prev => prev.filter(p => p.id !== id))
+            setProductApplications(prev => prev.filter(p => p.id !== id))
             console.log('[ProposalProvider] Brand proposal deleted')
         } catch (error: any) {
             console.error('[ProposalProvider] Delete error:', error)
@@ -1168,9 +1168,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     }
 
     // [NEW] Create Brand Proposal (Snake case wrapper)
-    const createBrandProposal = async (proposal: any) => {
+    const createProductApplication = async (proposal: any) => {
         // Map to camelCase for addProposal if possible, or just insert directly
-        // The previous implementation utilized direct insert to 'brand_proposals'
+        // The previous implementation utilized direct insert to 'product_applications'
         // We will try to rely on direct insert here for maximum compatibility with legacy code
         try {
             // [AUDIT FIX] Fetch team_id
@@ -1191,7 +1191,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             }
 
             const { data, error } = await supabase
-                .from('brand_proposals')
+                .from('product_applications')
                 .insert(payload)
                 .select()
                 .single()
@@ -1216,7 +1216,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                             .single()
                         if (ws?.id) {
                             await supabase
-                                .from('brand_proposals')
+                                .from('product_applications')
                                 .update({ workspace_id: ws.id })
                                 .eq('id', data.id)
                             data.workspace_id = ws.id // reflect in returned data
@@ -1227,10 +1227,10 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 console.warn('[ProposalProvider] workspace 생성 실패 (무시):', wsErr)
             }
 
-            setBrandProposals(prev => [data, ...prev])
+            setProductApplications(prev => [data, ...prev])
             return data
         } catch (error) {
-            console.error('[ProposalProvider] createBrandProposal error:', error)
+            console.error('[ProposalProvider] createProductApplication error:', error)
             throw error
         }
     }
@@ -1303,17 +1303,17 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     return (
         <ProposalContext.Provider value={{
             campaignProposals,
-            brandProposals,
+            productApplications,
             momentProposals, // [NEW]
             addMomentProposal, // [NEW]
             isLoading,
             addProposal,
             updateProposal,
-            updateBrandProposal,
+            updateProductApplication,
             updateMomentProposal, // [NEW]
-            deleteBrandProposal,
+            deleteProductApplication,
             deleteMomentProposal, // [NEW]
-            createBrandProposal, // [NEW]
+            createProductApplication, // [NEW]
             createMomentProposal, // [NEW]
             refreshProposals
         }}>

@@ -161,7 +161,7 @@ export async function submitDirectProposal(data: any) {
     }
 
     const { data: result, error } = await supabase
-        .from('brand_proposals')
+        .from('product_applications')
         .insert(proposalData)
         .select()
         .single()

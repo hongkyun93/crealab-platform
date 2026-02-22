@@ -6,12 +6,12 @@ import { BarChart3, Users, Calendar, TrendingUp, DollarSign } from "lucide-react
 interface CreatorSummary {
     total_moments: number
     active_moments: number
-    active_brand_proposals: number
+    active_product_applications: number
     active_moment_proposals: number
     active_campaign_applications: number
-    pending_brand_proposals: number
+    pending_product_applications: number
     pending_moment_proposals: number
-    brand_revenue: number
+    product_revenue: number
     moment_revenue: number
 }
 
@@ -24,11 +24,11 @@ export function TeamStatistics({ summaryData }: TeamStatisticsProps) {
     const totalMembers = summaryData?.length || 0
     const activeMoments = summaryData?.reduce((sum, c) => sum + c.active_moments, 0) || 0
     const activeCollabs = summaryData?.reduce((sum, c) =>
-        sum + c.active_brand_proposals + c.active_moment_proposals + c.active_campaign_applications, 0) || 0
+        sum + c.active_product_applications + c.active_moment_proposals + c.active_campaign_applications, 0) || 0
     const pendingProposals = summaryData?.reduce((sum, c) =>
-        sum + c.pending_brand_proposals + c.pending_moment_proposals, 0) || 0
+        sum + c.pending_product_applications + c.pending_moment_proposals, 0) || 0
     const totalRevenue = summaryData?.reduce((sum, c) =>
-        sum + c.brand_revenue + c.moment_revenue, 0) || 0
+        sum + c.product_revenue + c.moment_revenue, 0) || 0
 
     return (
         <Card>

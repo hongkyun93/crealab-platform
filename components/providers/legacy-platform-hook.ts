@@ -14,7 +14,7 @@ export type {
     InfluencerEvent,
     Product,
     Proposal,
-    BrandProposal,
+    ProductApplication,
     Message,
     Notification,
     SubmissionFeedback,

@@ -427,7 +427,7 @@ function InfluencerDashboardContent() {
                     } else {
                         // Brand proposal (default)
                         const result = await supabase
-                            .from('brand_proposals')
+                            .from('product_applications')
                             .update({ status: 'accepted' })
                             .eq('id', proposalId)
                         error = result.error
@@ -506,7 +506,7 @@ function InfluencerDashboardContent() {
                     } else {
                         // Brand proposal (default)
                         const result = await supabase
-                            .from('brand_proposals')
+                            .from('product_applications')
                             .update({ status: 'rejected' })
                             .eq('id', proposalId)
                         error = result.error
@@ -555,7 +555,7 @@ function InfluencerDashboardContent() {
                         error = result.error
                     } else {
                         const result = await supabase
-                            .from('brand_proposals')
+                            .from('product_applications')
                             .update({ status: 'cancelled' })
                             .eq('id', proposalId)
                         error = result.error
@@ -1281,7 +1281,7 @@ function InfluencerDashboardContent() {
 
             // Send message with correct IDs
             if (isCampaignProposal) {
-                // (to, content, proposalId, brandProposalId)
+                // (to, content, proposalId, productApplicationId)
                 await sendMessage(brandId, msg, proposalId, undefined)
             } else {
                 await sendMessage(brandId, msg, undefined, proposalId)
@@ -1626,7 +1626,7 @@ function InfluencerDashboardContent() {
         setIsGeneratingContract(true)
         try {
             const proposalId = chatProposal.id?.toString()
-            const influencerMessages = messages.filter((m: any) => m.proposalId === chatProposal.id?.toString() || m.brandProposalId === chatProposal.id?.toString())
+            const influencerMessages = messages.filter((m: any) => m.proposalId === chatProposal.id?.toString() || m.productApplicationId === chatProposal.id?.toString())
 
             const response = await fetch('/api/generate-contract', {
                 method: 'POST',
@@ -1891,7 +1891,7 @@ function InfluencerDashboardContent() {
 
                     // Send notification/message to brand
                     if (newStatus === 'accepted') {
-                        // Pass proposal.id as 4th argument (brandProposalId)
+                        // Pass proposal.id as 4th argument (productApplicationId)
                         await sendMessage(proposal.brand_id, `✅ [시스템 알림] 크리에이터가 협업 제안을 수락했습니다! 대화를 시작해보세요.`, undefined, proposal.id)
 
                         // Force refresh so the list updates (moving from inbound to active)
@@ -2063,7 +2063,7 @@ function InfluencerDashboardContent() {
             // Determine if it's a Campaign Application (proposals table) or Direct Offer (brand_proposals table)
             const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
 
-            // sendMessage signature: (receiverId, content, file?, proposalId?, brandProposalId?)
+            // sendMessage signature: (receiverId, content, file?, proposalId?, productApplicationId?)
             if (isCampaignProposal) {
                 await sendMessage(receiverId, msgContent, undefined, chatProposal.id?.toString(), undefined)
             } else {
@@ -3824,7 +3824,7 @@ function InfluencerDashboardContent() {
                                 } else {
                                     // Brand proposal (default)
                                     const { error } = await supabase
-                                        .from('brand_proposals')
+                                        .from('product_applications')
                                         .update({ status: 'accepted' })
                                         .eq('id', proposalId)
                                     if (error) throw error
@@ -3856,7 +3856,7 @@ function InfluencerDashboardContent() {
                                     if (error) throw error
                                 } else {
                                     const { error } = await supabase
-                                        .from('brand_proposals')
+                                        .from('product_applications')
                                         .update({ status: 'rejected' })
                                         .eq('id', proposalId)
                                     if (error) throw error

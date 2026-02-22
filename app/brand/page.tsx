@@ -266,8 +266,8 @@ function BrandDashboardContent() {
             const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
             const pId = chatProposal.id.toString()
             console.log('[Brand] Fetching feedback for:', pId, 'isCampaign:', isCampaign)
-            // [FIX] fetchSubmissionFeedback(proposalId?: string, brandProposalId?: string)
-            // campaign → proposalId, brand/moment → brandProposalId
+            // [FIX] fetchSubmissionFeedback(proposalId?: string, productApplicationId?: string)
+            // campaign → proposalId, brand/moment → productApplicationId
             if (isCampaign) {
                 fetchSubmissionFeedback(pId, undefined)
             } else {
@@ -400,7 +400,7 @@ function BrandDashboardContent() {
         try {
             const isCampaign = !!chatProposal?.campaignId || (chatProposal as any).type === 'creator_apply'
             const pId = chatProposal.id.toString()
-            // [FIX] sendSubmissionFeedback(proposalId, brandProposalId, content) - 3 args
+            // [FIX] sendSubmissionFeedback(proposalId, productApplicationId, content) - 3 args
             // [FIX] sendSubmissionFeedback returns void, use try/catch instead of if(success)
             await sendSubmissionFeedback(
                 isCampaign ? pId : undefined,
@@ -467,7 +467,7 @@ function BrandDashboardContent() {
         setIsGeneratingContract(true)
         try {
             const influencerId = chatProposal.influencer_id || chatProposal.influencerId
-            const influencerMessages = messages.filter((m: any) => m.proposalId === chatProposal.id?.toString() || m.brandProposalId === chatProposal.id?.toString())
+            const influencerMessages = messages.filter((m: any) => m.proposalId === chatProposal.id?.toString() || m.productApplicationId === chatProposal.id?.toString())
 
             const response = await fetch('/api/generate-contract', {
                 method: 'POST',
@@ -580,7 +580,7 @@ function BrandDashboardContent() {
             // Determine if it's a Campaign Application (proposals table) or Direct Offer (brand_proposals table)
             const isCampaignProposal = (chatProposal as any)?.type === 'creator_apply' || !!(chatProposal as any)?.campaignId
 
-            // sendMessage signature: (receiverId, content, file?, proposalId?, brandProposalId?)
+            // sendMessage signature: (receiverId, content, file?, proposalId?, productApplicationId?)
             if (isCampaignProposal) {
                 // For Campaign Applications -> proposals table
                 await sendMessage(receiverId, msgContent, undefined, chatProposal.id?.toString(), undefined)
@@ -698,7 +698,7 @@ function BrandDashboardContent() {
 
                 // Pass ID to correct argument to avoid FK error
                 if (isCampaignProposal) {
-                    // (to, content, proposalId, brandProposalId)
+                    // (to, content, proposalId, productApplicationId)
                     await sendMessage(receiverId, msgContent, proposalId, undefined)
                 } else {
                     await sendMessage(receiverId, msgContent, undefined, proposalId)

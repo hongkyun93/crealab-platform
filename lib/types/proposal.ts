@@ -132,7 +132,7 @@ export interface Proposal {
     product_type?: string // 제품 제공 방식: 'gift' | 'loan'
 }
 
-export interface BrandProposal {
+export interface ProductApplication {
     id: string
     brand_id: string
     brandId?: string // camelCase alias

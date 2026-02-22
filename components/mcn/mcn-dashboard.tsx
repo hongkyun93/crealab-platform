@@ -31,9 +31,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 // ─── Status 판단 유틸 ─────────────────────────────────────────
 function getCreatorStatus(c: CreatorSummary): CreatorStatus {
-    const totalPending = c.pending_brand_proposals + c.pending_moment_proposals
-    const totalActive = c.active_brand_proposals + c.active_moment_proposals + c.active_campaign_applications
-    const hasAnyActivity = c.total_moments > 0 || c.total_brand_proposals > 0 ||
+    const totalPending = c.pending_product_applications + c.pending_moment_proposals
+    const totalActive = c.active_product_applications + c.active_moment_proposals + c.active_campaign_applications
+    const hasAnyActivity = c.total_moments > 0 || c.total_product_applications > 0 ||
         c.total_moment_proposals > 0 || c.total_campaign_applications > 0
 
     if (totalPending > 0) return 'urgent'
@@ -99,10 +99,10 @@ export function McnDashboard() {
                         price_feed: m.profile?.price_feed || 0,
                         total_moments: 0,
                         active_moments: 0,
-                        total_brand_proposals: 0,
-                        pending_brand_proposals: 0,
-                        active_brand_proposals: 0,
-                        brand_revenue: 0,
+                        total_product_applications: 0,
+                        pending_product_applications: 0,
+                        active_product_applications: 0,
+                        product_revenue: 0,
                         total_moment_proposals: 0,
                         pending_moment_proposals: 0,
                         active_moment_proposals: 0,
@@ -129,9 +129,9 @@ export function McnDashboard() {
         totalMembers: summaryData.length,
         totalMoments: summaryData.reduce((s, c) => s + c.total_moments, 0),
         activeMoments: summaryData.reduce((s, c) => s + c.active_moments, 0),
-        pendingProposals: summaryData.reduce((s, c) => s + c.pending_brand_proposals + c.pending_moment_proposals, 0),
-        activeCollabs: summaryData.reduce((s, c) => s + c.active_brand_proposals + c.active_moment_proposals + c.active_campaign_applications, 0),
-        totalRevenue: summaryData.reduce((s, c) => s + c.brand_revenue + c.moment_revenue, 0),
+        pendingProposals: summaryData.reduce((s, c) => s + c.pending_product_applications + c.pending_moment_proposals, 0),
+        activeCollabs: summaryData.reduce((s, c) => s + c.active_product_applications + c.active_moment_proposals + c.active_campaign_applications, 0),
+        totalRevenue: summaryData.reduce((s, c) => s + c.product_revenue + c.moment_revenue, 0),
     }), [summaryData])
 
     // ── All unique tags from team ───────────────────────────────
@@ -143,11 +143,11 @@ export function McnDashboard() {
 
     // ── Urgent summary counts ───────────────────────────────────
     const urgentCreators = useMemo(() =>
-        summaryData.filter(c => c.pending_brand_proposals + c.pending_moment_proposals > 0),
+        summaryData.filter(c => c.pending_product_applications + c.pending_moment_proposals > 0),
         [summaryData])
     const idleCreators = useMemo(() =>
         summaryData.filter(c => {
-            const hasActivity = c.total_moments > 0 || c.total_brand_proposals > 0 ||
+            const hasActivity = c.total_moments > 0 || c.total_product_applications > 0 ||
                 c.total_moment_proposals > 0 || c.total_campaign_applications > 0
             return !hasActivity
         }),
@@ -195,11 +195,11 @@ export function McnDashboard() {
                 const statusOrder: Record<CreatorStatus, number> = { urgent: 0, active: 1, normal: 2, idle: 3 }
                 const diff = statusOrder[a._status] - statusOrder[b._status]
                 if (diff !== 0) return diff
-                const aPending = a.pending_brand_proposals + a.pending_moment_proposals
-                const bPending = b.pending_brand_proposals + b.pending_moment_proposals
+                const aPending = a.pending_product_applications + a.pending_moment_proposals
+                const bPending = b.pending_product_applications + b.pending_moment_proposals
                 return bPending - aPending
             }
-            if (sortOrder === 'revenue') return (b.brand_revenue + b.moment_revenue) - (a.brand_revenue + a.moment_revenue)
+            if (sortOrder === 'revenue') return (b.product_revenue + b.moment_revenue) - (a.product_revenue + a.moment_revenue)
             if (sortOrder === 'followers') return b.followers_count - a.followers_count
             if (sortOrder === 'moments') return b.total_moments - a.total_moments
             if (sortOrder === 'name') return (a.display_name || '').localeCompare(b.display_name || '', 'ko')
@@ -478,9 +478,9 @@ export function McnDashboard() {
                                     </thead>
                                     <tbody className="divide-y divide-border/50">
                                         {filteredCreators.map(creator => {
-                                            const totalPending = creator.pending_brand_proposals + creator.pending_moment_proposals
-                                            const totalActive = creator.active_brand_proposals + creator.active_moment_proposals + creator.active_campaign_applications
-                                            const totalRevenue = creator.brand_revenue + creator.moment_revenue
+                                            const totalPending = creator.pending_product_applications + creator.pending_moment_proposals
+                                            const totalActive = creator.active_product_applications + creator.active_moment_proposals + creator.active_campaign_applications
+                                            const totalRevenue = creator.product_revenue + creator.moment_revenue
                                             const fmt = (n: number) => n >= 10000 ? `${(n / 10000).toFixed(1)}만` : n.toLocaleString()
 
                                             const STATUS_ROW_COLORS: Record<CreatorStatus, string> = {

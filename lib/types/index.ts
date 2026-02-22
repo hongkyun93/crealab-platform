@@ -16,7 +16,7 @@ export type { Product, ProductFormData } from './product'
 // Proposal & Contract
 export type {
     Proposal,
-    BrandProposal,
+    ProductApplication,
     ProposalType,
     DealType,
     ProposalStatus,

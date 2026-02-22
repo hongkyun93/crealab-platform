@@ -82,7 +82,7 @@ export function ChatArea({ className }: ChatAreaProps) {
 
             // [2순위] legacy 메시지: proposal_id 또는 brand_proposal_id로 매칭
             if (msg.proposalId) return msg.proposalId === proposalIdStr;
-            if (msg.brandProposalId) return msg.brandProposalId === proposalIdStr;
+            if (msg.productApplicationId) return msg.productApplicationId === proposalIdStr;
 
             // [차단] proposal/workspace 식별자 없는 메시지 — 누출 방지
             return false;

@@ -20,10 +20,10 @@ export interface CreatorSummary {
     price_feed: number
     total_moments: number
     active_moments: number
-    total_brand_proposals: number
-    pending_brand_proposals: number
-    active_brand_proposals: number
-    brand_revenue: number
+    total_product_applications: number
+    pending_product_applications: number
+    active_product_applications: number
+    product_revenue: number
     total_moment_proposals: number
     pending_moment_proposals: number
     active_moment_proposals: number
@@ -47,9 +47,9 @@ const STATUS_CONFIG: Record<CreatorStatus, { label: string; dotClass: string; ba
 }
 
 export function CreatorSummaryCard({ creator, status, onViewDashboard }: CreatorSummaryCardProps) {
-    const totalPending = creator.pending_brand_proposals + creator.pending_moment_proposals
-    const totalActive = creator.active_brand_proposals + creator.active_moment_proposals + creator.active_campaign_applications
-    const totalRevenue = creator.brand_revenue + creator.moment_revenue
+    const totalPending = creator.pending_product_applications + creator.pending_moment_proposals
+    const totalActive = creator.active_product_applications + creator.active_moment_proposals + creator.active_campaign_applications
+    const totalRevenue = creator.product_revenue + creator.moment_revenue
 
     const statusCfg = STATUS_CONFIG[status]
 

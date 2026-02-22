@@ -13,7 +13,7 @@ interface CalendarEvent {
     id: string
     title: string
     date: string // YYYY-MM-DD
-    type: 'moment' | 'moment_proposal' | 'brand_proposal' | 'campaign'
+    type: 'moment' | 'moment_proposal' | 'product_application' | 'campaign'
     creatorName: string
     creatorId: string
     status: string
@@ -136,7 +136,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
 
                 // 4. Brand Proposals (desired_date)
                 const { data: bps } = await supabase
-                    .from('brand_proposals')
+                    .from('product_applications')
                     .select(`
                         id, desired_date, product_name, status, influencer_id,
                         profiles!influencer_id ( display_name ),
@@ -151,7 +151,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
                         id: `bp-${bp.id}`,
                         title: bp.product_name || '브랜드 제안',
                         date: bp.desired_date.split('T')[0],
-                        type: 'brand_proposal',
+                        type: 'product_application',
                         creatorName: bp.profiles?.display_name || 'Unknown',
                         creatorId: bp.influencer_id,
                         status: bp.status,
@@ -274,7 +274,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
         all: filteredEvents.length,
         moment: filteredEvents.filter(e => e.type === 'moment').length,
         moment_proposal: filteredEvents.filter(e => e.type === 'moment_proposal').length,
-        brand_proposal: filteredEvents.filter(e => e.type === 'brand_proposal').length,
+        brand_proposal: filteredEvents.filter(e => e.type === 'product_application').length,
         campaign: filteredEvents.filter(e => e.type === 'campaign').length,
     }), [filteredEvents])
 
@@ -297,7 +297,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
                     { key: null, label: `전체 (${typeCounts.all})` },
                     { key: 'moment', label: `📅 모먼트 (${typeCounts.moment})` },
                     { key: 'moment_proposal', label: `💌 모먼트제안 (${typeCounts.moment_proposal})` },
-                    { key: 'brand_proposal', label: `📦 브랜드제안 (${typeCounts.brand_proposal})` },
+                    { key: 'product_application', label: `📦 브랜드제안 (${typeCounts.brand_proposal})` },
                     { key: 'campaign', label: `📢 캠페인 (${typeCounts.campaign})` },
                 ].map(({ key, label }) => (
                     <Badge

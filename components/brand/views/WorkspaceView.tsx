@@ -84,7 +84,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                         error = result.error
                     } else {
                         const result = await supabase
-                            .from('brand_proposals')
+                            .from('product_applications')
                             .update({ status: 'accepted' })
                             .eq('id', proposalId)
                         error = result.error
@@ -149,7 +149,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                         error = result.error
                     } else {
                         const result = await supabase
-                            .from('brand_proposals')
+                            .from('product_applications')
                             .update({ status: 'rejected' })
                             .eq('id', proposalId)
                         error = result.error

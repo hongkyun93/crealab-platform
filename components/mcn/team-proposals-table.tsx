@@ -17,7 +17,7 @@ import { toast } from "sonner"
 
 interface TeamProposal {
     id: string
-    proposal_type: 'brand_proposal' | 'moment_proposal' | 'campaign_application'
+    proposal_type: 'product_application' | 'moment_proposal' | 'campaign_application'
     status: string
     product_name: string
     price_offer: number | null
@@ -132,7 +132,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
     const typeCounts = useMemo(() => ({
         all: proposals.length,
         moment_proposal: proposals.filter(p => p.proposal_type === 'moment_proposal').length,
-        brand_proposal: proposals.filter(p => p.proposal_type === 'brand_proposal').length,
+        brand_proposal: proposals.filter(p => p.proposal_type === 'product_application').length,
         campaign_application: proposals.filter(p => p.proposal_type === 'campaign_application').length,
     }), [proposals])
 
@@ -159,7 +159,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
         e.stopPropagation()
         setActionLoading(proposal.id)
         try {
-            const table = proposal.proposal_type === 'brand_proposal' ? 'brand_proposals'
+            const table = proposal.proposal_type === 'product_application' ? 'product_applications'
                 : proposal.proposal_type === 'moment_proposal' ? 'moment_proposals'
                     : 'campaign_applications'
 
@@ -178,7 +178,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
         e.stopPropagation()
         setActionLoading(proposal.id)
         try {
-            const table = proposal.proposal_type === 'brand_proposal' ? 'brand_proposals'
+            const table = proposal.proposal_type === 'product_application' ? 'product_applications'
                 : proposal.proposal_type === 'moment_proposal' ? 'moment_proposals'
                     : 'campaign_applications'
 
@@ -223,7 +223,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
                             {typeCounts.moment_proposal}
                         </Badge>
                     </TabsTrigger>
-                    <TabsTrigger value="brand_proposal" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
+                    <TabsTrigger value="product_application" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
                         <Package className="h-3.5 w-3.5" />
                         브랜드
                         <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
