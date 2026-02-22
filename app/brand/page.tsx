@@ -1088,6 +1088,29 @@ function BrandDashboardContent() {
         else if (sortOrder === "match") result.sort(() => Math.random() - 0.5)
         else if (sortOrder === "verified") result = result.filter(e => e.verified)
         else if (sortOrder === "followers_high") result.sort((a, b) => (b.followers || 0) - (a.followers || 0))
+        else if (sortOrder === "followers_low") result.sort((a, b) => (a.followers || 0) - (b.followers || 0))
+        else if (sortOrder === "event_date_asc") result.sort((a, b) => {
+            const da = new Date(a.eventDate || a.date || 0).getTime()
+            const db = new Date(b.eventDate || b.date || 0).getTime()
+            return da - db
+        })
+        else if (sortOrder === "posting_date_asc") result.sort((a, b) => {
+            const da = new Date(a.postingDate || a.eventDate || a.date || 0).getTime()
+            const db = new Date(b.postingDate || b.eventDate || b.date || 0).getTime()
+            return da - db
+        })
+        else if (sortOrder === "price_low") result.sort((a, b) => (a.priceVideo || 0) - (b.priceVideo || 0))
+        else if (sortOrder === "price_high") result.sort((a, b) => (b.priceVideo || 0) - (a.priceVideo || 0))
+        else if (sortOrder === "proposal_low") result.sort((a, b) => {
+            const aCount = (momentProposals || []).filter((p: any) => p.moment_id === a.id || p.event_id === a.id).length
+            const bCount = (momentProposals || []).filter((p: any) => p.moment_id === b.id || p.event_id === b.id).length
+            return aCount - bCount
+        })
+        else if (sortOrder === "favorites_high") result.sort((a, b) => {
+            const aCount = (favorites || []).filter(f => f.target_id === a.id && f.target_type === 'event').length
+            const bCount = (favorites || []).filter(f => f.target_id === b.id && f.target_type === 'event').length
+            return bCount - aCount
+        })
         if (sortOrder === "latest") result.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
         return result
     }

@@ -128,7 +128,18 @@ export const DiscoverView = React.memo(function DiscoverView({
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="gap-2">
                                 <Filter className="h-4 w-4" />
-                                {sortOrder === "latest" ? "최신 등록순" : sortOrder === "followers_high" ? "팔로워 많은순" : "정렬"}
+                                {{
+                                    latest: "최신 등록순",
+                                    followers_high: "팔로워 많은순",
+                                    followers_low: "팔로워 적은순",
+                                    verified: "인증 크리에이터",
+                                    event_date_asc: "이벤트 임박순",
+                                    posting_date_asc: "업로드 임박순",
+                                    price_low: "단가 낮은순",
+                                    price_high: "단가 높은순",
+                                    proposal_low: "💌 제안 적은순",
+                                    favorites_high: "⭐ 찜 많은순",
+                                }[sortOrder] ?? "정렬"}
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
@@ -136,7 +147,23 @@ export const DiscoverView = React.memo(function DiscoverView({
                             <DropdownMenuSeparator />
                             <DropdownMenuRadioGroup value={sortOrder} onValueChange={setSortOrder}>
                                 <DropdownMenuRadioItem value="latest">최신 등록순</DropdownMenuRadioItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal px-2">팔로워</DropdownMenuLabel>
                                 <DropdownMenuRadioItem value="followers_high">팔로워 많은순</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="followers_low">팔로워 적은순 (마이크로)</DropdownMenuRadioItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal px-2">일정</DropdownMenuLabel>
+                                <DropdownMenuRadioItem value="event_date_asc">📅 이벤트 임박순</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="posting_date_asc">📅 업로드 임박순</DropdownMenuRadioItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal px-2">단가</DropdownMenuLabel>
+                                <DropdownMenuRadioItem value="price_low">💰 단가 낮은순</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="price_high">💰 단가 높은순</DropdownMenuRadioItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal px-2">경쟁도</DropdownMenuLabel>
+                                <DropdownMenuRadioItem value="proposal_low">💌 제안 적게 받은순 (블루오션)</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="favorites_high">⭐ 찜 많은순 (인기)</DropdownMenuRadioItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuRadioItem value="verified">인증된 크리에이터</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
