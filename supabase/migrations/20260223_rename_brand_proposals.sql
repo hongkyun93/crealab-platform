@@ -15,17 +15,19 @@ ALTER TABLE public.messages
 ALTER TABLE public.submission_feedback
     RENAME COLUMN brand_proposal_id TO product_application_id;
 
--- 4. workspaces 테이블: proposal_type CHECK 제약 업데이트 + 기존 데이터 업데이트
+-- 4. workspaces 테이블: 데이터 먼저 UPDATE → 그 다음 CHECK 제약 교체
 ALTER TABLE public.workspaces
     DROP CONSTRAINT IF EXISTS workspaces_proposal_type_check;
 
-ALTER TABLE public.workspaces
-    ADD CONSTRAINT workspaces_proposal_type_check
-    CHECK (proposal_type IN ('product_application','moment_proposal','campaign_application'));
-
+-- 기존 'brand_proposal' 값을 새 값으로 먼저 변경 (제약 추가 전에 해야 함)
 UPDATE public.workspaces
     SET proposal_type = 'product_application'
     WHERE proposal_type = 'brand_proposal';
+
+-- 데이터 업데이트 완료 후 새 CHECK 제약 추가
+ALTER TABLE public.workspaces
+    ADD CONSTRAINT workspaces_proposal_type_check
+    CHECK (proposal_type IN ('product_application','moment_proposal','campaign_application'));
 
 -- 5. MCN RPC 함수 재정의 (컬럼명 brand_proposals → product_applications)
 CREATE OR REPLACE FUNCTION public.get_team_dashboard_summary(target_team_id UUID)
