@@ -239,12 +239,12 @@ export default function AdminPage() {
 
     // ── Helpers ───────────────────────────────────────────────────
     const typeLabel: Record<string, string> = {
-        brand_proposal: '브랜드 제안',
+        product_application: '제품 지원',
         moment_proposal: '모먼트 제안',
         campaign_application: '캠페인 지원',
     }
     const typeColor: Record<string, string> = {
-        brand_proposal: 'bg-indigo-100 text-indigo-700',
+        product_application: 'bg-indigo-100 text-indigo-700',
         moment_proposal: 'bg-emerald-100 text-emerald-700',
         campaign_application: 'bg-amber-100 text-amber-700',
     }

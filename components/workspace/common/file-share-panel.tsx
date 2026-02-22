@@ -65,8 +65,8 @@ export function FileSharePanel() {
             } else if (isCampaignProposal) {
                 query = query.eq('proposal_id', proposalId)
             } else {
-                // brand_proposal
-                query = query.eq('brand_proposal_id', proposalId)
+                // product_application
+                query = query.eq('product_application_id', proposalId)
             }
 
             const { data, error } = await query
@@ -139,7 +139,7 @@ export function FileSharePanel() {
             } else if (isCampaignProposal) {
                 insertData.proposal_id = proposalId
             } else {
-                insertData.brand_proposal_id = proposalId
+                insertData.product_application_id = proposalId
             }
 
             const { error: dbError } = await supabase

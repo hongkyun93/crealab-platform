@@ -92,9 +92,9 @@ async function main() {
     }
     console.log(`  ✅ Moment Proposals ${mpCount}개 desired_date 업데이트\n`)
 
-    // ── 3. Mock brand_proposals desired_date ──
+    // ── 3. Mock product_applications desired_date ──
     const { data: bps } = await supabase
-        .from('brand_proposals')
+        .from('product_applications')
         .select('id')
         .eq('is_mock', true)
 
@@ -104,7 +104,7 @@ async function main() {
     for (const bp of (bps || [])) {
         const desiredDate = randomDateInRange(marchStart, marchEnd)
         const { error } = await supabase
-            .from('brand_proposals')
+            .from('product_applications')
             .update({ desired_date: desiredDate })
             .eq('id', bp.id)
 

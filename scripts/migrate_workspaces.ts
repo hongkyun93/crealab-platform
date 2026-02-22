@@ -100,7 +100,7 @@ BEGIN
         SELECT title INTO p_name FROM public.life_moments WHERE id = NEW.moment_id;
         SELECT avatar_url INTO p_avatar FROM public.profiles WHERE id = b_id;
 
-    ELSIF TG_TABLE_NAME = 'brand_proposals' THEN
+    ELSIF TG_TABLE_NAME = 'product_applications' THEN
         b_id := NEW.brand_id;
         c_id := NEW.influencer_id;
         p_name := NEW.product_name;
@@ -114,7 +114,7 @@ BEGIN
         b_id, c_id, 
         CASE 
             WHEN TG_TABLE_NAME = 'campaign_proposals' THEN 'campaign'
-            WHEN TG_TABLE_NAME = 'brand_proposals' THEN 'direct'
+            WHEN TG_TABLE_NAME = 'product_applications' THEN 'direct'
             WHEN TG_TABLE_NAME = 'moment_proposals' THEN 'moment'
         END,
         NEW.id::text,
@@ -137,9 +137,9 @@ CREATE TRIGGER tr_sync_cw_campaign
     AFTER INSERT OR UPDATE ON public.campaign_proposals
     FOR EACH ROW EXECUTE FUNCTION public.sync_proposal_to_workspace();
 
-DROP TRIGGER IF EXISTS tr_sync_cw_brand ON public.brand_proposals;
+DROP TRIGGER IF EXISTS tr_sync_cw_brand ON public.product_applications;
 CREATE TRIGGER tr_sync_cw_brand
-    AFTER INSERT OR UPDATE ON public.brand_proposals
+    AFTER INSERT OR UPDATE ON public.product_applications
     FOR EACH ROW EXECUTE FUNCTION public.sync_proposal_to_workspace();
 
 DROP TRIGGER IF EXISTS tr_sync_cw_moment ON public.moment_proposals;
@@ -151,7 +151,7 @@ CREATE TRIGGER tr_sync_cw_moment
 DO $$
 BEGIN
     UPDATE public.campaign_proposals SET updated_at = updated_at WHERE status IN ('accepted', 'started', 'completed', 'negotiating');
-    UPDATE public.brand_proposals SET updated_at = updated_at WHERE status IN ('offered', 'negotiating', 'accepted', 'completed');
+    UPDATE public.product_applications SET updated_at = updated_at WHERE status IN ('offered', 'negotiating', 'accepted', 'completed');
     UPDATE public.moment_proposals SET updated_at = updated_at WHERE status IN ('offered', 'negotiating', 'accepted', 'completed');
 END $$;
     `;

@@ -159,7 +159,7 @@ async function seedInteractions() {
             // Add other required fields if strictly required by constraints
         }));
 
-        const { error } = await supabase.from('brand_proposals').insert(proposalInserts);
+        const { error } = await supabase.from('product_applications').insert(proposalInserts);
         if (error) {
             console.error(`Error seeding proposals for moment ${moment.id}:`, error.message);
         } else {

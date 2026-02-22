@@ -51,7 +51,7 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
 }
 
 const TYPE_MAP: Record<string, { label: string; color: string; icon: typeof FileText }> = {
-    brand_proposal: { label: '브랜드', color: 'text-blue-600 bg-blue-50 dark:bg-blue-950', icon: Package },
+    product_application: { label: '브랜드', color: 'text-blue-600 bg-blue-50 dark:bg-blue-950', icon: Package },
     moment_proposal: { label: '모먼트', color: 'text-purple-600 bg-purple-50 dark:bg-purple-950', icon: Calendar },
     campaign_application: { label: '캠페인', color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950', icon: Megaphone },
 }
@@ -132,7 +132,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
     const typeCounts = useMemo(() => ({
         all: proposals.length,
         moment_proposal: proposals.filter(p => p.proposal_type === 'moment_proposal').length,
-        brand_proposal: proposals.filter(p => p.proposal_type === 'product_application').length,
+        product_application: proposals.filter(p => p.proposal_type === 'product_application').length,
         campaign_application: proposals.filter(p => p.proposal_type === 'campaign_application').length,
     }), [proposals])
 
@@ -227,7 +227,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
                         <Package className="h-3.5 w-3.5" />
                         브랜드
                         <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
-                            {typeCounts.brand_proposal}
+                            {typeCounts.product_application}
                         </Badge>
                     </TabsTrigger>
                     <TabsTrigger value="campaign_application" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">

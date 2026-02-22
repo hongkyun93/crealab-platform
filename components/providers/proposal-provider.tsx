@@ -868,7 +868,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                             .insert({
                                 brand_id: proposal.toId,
                                 influencer_id: userId,
-                                proposal_type: 'brand_proposal',
+                                proposal_type: 'product_application',
                                 proposal_id: data.id.toString()
                             })
                             .select('id')
@@ -1209,7 +1209,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                             .insert({
                                 brand_id: brandId,
                                 influencer_id: influencerId,
-                                proposal_type: 'brand_proposal',
+                                proposal_type: 'product_application',
                                 proposal_id: data.id.toString()
                             })
                             .select('id')

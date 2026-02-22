@@ -27,7 +27,7 @@ interface Settlement {
 }
 
 const PROPOSAL_TYPE_LABELS: Record<string, string> = {
-    brand_proposal: '브랜드 제안',
+    product_application: '제품 지원',
     moment_proposal: '모먼트 제안',
     campaign_application: '캠페인 지원',
 }

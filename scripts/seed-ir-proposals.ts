@@ -5,7 +5,7 @@
  * 삭제: npx tsx scripts/seed-ir-proposals.ts --delete
  * 
  * - moment_proposals: 30건
- * - brand_proposals: 30건
+ * - product_applications: 30건
  * - campaign + campaign_applications: 20건
  * 
  * 모든 제안서는 is_mock=true, MCN 소속 크리에이터 대상
@@ -132,9 +132,9 @@ async function main() {
         if (e1) console.error('moment_proposals 삭제 실패:', e1.message)
         else console.log('✅ moment_proposals 삭제')
 
-        const { error: e2 } = await supabase.from('brand_proposals').delete().eq('is_mock', true)
-        if (e2) console.error('brand_proposals 삭제 실패:', e2.message)
-        else console.log('✅ brand_proposals 삭제')
+        const { error: e2 } = await supabase.from('product_applications').delete().eq('is_mock', true)
+        if (e2) console.error('product_applications 삭제 실패:', e2.message)
+        else console.log('✅ product_applications 삭제')
 
         // Campaign applications don't have is_mock — delete by mock campaign's brand_id
         const { data: mockBrands } = await supabase.from('profiles').select('id').eq('is_mock', true).eq('role', 'brand')
@@ -273,7 +273,7 @@ async function main() {
         const status = pickStatus(PROPOSAL_STATUSES)
         const progress = fillProgressFields(status, brand.display_name)
 
-        const { error } = await supabase.from('brand_proposals').insert({
+        const { error } = await supabase.from('product_applications').insert({
             brand_id: brand.id,
             influencer_id: creator.id,
             product_id: product?.id || null,

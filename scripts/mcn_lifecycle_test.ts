@@ -295,8 +295,8 @@ async function main() {
         // -------------------------------------------------------------
         log('STEP 12', 'MCN3 proposes to Product for Creator 3');
         const mcn3Client = await getClientForUser(mcn3);
-        // Table: brand_proposals
-        const { data: brandProp, error: brandPropErr } = await mcn3Client.from('brand_proposals')
+        // Table: product_applications
+        const { data: brandProp, error: brandPropErr } = await mcn3Client.from('product_applications')
             .insert({
                 product_id: prod.id,
                 product_name: prod.name,
@@ -313,14 +313,14 @@ async function main() {
         // 13. Brand 3 Accepts & Completes
         // -------------------------------------------------------------
         log('STEP 13', 'Brand 3 Accepts & Ships');
-        const { error: br3AcceptErr } = await br3Client.from('brand_proposals')
+        const { error: br3AcceptErr } = await br3Client.from('product_applications')
             .update({ status: 'accepted' })
             .eq('id', brandProp.id);
         if (br3AcceptErr) throw new Error(`Brand 3 Accept Failed: ${br3AcceptErr.message}`);
 
         // 13-1. MCN3 inputs Shipping Address
         log('STEP 13-1', 'MCN3 inputs Shipping Address');
-        const { error: brandAddrErr } = await mcn3Client.from('brand_proposals')
+        const { error: brandAddrErr } = await mcn3Client.from('product_applications')
             .update({
                 shipping_name: 'Creator Three',
                 shipping_phone: '010-5555-5555',
@@ -331,7 +331,7 @@ async function main() {
 
         // 13-2. Brand 3 inputs Tracking Number
         log('STEP 13-2', 'Brand 3 inputs Tracking Number');
-        const { error: brandTrackErr } = await br3Client.from('brand_proposals')
+        const { error: brandTrackErr } = await br3Client.from('product_applications')
             .update({
                 tracking_number: 'TRACK555555',
                 delivery_status: 'shipped'
@@ -341,7 +341,7 @@ async function main() {
 
         // 13-3. Complete
         log('STEP 13-3', 'Completing Product Collaboration');
-        const { error: br3CompleteErr } = await br3Client.from('brand_proposals')
+        const { error: br3CompleteErr } = await br3Client.from('product_applications')
             .update({ status: 'completed' })
             .eq('id', brandProp.id);
         if (br3CompleteErr) throw new Error(`Brand 3 Complete Failed: ${br3CompleteErr.message}`);

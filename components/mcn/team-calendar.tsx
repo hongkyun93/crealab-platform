@@ -41,7 +41,7 @@ const CREATOR_COLORS = [
 const EVENT_TYPE_STYLE: Record<string, { emoji: string; label: string }> = {
     moment: { emoji: '📅', label: '모먼트' },
     moment_proposal: { emoji: '💌', label: '모먼트 제안' },
-    brand_proposal: { emoji: '📦', label: '브랜드 제안' },
+    product_application: { emoji: '📦', label: '브랜드 제안' },
     campaign: { emoji: '📢', label: '캠페인 마감' },
 }
 
@@ -274,7 +274,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
         all: filteredEvents.length,
         moment: filteredEvents.filter(e => e.type === 'moment').length,
         moment_proposal: filteredEvents.filter(e => e.type === 'moment_proposal').length,
-        brand_proposal: filteredEvents.filter(e => e.type === 'product_application').length,
+        product_application: filteredEvents.filter(e => e.type === 'product_application').length,
         campaign: filteredEvents.filter(e => e.type === 'campaign').length,
     }), [filteredEvents])
 
@@ -297,7 +297,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
                     { key: null, label: `전체 (${typeCounts.all})` },
                     { key: 'moment', label: `📅 모먼트 (${typeCounts.moment})` },
                     { key: 'moment_proposal', label: `💌 모먼트제안 (${typeCounts.moment_proposal})` },
-                    { key: 'product_application', label: `📦 브랜드제안 (${typeCounts.brand_proposal})` },
+                    { key: 'product_application', label: `📦 브랜드제안 (${typeCounts.product_application})` },
                     { key: 'campaign', label: `📢 캠페인 (${typeCounts.campaign})` },
                 ].map(({ key, label }) => (
                     <Badge

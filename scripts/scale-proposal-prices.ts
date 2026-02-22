@@ -16,22 +16,22 @@ const supabase = createClient(
 async function main() {
     console.log('📈 mock 제안서 price_offer 10배 스케일업...')
 
-    // 1. brand_proposals
+    // 1. product_applications
     const { data: bp, error: bpErr } = await supabase
-        .from('brand_proposals')
+        .from('product_applications')
         .select('id, price_offer')
         .eq('is_mock', true)
         .not('price_offer', 'is', null)
 
-    if (bpErr) { console.error('brand_proposals 조회 실패:', bpErr.message) }
+    if (bpErr) { console.error('product_applications 조회 실패:', bpErr.message) }
     else if (bp?.length) {
         for (const row of bp) {
             await supabase
-                .from('brand_proposals')
+                .from('product_applications')
                 .update({ price_offer: (row.price_offer || 0) * 10 })
                 .eq('id', row.id)
         }
-        console.log(`  ✅ brand_proposals ${bp.length}건 업데이트`)
+        console.log(`  ✅ product_applications ${bp.length}건 업데이트`)
     }
 
     // 2. moment_proposals

@@ -515,7 +515,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                     const creatorId = (proposal as any)?.influencer_id
                     const brandId = (proposal as any)?.brand_id
                     const grossAmount = (proposal as any)?.price_offer ?? 0
-                    const proposalType = isMoment ? 'moment_proposal' : isCampaign ? 'campaign_application' : 'brand_proposal'
+                    const proposalType = isMoment ? 'moment_proposal' : isCampaign ? 'campaign_application' : 'product_application'
 
                     if (creatorId && grossAmount > 0) {
                         // MCN 소속 및 split_ratio 조회

@@ -5,7 +5,7 @@
  * 삭제: npx tsx scripts/seed-ir-settlements.ts --delete
  *
  * 동작:
- *  1. completed 상태인 mock 제안서(brand_proposals, moment_proposals, campaign_applications) 조회
+ *  1. completed 상태인 mock 제안서(product_applications, moment_proposals, campaign_applications) 조회
  *  2. mcn_revenue_splits에 크리에이터별 배분율 UPSERT (없으면 60~80% 랜덤)
  *  3. settlements 레코드 생성 (70%는 paid, 30%는 pending)
  */
@@ -184,7 +184,7 @@ async function main() {
 
     // Brand proposals
     const { data: completedBP } = await supabase
-        .from('brand_proposals')
+        .from('product_applications')
         .select('id, brand_id, influencer_id, price_offer, created_at')
         .eq('is_mock', true)
         .eq('status', 'completed')
@@ -205,7 +205,7 @@ async function main() {
         .eq('status', 'completed')
         .in('influencer_id', Array.from(creatorIdSet))
 
-    console.log(`  brand_proposals 완료: ${completedBP?.length || 0}건`)
+    console.log(`  product_applications 완료: ${completedBP?.length || 0}건`)
     console.log(`  moment_proposals 완료: ${completedMP?.length || 0}건`)
     console.log(`  campaign_applications 완료: ${completedCA?.length || 0}건`)
 
@@ -256,7 +256,7 @@ async function main() {
 
     for (const p of (completedBP as any[] || [])) {
         settlementRecords.push(buildRecord(
-            'brand_proposal', p.id, p.influencer_id, p.brand_id, p.price_offer, p.created_at
+            'product_application', p.id, p.influencer_id, p.brand_id, p.price_offer, p.created_at
         ))
     }
 
@@ -305,7 +305,7 @@ async function main() {
             team_id: team.id,
             creator_id: creator.id,
             brand_id: brandId,
-            proposal_type: ['brand_proposal', 'moment_proposal', 'campaign_application'][i % 3],
+            proposal_type: ['product_application', 'moment_proposal', 'campaign_application'][i % 3],
             proposal_id: `synthetic-${Date.now()}-${i}`,
             gross_amount: gross,
             split_ratio: ratio,
