@@ -23,19 +23,25 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- 1-3. messages.product_application_id FK 제거 (409 방지)
-DO $$ DECLARE fk text;
+-- 1-3. messages: product_applications/brand_proposals 참조하는 FK 전부 동적 제거
+--       (messages_proposal_id_fkey, messages_brand_proposal_id_fkey 등 이름 무관)
+DO $$
+DECLARE r RECORD;
 BEGIN
-  SELECT tc.constraint_name INTO fk
-  FROM information_schema.table_constraints tc
-  JOIN information_schema.key_column_usage kcu ON tc.constraint_name=kcu.constraint_name
-  WHERE tc.table_schema='public' AND tc.table_name='messages'
-    AND tc.constraint_type='FOREIGN KEY'
-    AND kcu.column_name IN ('brand_proposal_id','product_application_id');
-  IF fk IS NOT NULL THEN
-    EXECUTE 'ALTER TABLE public.messages DROP CONSTRAINT ' || quote_ident(fk);
-  END IF;
+  FOR r IN
+    SELECT tc.constraint_name
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.referential_constraints rc ON rc.constraint_name = tc.constraint_name
+    JOIN information_schema.table_constraints tc2 ON tc2.constraint_name = rc.unique_constraint_name
+    WHERE tc.table_schema = 'public'
+      AND tc.table_name = 'messages'
+      AND tc.constraint_type = 'FOREIGN KEY'
+      AND tc2.table_name IN ('product_applications', 'brand_proposals')
+  LOOP
+    EXECUTE 'ALTER TABLE public.messages DROP CONSTRAINT ' || quote_ident(r.constraint_name);
+  END LOOP;
 END $$;
+
 
 -- 1-4. submission_feedback rename (이미 됐으면 건너뜀)
 DO $$ BEGIN

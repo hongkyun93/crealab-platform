@@ -64,9 +64,8 @@ export function ChatArea({ className }: ChatAreaProps) {
     }, [p, user?.id, user?.role]);
 
     // Filter messages: match by sender/receiver pair AND proposal ID.
-    // Guard: proposalIdStr 없으면 빈 배열 반환 → 크로스 워크스테이션 누출 방지
     const filteredMessages = useMemo(() => {
-        if (!user?.id || !otherId || !proposalIdStr) return [];
+        if (!user?.id || !otherId) return [];
 
         return messages.filter((msg) => {
             const senderReceiverMatch =
@@ -75,19 +74,24 @@ export function ChatArea({ className }: ChatAreaProps) {
 
             if (!senderReceiverMatch) return false;
 
-            // [1순위] workspace_id로 격리 (신규 메시지 — 모든 proposal 타입 공통)
+            // [1순위] workspace_id 격리
             if (workspaceId && msg.workspaceId) {
                 return msg.workspaceId === workspaceId;
             }
 
-            // [2순위] legacy 메시지: proposal_id 또는 brand_proposal_id로 매칭
-            if (msg.proposalId) return msg.proposalId === proposalIdStr;
-            if (msg.productApplicationId) return msg.productApplicationId === proposalIdStr;
+            // [2순위] proposal_id 매칭 (product_application 전용, FK 있음)
+            if (msg.proposalId && proposalIdStr) return msg.proposalId === proposalIdStr;
 
-            // [차단] proposal/workspace 식별자 없는 메시지 — 누출 방지
+            // [3순위] legacy product_application_id 매칭
+            if (msg.productApplicationId && proposalIdStr) return msg.productApplicationId === proposalIdStr;
+
+            // [fallback] moment/campaign 메시지는 식별자 없이 sender/receiver pair로만 표시
+            // (workspace_id가 null이고 proposal_id도 null인 신규 메시지)
+            if (!msg.workspaceId && !msg.proposalId && !msg.productApplicationId) return true;
+
             return false;
         });
-    }, [messages, user?.id, otherId, isCampaignProposal, isMomentProposal, proposalIdStr, workspaceId]);
+    }, [messages, user?.id, otherId, proposalIdStr, workspaceId]);
 
     // Auto-scroll to bottom when messages change
     useEffect(() => {
@@ -173,9 +177,10 @@ export function ChatArea({ className }: ChatAreaProps) {
 
         setIsSending(true);
         try {
-            // proposal_id(FK 없음)를 모든 타입의 격리 키로 사용 → 409 FK 위반 방지
-            // workspace_id가 있으면 1순위, 없으면 proposalIdStr을 proposal_id에 저장
-            await sendMessage(otherId, msgContent, uploadedFile, proposalIdStr, undefined, workspaceId);
+            // messages.proposal_id는 product_applications(id) FK가 있음
+            // → product_application만 proposalId 전달, moment/campaign은 null(FK 위반 방지)
+            const sendProposalId = (!isCampaignProposal && !isMomentProposal) ? proposalIdStr : undefined;
+            await sendMessage(otherId, msgContent, uploadedFile, sendProposalId, undefined, workspaceId);
         } catch (e) {
             console.error('[ChatArea] Message send failed:', e);
             setChatMessage(msgContent);
