@@ -272,32 +272,34 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         try {
             console.log('[MessageProvider] Sending message:', { receiverId, proposalId, brandProposalId, hasFile: !!file })
 
-            const { error } = await supabase
+            const { error, status, statusText } = await supabase
                 .from('messages')
                 .insert({
                     sender_id: userId,
                     receiver_id: receiverId,
-                    proposal_id: proposalId || brandProposalId,
+                    proposal_id: proposalId || brandProposalId || null,
                     workspace_id: workspaceId || null,
                     content: content || '',
-                    file_url: file?.url,
-                    file_name: file?.name,
-                    file_size: file?.size,
-                    file_type: file?.type,
+                    file_url: file?.url ?? null,
+                    file_name: file?.name ?? null,
+                    file_size: file?.size ?? null,
+                    file_type: file?.type ?? null,
                     is_read: false
                 })
 
             if (error) {
-                console.error('[MessageProvider] Send error:', error)
-                throw error
+                const detail = `code=${error.code} msg=${error.message} hint=${error.hint} details=${error.details} http=${status} ${statusText}`
+                console.error('[MessageProvider] Send error detail:', detail, JSON.stringify(error))
+                throw new Error(detail)
             }
 
             await fetchMessages(userId)
-            console.log('[MessageProvider] Message sent')
+            console.log('[MessageProvider] Message sent OK')
         } catch (error: any) {
-            console.error('[MessageProvider] Send error:', error)
+            console.error('[MessageProvider] Send error:', error?.message || JSON.stringify(error))
             throw error
         }
+
     }
 
     // Send notification
