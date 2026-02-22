@@ -55,12 +55,14 @@ export function ChatArea({ className }: ChatAreaProps) {
         return brandUserId;
     }, [p, user?.id, user?.role]);
 
-    // Filter messages: match by sender/receiver pair AND proposal ID.
+    // Filter messages: match by sender/receiver pair AND proposal/workspace ID.
     // This ensures that even if the same brand and creator have multiple proposals,
     // each workspace chat shows only messages belonging to that specific proposal.
     const filteredMessages = useMemo(() => {
-        // [Guard] If no proposal ID is resolved yet, show nothing to prevent cross-workspace leakage
-        if (!user?.id || !otherId || !proposalIdStr) return [];
+        // [Guard] Need at least one identifier (workspaceId OR proposalIdStr) to isolate messages
+        if (!user?.id || !otherId) return [];
+        // If neither workspaceId nor proposalIdStr is available, show nothing
+        if (!workspaceId && !proposalIdStr) return [];
 
         return messages.filter((msg) => {
             const senderReceiverMatch =
@@ -75,12 +77,18 @@ export function ChatArea({ className }: ChatAreaProps) {
             }
 
             // [Secondary] proposal_id / brand_proposal_id isolation (legacy messages)
-            // Try both columns — proposalIdStr may refer to either proposal type
-            if (msg.proposalId) return msg.proposalId === proposalIdStr;
-            if (msg.brandProposalId) return msg.brandProposalId === proposalIdStr;
+            if (proposalIdStr) {
+                if (msg.proposalId) return msg.proposalId === proposalIdStr;
+                if (msg.brandProposalId) return msg.brandProposalId === proposalIdStr;
+            }
 
-            // [Last resort] If message has no proposal/workspace identifier at all,
-            // exclude it to prevent cross-workspace leakage.
+            // [Last resort] workspace_id exists on proposal but message has no workspace/proposal ID
+            // → show messages that have no identifier (very old messages with same user pair)
+            // only if this is a workspace-based proposal
+            if (workspaceId && !msg.workspaceId && !msg.proposalId && !msg.brandProposalId) {
+                return false; // Exclude untagged messages to prevent cross-leakage
+            }
+
             return false;
         });
     }, [messages, user?.id, otherId, isCampaignProposal, isMomentProposal, proposalIdStr, workspaceId]);
