@@ -55,4 +55,4 @@ CREATE POLICY "submission_feedback_insert"
 
 CREATE POLICY "submission_feedback_update"
   ON public.submission_feedback FOR UPDATE
-  USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+  USING (auth.uid() = sender_id);
