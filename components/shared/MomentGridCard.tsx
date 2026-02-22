@@ -5,11 +5,9 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-    Calendar, Gift, Send, Banknote, Star, Lock, MoreVertical, Trash2, Pencil,
+    Calendar, Gift, Send, Banknote, Star, Lock, Trash2, Pencil,
 } from "lucide-react"
-import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -235,33 +233,27 @@ export function MomentGridCard({
                             </Button>
                         )}
 
-                        {/* Creator edit/delete menu */}
+                        {/* Creator edit/delete buttons */}
                         {(onDelete || onEdit) && !onAdminDelete && (
-                            <div onClick={(e) => e.stopPropagation()}>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        {onEdit && (
-                                            <DropdownMenuItem
-                                                onClick={(e) => { e.stopPropagation(); onEdit(item.id); }}
-                                            >
-                                                <Pencil className="mr-2 h-4 w-4" /> 수정
-                                            </DropdownMenuItem>
-                                        )}
-                                        {onDelete && (
-                                            <DropdownMenuItem
-                                                className="text-red-600 focus:text-red-600"
-                                                onClick={(e) => { e.stopPropagation(); setIsDeleteDialogOpen(true); }}
-                                            >
-                                                <Trash2 className="mr-2 h-4 w-4" /> 삭제
-                                            </DropdownMenuItem>
-                                        )}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                            <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                                {onEdit && (
+                                    <Button
+                                        variant="ghost" size="icon"
+                                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                        onClick={(e) => { e.stopPropagation(); onEdit(item.id); }}
+                                    >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
+                                {onDelete && (
+                                    <Button
+                                        variant="ghost" size="icon"
+                                        className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                                        onClick={(e) => { e.stopPropagation(); setIsDeleteDialogOpen(true); }}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
                             </div>
                         )}
                     </div>
