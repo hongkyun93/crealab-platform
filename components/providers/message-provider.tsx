@@ -11,7 +11,7 @@ interface MessageContextType {
     isLoading: boolean
     sendMessage: (receiverId: string, content: string, file?: { url: string; name: string; size: number; type: string }, proposalId?: string, brandProposalId?: string, workspaceId?: string) => Promise<void>
     sendNotification: (recipientId: string, content: string, type: string, referenceId?: string) => Promise<void>
-    sendSubmissionFeedback: (proposalId: string | undefined, brandProposalId: string | undefined, content: string) => Promise<void>
+    sendSubmissionFeedback: (proposalId: string | undefined, brandProposalId: string | undefined, content: string, videoTimestamp?: number | null) => Promise<void>
     fetchSubmissionFeedback: (proposalId?: string, brandProposalId?: string) => Promise<SubmissionFeedback[]>
     markAsRead: (notificationId: string) => Promise<void>
     refreshMessages: (userId?: string) => Promise<void>
@@ -330,24 +330,55 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
     }
 
     // Send submission feedback
-    const sendSubmissionFeedback = async (proposalId: string | undefined, brandProposalId: string | undefined, content: string) => {
+    const sendSubmissionFeedback = async (proposalId: string | undefined, brandProposalId: string | undefined, content: string, videoTimestamp?: number | null) => {
         if (!userId) {
             throw new Error('User ID required')
         }
 
         try {
-            console.log('[MessageProvider] Sending feedback:', { proposalId, brandProposalId })
+            console.log('[MessageProvider] Sending feedback:', { proposalId, brandProposalId, videoTimestamp })
 
-            const { error } = await supabase
-                .from('submission_feedback')
-                .insert({
-                    proposal_id: proposalId,
-                    brand_proposal_id: brandProposalId,
-                    sender_id: userId,
-                    content
-                })
+            // 10초 타임아웃: Supabase 연결 불가 시 promise가 영원히 pending 되는 현상 방지
+            const makeTimeout = () => new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('피드백 전송 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.')), 10000)
+            )
+
+            // [FIX] video_timestamp_seconds 컬럼이 migration 미적용으로 없을 때를 대비해
+            // null인 경우에는 아예 필드를 보내지 않고, 있는 경우에만 포함시킨다.
+            // 42703 에러(column not found) 시에도 타임스탬프 없이 재시도해 plain text는 항상 저장됨.
+            const basePayload: any = {
+                proposal_id: proposalId,
+                brand_proposal_id: brandProposalId,
+                sender_id: userId,
+                content,
+            }
+
+            // videoTimestamp가 실제 값이 있는 경우에만 컬럼 포함
+            const payloadWithTs = videoTimestamp != null
+                ? { ...basePayload, video_timestamp_seconds: videoTimestamp }
+                : basePayload
+
+            const { error } = await Promise.race([
+                supabase.from('submission_feedback').insert(payloadWithTs),
+                makeTimeout()
+            ]) as { error: any }
 
             if (error) {
+                // 42703 = column does not exist (migration not applied yet)
+                // → 타임스탬프 필드 제거 후 재시도 → plain text feedback은 항상 저장
+                if (error.code === '42703' && videoTimestamp != null) {
+                    console.warn('[MessageProvider] video_timestamp_seconds column missing, retrying without timestamp')
+                    const { error: retryError } = await Promise.race([
+                        supabase.from('submission_feedback').insert(basePayload),
+                        makeTimeout()
+                    ]) as { error: any }
+                    if (retryError) {
+                        console.error('[MessageProvider] Retry also failed:', retryError)
+                        throw retryError
+                    }
+                    console.log('[MessageProvider] Feedback sent (without timestamp — run migration to enable bookmarks)')
+                    return
+                }
                 console.error('[MessageProvider] Feedback error:', error)
                 throw error
             }
@@ -410,7 +441,8 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     content: f.content,
                     created_at: f.created_at,
                     sender_name: f.sender?.display_name,
-                    sender_avatar: f.sender?.avatar_url
+                    sender_avatar: f.sender?.avatar_url,
+                    video_timestamp_seconds: f.video_timestamp_seconds ?? null
                 }))
 
                 setSubmissionFeedback(feedback)

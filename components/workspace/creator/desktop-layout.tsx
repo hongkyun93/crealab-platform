@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { CreatorInfoPanel } from './info-panel';
@@ -6,6 +5,7 @@ import { ChatArea } from '../common/chat-area';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
 import { FileSharePanel } from '../common/file-share-panel';
 import { SmartContractPanel } from '../common/smart-contract-panel';
+import { VideoReviewPanel } from '../common/VideoReviewPanel';
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
 
 interface CreatorDesktopLayoutProps {
@@ -14,6 +14,7 @@ interface CreatorDesktopLayoutProps {
 
 export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
     const contractViewOpen = useWorkspaceStore((state) => state.contractViewOpen);
+    const videoReviewOpen = useWorkspaceStore((state) => state.videoReviewOpen);
     const proposal = useWorkspaceStore((state) => state.proposal);
     const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
 
@@ -81,7 +82,7 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
                 <CreatorInfoPanel />
             </div>
 
-            {/* Center + Right: Contract View OR Chat + Files */}
+            {/* Center + Right: Contract View OR Video Review OR Chat + Files */}
             {contractViewOpen && proposal ? (
                 <>
                     {/* Center: Contract */}
@@ -100,6 +101,11 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
                         <ChatArea className="h-full" />
                     </div>
                 </>
+            ) : videoReviewOpen ? (
+                /* Video Review: spans center + right columns merged */
+                <div className="col-span-2 h-full bg-background relative flex flex-col min-w-0 overflow-hidden">
+                    <VideoReviewPanel userType="creator" />
+                </div>
             ) : (
                 <>
                     <div className="h-full bg-muted/20 relative flex flex-col min-w-0 overflow-hidden">

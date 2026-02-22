@@ -32,7 +32,7 @@ import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { toast } from "sonner"
 import { ChannelSelector } from "@/components/shared/ChannelSelector"
 
-const MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}월`)
+
 
 import { POPULAR_TAGS } from "@/lib/constants/categories"
 
@@ -52,10 +52,11 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
 
     // Form states
     const [title, setTitle] = useState("")
-    const [eventYear, setEventYear] = useState("2026")
-    const [eventMonth, setEventMonth] = useState("")
-    const [postingYear, setPostingYear] = useState("2026")
-    const [postingMonth, setPostingMonth] = useState("")
+    // Exact dates — stored as ISO strings "YYYY-MM-DD"
+    const [eventStartDate, setEventStartDate] = useState("")
+    const [eventEndDate, setEventEndDate] = useState("")
+    const [isMultiDay, setIsMultiDay] = useState(false)
+    const [postingDateExact, setPostingDateExact] = useState("")
     const [isDateFlexible, setIsDateFlexible] = useState(false)
     const [description, setDescription] = useState("")
     const [guide, setGuide] = useState("")
@@ -150,24 +151,28 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                 setSchedule(event.schedule as any)
             }
 
-            // Parse Event Date
-            if (event.eventDate) {
-                const yearMatch = event.eventDate.match(/(\d{4})년/)
-                const monthMatch = event.eventDate.match(/(\d+월)/)
-                if (yearMatch) setEventYear(yearMatch[1])
-                if (monthMatch) setEventMonth(monthMatch[1])
+            // Load exact dates first; fall back to TEXT dates for legacy data
+            if (event.eventStartDate) {
+                setEventStartDate(event.eventStartDate)
+            } else if (event.eventDate && event.eventDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                setEventStartDate(event.eventDate)
             }
 
-            // Parse Posting Date
-            if (event.postingDate) {
-                if (event.postingDate === '1993-01-06' || event.dateFlexible) {
-                    setIsDateFlexible(true)
-                } else {
-                    const yearMatch = event.postingDate.match(/(\d{4})년/)
-                    const monthMatch = event.postingDate.match(/(\d+월)/)
-                    if (yearMatch) setPostingYear(yearMatch[1])
-                    if (monthMatch) setPostingMonth(monthMatch[1])
-                }
+            if (event.eventEndDate) {
+                setEventEndDate(event.eventEndDate)
+                setIsMultiDay(true)
+            }
+
+            if (event.dateFlexible) {
+                setIsDateFlexible(true)
+            } else if (event.postingDateExact) {
+                setPostingDateExact(event.postingDateExact)
+            } else if (
+                event.postingDate &&
+                event.postingDate.match(/^\d{4}-\d{2}-\d{2}$/) &&
+                event.postingDate !== '1993-01-06'
+            ) {
+                setPostingDateExact(event.postingDate)
             }
         }
     }, [mode, eventId, events, user, router])
@@ -221,12 +226,12 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
             toast.error("모먼트 제목을 입력해주세요.")
             return false
         }
-        if (!eventMonth) {
-            toast.error("모먼트 일정을 선택해주세요.")
+        if (!eventStartDate) {
+            toast.error("모먼트 이벤트 날짜를 선택해주세요.")
             return false
         }
-        if (!postingMonth && !isDateFlexible) {
-            toast.error("업로드 시기를 선택해주세요.")
+        if (!postingDateExact && !isDateFlexible) {
+            toast.error("업로드 예정일을 선택해주세요.")
             return false
         }
         if (!description) {
@@ -250,8 +255,10 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
 
         const tags = [...selectedTags]
 
-        const formatToDate = (year: string, monthStr: string) => {
-            const month = monthStr.replace('월', '').padStart(2, '0')
+        // Derive year-month TEXT for brand display from the exact start date
+        const toYearMonthISO = (isoDate: string) => {
+            if (!isoDate) return ''
+            const [year, month] = isoDate.split('-')
             return `${year}-${month}-01`
         }
 
@@ -261,13 +268,18 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                 const success = await updateEvent(eventId, {
                     category: selectedTags[0] || "기타",
                     event: title,
-                    date: eventMonth, // Legacy support
+                    date: eventStartDate,
                     description: description,
                     guide: guide,
                     tags: tags,
                     targetProduct: targetProduct || "미정",
-                    eventDate: `${eventYear}년 ${eventMonth}`,
-                    postingDate: isDateFlexible ? "" : `${postingYear}년 ${postingMonth}`,
+                    // Exact dates (private)
+                    eventStartDate: eventStartDate,
+                    eventEndDate: isMultiDay && eventEndDate ? eventEndDate : undefined,
+                    postingDateExact: isDateFlexible ? undefined : postingDateExact,
+                    // Year-month for brand display
+                    eventDate: toYearMonthISO(eventStartDate),
+                    postingDate: isDateFlexible ? '' : toYearMonthISO(postingDateExact),
                     dateFlexible: isDateFlexible,
                     isPrivate: isPrivate,
                     channels: selectedChannels
@@ -300,13 +312,18 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
             const success = await addEvent({
                 category: selectedTags[0] || "기타",
                 event: title,
-                date: eventMonth, // Legacy support (display purpose)
+                date: eventStartDate,
                 description: description,
                 guide: guide,
                 tags: tags,
                 targetProduct: targetProduct || "미정",
-                eventDate: formatToDate(eventYear, eventMonth),
-                postingDate: isDateFlexible ? "" : formatToDate(postingYear, postingMonth),
+                // Exact dates (private)
+                eventStartDate: eventStartDate,
+                eventEndDate: isMultiDay && eventEndDate ? eventEndDate : undefined,
+                postingDateExact: isDateFlexible ? undefined : postingDateExact,
+                // Year-month for brand display
+                eventDate: toYearMonthISO(eventStartDate),
+                postingDate: isDateFlexible ? '' : toYearMonthISO(postingDateExact),
                 isPrivate: isPrivate,
                 dateFlexible: isDateFlexible,
                 channels: selectedChannels,
@@ -450,72 +467,79 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                             </div>
                         </div>
 
+                        {/* Privacy Notice */}
+                        <div className="flex items-start gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50/60 dark:border-emerald-800/40 dark:bg-emerald-900/10">
+                            <div className="mt-0.5 shrink-0 h-5 w-5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                                <span className="text-xs">🔒</span>
+                            </div>
+                            <div className="text-sm">
+                                <p className="font-semibold text-emerald-800 dark:text-emerald-300 mb-0.5">정확한 날짜는 나만 볼 수 있어요</p>
+                                <p className="text-emerald-700/80 dark:text-emerald-400/80 text-xs leading-relaxed">
+                                    입력한 정확한 날짜는 크리에이터 본인과 소속 MCN에만 표시됩니다.
+                                    브랜드에게는 <span className="font-semibold">"2026년 3월"</span>처럼 년-월 정보만 공개되어 개인 일정이 노출되지 않습니다.
+                                </p>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Event Date Picker */}
-                            <div className="space-y-4">
+                            {/* Event Date */}
+                            <div className="space-y-3">
                                 <Label className="flex items-center gap-2">
                                     <Calendar className="h-4 w-4" />
-                                    모먼트 일정
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setEventYear(prev => prev === "2026" ? "2027" : "2026")}
-                                        className="h-6 px-2 text-xs ml-1 bg-background"
-                                    >
-                                        {eventYear}년 🔄
-                                    </Button>
+                                    이벤트 날짜 <span className="text-xs text-muted-foreground font-normal">(나만 보임)</span>
                                 </Label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {MONTHS.map((m) => {
-                                        const isSelected = eventMonth === m
-                                        return (
-                                            <Button
-                                                key={`event-${m}`}
-                                                type="button"
-                                                variant={isSelected ? "default" : "outline"}
-                                                className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
-                                                onClick={() => setEventMonth(m)}
-                                            >
-                                                {m}
-                                            </Button>
-                                        )
-                                    })}
+                                <Input
+                                    type="date"
+                                    value={eventStartDate}
+                                    onChange={e => setEventStartDate(e.target.value)}
+                                    className="h-10"
+                                    min="2024-01-01"
+                                    max="2030-12-31"
+                                />
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        id="multi-day"
+                                        checked={isMultiDay}
+                                        onCheckedChange={v => {
+                                            setIsMultiDay(v as boolean)
+                                            if (!v) setEventEndDate("")
+                                        }}
+                                    />
+                                    <label htmlFor="multi-day" className="text-sm text-muted-foreground cursor-pointer">
+                                        이틀 이상 진행되는 이벤트
+                                    </label>
                                 </div>
+                                {isMultiDay && (
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground">종료일</Label>
+                                        <Input
+                                            type="date"
+                                            value={eventEndDate}
+                                            onChange={e => setEventEndDate(e.target.value)}
+                                            className="h-10"
+                                            min={eventStartDate || "2024-01-01"}
+                                            max="2030-12-31"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Posting Date Picker */}
-                            <div className="space-y-4">
+                            {/* Posting Date */}
+                            <div className="space-y-3">
                                 <Label className="flex items-center gap-2">
                                     <Send className="h-4 w-4" />
-                                    콘텐츠 업로드 시기
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setPostingYear(prev => prev === "2026" ? "2027" : "2026")}
-                                        className="h-6 px-2 text-xs ml-1 bg-background"
-                                    >
-                                        {postingYear}년 🔄
-                                    </Button>
+                                    업로드 예정일 <span className="text-xs text-muted-foreground font-normal">(나만 보임)</span>
                                 </Label>
-                                <div className={`grid grid-cols-3 gap-2 ${isDateFlexible ? 'opacity-50 pointer-events-none' : ''}`}>
-                                    {MONTHS.map((m) => {
-                                        const isSelected = postingMonth === m
-                                        return (
-                                            <Button
-                                                key={`posting-${m}`}
-                                                type="button"
-                                                variant={isSelected ? "default" : "outline"}
-                                                className={`h-10 text-sm ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
-                                                onClick={() => setPostingMonth(m)}
-                                            >
-                                                {m}
-                                            </Button>
-                                        )
-                                    })}
-                                </div>
-                                <div className="flex items-center space-x-2 pt-2">
+                                <Input
+                                    type="date"
+                                    value={postingDateExact}
+                                    onChange={e => setPostingDateExact(e.target.value)}
+                                    className={`h-10 ${isDateFlexible ? 'opacity-40 pointer-events-none' : ''}`}
+                                    disabled={isDateFlexible}
+                                    min="2024-01-01"
+                                    max="2030-12-31"
+                                />
+                                <div className="flex items-center gap-2">
                                     <Checkbox
                                         id="date-flexible"
                                         checked={isDateFlexible}
@@ -523,7 +547,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                                     />
                                     <label
                                         htmlFor="date-flexible"
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-muted-foreground"
+                                        className="text-sm text-muted-foreground cursor-pointer"
                                     >
                                         업로드 일정 협의 가능
                                     </label>

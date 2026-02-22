@@ -42,4 +42,5 @@ export interface SubmissionFeedback {
     created_at: string
     sender_name?: string
     sender_avatar?: string
+    video_timestamp_seconds?: number | null // bookmark: null = plain text, number = pinned to video timestamp
 }

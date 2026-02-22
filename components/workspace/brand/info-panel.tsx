@@ -424,36 +424,36 @@ export function InfoPanel() {
                             proposal?.content_final_url && proposal?.content_clean_url ? '✅ 최종본 + 클린본 제출 완료'
                                 : proposal?.content_submission_status === 'approved' ? '✅ 초안 승인됨 · 최종본 대기'
                                     : proposal?.content_submission_status === 'revision_requested' ? '🔄 수정 요청 전달됨'
-                                        : proposal?.content_submission_file_url ? '📎 초안 리뷰 필요'
+                                        : (proposal?.content_submission_file_url || (proposal as any)?.content_submission_url) ? '📎 초안 리뷰 필요'
                                             : '콘텐츠 제출 및 피드백'
                         }
                     >
                         <div className="space-y-4">
                             {/* No content yet */}
-                            {!proposal?.content_submission_file_url && !proposal?.content_final_url && (
+                            {!proposal?.content_submission_file_url && !(proposal as any)?.content_submission_url && !proposal?.content_final_url && (
                                 <div className="text-sm text-muted-foreground p-2 text-center bg-muted/20 rounded-lg">
                                     크리에이터가 콘텐츠를 제출하면 여기에 표시됩니다.
                                 </div>
                             )}
 
-                            {/* Draft review phase */}
-                            {proposal?.content_submission_file_url && proposal?.content_submission_status !== 'approved' && (
+                            {/* Draft review phase — file OR link submission */}
+                            {(proposal?.content_submission_file_url || (proposal as any)?.content_submission_url) && proposal?.content_submission_status !== 'approved' && (
                                 <div>
                                     <div className="flex items-center gap-2 mb-2">
                                         <Video className="h-3.5 w-3.5 text-muted-foreground" />
                                         <span className="text-xs font-semibold text-muted-foreground">초안 리뷰</span>
-                                        <Badge variant="outline" className={`text-[10px] h-5 ml-auto ${proposal.content_submission_status === 'submitted' ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20' :
-                                            proposal.content_submission_status === 'revision_requested' ? 'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20' :
+                                        <Badge variant="outline" className={`text-[10px] h-5 ml-auto ${proposal?.content_submission_status === 'submitted' ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20' :
+                                            proposal?.content_submission_status === 'revision_requested' ? 'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20' :
                                                 'text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20'
                                             }`}>
-                                            {proposal.content_submission_status === 'submitted' ? `v${proposal.content_submission_version || 1.0} 제출됨` :
-                                                proposal.content_submission_status === 'revision_requested' ? '수정 요청됨' : '승인됨'}
+                                            {proposal?.content_submission_status === 'submitted' ? `v${(proposal as any)?.content_submission_version || 1.0} 제출됨` :
+                                                proposal?.content_submission_status === 'revision_requested' ? '수정 요청됨' : '승인됨'}
                                         </Badge>
                                     </div>
 
-                                    {/* Preview link */}
+                                    {/* Preview link — file takes priority, fallback to link */}
                                     <div className="bg-muted/30 rounded-lg p-3 mb-3">
-                                        <a href={proposal.content_submission_file_url} target="_blank" rel="noopener noreferrer"
+                                        <a href={proposal?.content_submission_file_url || (proposal as any)?.content_submission_url} target="_blank" rel="noopener noreferrer"
                                             className="flex items-center gap-2 text-sm text-primary hover:underline">
                                             <Eye className="h-4 w-4" />
                                             초안 미리보기 / 다운로드
@@ -461,7 +461,7 @@ export function InfoPanel() {
                                     </div>
 
                                     {/* Approve / Request Revision buttons */}
-                                    {proposal.content_submission_status === 'submitted' && (
+                                    {proposal?.content_submission_status === 'submitted' && (
                                         <div className="flex gap-2">
                                             <Button
                                                 variant="outline"
@@ -469,7 +469,11 @@ export function InfoPanel() {
                                                 className="flex-1 h-8 text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                                                 onClick={async () => {
                                                     if (!proposal?.id) return;
-                                                    const updates: any = { content_submission_status: 'revision_requested' };
+                                                    // [통일] content_submission_status + content_revision_requested_at 동시 저장
+                                                    const updates: any = {
+                                                        content_submission_status: 'revision_requested',
+                                                        content_revision_requested_at: new Date().toISOString(),
+                                                    };
                                                     let success = false;
                                                     if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                     else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
@@ -509,7 +513,7 @@ export function InfoPanel() {
                                         </div>
                                     )}
 
-                                    {proposal.content_submission_status === 'revision_requested' && (
+                                    {proposal?.content_submission_status === 'revision_requested' && (
                                         <div className="text-xs text-amber-600 text-center bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2">
                                             크리에이터에게 수정 요청을 보냈습니다. 수정본 대기 중...
                                         </div>

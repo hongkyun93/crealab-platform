@@ -48,7 +48,11 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
                 platform: primaryChannel.channel_type || primaryChannel.platform || '',
                 followersCount: primaryChannel.followers_count || 0,
                 handle: primaryChannel.handle || ''
-            } : null
+            } : null,
+            // Exact dates (private — creator/MCN only)
+            eventStartDate: e.event_start_date || null,
+            eventEndDate: e.event_end_date || null,
+            postingDateExact: e.posting_date_exact || null,
         }
     })
 }
@@ -268,7 +272,11 @@ export const eventMutations = {
                     status: newEvent.status || 'recruiting',
                     is_private: newEvent.isPrivate || false,
                     schedule: newEvent.schedule,
-                    channels: newEvent.channels || []
+                    channels: newEvent.channels || [],
+                    // Exact dates (private)
+                    event_start_date: newEvent.eventStartDate || null,
+                    event_end_date: newEvent.eventEndDate || null,
+                    posting_date_exact: newEvent.postingDateExact || null,
                 })
                 .select()
                 .single()
@@ -321,6 +329,10 @@ export const eventMutations = {
             if (updates.isPrivate !== undefined) dbUpdates.is_private = updates.isPrivate
             if (updates.schedule) dbUpdates.schedule = updates.schedule
             if (updates.channels !== undefined) dbUpdates.channels = updates.channels
+            // Exact dates (private)
+            if (updates.eventStartDate !== undefined) dbUpdates.event_start_date = updates.eventStartDate || null
+            if (updates.eventEndDate !== undefined) dbUpdates.event_end_date = updates.eventEndDate || null
+            if (updates.postingDateExact !== undefined) dbUpdates.posting_date_exact = updates.postingDateExact || null
 
             const { error } = await supabase
                 .from('life_moments')

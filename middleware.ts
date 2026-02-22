@@ -69,6 +69,9 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/onboarding', request.url))
         }
 
+        // admin은 모든 경로 허용
+        if (role === 'admin') return response
+
         // /brand: brand 또는 agency만 허용
         if (pathname.startsWith('/brand')) {
             if (role !== 'brand' && role !== 'agency') {

@@ -170,6 +170,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         contract_status: p.contract_status,
                         brand_signature: p.brand_signature,
                         influencer_signature: p.influencer_signature,
+                        brand_signed_at: p.brand_signed_at,           // [FIX] Bug 4
+                        influencer_signed_at: p.influencer_signed_at, // [FIX] Bug 4
                         receiver_name: p.receiver_name,
                         shipping_phone: p.shipping_phone,
                         shipping_address: p.shipping_address,
@@ -183,6 +185,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         content_submission_date: p.content_submission_date,
                         content_final_url: p.content_final_url,
                         content_clean_url: p.content_clean_url,
+                        content_final_approved_at: p.content_final_approved_at,
+                        content_revision_requested_at: p.content_revision_requested_at,
                         workspace_id: p.workspace_id, // [Workspaces]
                         campaign: p.campaigns
                     }
@@ -305,7 +309,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 condition_secondary_usage_period: p.condition_secondary_usage_period,
                 secondary_usage_fee: p.secondary_usage_fee,
                 content_submission_url: p.content_submission_url,
+                content_submission_file_url: p.content_submission_file_url,
                 content_submission_status: p.content_submission_status,
+                content_submission_version: p.content_submission_version,
+                content_submission_date: p.content_submission_date,
+                content_final_url: p.content_final_url,
+                content_clean_url: p.content_clean_url,
+                content_final_approved_at: p.content_final_approved_at,
+                content_revision_requested_at: p.content_revision_requested_at,
                 product_url: p.products?.image_url,
                 product: p.products,
                 workspace_id: p.workspace_id // [Workspaces]
@@ -351,7 +362,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 influencer_signature: p.influencer_signature,
                 delivery_status: p.delivery_status,
                 content_submission_url: p.content_submission_url,
+                content_submission_file_url: p.content_submission_file_url,
                 content_submission_status: p.content_submission_status,
+                content_submission_version: p.content_submission_version,
+                content_submission_date: p.content_submission_date,
+                content_final_url: p.content_final_url,
+                content_clean_url: p.content_clean_url,
+                content_final_approved_at: p.content_final_approved_at,
+                content_revision_requested_at: p.content_revision_requested_at,
 
                 created_at: p.created_at,
                 updated_at: p.updated_at,
@@ -389,6 +407,15 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 influencer_avatar: p.influencer?.avatar_url,
                 moment_title: p.moment?.title,
                 conditions: p.conditions,
+                content_submission_url: p.content_submission_url,
+                content_submission_file_url: p.content_submission_file_url,
+                content_submission_status: p.content_submission_status,
+                content_submission_version: p.content_submission_version,
+                content_submission_date: p.content_submission_date,
+                content_final_url: p.content_final_url,
+                content_clean_url: p.content_clean_url,
+                content_final_approved_at: p.content_final_approved_at,
+                content_revision_requested_at: p.content_revision_requested_at,
                 workspace_id: p.workspace_id // [Workspaces]
             }))
 
@@ -886,6 +913,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.content_submission_date) dbUpdates.content_submission_date = updates.content_submission_date
             if (updates.content_final_url) dbUpdates.content_final_url = updates.content_final_url
             if (updates.content_clean_url) dbUpdates.content_clean_url = updates.content_clean_url
+            // Video review fields — !== undefined를 써서 null도 저장 가능
+            if ((updates as any).content_final_approved_at !== undefined) dbUpdates.content_final_approved_at = (updates as any).content_final_approved_at
+            if ((updates as any).content_revision_requested_at !== undefined) dbUpdates.content_revision_requested_at = (updates as any).content_revision_requested_at
 
             // Contract & Signatures — use !== undefined to allow null (undo)
             if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
@@ -951,6 +981,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.content_submission_date) dbUpdates.content_submission_date = updates.content_submission_date
             if (updates.content_final_url) dbUpdates.content_final_url = updates.content_final_url
             if (updates.content_clean_url) dbUpdates.content_clean_url = updates.content_clean_url
+            // Video review fields — !== undefined를 써서 null도 저장 가능 (content_revision_requested_at = null 취소 때)
+            if ((updates as any).content_final_approved_at !== undefined) dbUpdates.content_final_approved_at = (updates as any).content_final_approved_at
+            if ((updates as any).content_revision_requested_at !== undefined) dbUpdates.content_revision_requested_at = (updates as any).content_revision_requested_at
 
             // Contract & Signatures — use !== undefined to allow null (undo)
             if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
@@ -1059,6 +1092,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if ((updates as any).content_submission_date) dbUpdates.content_submission_date = (updates as any).content_submission_date
             if ((updates as any).content_final_url) dbUpdates.content_final_url = (updates as any).content_final_url
             if ((updates as any).content_clean_url) dbUpdates.content_clean_url = (updates as any).content_clean_url
+            // Video review fields
+            if ((updates as any).content_final_approved_at !== undefined) dbUpdates.content_final_approved_at = (updates as any).content_final_approved_at
+            if ((updates as any).content_revision_requested_at !== undefined) dbUpdates.content_revision_requested_at = (updates as any).content_revision_requested_at
 
             const { error } = await supabase
                 .from('moment_proposals')

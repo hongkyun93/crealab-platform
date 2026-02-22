@@ -105,6 +105,7 @@ export interface Proposal {
     content_submission_version_2?: number
     content_final_url?: string
     content_clean_url?: string
+    content_final_approved_at?: string | null // ISO timestamp when brand gave final content approval
 
     // Condition Fields
 
@@ -219,6 +220,7 @@ export interface BrandProposal {
     content_submission_version_2?: number
     content_final_url?: string
     content_clean_url?: string
+    content_final_approved_at?: string | null // ISO timestamp when brand gave final content approval
 
     completed_at?: string
 
@@ -297,6 +299,7 @@ export interface MomentProposal {
     content_submission_version?: number
     content_final_url?: string
     content_clean_url?: string
+    content_final_approved_at?: string | null // ISO timestamp when brand gave final content approval
     channel_name?: string
     channel_url?: string
     channel_subtype?: string

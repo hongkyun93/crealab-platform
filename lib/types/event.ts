@@ -26,6 +26,10 @@ export interface InfluencerEvent {
     createdAt?: string
     channels?: string[]
     socialChannels?: { platform: string; handle: string; followersCount: number }[]
+    // Exact dates (private — shown only to creator + MCN)
+    eventStartDate?: string   // ISO "YYYY-MM-DD"
+    eventEndDate?: string     // ISO "YYYY-MM-DD" (multi-day events, optional)
+    postingDateExact?: string // ISO "YYYY-MM-DD"
 }
 
 export interface EventSchedule {
@@ -47,4 +51,8 @@ export interface EventFormData {
     isPrivate?: boolean
     dateFlexible?: boolean
     schedule?: EventSchedule
+    // Exact dates (private)
+    eventStartDate?: string
+    eventEndDate?: string
+    postingDateExact?: string
 }

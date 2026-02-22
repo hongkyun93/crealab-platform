@@ -540,7 +540,7 @@ export function CreatorInfoPanel() {
                         summary={
                             proposal?.content_submission_status === 'approved' ? '✅ 초안 승인됨 · 최종본 제출'
                                 : proposal?.content_submission_status === 'revision_requested' ? '🔄 수정 요청됨'
-                                    : proposal?.content_submission_file_url ? '📎 초안 제출됨 · 리뷰 대기'
+                                    : (proposal?.content_submission_file_url || (proposal as any)?.content_submission_url) ? '📎 초안 제출됨 · 리뷰 대기'
                                         : '콘텐츠 제출 및 피드백'
                         }
                     >
@@ -563,14 +563,14 @@ export function CreatorInfoPanel() {
                                     </div>
 
                                     {/* Current draft preview */}
-                                    {proposal?.content_submission_file_url && (
+                                    {(proposal?.content_submission_file_url || proposal?.content_submission_url) && (
                                         <div className="bg-muted/30 rounded-lg p-3 mb-2">
                                             <div className="flex items-center justify-between text-sm">
                                                 <div className="flex items-center gap-2">
                                                     <Video className="h-4 w-4 text-muted-foreground" />
                                                     <span className="text-xs">v{proposal.content_submission_version || 1.0}</span>
                                                 </div>
-                                                <a href={proposal.content_submission_file_url} target="_blank" rel="noopener noreferrer"
+                                                <a href={proposal.content_submission_file_url || proposal.content_submission_url} target="_blank" rel="noopener noreferrer"
                                                     className="text-xs text-primary hover:underline flex items-center gap-1">
                                                     <Eye className="h-3 w-3" /> 미리보기
                                                 </a>
@@ -578,92 +578,98 @@ export function CreatorInfoPanel() {
                                         </div>
                                     )}
 
-                                    {/* Upload button — show if no draft yet, or revision requested */}
-                                    {(!proposal?.content_submission_file_url || proposal?.content_submission_status === 'revision_requested') && (
-                                        <div>
-                                            <input ref={draftInputRef} type="file" className="hidden"
-                                                accept="video/mp4,video/quicktime,video/webm,image/*,application/pdf"
-                                                onChange={async (e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (!file || !proposal?.id) return;
-                                                    const v = validateContentFile(file);
-                                                    if (!v.valid) { toast.error(v.error!); return; }
-                                                    setUploadTarget('draft');
-                                                    setIsUploading(true); setUploadProgress(0);
-                                                    try {
-                                                        const { data: { session } } = await supabase.auth.getSession();
-                                                        const ext = file.name.split('.').pop();
-                                                        const filePath = `content/${proposal.id}/draft.${ext}`;
-                                                        const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
-                                                        const fileUrl: string = await new Promise((resolve, reject) => {
-                                                            const xhr = new XMLHttpRequest();
-                                                            xhr.upload.addEventListener('progress', (ev) => {
-                                                                if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                                    {/* Upload button — show if no draft yet, or revision requested (both systems) */}
+                                    {(!proposal?.content_submission_file_url && !proposal?.content_submission_url ||
+                                        proposal?.content_submission_status === 'revision_requested' ||
+                                        !!(proposal as any)?.content_revision_requested_at) && (
+                                            <div>
+                                                <input ref={draftInputRef} type="file" className="hidden"
+                                                    accept="video/mp4,video/quicktime,video/webm,image/*,application/pdf"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file || !proposal?.id) return;
+                                                        const v = validateContentFile(file);
+                                                        if (!v.valid) { toast.error(v.error!); return; }
+                                                        setUploadTarget('draft');
+                                                        setIsUploading(true); setUploadProgress(0);
+                                                        try {
+                                                            const { data: { session } } = await supabase.auth.getSession();
+                                                            const ext = file.name.split('.').pop();
+                                                            const filePath = `content/${proposal.id}/draft.${ext}`;
+                                                            const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
+                                                            const fileUrl: string = await new Promise((resolve, reject) => {
+                                                                const xhr = new XMLHttpRequest();
+                                                                xhr.upload.addEventListener('progress', (ev) => {
+                                                                    if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                                                                });
+                                                                xhr.addEventListener('load', () => {
+                                                                    if (xhr.status >= 200 && xhr.status < 300) {
+                                                                        const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(filePath);
+                                                                        resolve(publicUrl);
+                                                                    } else reject(new Error(`업로드 실패 (${xhr.status})`));
+                                                                });
+                                                                xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
+                                                                xhr.open('POST', url);
+                                                                xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token}`);
+                                                                xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                                                                xhr.setRequestHeader('x-upsert', 'true');
+                                                                xhr.send(file);
                                                             });
-                                                            xhr.addEventListener('load', () => {
-                                                                if (xhr.status >= 200 && xhr.status < 300) {
-                                                                    const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(filePath);
-                                                                    resolve(publicUrl);
-                                                                } else reject(new Error(`업로드 실패 (${xhr.status})`));
-                                                            });
-                                                            xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
-                                                            xhr.open('POST', url);
-                                                            xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token}`);
-                                                            xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-                                                            xhr.setRequestHeader('x-upsert', 'true');
-                                                            xhr.send(file);
-                                                        });
-                                                        const ver = (proposal.content_submission_version || 0.9);
-                                                        const nextVer = parseFloat((ver + 0.1).toFixed(1));
-                                                        const updates: any = {
-                                                            content_submission_file_url: fileUrl,
-                                                            content_submission_status: 'submitted',
-                                                            content_submission_date: new Date().toISOString(),
-                                                            content_submission_version: nextVer,
-                                                        };
-                                                        let success = false;
-                                                        if ((proposal as any).moment_id || (proposal as any).momentId) {
-                                                            success = await updateMomentProposal(proposal.id, updates);
-                                                        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
-                                                            success = await updateProposal(proposal.id, updates);
-                                                        } else {
-                                                            success = await updateBrandProposal(proposal.id, updates);
+                                                            const ver = (proposal.content_submission_version || 0.9);
+                                                            const nextVer = parseFloat((ver + 0.1).toFixed(1));
+                                                            const isRevision = !!(proposal as any)?.content_revision_requested_at
+                                                                || proposal?.content_submission_status === 'revision_requested';
+                                                            const updates: any = {
+                                                                content_submission_file_url: fileUrl,
+                                                                content_submission_status: 'submitted',
+                                                                content_submission_date: new Date().toISOString(),
+                                                                content_submission_version: nextVer,
+                                                                // 수정 업로드 시 revision gate 닫기
+                                                                ...(isRevision ? { content_revision_requested_at: null } : {}),
+                                                            };
+                                                            let success = false;
+                                                            if ((proposal as any).moment_id || (proposal as any).momentId) {
+                                                                success = await updateMomentProposal(proposal.id, updates);
+                                                            } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                                                success = await updateProposal(proposal.id, updates);
+                                                            } else {
+                                                                success = await updateBrandProposal(proposal.id, updates);
+                                                            }
+                                                            if (success) {
+                                                                useWorkspaceStore.getState().updateProposal(updates);
+                                                                refreshData();
+                                                                toast.success(`초안 v${nextVer} 제출 완료!`);
+                                                                const brandId = (proposal as any).brand_id || (proposal as any).brandId;
+                                                                if (brandId) sendNotification(brandId, `${user?.name || '크리에이터'}님이 콘텐츠 초안을 제출했습니다.`, 'content_submission', proposal.id?.toString());
+                                                            }
+                                                        } catch (err: any) {
+                                                            console.error('Draft upload failed:', err);
+                                                            toast.error(err.message || '업로드 실패');
+                                                        } finally {
+                                                            setIsUploading(false); setUploadProgress(0);
+                                                            if (draftInputRef.current) draftInputRef.current.value = '';
                                                         }
-                                                        if (success) {
-                                                            useWorkspaceStore.getState().updateProposal(updates);
-                                                            refreshData();
-                                                            toast.success(`초안 v${nextVer} 제출 완료!`);
-                                                            const brandId = (proposal as any).brand_id || (proposal as any).brandId;
-                                                            if (brandId) sendNotification(brandId, `${user?.name || '크리에이터'}님이 콘텐츠 초안을 제출했습니다.`, 'content_submission', proposal.id?.toString());
-                                                        }
-                                                    } catch (err: any) {
-                                                        console.error('Draft upload failed:', err);
-                                                        toast.error(err.message || '업로드 실패');
-                                                    } finally {
-                                                        setIsUploading(false); setUploadProgress(0);
-                                                        if (draftInputRef.current) draftInputRef.current.value = '';
-                                                    }
-                                                }}
-                                            />
-                                            {isUploading && uploadTarget === 'draft' ? (
-                                                <div className="space-y-2">
-                                                    <div className="w-full bg-muted h-2 rounded-full">
-                                                        <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+                                                    }}
+                                                />
+                                                {isUploading && uploadTarget === 'draft' ? (
+                                                    <div className="space-y-2">
+                                                        <div className="w-full bg-muted h-2 rounded-full">
+                                                            <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground text-center">{uploadProgress}% 업로드 중...</p>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground text-center">{uploadProgress}% 업로드 중...</p>
-                                                </div>
-                                            ) : (
-                                                <Button className="w-full" variant="outline" onClick={() => draftInputRef.current?.click()}>
-                                                    <Upload className="h-4 w-4 mr-2" />
-                                                    {proposal?.content_submission_status === 'revision_requested' ? '수정본 업로드' : '초안 업로드'}
-                                                </Button>
-                                            )}
-                                            <p className="text-[10px] text-muted-foreground mt-1 text-center">MP4, MOV, WebM, 이미지, PDF (최대 500MB)</p>
-                                        </div>
-                                    )}
+                                                ) : (
+                                                    <Button className="w-full" variant="outline" onClick={() => draftInputRef.current?.click()}>
+                                                        <Upload className="h-4 w-4 mr-2" />
+                                                        {proposal?.content_submission_status === 'revision_requested' ? '수정본 업로드' : '초안 업로드'}
+                                                    </Button>
+                                                )}
+                                                <p className="text-[10px] text-muted-foreground mt-1 text-center">MP4, MOV, WebM, 이미지, PDF (최대 500MB)</p>
+                                            </div>
+                                        )}
 
                                     {/* Waiting for review */}
-                                    {proposal?.content_submission_file_url && proposal?.content_submission_status === 'submitted' && (
+                                    {(proposal?.content_submission_file_url || proposal?.content_submission_url) && proposal?.content_submission_status === 'submitted' && (
                                         <div className="text-xs text-muted-foreground text-center bg-muted/20 rounded-lg p-2">
                                             브랜드의 리뷰를 기다리고 있습니다...
                                         </div>

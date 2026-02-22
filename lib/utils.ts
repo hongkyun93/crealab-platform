@@ -28,3 +28,59 @@ export function formatPriceRange(price: number | undefined | null, isNegotiable:
   return `100만원 이상`;
 }
 
+// ── 정확한 날짜 유틸 (크리에이터/MCN 전용) ──────────────────────
+
+/** "2026.03.15" 형식으로 반환 */
+export function formatExactDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return ""
+  try {
+    // ISO 날짜를 timezone 오프셋 없이 로컬 기준으로 처리
+    const parts = dateStr.split('T')[0].split('-')
+    if (parts.length !== 3) return dateStr
+    const [year, month, day] = parts
+    return `${year}.${month}.${day}`
+  } catch {
+    return dateStr
+  }
+}
+
+/** "2026.03.15 ~ 04.02" 형식 (다중일 이벤트용) */
+export function formatDateRange(
+  start: string | null | undefined,
+  end: string | null | undefined
+): string {
+  if (!start) return "미정"
+  const s = formatExactDate(start)
+  if (!end) return s
+  const endParts = end.split('T')[0].split('-')
+  if (endParts.length !== 3) return s
+  const [, endMonth, endDay] = endParts
+  return `${s} ~ ${endMonth}.${endDay}`
+}
+
+/**
+ * 뷰 context에 따라 올바른 이벤트 날짜 표시.
+ * showExact = true: 크리에이터 본인 / MCN 관리 → 정확한 날짜
+ * showExact = false: 브랜드 탐색 → 년-월만
+ */
+export function displayEventDate(
+  item: { eventDate?: string; eventStartDate?: string; eventEndDate?: string },
+  showExact: boolean
+): string {
+  if (showExact && item.eventStartDate) {
+    return formatDateRange(item.eventStartDate, item.eventEndDate)
+  }
+  return formatDateToMonth(item.eventDate) || "미정"
+}
+
+/**
+ * 뷰 context에 따라 올바른 업로드 일정 표시.
+ */
+export function displayPostingDate(
+  item: { postingDate?: string; postingDateExact?: string; dateFlexible?: boolean },
+  showExact: boolean
+): string {
+  if (item.dateFlexible) return "협의 가능"
+  if (showExact && item.postingDateExact) return formatExactDate(item.postingDateExact)
+  return formatDateToMonth(item.postingDate) || "미정"
+}

@@ -563,7 +563,12 @@ function InfluencerDashboardContent() {
             const updatedBrand = brandProposals?.find((p: any) => p.id === chatProposal.id);
             const updatedCampaign = campaignProposals?.find((p: any) => p.id === chatProposal.id);
             const updatedMoment = (momentProposals as any[])?.find((p: any) => p.id === chatProposal.id);
-            const updated = updatedBrand || updatedCampaign || updatedMoment;
+            // [FIX] moment proposal은 brandProposals(mappedMoment)에도 포함되지만
+            // Realtime 업데이트 시 momentProposals(rawMomentProposals)만 갱신됨.
+            // updatedMoment가 있으면 최신 content 필드들을 brandProposal 위에 merge하여 사용.
+            const updated = updatedMoment
+                ? { ...(updatedBrand || updatedMoment), ...updatedMoment }
+                : updatedBrand || updatedCampaign;
             if (updated) {
                 setChatProposal(updated);
             }
@@ -628,18 +633,24 @@ function InfluencerDashboardContent() {
             let stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'completed' = 'negotiation';
 
             if (chatProposal.brand_condition_confirmed && chatProposal.influencer_condition_confirmed) stage = 'contract';
-            if (chatProposal.contract_status === 'signed') stage = 'shipping';
+            if (chatProposal.contract_status === 'signed') stage = 'contract'; // 계약 서명 완료 → 입금 대기
+            // [입금 확인 게이트] 관리자가 payment_confirmed_at 세팅 후에만 shipping으로 이동
+            if (chatProposal.contract_status === 'signed' && (chatProposal as any).payment_confirmed_at) stage = 'shipping';
             if (chatProposal.delivery_status === 'shipped' || chatProposal.delivery_status === 'delivered') stage = 'content';
             if (chatProposal.content_submission_url || chatProposal.content_submission_file_url) {
-                if (chatProposal.content_submission_status === 'approved' || chatProposal.status === 'completed') {
-                    stage = 'completed';
-                } else {
-                    stage = 'content';
-                }
+                stage = 'content'; // 초안 제출 → content 단계 유지
             }
-            if (chatProposal.status === 'completed') stage = 'completed';
+            // [FIX] 최종본(content_final_url) 제출 완료 시에만 completed로 이동
+            // 클린본(content_clean_url)은 계약에 따라 없을 수 있으므로 고려하지 않음
+            if (chatProposal.content_final_url || chatProposal.status === 'completed') {
+                stage = 'completed';
+            }
 
             useWorkspaceStore.getState().setCurrentStage(stage);
+
+            // Auto-open VideoReviewPanel when content has been submitted
+            const hasSubmittedContent = !!(chatProposal.content_submission_url || chatProposal.content_submission_file_url)
+            useWorkspaceStore.getState().setVideoReviewOpen(hasSubmittedContent && (stage === 'content' || stage === 'completed'))
         }
     }, [chatProposal]);
 
@@ -1859,14 +1870,14 @@ function InfluencerDashboardContent() {
                         setCurrentView('proposals')
 
                         // Auto-send Rate Card
-                        if (user) {
+                        if (displayUser) {
                             const rateCardData = {
-                                priceVideo: user.priceVideo,
-                                priceFeed: user.priceFeed,
-                                usageRightsPrice: user.usageRightsPrice,
-                                usageRightsMonth: user.usageRightsMonth,
-                                autoDmPrice: user.autoDmPrice,
-                                autoDmMonth: user.autoDmMonth
+                                priceVideo: displayUser.priceVideo,
+                                priceFeed: displayUser.priceFeed,
+                                usageRightsPrice: displayUser.usageRightsPrice,
+                                usageRightsMonth: displayUser.usageRightsMonth,
+                                autoDmPrice: displayUser.autoDmPrice,
+                                autoDmMonth: displayUser.autoDmMonth
                             };
                             const rateCardMsg = `[RATE_CARD_JSON]${JSON.stringify(rateCardData)}`;
 
@@ -2392,7 +2403,7 @@ function InfluencerDashboardContent() {
                         handleOpenDetails={handleOpenDetails}
                         deleteEvent={deleteEvent}
                         updateEvent={updateEvent}
-                        user={user}
+                        user={displayUser}
                     />
                 )
 
@@ -2573,7 +2584,7 @@ function InfluencerDashboardContent() {
                                                 <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                                                     <Banknote className="h-3.5 w-3.5 text-blue-500" />
                                                     <span className="text-muted-foreground shrink-0">예상 단가:</span>
-                                                    <span className="font-bold text-blue-600">{formatPriceRange(user?.priceVideo || 0)}</span>
+                                                    <span className="font-bold text-blue-600">{formatPriceRange(displayUser?.priceVideo || 0)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -2945,7 +2956,7 @@ function InfluencerDashboardContent() {
         setMotivation("")
         setContentPlan("")
         setPortfolioLinks("")
-        setInstagramHandle(user?.handle || "") // Pre-fill handle if available
+        setInstagramHandle(displayUser?.handle || "") // Pre-fill handle if available
         setInsightFile(null)
         setIsApplyDialogOpen(true)
     }
@@ -3247,20 +3258,22 @@ function InfluencerDashboardContent() {
                                     </div>
                                 )}
 
-                                <div className="flex items-center gap-3 px-2 py-4">
-                                    <Avatar className="h-12 w-12">
-                                        <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
-                                        <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <h2 className="font-bold">{user?.name || "사용자"}</h2>
-                                        {user?.tags?.[0] && (
-                                            <p className="text-xs text-muted-foreground">
-                                                🏷 {user.tags[0]}
-                                            </p>
-                                        )}
+                                {!isProxyMode && (
+                                    <div className="flex items-center gap-3 px-2 py-4">
+                                        <Avatar className="h-12 w-12">
+                                            <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
+                                            <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <h2 className="font-bold">{user?.name || "사용자"}</h2>
+                                            {user?.tags?.[0] && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    🏷 {user.tags[0]}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                                 <nav className="space-y-2">
                                     <Button
                                         variant={currentView === "dashboard" ? "secondary" : "ghost"}
@@ -3352,7 +3365,7 @@ function InfluencerDashboardContent() {
                                 </nav>
 
                                 {/* MCN Management Tools (Sidebar) */}
-                                {isMCN && (
+                                {isMCN && !isProxyMode && (
                                     <div className="p-4 space-y-6 overflow-y-auto border-t">
                                         <div className="flex items-center gap-2 mb-2">
                                             <Building2 className="h-4 w-4 text-primary" />
