@@ -3,10 +3,10 @@
 -- shipping_phone: 연락처
 -- shipping_address: 주소
 
--- 1. brand_proposals
-ALTER TABLE brand_proposals ADD COLUMN IF NOT EXISTS receiver_name TEXT;
-ALTER TABLE brand_proposals ADD COLUMN IF NOT EXISTS shipping_phone TEXT;
-ALTER TABLE brand_proposals ADD COLUMN IF NOT EXISTS shipping_address TEXT;
+-- 1. product_applications
+ALTER TABLE product_applications ADD COLUMN IF NOT EXISTS receiver_name TEXT;
+ALTER TABLE product_applications ADD COLUMN IF NOT EXISTS shipping_phone TEXT;
+ALTER TABLE product_applications ADD COLUMN IF NOT EXISTS shipping_address TEXT;
 
 -- 2. campaign_applications
 ALTER TABLE campaign_applications ADD COLUMN IF NOT EXISTS receiver_name TEXT;

@@ -277,8 +277,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 .insert({
                     sender_id: userId,
                     receiver_id: receiverId,
-                    proposal_id: proposalId,
-                    product_application_id: brandProposalId,
+                    proposal_id: proposalId || brandProposalId,
                     workspace_id: workspaceId || null,
                     content: content || '',
                     file_url: file?.url,

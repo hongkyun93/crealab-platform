@@ -27,15 +27,17 @@ CREATE POLICY "admin_read_life_moments"
   ON public.life_moments FOR SELECT
   USING (public.is_admin());
 
--- ── brand_proposals ──────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "admin_read_brand_proposals" ON public.brand_proposals;
-CREATE POLICY "admin_read_brand_proposals"
-  ON public.brand_proposals FOR SELECT
+-- ── product_applications ───────────────────────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "admin_read_brand_proposals" ON public.product_applications;
+DROP POLICY IF EXISTS "admin_update_brand_proposals" ON public.product_applications;
+DROP POLICY IF EXISTS "admin_read_product_applications" ON public.product_applications;
+DROP POLICY IF EXISTS "admin_update_product_applications" ON public.product_applications;
+CREATE POLICY "admin_read_product_applications"
+  ON public.product_applications FOR SELECT
   USING (public.is_admin());
 
-DROP POLICY IF EXISTS "admin_update_brand_proposals" ON public.brand_proposals;
-CREATE POLICY "admin_update_brand_proposals"
-  ON public.brand_proposals FOR UPDATE
+CREATE POLICY "admin_update_product_applications"
+  ON public.product_applications FOR UPDATE
   USING (public.is_admin());
 
 -- ── moment_proposals ─────────────────────────────────────────────────────────

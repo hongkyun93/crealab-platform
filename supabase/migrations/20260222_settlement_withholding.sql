@@ -112,11 +112,11 @@ BEGIN
   END IF;
 
   -- ── Resolve per-table fields ──────────────────────────────────────────────
-  IF TG_TABLE_NAME = 'brand_proposals' THEN
+  IF TG_TABLE_NAME = 'product_applications' THEN
     v_creator_id  := NEW.influencer_id;
     v_brand_id    := NEW.brand_id;
     v_price_offer := COALESCE(NEW.price_offer, 0);
-    v_prop_type   := 'brand_proposal';
+    v_prop_type   := 'product_application';
     v_prop_id     := NEW.id::text;
 
   ELSIF TG_TABLE_NAME = 'moment_proposals' THEN
@@ -195,12 +195,13 @@ END;
 $$;
 
 -- Triggers
-DROP TRIGGER IF EXISTS trg_settlement_on_brand_proposal_complete   ON public.brand_proposals;
-DROP TRIGGER IF EXISTS trg_settlement_on_moment_proposal_complete  ON public.moment_proposals;
-DROP TRIGGER IF EXISTS trg_settlement_on_campaign_app_complete     ON public.campaign_applications;
+DROP TRIGGER IF EXISTS trg_settlement_on_product_application_complete ON public.product_applications;
+DROP TRIGGER IF EXISTS trg_settlement_on_brand_proposal_complete      ON public.product_applications;
+DROP TRIGGER IF EXISTS trg_settlement_on_moment_proposal_complete     ON public.moment_proposals;
+DROP TRIGGER IF EXISTS trg_settlement_on_campaign_app_complete        ON public.campaign_applications;
 
-CREATE TRIGGER trg_settlement_on_brand_proposal_complete
-AFTER UPDATE OF status ON public.brand_proposals
+CREATE TRIGGER trg_settlement_on_product_application_complete
+AFTER UPDATE OF status ON public.product_applications
 FOR EACH ROW EXECUTE FUNCTION public.fn_auto_create_settlement();
 
 CREATE TRIGGER trg_settlement_on_moment_proposal_complete

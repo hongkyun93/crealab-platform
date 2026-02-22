@@ -4,7 +4,7 @@ DROP TABLE IF EXISTS public.workspace_files CASCADE;
 CREATE TABLE public.workspace_files (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     workspace_id uuid,              -- 모든 proposal 타입 공통 격리 키
-    brand_proposal_id uuid REFERENCES public.product_applications(id) ON DELETE CASCADE,
+    product_application_id uuid REFERENCES public.product_applications(id) ON DELETE CASCADE,
     proposal_id uuid,               -- campaign_application ID
     moment_proposal_id uuid,        -- moment_proposal ID
     uploader_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -36,6 +36,6 @@ CREATE POLICY "workspace_files_delete" ON public.workspace_files
 
 -- 빠른 조회를 위한 인덱스
 CREATE INDEX IF NOT EXISTS workspace_files_workspace_id_idx ON public.workspace_files(workspace_id);
-CREATE INDEX IF NOT EXISTS workspace_files_brand_proposal_id_idx ON public.workspace_files(brand_proposal_id);
+CREATE INDEX IF NOT EXISTS workspace_files_product_application_id_idx ON public.workspace_files(product_application_id);
 CREATE INDEX IF NOT EXISTS workspace_files_proposal_id_idx ON public.workspace_files(proposal_id);
 CREATE INDEX IF NOT EXISTS workspace_files_moment_proposal_id_idx ON public.workspace_files(moment_proposal_id);

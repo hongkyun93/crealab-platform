@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.settlements (
   creator_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   brand_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   -- Source proposal info
-  proposal_type text NOT NULL CHECK (proposal_type IN ('brand_proposal', 'moment_proposal', 'campaign_application')),
+  proposal_type text NOT NULL CHECK (proposal_type IN ('product_application', 'moment_proposal', 'campaign_application')),
   proposal_id text NOT NULL, -- uuid stored as text for polymorphic FK
   workspace_id uuid REFERENCES public.workspaces(id) ON DELETE SET NULL,
   -- Financial

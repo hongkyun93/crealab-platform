@@ -13,11 +13,11 @@ ALTER TABLE public.submission_feedback
 COMMENT ON COLUMN public.submission_feedback.video_timestamp_seconds
   IS 'If set, this feedback is a video bookmark at the given second. NULL = plain text feedback.';
 
--- 2. brand_proposals: Add brand final approval timestamp
-ALTER TABLE public.brand_proposals
+-- 2. product_applications: Add brand final approval timestamp
+ALTER TABLE public.product_applications
   ADD COLUMN IF NOT EXISTS content_final_approved_at TIMESTAMPTZ;
 
-COMMENT ON COLUMN public.brand_proposals.content_final_approved_at
+COMMENT ON COLUMN public.product_applications.content_final_approved_at
   IS 'Timestamp when brand gave final approval for the submitted content. Unlocks final/clean version upload for creator.';
 
 -- 3. campaign_applications: same field
@@ -34,11 +34,11 @@ ALTER TABLE public.moment_proposals
 COMMENT ON COLUMN public.moment_proposals.content_final_approved_at
   IS 'Timestamp when brand gave final approval for the submitted content.';
 
--- 5. brand_proposals: content_revision_requested_at
-ALTER TABLE public.brand_proposals
+-- 5. product_applications: content_revision_requested_at
+ALTER TABLE public.product_applications
   ADD COLUMN IF NOT EXISTS content_revision_requested_at TIMESTAMPTZ;
 
-COMMENT ON COLUMN public.brand_proposals.content_revision_requested_at
+COMMENT ON COLUMN public.product_applications.content_revision_requested_at
   IS 'Set when brand clicks "검토 완료". Unlocks revision upload for creator. Cleared (set NULL) after creator uploads a new revision.';
 
 -- 6. campaign_applications: content_revision_requested_at

@@ -43,9 +43,9 @@ BEGIN
             COALESCE(moment_stats.total_moments, 0) AS total_moments,
             COALESCE(moment_stats.active_moments, 0) AS active_moments,
             -- Brand Proposals stats
-            COALESCE(bp_stats.total_proposals, 0) AS total_brand_proposals,
-            COALESCE(bp_stats.pending_proposals, 0) AS pending_brand_proposals,
-            COALESCE(bp_stats.active_proposals, 0) AS active_brand_proposals,
+            COALESCE(bp_stats.total_proposals, 0) AS total_product_applications,
+            COALESCE(bp_stats.pending_proposals, 0) AS pending_product_applications,
+            COALESCE(bp_stats.active_proposals, 0) AS active_product_applications,
             COALESCE(bp_stats.total_revenue, 0) AS brand_revenue,
             -- Moment Proposals stats
             COALESCE(mp_stats.total_proposals, 0) AS total_moment_proposals,
@@ -73,7 +73,7 @@ BEGIN
                 COUNT(*) FILTER (WHERE bp.status = 'offered') AS pending_proposals,
                 COUNT(*) FILTER (WHERE bp.status IN ('accepted', 'active', 'in_progress')) AS active_proposals,
                 COALESCE(SUM(bp.price_offer) FILTER (WHERE bp.status IN ('accepted', 'active', 'in_progress', 'completed')), 0) AS total_revenue
-            FROM public.brand_proposals bp
+            FROM public.product_applications bp
             WHERE bp.influencer_id = tm.user_id
         ) bp_stats ON true
         -- Moment Proposals stats
@@ -132,7 +132,7 @@ BEGIN
         -- Brand Proposals
         SELECT
             bp.id,
-            'brand_proposal' AS proposal_type,
+            'product_application' AS proposal_type,
             bp.status,
             bp.product_name,
             bp.price_offer,
@@ -148,7 +148,7 @@ BEGIN
             bp.influencer_condition_confirmed,
             bp.contract_status,
             bp.delivery_status
-        FROM public.brand_proposals bp
+        FROM public.product_applications bp
         JOIN public.profiles inf ON inf.id = bp.influencer_id
         JOIN public.profiles brand ON brand.id = bp.brand_id
         WHERE bp.influencer_id IN (
