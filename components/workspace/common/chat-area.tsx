@@ -173,8 +173,11 @@ export function ChatArea({ className }: ChatAreaProps) {
 
         setIsSending(true);
         try {
-            // workspaceId를 기본 격리 키로 전송 (모든 proposal 타입 공통)
-            await sendMessage(otherId, msgContent, uploadedFile, undefined, undefined, workspaceId);
+            // workspace_id 우선, 없으면 proposal 타입별 ID를 fallback으로 전달
+            // → 메시지에 식별자가 반드시 하나 이상 존재하도록 보장
+            const fallbackProposalId = (isCampaignProposal || isMomentProposal) ? proposalIdStr : undefined;
+            const fallbackProductApplicationId = (!isCampaignProposal && !isMomentProposal) ? proposalIdStr : undefined;
+            await sendMessage(otherId, msgContent, uploadedFile, fallbackProposalId, fallbackProductApplicationId, workspaceId);
         } catch (e) {
             console.error('[ChatArea] Message send failed:', e);
             setChatMessage(msgContent);
