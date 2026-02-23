@@ -1477,7 +1477,7 @@ function BrandDashboardContent() {
                 return (
                     <DepositView
                         userId={user?.id as string}
-                        depositBalance={displayUser?.deposit_balance || 0}
+                        depositBalance={(displayUser as any)?.deposit_balance || 0}
                         onBalanceRefresh={refreshData}
                     />
                 )
