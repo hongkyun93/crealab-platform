@@ -1,18 +1,15 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/components/providers/auth-provider"
 import { useTeam } from "@/components/providers/team-provider"
-import {
-    FileText, Loader2, Filter, ArrowUpDown, Check, X,
-    Calendar, Package, Megaphone, Sparkles, ChevronRight
-} from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ArrowUpDown, Calendar, Check, ChevronRight, FileText, Filter, Loader2, Megaphone, Package, Sparkles, X } from "lucide-react"
+import React, { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 interface TeamProposal {
@@ -57,31 +54,42 @@ const TYPE_MAP: Record<string, { label: string; color: string; icon: typeof File
 }
 
 // Progress bar computation
-function getProgressStage(p: TeamProposal): { stage: number; label: string } {
-    if (p.status === 'rejected' || p.status === 'cancelled') return { stage: 0, label: '취소/거절' }
-    if (p.status === 'completed') return { stage: 5, label: '완료' }
-    if (p.delivery_status === 'shipped' || p.delivery_status === 'delivered') return { stage: 4, label: '배송' }
-    if (p.contract_status === 'signed') return { stage: 3, label: '계약서' }
-    if (p.brand_condition_confirmed && p.influencer_condition_confirmed) return { stage: 2, label: '조건확정' }
-    if (p.status === 'accepted' || p.brand_condition_confirmed) return { stage: 1, label: '협의중' }
-    return { stage: 0, label: '제안' }
+function getProgressStage(p: TeamProposal): { stage: number; label: string; paymentPending: boolean } {
+    if (p.status === 'rejected' || p.status === 'cancelled') return { stage: 0, label: '취소/거절', paymentPending: false }
+    if (p.status === 'completed') return { stage: 5, label: '완료', paymentPending: false }
+    if (p.delivery_status === 'shipped' || p.delivery_status === 'delivered') return { stage: 4, label: '배송', paymentPending: false }
+    if (p.contract_status === 'signed') {
+        const paid = !!(p as any).payment_confirmed_at
+        return { stage: 3, label: '계약서', paymentPending: !paid }
+    }
+    if (p.brand_condition_confirmed && p.influencer_condition_confirmed) return { stage: 2, label: '조건확정', paymentPending: false }
+    if (p.status === 'accepted' || p.brand_condition_confirmed) return { stage: 1, label: '협의중', paymentPending: false }
+    return { stage: 0, label: '제안', paymentPending: false }
 }
 
 const PROGRESS_STAGES = ['제안', '협의', '계약', '배송', '완료']
 
-function ProgressBar({ stage }: { stage: number }) {
+function ProgressBar({ stage, paymentPending }: { stage: number; paymentPending?: boolean }) {
     return (
         <div className="flex items-center gap-0.5 w-28">
             {PROGRESS_STAGES.map((_, i) => (
-                <div
-                    key={i}
-                    className={`h-1.5 flex-1 rounded-full transition-colors ${i < stage
-                        ? 'bg-emerald-500'
-                        : i === stage && stage > 0
-                            ? 'bg-amber-400'
-                            : 'bg-muted'
-                        }`}
-                />
+                <React.Fragment key={i}>
+                    <div
+                        className={`h-1.5 flex-1 rounded-full transition-colors ${i < stage
+                            ? 'bg-emerald-500'
+                            : i === stage && stage > 0
+                                ? 'bg-amber-400'
+                                : 'bg-muted'
+                            }`}
+                    />
+                    {/* 결제 도트: 계약(i=2)과 배송(i=3) 사이 */}
+                    {i === 2 && paymentPending && (
+                        <div className="relative flex items-center justify-center mx-0.5 shrink-0">
+                            <span className="absolute w-2.5 h-2.5 rounded-full bg-orange-400/40 animate-ping" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 z-10" />
+                        </div>
+                    )}
+                </React.Fragment>
             ))}
         </div>
     )
@@ -369,7 +377,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
                                             {/* Progress */}
                                             <td className="p-3">
                                                 <div className="flex flex-col items-center gap-1">
-                                                    <ProgressBar stage={progress.stage} />
+                                                    <ProgressBar stage={progress.stage} paymentPending={progress.paymentPending} />
                                                     <span className="text-[10px] text-muted-foreground">{progress.label}</span>
                                                 </div>
                                             </td>

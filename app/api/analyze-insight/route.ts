@@ -1,6 +1,6 @@
+import { createClient } from "@/lib/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
     // Auth check
@@ -18,6 +18,7 @@ export async function POST(req: Request) {
 
         const formData = await req.formData();
         const file = formData.get("image") as File;
+        const platform = (formData.get("platform") as string) || "instagram";
         if (!file) {
             return NextResponse.json({ error: "No image provided" }, { status: 400 });
         }
@@ -28,23 +29,35 @@ export async function POST(req: Request) {
         const mimeType = file.type || "image/png";
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash" });
+
+
+        const PLATFORM_LABELS: Record<string, string> = {
+            instagram: "Instagram",
+            youtube: "YouTube Studio",
+            tiktok: "TikTok Studio",
+            blog: "네이버 블로그 / 티스토리",
+        };
+        const platformLabel = PLATFORM_LABELS[platform] || "SNS";
 
         const prompt = `당신은 인플루언서 마케팅 데이터 분석 전문가입니다.
-이 이미지는 Instagram 인사이트 스크린샷입니다. 이미지에서 다음 데이터를 추출해주세요.
+이 이미지는 ${platformLabel} 인사이트 스크린샷입니다. 이미지에서 다음 데이터를 추출해주세요.
+${platform === 'youtube' ? '\n[YouTube 참고] 조회수=views, 시청 시간=watchTime, 구독자=subscribers, 좋아요=likes, 댓글=comments' : ''}
+${platform === 'tiktok' ? '\n[TikTok 참고] 재생수=views, 좋아요=likes, 공유=shares, 저장=saves, 댓글=comments, 팔로워=followers' : ''}
+${platform === 'blog' ? '\n[블로그 참고] 방문자=views, 공감=likes, 댓글=comments, 구독=followers' : ''}
 
 반드시 아래의 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요.
 값을 찾을 수 없으면 null로 설정하세요.
 
 {
   "metrics": {
-    "views": <조회수 숫자>,
+    "views": <조회수/재생수 숫자>,
     "likes": <좋아요 숫자>,
     "comments": <댓글 숫자>,
     "shares": <공유 숫자>,
     "saves": <저장 숫자>,
     "reposts": <리포스트 숫자>,
-    "followers": <팔로워 수>,
+    "followers": <팔로워/구독자 수>,
     "newFollowers": <신규 팔로워>,
     "reach": <도달 수>,
     "interactions": <상호작용 수>,
@@ -57,7 +70,7 @@ export async function POST(req: Request) {
     "search": <검색 비율 숫자>,
     "other": <기타 비율 숫자>
   },
-  "screenshotType": "<post_insight | account_dashboard | reel_insight | story_insight | unknown>",
+  "screenshotType": "<post_insight | account_dashboard | reel_insight | story_insight | video_insight | unknown>",
   "rawText": "<이미지에서 읽은 핵심 텍스트 요약>"
 }`;
 
@@ -90,10 +103,13 @@ export async function POST(req: Request) {
             }, { status: 500 });
         }
 
-        // Calculate engagement rate and recommended price
+        // Calculate engagement rate — platform별 기준 다름
         const m = extracted.metrics || {};
         const totalEngagement = (m.likes || 0) + (m.comments || 0) + (m.shares || 0) + (m.saves || 0) + (m.reposts || 0);
-        const baseCount = m.views || m.reach || m.followers || 1;
+        // YouTube: views 기준, TikTok: views 기준, Instagram: reach 기준, 블로그: views 기준
+        const baseCount = platform === 'instagram'
+            ? (m.reach || m.views || m.followers || 1)
+            : (m.views || m.reach || m.followers || 1);
         const engagementRate = (totalEngagement / baseCount) * 100;
 
         // Engagement multiplier

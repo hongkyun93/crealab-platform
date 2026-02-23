@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, MoreHorizontal, Banknote } from "lucide-react"
-import { formatPriceRange, formatDateToMonth } from "@/lib/utils"
+import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
+import { Banknote, ChevronRight } from "lucide-react"
 
 interface MomentCompactRowProps {
     moment: any

@@ -1,17 +1,10 @@
 "use client"
 
-import React, { useState } from 'react'
+import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
-import {
-    Search, MapPin, DollarSign, Calendar, Clock,
-    Briefcase, Globe, Star, Zap, Filter, Heart,
-    Share2, Bookmark, CheckCircle2, AlertCircle,
-    Camera, Video, PenTool, Layout, Grid, List
-} from "lucide-react"
+import { Bookmark, Briefcase, Camera, Clock, DollarSign, Heart, MapPin, Star, Zap } from "lucide-react"
+import { useState } from 'react'
 
 // --- Rich Realistic Mock Data (Campaign Search Context) ---
 const CAMPAIGN_DATA_POOL = [

@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Megaphone, Search, ChevronRight } from "lucide-react"
+import { ChevronRight, Megaphone } from "lucide-react"
 
 interface ApplicationListRowProps {
     app: any

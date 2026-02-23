@@ -9,16 +9,8 @@ export const usePlatform = useUnifiedProvider
 
 // Re-export types that were previously exported from platform-provider
 export type {
-    User,
-    Campaign,
-    InfluencerEvent,
-    Product,
-    Proposal,
-    ProductApplication,
-    Message,
-    Notification,
-    SubmissionFeedback,
-    Favorite
+    Campaign, Favorite, InfluencerEvent, Message,
+    Notification, Product, ProductApplication, Proposal, SubmissionFeedback, User
 } from "@/lib/types"
 
 // Mock users for development (if needed)

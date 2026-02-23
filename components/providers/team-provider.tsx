@@ -1,9 +1,9 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useMemo } from "react"
-import { useAuth } from "./auth-provider"
+import { Team, TeamInvitation, TeamMember, TeamRole } from "@/lib/types/team"
 import { useRouter } from "next/navigation"
-import { Team, TeamMember, TeamRole, TeamInvitation } from "@/lib/types/team"
+import { createContext, useContext, useEffect, useMemo, useState } from "react"
+import { useAuth } from "./auth-provider"
 
 interface TeamContextType {
     teams: Team[]

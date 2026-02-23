@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState } from "react"
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Star, MapPin, Send, ExternalLink, Calendar, Gift, Instagram, Youtube, Music2, BookOpen, ChevronRight, ArrowUpRight, Sparkles, Film, Camera, CircleDot } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { ArrowUpRight, BookOpen, Calendar, Camera, ChevronRight, CircleDot, ExternalLink, Film, Gift, Instagram, MapPin, Music2, Send, Sparkles, Star, Youtube } from "lucide-react"
+import React, { useState } from "react"
 
 // ============================================================
 // Shared Data & Utilities

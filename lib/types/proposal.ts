@@ -303,4 +303,5 @@ export interface MomentProposal {
     channel_name?: string
     channel_url?: string
     channel_subtype?: string
+    payment_confirmed_at?: string | null // [입금 확인 게이트]
 }

@@ -1,14 +1,12 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import {
-    ArrowRight, Sparkles, Users, Building2, Zap,
-    Target, Heart, Clock, CheckCircle2, Shield,
-    Star, TrendingUp, Search
+    ArrowRight, Building2, CheckCircle2, Clock, Heart, Search, Shield, Sparkles, Star, Target, TrendingUp, Users, Zap
 } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useRef, useState } from "react"
 
 // ───── Animated Counter ─────
 function AnimatedCounter({ target, suffix = "", duration = 2000 }: { target: number, suffix?: string, duration?: number }) {

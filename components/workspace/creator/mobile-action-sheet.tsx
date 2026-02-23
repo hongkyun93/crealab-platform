@@ -1,8 +1,6 @@
 
-import React from 'react';
 import { CtaButton } from '../common/cta-button';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
-import { cn } from '@/lib/utils';
 
 export function MobileActionSheet() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);

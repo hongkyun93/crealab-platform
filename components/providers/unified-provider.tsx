@@ -4,13 +4,12 @@ import React from "react"
 import { AuthProvider, useAuth } from "./auth-provider"
 import { CampaignProvider, useCampaigns } from "./campaign-provider"
 import { EventProvider, useEvents } from "./event-provider"
+import { FavoriteProvider, useFavorites } from "./favorite-provider"
+import { MessageProvider, useMessages } from "./message-provider"
 import { ProductProvider, useProducts } from "./product-provider"
 import { ProposalProvider, useProposals } from "./proposal-provider"
-import { MessageProvider, useMessages } from "./message-provider"
-import { FavoriteProvider, useFavorites } from "./favorite-provider"
-import { TeamProvider, useTeam } from "./team-provider"
 import { SocialChannelsProvider, useSocialChannels } from "./social-channels-provider"
-import { createClient } from "@/lib/supabase/client"
+import { TeamProvider, useTeam } from "./team-provider"
 
 // Context for triggering public events load (lazy)
 const PublicEventsContext = React.createContext<() => void>(() => { })

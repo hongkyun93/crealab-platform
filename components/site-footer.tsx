@@ -41,8 +41,9 @@ export function SiteFooter() {
                             <p>사업자등록번호: 457-88-02482</p>
                             <p>통신판매업신고: 제2025-서울마포-1566호</p>
                             <p>주소: 03911 서울 마포구 매봉산로 18 마포창업복지관 502호</p>
-                            <p>이메일: hongkyun.kim@kaist.ac.kr | 전화번호: 0507-1329-2537</p>
-                            <p>개인정보보호책임자: 김홍균 (hongkyun.kim@kaist.ac.kr)</p>
+                            <p>이메일: ivsb0525@gmail.com | 전화번호: 0507-1329-2537</p>
+                            <p>개인정보보호책임자: 김수민 (ivsb0525@gmail.com)</p>
+
                         </div>
                     </div>
                 </div>

@@ -1,5 +1,6 @@
 "use client"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -7,10 +8,9 @@ import {
     DialogDescription,
     DialogFooter,
     DialogHeader,
-    DialogTitle,
+    DialogTitle
 } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { ChevronRight, FileText, Megaphone, Pencil, Rocket, ShoppingBag, Trash2 } from "lucide-react"
+import { ChevronRight, Megaphone, Pencil, Rocket, ShoppingBag, Trash2 } from "lucide-react"
 
 interface DetailsModalProps {
     isOpen: boolean

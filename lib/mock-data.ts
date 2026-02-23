@@ -1,4 +1,4 @@
-import { InfluencerEvent, Product } from "@/lib/types"
+import { InfluencerEvent, Product } from "@/lib/types";
 
 export const MOCK_PRODUCTS: Product[] = [
     // Tech & Electronics

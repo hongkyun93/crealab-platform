@@ -1,21 +1,18 @@
 "use client"
 
-import React from "react"
-import { Card, CardHeader, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-    Calendar, Gift, Send, Banknote, Star, Lock, Trash2, Pencil,
-} from "lucide-react"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Banknote, Calendar, Gift, Lock, Pencil, Send, Star, Trash2 } from "lucide-react"
+import React from "react"
 
+import { CreatorProfileCard } from "@/components/profile/CreatorProfileCard"
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog"
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
-import { CreatorProfileCard } from "@/components/profile/CreatorProfileCard"
-import { toast } from "sonner"
 import { useState } from "react"
+import { toast } from "sonner"
 
 // ─── Platform Icon helpers ──────────────────────────────────
 const PLATFORM_ICONS: Record<string, React.ReactNode> = {

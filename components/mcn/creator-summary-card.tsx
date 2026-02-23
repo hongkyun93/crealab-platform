@@ -1,10 +1,9 @@
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ChevronRight, Instagram, Calendar, FileText, TrendingUp } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Calendar, ChevronRight, FileText, Instagram, TrendingUp } from "lucide-react"
 
 export type CreatorStatus = 'urgent' | 'active' | 'idle' | 'normal'
 

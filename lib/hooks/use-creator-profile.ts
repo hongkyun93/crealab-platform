@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState } from 'react'
 
 export interface CreatorProfile {
     id: string

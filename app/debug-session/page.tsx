@@ -1,8 +1,8 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
-import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useEffect, useState } from "react"
 
 export default function DebugSessionPage() {
     const [clientSession, setClientSession] = useState<any>(null)

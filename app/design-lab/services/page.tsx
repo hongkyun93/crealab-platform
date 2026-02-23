@@ -1,17 +1,14 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
-    ArrowRight, Sparkles, Users, Building2, Briefcase,
-    Calendar, Shield, MessageSquare, FileText, Target,
-    Zap, BarChart3, Search, Star, Clock, Lock,
-    Megaphone, Package, CheckCircle2, Heart, Globe,
-    UserPlus, Eye, Banknote, Layers, ChevronDown, Gift
+    ArrowRight, Banknote, BarChart3, Briefcase, Building2, Calendar, CheckCircle2, ChevronDown, Clock, Eye, FileText, Gift, Globe, Heart, Layers, Lock,
+    Megaphone, MessageSquare, Package, Search, Shield, Sparkles, Star, Target, UserPlus, Users, Zap
 } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useRef, useState } from "react"
 
 // ───── Scroll Reveal ─────
 function useScrollReveal() {

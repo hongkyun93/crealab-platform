@@ -1,8 +1,7 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
-import { Loader2, CheckCircle2, XCircle, ChevronUp, ChevronDown, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { CheckCircle2, ChevronDown, Loader2, X, XCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface LoadingState {
     name: string

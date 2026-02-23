@@ -1,15 +1,10 @@
-import * as React from "react"
 import {
-    AlertDialog,
-    AlertDialogContent,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogCancel,
-    AlertDialogAction,
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    AlertDialogFooter, AlertDialogHeader,
+    AlertDialogTitle
 } from "@/components/ui/alert-dialog"
 import { Loader2 } from "lucide-react"
+import * as React from "react"
 
 interface ConfirmDialogProps {
     open: boolean

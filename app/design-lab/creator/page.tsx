@@ -1,6 +1,6 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Image, MessageSquare, Search } from "lucide-react"
 import Link from "next/link"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Search, Image, MessageSquare, User } from "lucide-react"
 
 export default function CreatorDesignLabPage() {
     return (

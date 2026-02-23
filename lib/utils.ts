@@ -84,3 +84,29 @@ export function displayPostingDate(
   if (showExact && item.postingDateExact) return formatExactDate(item.postingDateExact)
   return formatDateToMonth(item.postingDate) || "미정"
 }
+
+/**
+ * UTM 트래킹 링크 생성.
+ * 크리에이터별 고유 링크로 캠페인 성과 측정에 사용.
+ *
+ * @param baseUrl 브랜드 제품 URL
+ * @param proposalId 제안서 ID (캠페인 식별)
+ * @param creatorId 크리에이터 ID (크리에이터 식별)
+ */
+export function generateUTMLink(
+  baseUrl: string,
+  proposalId: string,
+  creatorId: string
+): string {
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set('utm_source', 'creadypick');
+    url.searchParams.set('utm_medium', 'influencer');
+    url.searchParams.set('utm_campaign', proposalId);
+    url.searchParams.set('utm_content', creatorId);
+    return url.toString();
+  } catch {
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}utm_source=creadypick&utm_medium=influencer&utm_campaign=${proposalId}&utm_content=${creatorId}`;
+  }
+}

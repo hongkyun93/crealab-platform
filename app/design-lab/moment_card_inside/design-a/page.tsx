@@ -9,13 +9,12 @@
  */
 
 import { SiteHeader } from "@/components/site-header"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
-    ArrowLeft, Calendar, BadgeCheck, MessageCircle, Share2,
-    Package, Lock, Tv, Instagram, Youtube, Music, FileText, Globe
+    ArrowLeft, BadgeCheck, Calendar, FileText, Globe, Instagram, Lock, MessageCircle, Music, Package, Share2, Tv, Youtube
 } from "lucide-react"
 import Link from "next/link"
 

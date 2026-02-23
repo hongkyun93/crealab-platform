@@ -1,16 +1,16 @@
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
     Table,
     TableBody,
     TableCell,
     TableHead,
     TableHeader,
-    TableRow,
+    TableRow
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Star, ExternalLink } from "lucide-react"
-import Link from "next/link"
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
+import { ExternalLink, Star } from "lucide-react"
+import Link from "next/link"
 
 interface DiscoverTableViewProps {
     filteredEvents: any[]

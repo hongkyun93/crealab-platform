@@ -1,15 +1,13 @@
 "use client"
 
-import React, { useState } from 'react'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
-    Calendar, Heart, MessageCircle, Share2, MoreVertical,
-    MapPin, ArrowRight, Star, Bookmark, Send, Eye,
-    TrendingUp, ExternalLink, Play
+    Calendar, Heart, MessageCircle, MoreVertical, Share2, Star, TrendingUp
 } from "lucide-react"
+import { useState } from 'react'
 
 // --- Mock Data (Realistic Rich Data) ---
 const MOCK_MOMENTS = [

@@ -1,29 +1,76 @@
 "use client"
 
-import React, { useState } from 'react';
-import { ProgressBar } from '../common/progress-bar';
-import { StageCard } from '../common/stage-card';
-import { CtaButton } from '../common/cta-button';
-import { useWorkspaceStore } from '../hooks/use-workspace-store';
-import { ConditionsPanel } from '../common/conditions-panel';
+import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useUnifiedProvider } from '@/components/providers/unified-provider';
-import { Proposal } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { ConditionsPanel } from '../common/conditions-panel';
+import { ProgressBar } from '../common/progress-bar';
+import { StageCard } from '../common/stage-card';
+import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
-import { SmartContractPanel } from '../common/smart-contract-panel';
-import { FileText, CheckCircle2, Package, Truck, MapPin, Loader2, Video, Eye, Download, MessageSquare } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/components/providers/auth-provider';
+import { BarChart3, CheckCircle2, Download, Eye, FileText, Loader2, MapPin, MessageSquare, Package, Truck, Video } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function InfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
     const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData, sendNotification } = useUnifiedProvider();
+    const { supabase } = useAuth();
     const [trackingInput, setTrackingInput] = useState('');
     const [isShipping, setIsShipping] = useState(false);
+
+    // 성과 데이터 상태
+    const [performance, setPerformance] = useState<any>(null);
+    const [perfLoading, setPerfLoading] = useState(false);
+    const [utmClicks, setUtmClicks] = useState('');
+    const [conversions, setConversions] = useState('');
+    const [revenue, setRevenue] = useState('');
+    const [isSavingPerf, setIsSavingPerf] = useState(false);
+
+    // 관리자가 입금 확인하면 자동으로 shipping 단계로 전환
+    useEffect(() => {
+        const paid = !!(proposal as any)?.payment_confirmed_at;
+        const stage = useWorkspaceStore.getState().currentStage;
+        if (paid && stage === 'contract') {
+            useWorkspaceStore.getState().setCurrentStage('shipping');
+        }
+    }, [(proposal as any)?.payment_confirmed_at]);
+
+    // completed 단계 진입 시 campaign_performance 조회
+    useEffect(() => {
+        if (currentStage !== 'completed' || !proposal?.id) return;
+        const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+            ? 'moment_proposal'
+            : (proposal as any).campaignId || (proposal as any).campaign_id
+                ? 'campaign_application'
+                : 'product_application';
+        const fetchPerf = async () => {
+            setPerfLoading(true);
+            try {
+                const { data } = await supabase
+                    .from('campaign_performance')
+                    .select('*')
+                    .eq('proposal_type', proposalType)
+                    .eq('proposal_id', proposal!.id.toString())
+                    .maybeSingle();
+                setPerformance(data || null);
+                if (data) {
+                    setUtmClicks(data.utm_clicks?.toString() || '');
+                    setConversions(data.conversions?.toString() || '');
+                    setRevenue(data.revenue_generated?.toString() || '');
+                }
+            } finally {
+                setPerfLoading(false);
+            }
+        };
+        fetchPerf();
+    }, [currentStage, proposal?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
     // Helper to determine stage status
     const getStageStatus = (stageId: string) => {
@@ -177,7 +224,8 @@ export function InfoPanel() {
         const updates: any = {
             brand_signature: null,
             brand_signed_at: null,
-            contract_status: proposal.influencer_signature ? 'partial' : null,
+            contract_status: proposal.influencer_signature ? 'partial' : 'none',
+
         };
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).event_id) {
@@ -288,6 +336,43 @@ export function InfoPanel() {
                             >
                                 <FileText className="h-4 w-4 mr-2" /> 전자 계약서 열기
                             </Button>
+
+                            {/* 광고비 결제 안내 — 양측 서명 완료 후에만 표시 */}
+                            {proposal?.brand_signature && proposal?.influencer_signature && (
+                                (proposal as any).payment_confirmed_at ? (
+                                    <div className="flex items-center gap-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/25 px-3 py-2.5">
+                                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                        <div>
+                                            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">입금 확인 완료</p>
+                                            <p className="text-[10px] text-emerald-600/70">배송 단계가 활성화되었습니다.</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-lg border-2 border-orange-400 dark:border-orange-600 bg-orange-50 dark:bg-orange-950/30 px-3 py-2.5 space-y-2">
+                                        <p className="text-xs font-bold text-orange-700 dark:text-orange-300">💰 광고비 결제 안내</p>
+                                        <p className="text-[10px] text-orange-800 dark:text-orange-200 leading-relaxed">
+                                            계약이 완전히 체결되었습니다.<br />
+                                            전자 계약서 패널에서 결제 방법(계좌이체/예치금)을 선택해주세요.
+                                        </p>
+                                        {(proposal as any).price_offer > 0 && (
+                                            <div className="flex justify-between items-center rounded-md bg-white dark:bg-orange-950/40 border border-orange-200 dark:border-orange-700 px-2.5 py-2 text-xs">
+                                                <span className="text-orange-700/70">결제 금액 (VAT 포함)</span>
+                                                <span className="font-bold text-orange-600 dark:text-orange-400">
+                                                    {Math.round((proposal as any).price_offer * 1.1).toLocaleString()}원
+                                                </span>
+                                            </div>
+                                        )}
+                                        <Button
+                                            size="sm"
+                                            className="w-full h-8 text-xs bg-orange-500 hover:bg-orange-600 text-white"
+                                            onClick={() => useWorkspaceStore.getState().setContractViewOpen(true)}
+                                        >
+                                            계약서 열고 결제하기
+                                        </Button>
+                                    </div>
+                                )
+                            )}
+
                         </div>
                     </StageCard>
 
@@ -556,32 +641,189 @@ export function InfoPanel() {
 
                                     {/* Complete button — both files required */}
                                     {proposal?.content_final_url && proposal?.content_clean_url && (
-                                        <Button
-                                            className="w-full bg-emerald-600 hover:bg-emerald-700"
-                                            size="sm"
-                                            onClick={async () => {
-                                                if (!proposal?.id) return;
-                                                const updates: any = { status: 'completed', content_submission_status: 'completed' };
-                                                let success = false;
-                                                if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
-                                                else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
-                                                else success = await updateBrandProposal(proposal.id, updates);
-                                                if (success) {
-                                                    useWorkspaceStore.getState().updateProposal(updates);
-                                                    refreshData();
-                                                    toast.success('협업이 완료되었습니다! 🎉');
-                                                    const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
-                                                    if (creatorId) sendNotification(creatorId, '협업이 완료되었습니다! 감사합니다.', 'collaboration_complete', proposal.id?.toString());
-                                                }
-                                            }}
-                                        >
-                                            <CheckCircle2 className="h-4 w-4 mr-2" /> 협업 완료
-                                        </Button>
+                                        <div className="flex flex-col gap-2">
+                                            <Button
+                                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold"
+                                                size="sm"
+                                                onClick={async () => {
+                                                    if (!proposal?.id) return;
+                                                    const updates: any = { status: 'completed', content_submission_status: 'completed' };
+                                                    let success = false;
+                                                    if ((proposal as any).moment_id) success = await updateMomentProposal(proposal.id, updates);
+                                                    else if ((proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                    else success = await updateBrandProposal(proposal.id, updates);
+                                                    if (success) {
+                                                        useWorkspaceStore.getState().updateProposal(updates);
+                                                        useWorkspaceStore.getState().setCurrentStage('completed');
+                                                        refreshData();
+                                                        toast.success('협업이 완료되었습니다. 관리자가 크리에이터 정산을 진행합니다. 🎉');
+                                                        const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
+                                                        if (creatorId) sendNotification(creatorId, '협업이 완료되었습니다! 감사합니다.', 'collaboration_complete', proposal.id?.toString());
+                                                    }
+                                                }}
+                                            >
+                                                <CheckCircle2 className="h-4 w-4 mr-1.5" /> 협업 완료 및 정산 승인
+                                            </Button>
+                                            <p className="text-[10px] text-emerald-600/70 text-center leading-relaxed">
+                                                완료 버튼을 누르면 크리에이터에게 비용 지급이 승인되며 수정이 불가능합니다.<br />
+                                                (보관된 결제 대금 정산 대기조로 이동)
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
                             )}
                         </div>
                     </StageCard>
+
+                    {/* Stage 5: Completed — 성과 조회 */}
+                    {currentStage === 'completed' && (
+                        <StageCard
+                            id="completed"
+                            title="협업 완료 · 성과 확인"
+                            isActive={true}
+                            isCompleted={false}
+                            summary="크리에이터의 성과 데이터를 확인하세요"
+                        >
+                            <div className="space-y-4">
+                                {perfLoading ? (
+                                    <div className="flex items-center justify-center py-4">
+                                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                    </div>
+                                ) : !performance ? (
+                                    <div className="text-xs text-muted-foreground text-center bg-muted/20 rounded-lg p-4">
+                                        <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+                                        크리에이터가 아직 인사이트 스크린샷을 제출하지 않았습니다.<br />
+                                        크리에이터 워크스페이스에서 확인해주세요.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {/* 스크린샷 원본 */}
+                                        {performance.screenshot_url && (
+                                            <a
+                                                href={performance.screenshot_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 text-xs text-primary hover:underline bg-muted/30 rounded-lg p-2"
+                                            >
+                                                <Eye className="h-3.5 w-3.5" />
+                                                인사이트 스크린샷 원본 보기
+                                            </a>
+                                        )}
+
+                                        {/* 수치 카드 */}
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            {[
+                                                { label: '도달', value: performance.reach },
+                                                { label: '좋아요', value: performance.likes },
+                                                { label: '댓글', value: performance.comments },
+                                                { label: '저장', value: performance.saves },
+                                                { label: '공유', value: performance.shares },
+                                                { label: '조회수', value: performance.views },
+                                            ].map(item => (
+                                                <div key={item.label} className="bg-muted/30 rounded-lg p-2 text-center">
+                                                    <p className="text-[10px] text-muted-foreground">{item.label}</p>
+                                                    <p className="text-sm font-bold">
+                                                        {item.value != null
+                                                            ? item.value >= 10000
+                                                                ? `${(item.value / 10000).toFixed(1)}만`
+                                                                : item.value.toLocaleString()
+                                                            : '—'}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* KPI 카드 */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-800/40 rounded-lg p-3 text-center">
+                                                <p className="text-[10px] text-indigo-600/70 dark:text-indigo-400/70">CPE</p>
+                                                <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                                                    {performance.cpe != null ? `${Math.round(performance.cpe).toLocaleString()}원` : '—'}
+                                                </p>
+                                                <p className="text-[9px] text-muted-foreground">(참여 1회당 비용)</p>
+                                            </div>
+                                            <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-800/40 rounded-lg p-3 text-center">
+                                                <p className="text-[10px] text-violet-600/70 dark:text-violet-400/70">CPR</p>
+                                                <p className="text-sm font-bold text-violet-700 dark:text-violet-300">
+                                                    {performance.cpr != null ? `${Math.round(performance.cpr).toLocaleString()}원` : '—'}
+                                                </p>
+                                                <p className="text-[9px] text-muted-foreground">(도달 1명당 비용)</p>
+                                            </div>
+                                        </div>
+
+                                        {/* 일반 연없는 라인 */}
+                                        <Separator />
+
+                                        {/* 브랜드 추가 입력 (UTM, 전환, 매출) */}
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-semibold text-muted-foreground">브랜드 성과 입력 (GA4 기반, 선택)</p>
+                                            <div className="grid grid-cols-3 gap-1.5">
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground mb-1">UTM 클릭</p>
+                                                    <Input
+                                                        type="number"
+                                                        value={utmClicks}
+                                                        onChange={e => setUtmClicks(e.target.value)}
+                                                        placeholder="0"
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground mb-1">전환수</p>
+                                                    <Input
+                                                        type="number"
+                                                        value={conversions}
+                                                        onChange={e => setConversions(e.target.value)}
+                                                        placeholder="0"
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground mb-1">매출 (원)</p>
+                                                    <Input
+                                                        type="number"
+                                                        value={revenue}
+                                                        onChange={e => setRevenue(e.target.value)}
+                                                        placeholder="0"
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="w-full h-8 text-xs"
+                                                disabled={isSavingPerf}
+                                                onClick={async () => {
+                                                    if (!performance?.id) return;
+                                                    setIsSavingPerf(true);
+                                                    try {
+                                                        const { error } = await supabase
+                                                            .from('campaign_performance')
+                                                            .update({
+                                                                utm_clicks: parseInt(utmClicks) || 0,
+                                                                conversions: parseInt(conversions) || 0,
+                                                                revenue_generated: parseFloat(revenue) || null,
+                                                            })
+                                                            .eq('id', performance.id);
+                                                        if (error) throw error;
+                                                        toast.success('성과 데이터가 저장되었습니다.');
+                                                    } catch {
+                                                        toast.error('저장 중 오류가 발생했습니다.');
+                                                    } finally {
+                                                        setIsSavingPerf(false);
+                                                    }
+                                                }}
+                                            >
+                                                {isSavingPerf ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                                                저장
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </StageCard>
+                    )}
                 </div>
             </ScrollArea>
         </div>

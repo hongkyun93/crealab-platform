@@ -1,13 +1,11 @@
 "use client"
 
-import React, { useState } from 'react'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from 'react'
 // import { Progress } from "@/components/ui/progress"
-import {
-    Users, MoreHorizontal, ArrowRight, Package, Briefcase
-} from "lucide-react"
+import { ArrowRight, Briefcase, MoreHorizontal, Package, Users } from "lucide-react"
 
 // --- Mock Data ---
 // --- Mock Data (Realistic Korean Content) ---

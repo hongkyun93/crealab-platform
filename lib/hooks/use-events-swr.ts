@@ -1,7 +1,7 @@
-import useSWR, { mutate } from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { SWR_KEYS } from '@/lib/swr-config'
 import type { InfluencerEvent } from '@/lib/types'
+import useSWR, { mutate } from 'swr'
 
 const supabase = createClient()
 

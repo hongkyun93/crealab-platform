@@ -1,12 +1,11 @@
-import React from 'react';
+import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { cn } from '@/lib/utils';
-import { CreatorInfoPanel } from './info-panel';
 import { ChatArea } from '../common/chat-area';
-import { useWorkspaceStore } from '../hooks/use-workspace-store';
 import { FileSharePanel } from '../common/file-share-panel';
 import { SmartContractPanel } from '../common/smart-contract-panel';
 import { VideoReviewPanel } from '../common/VideoReviewPanel';
-import { useUnifiedProvider } from '@/components/providers/unified-provider';
+import { useWorkspaceStore } from '../hooks/use-workspace-store';
+import { CreatorInfoPanel } from './info-panel';
 
 interface CreatorDesktopLayoutProps {
     className?: string;
@@ -59,7 +58,8 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
         const updates: any = {
             influencer_signature: null,
             influencer_signed_at: null,
-            contract_status: proposal.brand_signature ? 'partial' : null,
+            contract_status: proposal.brand_signature ? 'partial' : 'none',
+
         };
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).momentId) {

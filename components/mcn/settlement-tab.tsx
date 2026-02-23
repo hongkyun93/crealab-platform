@@ -1,24 +1,20 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CreatorSettlementHistory } from "@/components/creator/settlement-history"
+import { useAuth } from "@/components/providers/auth-provider"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { useAuth } from "@/components/providers/auth-provider"
-import { RevenueSplitEditor } from "./revenue-split-editor"
-import { PaymentStatementModal } from "./payment-statement-modal"
-import { BankConfirmModal } from "./bank-confirm-modal"
-import { CreatorSettlementHistory } from "@/components/creator/settlement-history"
-import {
-    Wallet, TrendingUp, Users, CheckCircle2,
-    Clock, Loader2, AlertCircle, ChevronDown, ChevronRight,
-    FileText, Settings2, DollarSign, Building2, Download, Receipt
-} from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Building2, CheckCircle2, ChevronDown, ChevronRight, Clock, DollarSign, Download, FileText, Loader2, Receipt, Settings2, Users, Wallet } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
+import { BankConfirmModal } from "./bank-confirm-modal"
+import { PaymentStatementModal, type McnBusinessInfo } from "./payment-statement-modal"
+import { RevenueSplitEditor } from "./revenue-split-editor"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Settlement {
@@ -40,6 +36,7 @@ interface Settlement {
     status: 'pending' | 'processing' | 'paid' | 'cancelled'
     paid_at: string | null
     settlement_month: string | null
+    statement_number?: string | null
     note: string | null
     created_at: string
 }
@@ -130,6 +127,7 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
     const [settlements, setSettlements] = useState<Settlement[]>([])
     const [revenueSplits, setRevenueSplits] = useState<Record<string, number>>({})
     const [bankInfoMap, setBankInfoMap] = useState<Record<string, CreatorBankInfo>>({})
+    const [mcnBusinessInfo, setMcnBusinessInfo] = useState<McnBusinessInfo>({ name: mcnName })
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
         const now = new Date()
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -154,6 +152,7 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
         creatorName: string
         creatorAvatar: string | null
         items: Settlement[]
+        statementNumber: string
     } | null>(null)
 
     const monthOptions = getMonthOptions()
@@ -260,12 +259,45 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
         }
     }, [supabase, teamId])
 
+    // Fetch MCN team business info
+    const fetchMcnBusinessInfo = useCallback(async () => {
+        if (!teamId) return
+        try {
+            const { data } = await supabase
+                .from('teams')
+                .select('name, business_registration_number, representative_name, business_address, stamp_url')
+                .eq('id', teamId)
+                .single()
+            if (data) {
+                setMcnBusinessInfo({
+                    name: data.name || mcnName,
+                    business_registration_number: data.business_registration_number,
+                    representative_name: data.representative_name,
+                    business_address: data.business_address,
+                    stamp_url: data.stamp_url,
+                })
+            }
+        } catch (err) {
+            console.warn('[Settlement] fetch MCN business info error:', err)
+        }
+    }, [supabase, teamId, mcnName])
+
+    // Generate sequential statement number: YYYYMM-XXXXX
+    const generateStatementNumber = useCallback((month: string, existingItems: Settlement[]) => {
+        const monthKey = month.replace('-', '')
+        // Count how many statements in the current data already have a number
+        const existingCount = existingItems.filter(s => s.statement_number).length
+        const seq = existingCount + 1
+        return `${monthKey}-${String(seq).padStart(5, '0')}`
+    }, [])
+
     useEffect(() => {
         if (!teamId) return
         fetchSettlements(selectedMonth)
         fetchRevenueSplits()
         fetchBankInfo()
-    }, [teamId, selectedMonth, fetchSettlements, fetchRevenueSplits, fetchBankInfo])
+        fetchMcnBusinessInfo()
+    }, [teamId, selectedMonth, fetchSettlements, fetchRevenueSplits, fetchBankInfo, fetchMcnBusinessInfo])
 
     // ─── Aggregates ────────────────────────────────────
     const totalGross = settlements.reduce((s, r) => s + r.gross_amount, 0)
@@ -351,7 +383,8 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
     }
 
     const handleOpenStatement = (creatorId: string, name: string, avatar: string | null, items: Settlement[]) => {
-        setStatementCreator({ creatorId, creatorName: name, creatorAvatar: avatar, items })
+        const statementNumber = generateStatementNumber(selectedMonth, settlements)
+        setStatementCreator({ creatorId, creatorName: name, creatorAvatar: avatar, items, statementNumber })
     }
 
     return (
@@ -506,13 +539,14 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
             {/* Payment Statement Modal */}
             {statementCreator && (
                 <PaymentStatementModal
-                    mcnName={mcnName}
+                    mcnInfo={mcnBusinessInfo}
                     creatorName={statementCreator.creatorName}
                     creatorAvatar={statementCreator.creatorAvatar}
                     bankName={bankInfoMap[statementCreator.creatorId]?.bank_name || null}
                     accountNumber={bankInfoMap[statementCreator.creatorId]?.account_number || null}
                     accountHolder={bankInfoMap[statementCreator.creatorId]?.account_holder || null}
                     settlementMonth={selectedMonth}
+                    statementNumber={statementCreator.statementNumber}
                     items={statementCreator.items}
                     onClose={() => setStatementCreator(null)}
                 />

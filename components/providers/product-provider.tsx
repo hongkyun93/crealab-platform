@@ -1,11 +1,11 @@
 "use client"
 
-import React, { createContext, useContext, useEffect } from "react"
-import { useProductsSWR, productMutations } from "@/lib/hooks/use-products-swr"
-import { useAuth } from "./auth-provider"
-import { mutate } from 'swr'
+import { productMutations, useProductsSWR } from "@/lib/hooks/use-products-swr"
 import { SWR_KEYS } from '@/lib/swr-config'
 import type { Product } from "@/lib/types"
+import React, { createContext, useContext, useEffect } from "react"
+import { mutate } from 'swr'
+import { useAuth } from "./auth-provider"
 
 interface ProductContextType {
     products: Product[]

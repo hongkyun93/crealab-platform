@@ -1,8 +1,8 @@
 // Helper hook to get effective user ID for data fetching
 // Use this in components to fetch data for the correct user (self or proxy)
 
-import { useUnifiedProvider } from '@/components/providers/unified-provider'
 import { useTeam } from '@/components/providers/team-provider'
+import { useUnifiedProvider } from '@/components/providers/unified-provider'
 import { useMemo } from 'react'
 
 export function useEffectiveUser() {

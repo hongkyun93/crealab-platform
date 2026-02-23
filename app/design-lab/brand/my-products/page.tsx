@@ -1,16 +1,10 @@
 "use client"
 
-import React, { useState } from 'react'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-    Calendar, Users, DollarSign, Edit, Archive, MoreHorizontal,
-    Package, ShoppingBag, Tag, Image as ImageIcon, FileText,
-    ExternalLink, Share2, Eye, Box, Layers, Grid, PlusCircle
-} from "lucide-react"
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { Box, Edit, FileText, MoreHorizontal, PlusCircle, Share2 } from "lucide-react"
+import { useState } from 'react'
 
 // --- Realistic Mock Data (Brand Product Context) ---
 const MY_PRODUCTS = [

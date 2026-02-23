@@ -1,14 +1,13 @@
 "use client"
 
-import React from "react"
-import {
-    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Star, ExternalLink, Trash2, Pencil } from "lucide-react"
-import Link from "next/link"
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from "@/components/ui/table"
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
+import { ExternalLink, Pencil, Star, Trash2 } from "lucide-react"
+import Link from "next/link"
 
 // 플랫폼별 그라데이션 아이콘 (SVG inline)
 function PlatformIcon({ platform, size = 22 }: { platform: string; size?: number }) {

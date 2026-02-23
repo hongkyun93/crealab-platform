@@ -1,11 +1,10 @@
 "use client"
 
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-    Calendar, Package, Banknote, Tv, Gift, ExternalLink, Clapperboard,
-    TrendingUp, MessageCircle, Timer, Repeat2, CheckCircle2, XCircle
+    Calendar, CheckCircle2, Clapperboard, ExternalLink, Gift, MessageCircle, Package, Repeat2, Timer, TrendingUp, Tv, XCircle
 } from "lucide-react"
 import { useMemo, useState } from "react"
 

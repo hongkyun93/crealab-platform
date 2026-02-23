@@ -1,7 +1,7 @@
 "use client"
 
-import { BadgeCheck } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { BadgeCheck } from "lucide-react"
 
 interface RateCardMessageProps {
     priceVideo?: number

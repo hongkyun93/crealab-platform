@@ -1,11 +1,11 @@
 "use client"
 
-import React, { createContext, useContext, useEffect } from "react"
-import { useUserEvents, usePublicEvents, eventMutations } from "@/lib/hooks/use-events-swr"
-import { useAuth } from "./auth-provider"
-import { mutate } from 'swr'
+import { eventMutations, usePublicEvents, useUserEvents } from "@/lib/hooks/use-events-swr"
 import { SWR_KEYS } from '@/lib/swr-config'
 import type { InfluencerEvent } from "@/lib/types"
+import React, { createContext, useContext, useEffect } from "react"
+import { mutate } from 'swr'
+import { useAuth } from "./auth-provider"
 
 interface EventContextType {
     events: InfluencerEvent[]

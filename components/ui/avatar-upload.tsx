@@ -1,11 +1,9 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Camera, Loader2, X } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { Camera, Loader2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 interface AvatarUploadProps {
     uid: string

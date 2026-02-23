@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -16,7 +16,6 @@ export async function POST(request: Request) {
         }
 
         const userId = user.id
-        console.log(`[Account Delete] Starting deletion for user: ${userId}`)
 
         // 2. Parse optional reason
         let reason = ''
@@ -38,7 +37,6 @@ export async function POST(request: Request) {
                 reason,
                 deleted_at: new Date().toISOString(),
             })
-            console.log(`[Account Delete] Deletion record saved`)
         } catch (e: any) {
             // Table might not exist yet, that's ok
             console.warn(`[Account Delete] Could not save deletion record:`, e.message)
@@ -58,7 +56,6 @@ export async function POST(request: Request) {
         // Remove influencer events (moments)
         await adminClient.from('influencer_events').delete().eq('influencer_id', userId)
 
-        console.log(`[Account Delete] User data cleaned up`)
 
         // 5. Delete the auth user (requires Service Role)
         const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId)
@@ -71,7 +68,6 @@ export async function POST(request: Request) {
             )
         }
 
-        console.log(`[Account Delete] User ${userId} fully deleted`)
 
         return NextResponse.json({ success: true })
     } catch (error: any) {

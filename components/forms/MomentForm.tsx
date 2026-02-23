@@ -1,18 +1,8 @@
 "use client"
 
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { ChannelSelector } from "@/components/shared/ChannelSelector"
 import { SiteHeader } from "@/components/site-header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,16 +11,26 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle,
+    AlertDialogTitle
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Plus, Sparkles, Loader2, Lock, Globe, Package, Calendar, Send, Save, Trash2 } from "lucide-react"
-import Link from "next/link"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { ArrowLeft, Calendar, Globe, Loader2, Lock, Package, Plus, Save, Send, Sparkles, Trash2 } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { ChannelSelector } from "@/components/shared/ChannelSelector"
 
 
 
@@ -127,8 +127,9 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
 
             // Check permission
             if (user) {
-                if (event.influencerId !== user.id && user.role !== 'admin') {
-                    console.warn("[MomentForm] Permission denied: ownerId", event.influencerId, "currentUserId", user.id)
+                const isOwner = event.influencerId === user.id || event.influencerId === effectiveUserId
+                if (!isOwner && user.role !== 'admin') {
+                    console.warn("[MomentForm] Permission denied: ownerId", event.influencerId, "currentUserId", user.id, "effectiveUserId", effectiveUserId)
                     toast.error("수정 권한이 없습니다.")
                     router.push("/creator")
                     return
@@ -136,6 +137,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
             } else {
                 return
             }
+
 
             // Populate form fields
             setTitle(event.event)

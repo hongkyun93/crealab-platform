@@ -1,33 +1,29 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
-import { useTeam } from "@/components/providers/team-provider"
 import { useAuth } from "@/components/providers/auth-provider"
-import {
-    CreatorSummaryCard,
-    type CreatorSummary,
-    type CreatorStatus,
-} from "./creator-summary-card"
-import { TeamStatistics } from "./team-statistics"
-import { InviteLinkGenerator } from "./invite-link-generator"
-import { TeamProposalsTable } from "./team-proposals-table"
-import { TeamCalendar } from "./team-calendar"
-import { SettlementTab } from "./settlement-tab"
-import {
-    Users, BarChart3, FileText, Calendar, Loader2, Building2, Wallet,
-    Search, AlertTriangle, LayoutGrid, Table as TableIcon, ChevronRight,
-    TrendingUp, Instagram, ArrowUpDown,
-} from "lucide-react"
+import { useTeam } from "@/components/providers/team-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AlertTriangle, ArrowUpDown, BarChart3, Building2, Calendar, ChevronRight, FileText, Instagram, LayoutGrid, Loader2, Save, Search, Table as TableIcon, Users, Wallet } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useState } from "react"
+import {
+    CreatorSummaryCard, type CreatorStatus, type CreatorSummary
+} from "./creator-summary-card"
+import { InviteLinkGenerator } from "./invite-link-generator"
+import { RevenueSplitEditor } from "./revenue-split-editor"
+import { SettlementTab } from "./settlement-tab"
+import { TeamCalendar } from "./team-calendar"
+import { TeamProposalsTable } from "./team-proposals-table"
+import { TeamStatistics } from "./team-statistics"
 
 // ─── Status 판단 유틸 ─────────────────────────────────────────
 function getCreatorStatus(c: CreatorSummary): CreatorStatus {
@@ -76,6 +72,64 @@ export function McnDashboard() {
     const [viewMode, setViewMode] = useState<ViewMode>('grid')
     const [priceRange, setPriceRange] = useState<PriceRange>('all')
     const [tagFilter, setTagFilter] = useState<string>('all')
+
+    // ── Revenue Split state ───────────────────────────────────────
+    const [splitEditorCreator, setSplitEditorCreator] = useState<{
+        id: string; name: string; avatar: string | null; currentRatio: number
+    } | null>(null)
+    const [splitRatios, setSplitRatios] = useState<Record<string, number>>({})
+
+    // ── Business Info state ──────────────────────────────────────
+    const [bizInfo, setBizInfo] = useState({
+        business_registration_number: '',
+        representative_name: '',
+        business_address: '',
+        stamp_url: '',
+    })
+    const [isSavingBiz, setIsSavingBiz] = useState(false)
+
+    // Fetch team business info when settings tab is shown
+    useEffect(() => {
+        if (!currentTeam?.id || activeTab !== 'settings') return
+        supabase
+            .from('teams')
+            .select('business_registration_number, representative_name, business_address, stamp_url')
+            .eq('id', currentTeam.id)
+            .single()
+            .then(({ data }) => {
+                if (data) {
+                    setBizInfo({
+                        business_registration_number: data.business_registration_number || '',
+                        representative_name: data.representative_name || '',
+                        business_address: data.business_address || '',
+                        stamp_url: data.stamp_url || '',
+                    })
+                }
+            })
+    }, [currentTeam?.id, activeTab, supabase])
+
+    const handleSaveBizInfo = async () => {
+        if (!currentTeam?.id) return
+        setIsSavingBiz(true)
+        const { error } = await supabase
+            .from('teams')
+            .update({
+                business_registration_number: bizInfo.business_registration_number || null,
+                representative_name: bizInfo.representative_name || null,
+                business_address: bizInfo.business_address || null,
+                stamp_url: bizInfo.stamp_url || null,
+            })
+            .eq('id', currentTeam.id)
+        setIsSavingBiz(false)
+        if (error) {
+            console.error('[McnDashboard] save biz info error:', error)
+        } else {
+            // Light feedback via title flash — avoid importing toast to keep bundle small
+            const el = document.getElementById('biz-save-btn')
+            if (el) el.textContent = '저장됨 ✓'
+            setTimeout(() => { if (el) el.textContent = '저장하기' }, 2000)
+        }
+    }
 
     // ── Data Fetch ───────────────────────────────────────────────
     useEffect(() => {
@@ -408,8 +462,8 @@ export function McnDashboard() {
                                     key={chip.value}
                                     onClick={() => setFilterStatus(chip.value)}
                                     className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${filterStatus === chip.value
-                                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                                            : 'bg-background border-border hover:border-primary/50 hover:bg-muted'
+                                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                        : 'bg-background border-border hover:border-primary/50 hover:bg-muted'
                                         }`}
                                 >
                                     {chip.label}
@@ -583,8 +637,143 @@ export function McnDashboard() {
                         <InviteLinkGenerator />
                         <TeamStatistics summaryData={summaryData} />
                     </div>
+
+                    {/* 수익 배분율 카드 */}
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                                크리에이터 수익 배분율
+                                <span className="text-xs font-normal text-muted-foreground ml-1">(협업 완료 시 자동 정산에 적용)</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {summaryData.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">소속 크리에이터가 없습니다.</p>
+                            ) : (
+                                <div className="divide-y">
+                                    {summaryData.map(c => {
+                                        const ratio = splitRatios[c.user_id] ?? 0.7
+                                        return (
+                                            <div key={c.user_id} className="flex items-center justify-between py-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-7 w-7">
+                                                        <AvatarImage src={c.avatar_url || ''} />
+                                                        <AvatarFallback className="text-xs">{c.display_name?.[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <p className="text-sm font-medium leading-tight">{c.display_name}</p>
+                                                        <p className="text-xs text-muted-foreground">크리에이터 {Math.round(ratio * 100)}% / MCN {Math.round((1 - ratio) * 100)}%</p>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => setSplitEditorCreator({
+                                                        id: c.user_id,
+                                                        name: c.display_name || '크리에이터',
+                                                        avatar: c.avatar_url,
+                                                        currentRatio: ratio,
+                                                    })}
+                                                >
+                                                    배분율 설정
+                                                </Button>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* MCN 사업자 정보 */}
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                사업자 정보
+                                <span className="text-xs font-normal text-muted-foreground ml-1">(지급명세서에 자동 반영됩니다)</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">사업자등록번호</Label>
+                                    <Input
+                                        placeholder="000-00-00000"
+                                        value={bizInfo.business_registration_number}
+                                        onChange={e => setBizInfo(p => ({ ...p, business_registration_number: e.target.value }))}
+                                        className="h-9 text-sm font-mono"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">대표자명</Label>
+                                    <Input
+                                        placeholder="홍길동"
+                                        value={bizInfo.representative_name}
+                                        onChange={e => setBizInfo(p => ({ ...p, representative_name: e.target.value }))}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">사업장 주소</Label>
+                                <Input
+                                    placeholder="서울특별시 강남구 ..."
+                                    value={bizInfo.business_address}
+                                    onChange={e => setBizInfo(p => ({ ...p, business_address: e.target.value }))}
+                                    className="h-9 text-sm"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">도장 이미지 URL <span className="text-muted-foreground/60">(선택)</span></Label>
+                                <Input
+                                    placeholder="https://... (PNG/SVG 투명 배경 권장)"
+                                    value={bizInfo.stamp_url}
+                                    onChange={e => setBizInfo(p => ({ ...p, stamp_url: e.target.value }))}
+                                    className="h-9 text-sm"
+                                />
+                                {bizInfo.stamp_url && (
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={bizInfo.stamp_url} alt="도장 미리보기" className="h-10 w-10 object-contain border rounded" />
+                                        <span className="text-xs text-muted-foreground">미리보기</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex justify-end pt-1">
+                                <Button
+                                    id="biz-save-btn"
+                                    size="sm"
+                                    onClick={handleSaveBizInfo}
+                                    disabled={isSavingBiz}
+                                    className="gap-1.5"
+                                >
+                                    {isSavingBiz ? (
+                                        <><Loader2 className="h-3.5 w-3.5 animate-spin" />저장 중...</>
+                                    ) : (
+                                        <><Save className="h-3.5 w-3.5" />저장하기</>
+                                    )}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* 수익 배분율 편집 모달 */}
+            {splitEditorCreator && currentTeam?.id && (
+                <RevenueSplitEditor
+                    teamId={currentTeam.id}
+                    creator={splitEditorCreator}
+                    onClose={() => setSplitEditorCreator(null)}
+                    onSaved={(creatorId, newRatio) => {
+                        setSplitRatios(prev => ({ ...prev, [creatorId]: newRatio }))
+                        setSplitEditorCreator(null)
+                    }}
+                />
+            )}
         </main>
     )
 }

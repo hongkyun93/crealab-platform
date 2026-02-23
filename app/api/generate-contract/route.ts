@@ -1,6 +1,6 @@
+import { createClient } from "@/lib/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
     // 인증 검증: 로그인된 사용자만 사용 가능
@@ -11,14 +11,14 @@ export async function POST(req: Request) {
     }
 
     // req.json()은 한 번만 호출 (catch 블록에서 재호출 불가)
-    let body: { messages?: any[]; proposal?: any; brandName?: string; influencerName?: string } = {};
+    let body: { messages?: any[]; proposal?: any; brandName?: string; influencerName?: string; brandProfile?: any; creatorProfile?: any } = {};
     try {
         body = await req.json();
     } catch {
         return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { messages, proposal, brandName, influencerName } = body;
+    const { messages, proposal, brandName, influencerName, brandProfile, creatorProfile } = body;
 
     try {
         const apiKey = process.env.GEMINI_API_KEY;
@@ -29,7 +29,8 @@ export async function POST(req: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash" });
+
 
         const historyText = (messages ?? []).map((m: any) => `${m.senderName}: ${m.content}`).join("\n");
 
@@ -53,7 +54,20 @@ export async function POST(req: Request) {
 
 [계약 당사자]
 - 갑(광고주): ${brandName}
+  - 대표자명: ${brandProfile?.representative_name || '미입력'}
+  - 사업자등록번호: ${brandProfile?.business_number || '미입력'}
+  - 사업자 유형/업태업종: ${[brandProfile?.business_type, brandProfile?.business_category].filter(Boolean).join(' / ') || '미입력'}
+  - 회사 주소: ${brandProfile?.company_address || '미입력'}
+  - 회사 전화번호: ${brandProfile?.company_phone || brandProfile?.phone || '미입력'}
+  - 담당자: ${brandProfile?.contact_person_name || '미입력'} (${brandProfile?.contact_person_phone || ''} / ${brandProfile?.contact_person_email || ''})
+  - 세금계산서 이메일: ${brandProfile?.tax_email || '미입력'}
 - 을(크리에이터): ${influencerName}
+  - 실명: ${creatorProfile?.legal_name || creatorProfile?.display_name || influencerName}
+  - 생년월일: ${creatorProfile?.birth_date || '미입력'}
+  - 주소: ${creatorProfile?.legal_address || creatorProfile?.shipping_address || '미입력'}
+  - 연락처: ${creatorProfile?.phone || '미입력'}
+  - 정산 계좌: ${[creatorProfile?.bank_name, creatorProfile?.account_number, creatorProfile?.account_holder].filter(Boolean).join(' / ') || '미입력'}
+  - 사업자등록여부: ${creatorProfile?.creator_business_number ? `사업자 등록됨 (번호: ${creatorProfile.creator_business_number})` : '없음(개인)'}
 
 [상품 정보]
 - 상품명: ${productName}
@@ -77,12 +91,13 @@ ${historyText || "(대화 내용 없음)"}
 
 [지침]
 1. 위 합의된 조건을 계약서에 정확히 반영하세요. 특히 원고료, 콘텐츠 유형, 일정, 특약사항을 빠뜨리지 마세요.
-2. 합의되지 않은 조건(미정)은 "양측 합의에 따라 정한다"로 표기하세요.
+2. 합의되지 않은 조건(미정)은 "양쪽 합의에 따라 정한다"로 표기하세요.
 3. 대한민국 법률에 의거하여 전문적인 어조(예: ~한다, ~해야 한다)로 작성하세요.
 4. 출력 형식은 깔끔한 Markdown 형식으로 조항별로 구분하여 작성하세요.
 5. 반드시 포함할 조목: 목적, 콘텐츠 제작 및 게시, 원고료 지급, 일정, 저작권 및 초상권, 2차 활용, 비밀유지, 계약 해지, 분쟁 해결.
 6. 인센티브가 있는 경우 별도 조항으로 명시하세요.
 7. 특약사항이 있으면 별도 조항으로 반영하세요.
+8. 계약서 마지막에 서명란(당사자명, 날짜)이 포함되도록 하세요.
 
 최종 계약서 초안을 작성해주세요.
 `;
@@ -122,9 +137,10 @@ function getFallbackContract(brand: string, creator: string, proposal: any) {
 본 계약의 효력은 체결일로부터 콘텐츠 게시 후 ${secondaryUsage}까지 유지된다.
 
 **제3조 [원고료 및 지급]**
-1. "갑"은 "을"에게 콘텐츠 제작의 대가로 금 **${cost}원**을(를) 지급한다.
-2. 지급 시기는 콘텐츠 업로드 및 검수 완료 후 30일 이내로 한다.
-${hasIncentive ? `3. 추가 인센티브: ${incentiveDetail}` : ""}
+1. "갑"은 "을"에게 콘텐츠 제작의 대가로 금 **${cost}원**(부가가치세 별도)을(를) 지급한다.
+2. 부가가치세는 "을"의 과세 사업자 여부에 따라 별도 적용되며, 세금계산서 또는 원천징수영수증에 의한다.
+3. 지급 시기는 콘텐츠 업로드 및 검수 완료 후 30일 이내로 한다.
+${hasIncentive ? `4. 추가 인센티브: ${incentiveDetail}` : ""}
 
 **제4조 [콘텐츠 제작 가이드]**
 1. 콘텐츠 유형: **${channelInfo}**

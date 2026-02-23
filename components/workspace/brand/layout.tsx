@@ -1,14 +1,13 @@
 "use client"
 
-import React from 'react';
+import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { cn } from '@/lib/utils';
-import { useWorkspaceStore } from '../hooks/use-workspace-store';
-import { InfoPanel } from './info-panel';
 import { ChatArea } from '../common/chat-area';
 import { FileSharePanel } from '../common/file-share-panel';
 import { SmartContractPanel } from '../common/smart-contract-panel';
 import { VideoReviewPanel } from '../common/VideoReviewPanel';
-import { useUnifiedProvider } from '@/components/providers/unified-provider';
+import { useWorkspaceStore } from '../hooks/use-workspace-store';
+import { InfoPanel } from './info-panel';
 
 interface BrandWorkspaceLayoutProps {
     className?: string;
@@ -61,7 +60,7 @@ export function BrandWorkspaceLayout({ className }: BrandWorkspaceLayoutProps) {
         const updates: any = {
             brand_signature: null,
             brand_signed_at: null,
-            contract_status: proposal.influencer_signature ? 'partial' : null,
+            contract_status: proposal.influencer_signature ? 'partial' : 'none',
         };
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).event_id) {

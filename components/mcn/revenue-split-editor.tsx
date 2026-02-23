@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/providers/auth-provider"
-import { toast } from "sonner"
-import { X, Save, Users, Building2, Info } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { Building2, Info, Save, Users, X } from "lucide-react"
+import { useState } from "react"
+import { toast } from "sonner"
 
 interface RevenueSplitEditorProps {
     teamId: string

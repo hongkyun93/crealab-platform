@@ -1,11 +1,10 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useTeam } from "@/components/providers/team-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { useTeam } from "@/components/providers/team-provider"
-import { Users, ChevronRight } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChevronRight, Users } from "lucide-react"
 
 export function TeamMembersCard() {
     const { teamMembers, isLoading, switchToMember } = useTeam()

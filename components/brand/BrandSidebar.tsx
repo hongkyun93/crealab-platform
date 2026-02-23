@@ -1,23 +1,13 @@
 "use client"
 
-import React, { useState } from "react"
-import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import {
-    Briefcase,
-    Globe,
-    LayoutDashboard,
-    MessageSquare,
-    Package,
-    Search,
-    User,
-    Settings,
-    Bell,
-    FileText
-} from "lucide-react"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
+import { cn } from "@/lib/utils"
+import {
+    Briefcase, FileText, LayoutDashboard, Package,
+    Search,
+    User, Wallet
+} from "lucide-react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 interface BrandSidebarProps {
     className?: string
@@ -82,6 +72,14 @@ export function BrandSidebar({ className, user }: BrandSidebarProps) {
                     >
                         <Package className="mr-2 h-4 w-4" />
                         내 제품 관리
+                    </Button>
+                    <Button
+                        variant={currentView === 'deposit' ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => router.push('/brand?view=deposit')}
+                    >
+                        <Wallet className="mr-2 h-4 w-4" />
+                        예치금 관리
                     </Button>
                     <div className="pt-4 pb-2">
                         <div className="text-xs font-semibold text-muted-foreground px-4 mb-2">설정</div>

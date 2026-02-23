@@ -1,7 +1,7 @@
 "use client"
 
-import { Calendar, Megaphone, Bell } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Bell, Calendar, Megaphone } from "lucide-react"
 
 export default function DashboardBoxesDesignLab() {
     // Mock Data

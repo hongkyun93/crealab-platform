@@ -1,18 +1,13 @@
 "use client"
 
-import React, { useState } from 'react'
+import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { useState } from 'react'
 // Import necessary icons
-import {
-    Briefcase, MessageSquare, CheckCircle2, Clock, Calendar,
-    FileText, DollarSign, MoreHorizontal, AlertCircle,
-    Link, Zap, FolderOpen, Layout, Grid, List as ListIcon,
-    Send, Paperclip, Flag, ChevronRight, User
-} from "lucide-react"
+import { AlertCircle, Calendar, CheckCircle2, ChevronRight, DollarSign, FileText, MoreHorizontal } from "lucide-react"
 
 // --- Rich Realistic Mock Data (Creator Workspace Context) ---
 const WORKSPACE_DATA_POOL = [

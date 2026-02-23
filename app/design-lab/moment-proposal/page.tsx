@@ -1,16 +1,10 @@
 "use client"
 
-import React, { useState } from "react"
 import { SiteHeader } from "@/components/site-header"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-    Package, Banknote, Calendar, Clock, Tv, Sparkles, BadgeCheck,
-    Gift, ArrowUpRight, Film, FileText, Send, CheckCircle2, XCircle,
-    ExternalLink, Clapperboard, TrendingUp, BarChart3, MessageCircle,
-    ChevronRight, Star, Timer, Repeat2, DollarSign
-} from "lucide-react"
+import { ArrowUpRight, Banknote, Calendar, CheckCircle2, Clapperboard, ExternalLink, FileText, Gift, MessageCircle, Package, Repeat2, Send, Sparkles, Timer, TrendingUp, Tv, XCircle } from "lucide-react"
 
 // ─── DUMMY PROPOSAL DATA (all 16 fields) ─────────────────
 const PROPOSAL = {

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { Music, Instagram, Youtube, FileText, MoreHorizontal, X } from "lucide-react"
+import { FileText, Instagram, MoreHorizontal, Music, X, Youtube } from "lucide-react"
+import { useState } from "react"
 
 // 상위 채널
 export const CHANNELS = [

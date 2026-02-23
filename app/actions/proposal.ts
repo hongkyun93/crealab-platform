@@ -1,7 +1,7 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
 
 export async function submitCampaignApplication(
     campaignId: string,
@@ -127,7 +127,6 @@ export async function submitDirectProposal(data: any) {
             }
         }
 
-        console.log('[submitDirectProposal] Inserting into moment_proposals:', momentProposalData)
 
         const { data: result, error } = await supabase
             .from('moment_proposals')

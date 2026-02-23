@@ -1,8 +1,8 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react"
-import { useAuth } from "./auth-provider"
 import type { Favorite, FavoriteTargetType } from "@/lib/types"
+import React, { createContext, useContext, useEffect, useRef, useState } from "react"
+import { useAuth } from "./auth-provider"
 
 interface FavoriteContextType {
     favorites: Favorite[]

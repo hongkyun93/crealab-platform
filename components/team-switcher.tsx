@@ -1,5 +1,6 @@
 "use client"
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -7,10 +8,9 @@ import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, ChevronDown, Check, User } from "lucide-react"
+import { Check, ChevronDown, User, Users } from "lucide-react"
 // ... (imports remain)
 import { useTeam } from "@/components/providers/team-provider"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"

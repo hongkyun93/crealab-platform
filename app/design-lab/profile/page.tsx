@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Save, Link as LinkIcon, Instagram, Youtube, Globe, Plus, Edit2, Trash2, Star, Sun, Moon } from "lucide-react"
+import { Edit2, Globe, Instagram, Moon, Plus, Save, Star, Sun, Trash2, Youtube } from "lucide-react"
+import { useState } from "react"
 
 const PROFILE_CATEGORIES = [
     "✈️ 여행", "💄 뷰티", "💊 건강", "💉 시술/병원", "👗 패션", "🍽️ 맛집",

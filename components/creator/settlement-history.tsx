@@ -1,12 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/providers/auth-provider"
-import { Wallet, Loader2, CheckCircle2, Clock, TrendingUp, ArrowRight } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { CheckCircle2, Clock, Loader2, Wallet } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 
 interface Settlement {
     id: string

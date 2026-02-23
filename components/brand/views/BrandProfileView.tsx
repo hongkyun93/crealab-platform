@@ -1,14 +1,14 @@
 "use client"
 
-import React from "react"
-import { Loader2 } from "lucide-react"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { AvatarUpload } from "@/components/ui/avatar-upload"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { AvatarUpload } from "@/components/ui/avatar-upload"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { Loader2 } from "lucide-react"
+import React from "react"
 
 interface BrandProfileViewProps {
     user: any

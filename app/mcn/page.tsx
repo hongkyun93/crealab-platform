@@ -1,13 +1,13 @@
 "use client"
 
-import React, { Suspense, useEffect } from "react"
-import { SiteHeader } from "@/components/site-header"
+import { DemoBanner } from "@/components/demo-banner"
 import { McnDashboard } from "@/components/mcn/mcn-dashboard"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
-import { DemoBanner } from "@/components/demo-banner"
+import { SiteHeader } from "@/components/site-header"
 import { useDemoMode } from "@/lib/contexts/demo-context"
+import { Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Suspense, useEffect } from "react"
 
 function McnPageContent() {
     const { user, isLoading, isInitialized, isAuthLoading } = useUnifiedProvider()

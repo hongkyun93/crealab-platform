@@ -1,17 +1,12 @@
 "use client"
 
-import React, { useState } from "react"
 import { SiteHeader } from "@/components/site-header"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import {
-    Package, Banknote, Calendar, Tv, Sparkles,
-    Gift, ArrowUpRight, FileText, Send, CheckCircle2, XCircle,
-    ExternalLink, Clapperboard, TrendingUp, MessageCircle,
-    Timer, Repeat2, ChevronRight
-} from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ArrowUpRight, Banknote, Calendar, CheckCircle2, ChevronRight, Clapperboard, ExternalLink, FileText, Gift, MessageCircle, Package, Repeat2, Send, Sparkles, Timer, TrendingUp, Tv, XCircle } from "lucide-react"
+import { useState } from "react"
 
 // ─── DUMMY DATA ──────────────────────────────────────────
 const P = {

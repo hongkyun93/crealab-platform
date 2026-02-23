@@ -1,6 +1,6 @@
+import { createClient } from "@/lib/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
     // 인증 검증: 로그인된 사용자만 사용 가능
@@ -29,9 +29,9 @@ export async function POST(req: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const modelName = "gemini-2.5-flash";
-        console.log("Initializing Gemini Model:", modelName);
+        const modelName = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
         const model = genAI.getGenerativeModel({ model: modelName });
+
 
         const tagsText = tags && tags.length > 0 ? tags.join(", ") : "없음";
         const productText = targetProduct ? targetProduct : "미정";

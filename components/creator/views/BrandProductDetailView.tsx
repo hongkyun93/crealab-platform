@@ -1,15 +1,14 @@
 "use client"
 
-import { SiteHeader } from "@/components/site-header"
+import { CreatorProposalDialog, type CreatorProposalFormData } from "@/components/dialogs/CreatorProposalDialog"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { ArrowLeft, CheckCircle2, DollarSign, Percent, Send, ExternalLink, ImageIcon } from "lucide-react"
-import Link from "next/link"
-import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { CreatorProposalDialog, type CreatorProposalFormData } from "@/components/dialogs/CreatorProposalDialog"
+import { ArrowLeft, CheckCircle2, ExternalLink, ImageIcon, Send } from "lucide-react"
+import Link from "next/link"
+import { useEffect, useState } from "react"
 
 
 interface BrandProductDetailViewProps {

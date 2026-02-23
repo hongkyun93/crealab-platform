@@ -1,29 +1,23 @@
 ﻿"use client"
 
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     Dialog,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
-    DialogTitle,
+    DialogTitle
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { ArrowLeft, CheckCircle2, DollarSign, Percent, Send, ExternalLink, Package, ImageIcon, Copy, Hash, AtSign, FileText, Check, MessageCircle, Share2, ThumbsUp } from "lucide-react"
+import { ArrowLeft, AtSign, CheckCircle2, Copy, ExternalLink, FileText, Hash, ImageIcon, Package, Percent, Send } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 import { useState } from "react"
-import { toast } from "sonner"
-import type { Product } from "@/lib/types"
 
 interface ProductDetailViewProps {
     productId: string | null

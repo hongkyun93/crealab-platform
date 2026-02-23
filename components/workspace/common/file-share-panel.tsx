@@ -1,14 +1,14 @@
 "use client"
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileIcon, ImageIcon, UploadCloud, Download, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useWorkspaceStore } from '../hooks/use-workspace-store';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { Download, FileIcon, ImageIcon, Loader2, UploadCloud } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
 // 허용 MIME 타입 (문서, PDF, GIF만) — chat-area.tsx와 동일 기준
 const ALLOWED_TYPES = [

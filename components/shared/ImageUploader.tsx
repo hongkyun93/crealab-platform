@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Upload, Loader2, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { toast } from "sonner"
+import { Loader2, Upload, X } from "lucide-react"
 import Image from "next/image"
+import { useRef, useState } from "react"
+import { toast } from "sonner"
 
 interface ImageUploaderProps {
     value: string

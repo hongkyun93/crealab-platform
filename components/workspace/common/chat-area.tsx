@@ -1,24 +1,30 @@
 "use client"
 
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Paperclip, Loader2, X, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useWorkspaceStore } from '../hooks/use-workspace-store';
-import { useUnifiedProvider } from '@/components/providers/unified-provider';
-import { useAuth } from '@/components/providers/auth-provider';
+import { FileText, Loader2, Paperclip, Send, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
-// 허용 MIME 타입 (문서, PDF, GIF만)
+// 허용 MIME 타입 (문서, PDF, 이미지)
 const ALLOWED_TYPES = [
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'image/gif',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+    'image/heif',
 ]
-const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'gif']
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'gif', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']
+const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
+
 
 interface ChatAreaProps {
     className?: string;

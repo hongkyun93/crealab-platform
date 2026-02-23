@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { CheckCircle2, X, Building2, CreditCard, AlertCircle } from "lucide-react"
+import { AlertCircle, Building2, CheckCircle2, CreditCard, X } from "lucide-react"
+import { useState } from "react"
 
 interface BankConfirmModalProps {
     creatorName: string

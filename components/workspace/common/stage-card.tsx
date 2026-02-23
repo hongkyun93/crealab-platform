@@ -1,8 +1,8 @@
 
-import React from 'react';
-import { ChevronDown, ChevronUp, CheckCircle2, Circle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { CheckCircle2, ChevronDown, ChevronUp, Circle } from 'lucide-react';
+import React from 'react';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
 interface StageCardProps {

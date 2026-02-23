@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart3, Users, Calendar, TrendingUp, DollarSign } from "lucide-react"
+import { BarChart3, Calendar, DollarSign, TrendingUp, Users } from "lucide-react"
 
 interface CreatorSummary {
     total_moments: number

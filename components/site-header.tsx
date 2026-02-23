@@ -1,28 +1,27 @@
 "use client"
 
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { LogOut, Settings, User, Shield, Menu, ChevronDown, Check, Plus, Briefcase } from "lucide-react"
-import { ModeToggle } from "@/components/ui/mode-toggle"
-import { TeamSwitcher } from "@/components/team-switcher"
 import { useTeam } from "@/components/providers/team-provider"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { TeamSwitcher } from "@/components/team-switcher"
+import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { ModeToggle } from "@/components/ui/mode-toggle"
 import {
     Popover,
     PopoverContent,
-    PopoverTrigger,
+    PopoverTrigger
 } from "@/components/ui/popover"
-import { useRouter, usePathname } from "next/navigation"
-import { Bell } from "lucide-react"
+import { Bell, Briefcase, Check, ChevronDown, LogOut, Menu, Plus, Settings, Shield, User } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 
 export function SiteHeader() {
     const { user, messages, logout, notifications, markAsRead, teams, currentTeam, switchTeam } = useUnifiedProvider()
@@ -96,7 +95,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-3 sm:mr-6 flex items-center space-x-2">
                         <Image src="/logo.png" alt="CreadyPick" width={238} height={48} className="h-12 w-auto" priority />
-                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V4.1.0</span>
+                        <span className="text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V4.2.0</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link

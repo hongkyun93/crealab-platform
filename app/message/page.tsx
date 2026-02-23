@@ -1,5 +1,9 @@
 "use client"
 
+import { useAuth } from "@/components/providers/auth-provider"
+import { MOCK_INFLUENCER_USER } from "@/components/providers/legacy-platform-hook"
+import { useTeam } from "@/components/providers/team-provider"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -8,14 +12,10 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MoreVertical, Paperclip, Search, Send, Phone, Video, BadgeCheck, FileText, Download, X } from "lucide-react"
-import { useState, useRef, useEffect, useMemo } from "react"
-import { MOCK_INFLUENCER_USER } from "@/components/providers/legacy-platform-hook"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useTeam } from "@/components/providers/team-provider"
 import { useFileUpload } from "@/lib/hooks/use-file-upload"
 import { formatFileSize, isImage } from "@/lib/utils/file-validation"
-import { useAuth } from "@/components/providers/auth-provider"
+import { BadgeCheck, Download, FileText, MoreVertical, Paperclip, Phone, Search, Send, Video, X } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 export default function MessagePage() {
     const { user, messages: allMessages, sendMessage, brandProposals } = useUnifiedProvider()

@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState } from "react"
-import { Plus, ShoppingBag, ExternalLink, FileText, Pencil, Trash2, ImageIcon } from "lucide-react"
+import { ExternalLink, FileText, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-react"
+import { useState } from "react"
 
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 import { toast } from "sonner"
 
 interface MyProductsViewProps {

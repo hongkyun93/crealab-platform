@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState } from 'react'
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, Phone, MoreVertical, FileText } from "lucide-react"
+import { FileText, MoreVertical, Send } from "lucide-react"
+import { useState } from 'react'
 
 // Reuse some logic from BrandChat or make it distinct
 export default function CreatorChatDesignLab() {

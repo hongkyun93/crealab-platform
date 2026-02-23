@@ -3,12 +3,12 @@
 
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect, Suspense } from "react"
 import { AlertCircle, UserCircle2 } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
 
 import { createClient } from "@/lib/supabase/client"
 
@@ -41,7 +41,6 @@ function SignupContent() {
             const supabase = createClient()
             const redirectUrl = `${window.location.origin}/auth/callback`
 
-            console.log('[OAuth Debug] Starting Social Login...', { provider, redirectUrl })
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
@@ -54,16 +53,13 @@ function SignupContent() {
                 },
             })
 
-            console.log('[OAuth Debug] signInWithOAuth returned:', { data, error })
 
             if (error) {
                 console.error('[OAuth Error] signInWithOAuth error:', error)
                 setError(error.message)
                 setIsLoading(false)
             } else if (data?.url) {
-                console.log('[OAuth Debug] Success! Redirecting to:', data.url)
             } else {
-                console.log('[OAuth Debug] No error but no redirect URL either.')
                 setIsLoading(false)
             }
         } catch (err: any) {
@@ -106,9 +102,9 @@ function SignupContent() {
     }
 
     return (
-        <div className="min-h-screen bg-muted/30">
+        <div className="min-h-screen bg-muted/30 flex flex-col">
             <SiteHeader />
-            <main className="container flex items-center justify-center py-20 min-h-[80vh]">
+            <main className="flex-1 flex items-center justify-center px-4 py-12">
                 <Card className="w-full max-w-md">
                     <CardHeader>
                         <CardTitle className="text-2xl flex items-center gap-2">

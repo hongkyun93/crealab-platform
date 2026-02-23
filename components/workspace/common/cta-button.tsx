@@ -1,8 +1,8 @@
 
-import React from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Loader2 } from 'lucide-react';
+import React from 'react';
 
 interface CtaButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     children: React.ReactNode;

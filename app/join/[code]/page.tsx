@@ -1,12 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/components/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/components/providers/auth-provider"
-import { Loader2, Users, CheckCircle2, XCircle } from "lucide-react"
+import { Loader2, Users, XCircle } from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 export default function JoinTeamPage() {

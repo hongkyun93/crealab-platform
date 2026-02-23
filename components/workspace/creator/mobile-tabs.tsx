@@ -1,7 +1,6 @@
 
-import React from 'react';
-import { MessageSquare, FileText, ScrollText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FileText, MessageSquare, ScrollText } from 'lucide-react';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
 export function MobileTabs() {

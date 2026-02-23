@@ -1,13 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useAuth } from "@/components/providers/auth-provider"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
-import { Link2, Copy, Check } from "lucide-react"
+import { Check, Copy, Link2 } from "lucide-react"
+import { useState } from "react"
 import { toast } from "sonner"
 
 import { useTeam } from "@/components/providers/team-provider"

@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState } from "react"
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Star, MapPin, Calendar, Gift, ArrowUpRight, Sparkles, Instagram, Youtube, Music2, BookOpen, Globe, Loader2 } from "lucide-react"
-import { useCreatorProfile } from "@/lib/hooks/use-creator-profile"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useCreatorProfile } from "@/lib/hooks/use-creator-profile"
+import { ArrowUpRight, BookOpen, Calendar, Gift, Globe, Instagram, Loader2, MapPin, Music2, Sparkles, Star, Youtube } from "lucide-react"
 import { useRouter } from "next/navigation"
+import React, { useState } from "react"
 
 // ============================================================
 // Platform Config

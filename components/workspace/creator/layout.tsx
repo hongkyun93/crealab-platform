@@ -1,12 +1,11 @@
 
-import React from 'react';
 import { cn } from '@/lib/utils';
-import { useWorkspaceStore } from '../hooks/use-workspace-store';
-import { MobileTabs } from './mobile-tabs';
-import { CreatorInfoPanel } from './info-panel';
 import { ChatArea } from '../common/chat-area';
 import { ProgressBar } from '../common/progress-bar';
+import { useWorkspaceStore } from '../hooks/use-workspace-store';
 import { CreatorDesktopLayout } from './desktop-layout';
+import { CreatorInfoPanel } from './info-panel';
+import { MobileTabs } from './mobile-tabs';
 
 interface CreatorWorkspaceLayoutProps {
     className?: string;

@@ -1,15 +1,15 @@
 "use client"
 // Updated: 2026-02-03 20:47 - Force cache invalidation
 
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertCircle, ArrowRight, Briefcase } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { AlertCircle, ArrowRight, Briefcase, UserCircle2 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 import { useEffect } from "react"
@@ -29,7 +29,6 @@ export default function LoginPage() {
     useEffect(() => {
         const cleanup = () => {
             if (cleanupDone) return
-            console.log('[Login] Delayed cleanup starting...')
 
             // localStorage에서 Supabase 관련 항목 삭제 (signOut은 하지 않음!)
             const keysToRemove: string[] = []
@@ -54,7 +53,6 @@ export default function LoginPage() {
             })
 
             setCleanupDone(true)
-            console.log('[Login] Delayed cleanup complete')
         }
 
         const timer = setTimeout(cleanup, 5000)
@@ -72,7 +70,6 @@ export default function LoginPage() {
             const supabase = createClient()
             const redirectUrl = `${window.location.origin}/auth/callback?role_type=${role}`
 
-            console.log('[OAuth Debug] Starting Social Login...', { provider, role, redirectUrl })
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
@@ -85,17 +82,14 @@ export default function LoginPage() {
                 },
             })
 
-            console.log('[OAuth Debug] signInWithOAuth returned:', { data, error })
 
             if (error) {
                 console.error('[OAuth Error] signInWithOAuth error:', error)
                 setError(error.message)
                 setIsLoading(false)
             } else if (data?.url) {
-                console.log('[OAuth Debug] Success! Redirecting to:', data.url)
                 // The browser should redirect automatically, but we can log the URL
             } else {
-                console.log('[OAuth Debug] No error but no redirect URL either.')
                 setIsLoading(false)
             }
         } catch (err: any) {
@@ -132,9 +126,9 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen bg-muted/30">
+        <div className="min-h-screen bg-muted/30 flex flex-col">
             <SiteHeader />
-            <main className="container flex items-center justify-center py-20 min-h-[80vh]">
+            <main className="flex-1 flex items-center justify-center px-4 py-12">
                 <Card className="w-full max-w-md">
                     <CardHeader>
                         <CardTitle className="text-2xl flex items-center gap-2">

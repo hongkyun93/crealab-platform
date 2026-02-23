@@ -1,7 +1,7 @@
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Briefcase, User, Box, ArrowRight } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowRight, Briefcase, User } from "lucide-react"
+import Link from "next/link"
 
 export default function DesignLabEntry() {
     return (

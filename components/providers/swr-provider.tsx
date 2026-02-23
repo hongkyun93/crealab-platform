@@ -1,5 +1,5 @@
-import { SWRConfig } from 'swr'
 import { swrConfig } from '@/lib/swr-config'
+import { SWRConfig } from 'swr'
 
 /**
  * SWR Provider Wrapper

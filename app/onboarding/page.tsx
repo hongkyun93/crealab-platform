@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/components/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useAuth } from "@/components/providers/auth-provider"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Loader2, Mail, Check, Building2, ArrowRight } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { ArrowRight, Building2, Loader2, Mail } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 type UserRole = 'brand' | 'creator' | 'mcn' | 'agency'

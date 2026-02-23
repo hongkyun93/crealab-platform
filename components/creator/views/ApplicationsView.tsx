@@ -1,10 +1,9 @@
-import Link from "next/link"
-import { ChevronRight, Megaphone, Search } from "lucide-react"
+import { ApplicationListRow } from "@/components/creator/ApplicationListRow"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ApplicationListRow } from "@/components/creator/ApplicationListRow"
-import { LayoutGrid, List } from "lucide-react"
+import { ChevronRight, LayoutGrid, List, Megaphone, Search } from "lucide-react"
+import Link from "next/link"
 import { useState } from "react"
 
 interface ApplicationsViewProps {

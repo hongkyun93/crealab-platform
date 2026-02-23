@@ -1,5 +1,6 @@
 "use client"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -8,9 +9,8 @@ import {
     DialogDescription,
     DialogFooter,
     DialogHeader,
-    DialogTitle,
+    DialogTitle
 } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
 import { FileText, Megaphone, Search, Settings, ShoppingBag, User } from "lucide-react"
 
 interface ProductGuideDialogProps {

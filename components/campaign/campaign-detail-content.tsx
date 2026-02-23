@@ -1,12 +1,11 @@
 
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, FileText, Gift, Megaphone, Send, User, X, CheckCircle2, Instagram, Youtube, MessageCircle, Hash, Link as LinkIcon, Users, Loader2, Upload } from "lucide-react"
-import { useRef, useState } from "react"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import Link from "next/link"
+import { Calendar, FileText, Hash, Link as LinkIcon, Loader2, Megaphone, Upload, Users, X } from "lucide-react"
+import { useRef } from "react"
 
 interface CampaignDetailContentProps {
     campaign: any

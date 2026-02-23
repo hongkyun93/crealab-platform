@@ -1,17 +1,11 @@
 "use client"
 
-import React, { useState } from 'react'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
-import {
-    User, MapPin, Instagram, Youtube, Twitter, Globe,
-    Mail, Star, TrendingUp, DollarSign, Camera, Video,
-    Share2, Download, BarChart2, PieChart, Activity,
-    Layout, Grid, List, CheckCircle2
-} from "lucide-react"
+import { Camera, CheckCircle2, DollarSign, Globe, Grid, Instagram, Mail, MapPin, Star, TrendingUp, Twitter, User, Video, Youtube } from "lucide-react"
+import { useState } from 'react'
 
 // --- Rich Realistic Mock Data (Creator Profile & Rate Card Context) ---
 const PROFILE_DATA = {

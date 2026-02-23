@@ -1,17 +1,9 @@
 "use client"
 
-import React, { useState } from 'react'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
-import {
-    ShoppingBag, Heart, Star, Tag, Truck, Gift,
-    MoreHorizontal, ArrowRight, Info, Percent, Sparkles,
-    Flame, Package, Globe, Clock, ThumbsUp, Layers,
-    Filter, Search, Grid, List as ListIcon
-} from "lucide-react"
+import { ArrowRight, Clock, Heart, ShoppingBag, Star } from "lucide-react"
+import { useState } from 'react'
 
 // --- Rich Realistic Mock Data (Marketplace/Product Context) ---
 const MARKETPLACE_DATA_POOL = [

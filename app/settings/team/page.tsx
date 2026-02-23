@@ -1,17 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useTeam } from "@/components/providers/team-provider"
-import { TeamMember, TeamInvitation, TeamRole } from "@/lib/types/team"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { UserPlus, Settings, Users, Mail, Loader2, X, ArrowLeft } from "lucide-react"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,12 +10,22 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle,
+    AlertDialogTitle
 } from "@/components/ui/alert-dialog"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
+import { TeamInvitation, TeamMember, TeamRole } from "@/lib/types/team"
+import { ArrowLeft, Loader2, Mail, UserPlus, Users, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 
 export default function TeamSettingsPage() {
@@ -112,8 +112,6 @@ export default function TeamSettingsPage() {
     }
 
     const handleUpdateRole = async (memberId: string, newRole: TeamRole) => {
-        console.log('[UI DEBUG] handleUpdateRole called with:', { memberId, newRole })
-        console.log('[UI DEBUG] Current members:', members)
 
         const success = await updateMemberRole(memberId, newRole)
         if (success) {

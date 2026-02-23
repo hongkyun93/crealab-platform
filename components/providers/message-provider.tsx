@@ -1,8 +1,8 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react"
-import { useAuth } from "./auth-provider"
 import type { Message, Notification, SubmissionFeedback } from "@/lib/types"
+import React, { createContext, useContext, useEffect, useRef, useState } from "react"
+import { useAuth } from "./auth-provider"
 
 interface MessageContextType {
     messages: Message[]
@@ -348,11 +348,11 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
             // null인 경우에는 아예 필드를 보내지 않고, 있는 경우에만 포함시킨다.
             // 42703 에러(column not found) 시에도 타임스탬프 없이 재시도해 plain text는 항상 저장됨.
             const basePayload: any = {
-                proposal_id: proposalId,
-                product_application_id: brandProposalId,
                 sender_id: userId,
                 content,
             }
+            if (proposalId) basePayload.proposal_id = proposalId;
+            if (brandProposalId) basePayload.product_application_id = brandProposalId;
 
             // videoTimestamp가 실제 값이 있는 경우에만 컬럼 포함
             const payloadWithTs = videoTimestamp != null
@@ -380,7 +380,9 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     console.log('[MessageProvider] Feedback sent (without timestamp — run migration to enable bookmarks)')
                     return
                 }
-                console.error('[MessageProvider] Feedback error:', error)
+
+                // If the error is an infinite timeout caused by undefined payloads, log exact details
+                console.error('[MessageProvider] Feedback Error Payload Details:', { payloadWithTs, errorCode: error.code })
                 throw error
             }
 

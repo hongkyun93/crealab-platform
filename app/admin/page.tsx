@@ -1,19 +1,16 @@
 ﻿"use client"
 
-import { SiteHeader } from "@/components/site-header"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useRouter } from "next/navigation"
-import { useEffect, useState, useCallback } from "react"
-import {
-    Trash2, Shield, Users, ShoppingBag, Send, Briefcase,
-    CheckCircle2, Wallet, AlertCircle, Layers, Calendar
-} from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/components/providers/auth-provider"
-import { toast } from "sonner"
+import { SiteHeader } from "@/components/site-header"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { AlertCircle, Briefcase, Calendar, CheckCircle2, Layers, Shield, Trash2, Wallet } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useCallback, useEffect, useState } from "react"
+import { toast } from "sonner"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface AdminMoment {
@@ -33,6 +30,17 @@ interface AdminProposal {
     price_offer?: number
     status?: string
     content_submission_status?: string
+    created_at: string
+}
+
+interface AdminPaymentPending {
+    id: string
+    type: 'product_application' | 'moment_proposal' | 'campaign_application'
+    brand_id?: string
+    influencer_id?: string
+    price_offer?: number
+    contract_status?: string
+    payment_confirmed_at?: string | null
     created_at: string
 }
 
@@ -56,7 +64,8 @@ export default function AdminPage() {
     const [moments, setMoments] = useState<AdminMoment[]>([])
     const [proposals, setProposals] = useState<AdminProposal[]>([])
     const [workspaces, setWorkspaces] = useState<AdminWorkspace[]>([])
-    const [pendingPayments, setPendingPayments] = useState<any[]>([])
+    const [pendingPayments, setPendingPayments] = useState<AdminPaymentPending[]>([])
+    const [confirmedPayments, setConfirmedPayments] = useState<AdminPaymentPending[]>([])
     const [settlements, setSettlements] = useState<any[]>([])
 
     // ── 로딩 ─────────────────────────────────────────────────────
@@ -64,7 +73,13 @@ export default function AdminPage() {
     const [loadingProposals, setLoadingProposals] = useState(false)
     const [loadingWorkspaces, setLoadingWorkspaces] = useState(false)
     const [loadingPayments, setLoadingPayments] = useState(false)
+    const [loadingConfirmed, setLoadingConfirmed] = useState(false)
     const [loadingSettlements, setLoadingSettlements] = useState(false)
+    const [loadingDeposits, setLoadingDeposits] = useState(false)
+
+    // ── 예치금 충전 대기 ──
+    const [pendingDeposits, setPendingDeposits] = useState<any[]>([])
+    const [confirmingDepositId, setConfirmingDepositId] = useState<string | null>(null)
 
     // ── 액션 상태 ─────────────────────────────────────────────────
     const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -98,7 +113,8 @@ export default function AdminPage() {
             // brand_proposals
             const { data: bp, error: bpErr } = await supabase
                 .from('product_applications')
-                .select('id, price_offer, status, content_submission_status, created_at, brand_id, influencer_id')
+                .select('id, price_offer, status, content_submission_status, created_at, brand_id, influencer_id, brand:profiles!product_applications_brand_id_fkey(display_name), creator:profiles!product_applications_influencer_id_fkey(display_name)')
+
                 .order('created_at', { ascending: false })
                 .limit(100)
             if (bpErr) console.error('[Admin] brand_proposals error:', bpErr)
@@ -106,7 +122,7 @@ export default function AdminPage() {
             // moment_proposals
             const { data: mp, error: mpErr } = await supabase
                 .from('moment_proposals')
-                .select('id, price_offer, status, content_submission_status, created_at, brand_id, influencer_id')
+                .select('id, price_offer, status, content_submission_status, created_at, brand_id, influencer_id, brand:profiles!moment_proposals_brand_id_fkey(display_name), creator:profiles!moment_proposals_influencer_id_fkey(display_name)')
                 .order('created_at', { ascending: false })
                 .limit(100)
             if (mpErr) console.error('[Admin] moment_proposals error:', mpErr)
@@ -123,8 +139,8 @@ export default function AdminPage() {
             const mapped: AdminProposal[] = [
                 ...(bp ?? []).map((p: any) => ({
                     id: p.id, type: 'product_application' as const,
-                    brand_name: p.brand_id,
-                    creator_name: p.influencer_id,
+                    brand_name: p.brand?.display_name || p.brand_id?.slice(0, 8) || '-',
+                    creator_name: p.creator?.display_name || p.influencer_id?.slice(0, 8) || '-',
                     price_offer: p.price_offer,
                     status: p.status,
                     content_submission_status: p.content_submission_status,
@@ -132,8 +148,8 @@ export default function AdminPage() {
                 })),
                 ...(mp ?? []).map((p: any) => ({
                     id: p.id, type: 'moment_proposal' as const,
-                    brand_name: p.brand_id,
-                    creator_name: p.influencer_id,
+                    brand_name: p.brand?.display_name || p.brand_id?.slice(0, 8) || '-',
+                    creator_name: p.creator?.display_name || p.influencer_id?.slice(0, 8) || '-',
                     price_offer: p.price_offer,
                     status: p.status,
                     content_submission_status: p.content_submission_status,
@@ -141,7 +157,7 @@ export default function AdminPage() {
                 })),
                 ...(ca ?? []).map((p: any) => ({
                     id: p.id, type: 'campaign_application' as const,
-                    creator_name: p.influencer_id,
+                    creator_name: p.influencer_id?.slice(0, 8) || '-',
                     status: p.status,
                     created_at: p.created_at,
                 })),
@@ -169,16 +185,66 @@ export default function AdminPage() {
     const fetchPendingPayments = useCallback(async () => {
         setLoadingPayments(true)
         try {
-            const { data, error } = await supabase
-                .from('product_applications')
-                .select('id, price_offer, contract_status, payment_confirmed_at, created_at, brand_id, influencer_id')
-                .eq('contract_status', 'signed')
-                .is('payment_confirmed_at', null)
-                .order('created_at', { ascending: false })
-            if (error) console.error('[Admin] pending payments error:', error)
-            setPendingPayments(data ?? [])
-        } catch (e) { console.error(e) }
+            const fields = 'id, price_offer, contract_status, payment_confirmed_at, created_at, brand_id, influencer_id'
+
+            const [{ data: pa }, { data: mp }, { data: ca }] = await Promise.all([
+                supabase.from('product_applications')
+                    .select(fields)
+                    .eq('contract_status', 'signed')
+                    .is('payment_confirmed_at', null)
+                    .order('created_at', { ascending: false }),
+                supabase.from('moment_proposals')
+                    .select(fields)
+                    .eq('contract_status', 'signed')
+                    .is('payment_confirmed_at', null)
+                    .order('created_at', { ascending: false }),
+                supabase.from('campaign_applications')
+                    .select(fields)
+                    .eq('contract_status', 'signed')
+                    .is('payment_confirmed_at', null)
+                    .order('created_at', { ascending: false }),
+            ])
+
+            const merged: AdminPaymentPending[] = [
+                ...(pa ?? []).map((r: any) => ({ ...r, type: 'product_application' as const })),
+                ...(mp ?? []).map((r: any) => ({ ...r, type: 'moment_proposal' as const })),
+                ...(ca ?? []).map((r: any) => ({ ...r, type: 'campaign_application' as const })),
+            ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+            setPendingPayments(merged)
+        } catch (e) { console.error('[Admin] fetchPendingPayments error:', e) }
         finally { setLoadingPayments(false) }
+    }, [supabase])
+
+    const fetchConfirmedPayments = useCallback(async () => {
+        setLoadingConfirmed(true)
+        try {
+            const fields = 'id, price_offer, contract_status, payment_confirmed_at, created_at, brand_id, influencer_id'
+            const [{ data: pa }, { data: mp }, { data: ca }] = await Promise.all([
+                supabase.from('product_applications')
+                    .select(fields)
+                    .eq('contract_status', 'signed')
+                    .not('payment_confirmed_at', 'is', null)
+                    .order('payment_confirmed_at', { ascending: false }),
+                supabase.from('moment_proposals')
+                    .select(fields)
+                    .eq('contract_status', 'signed')
+                    .not('payment_confirmed_at', 'is', null)
+                    .order('payment_confirmed_at', { ascending: false }),
+                supabase.from('campaign_applications')
+                    .select(fields)
+                    .eq('contract_status', 'signed')
+                    .not('payment_confirmed_at', 'is', null)
+                    .order('payment_confirmed_at', { ascending: false }),
+            ])
+            const merged: AdminPaymentPending[] = [
+                ...(pa ?? []).map((r: any) => ({ ...r, type: 'product_application' as const })),
+                ...(mp ?? []).map((r: any) => ({ ...r, type: 'moment_proposal' as const })),
+                ...(ca ?? []).map((r: any) => ({ ...r, type: 'campaign_application' as const })),
+            ].sort((a, b) => new Date(b.payment_confirmed_at!).getTime() - new Date(a.payment_confirmed_at!).getTime())
+            setConfirmedPayments(merged)
+        } catch (e) { console.error('[Admin] fetchConfirmedPayments error:', e) }
+        finally { setLoadingConfirmed(false) }
     }, [supabase])
 
     const fetchSettlements = useCallback(async () => {
@@ -201,7 +267,9 @@ export default function AdminPage() {
         if (activeTab === 'proposals') fetchProposals()
         if (activeTab === 'workspaces') fetchWorkspaces()
         if (activeTab === 'payments') fetchPendingPayments()
+        if (activeTab === 'payments_done') fetchConfirmedPayments()
         if (activeTab === 'settlements') fetchSettlements()
+        if (activeTab === 'deposits') fetchPendingDeposits()
     }, [activeTab]) // eslint-disable-line
 
     // ── 액션 ──────────────────────────────────────────────────────
@@ -215,14 +283,48 @@ export default function AdminPage() {
         setDeletingId(null)
     }
 
-    const handleConfirmPayment = async (proposalId: string) => {
-        setConfirmingId(proposalId)
+    const handleConfirmPayment = async (item: AdminPaymentPending) => {
+        setConfirmingId(item.id)
+        const tableMap = {
+            product_application: 'product_applications',
+            moment_proposal: 'moment_proposals',
+            campaign_application: 'campaign_applications',
+        } as const
+        const table = tableMap[item.type]
+        const confirmedAt = new Date().toISOString()
+
         const { error } = await supabase
-            .from('product_applications')
-            .update({ payment_confirmed_at: new Date().toISOString() })
-            .eq('id', proposalId)
-        if (error) toast.error(error.message)
-        else { toast.success('입금 확인 완료! 배송 단계가 활성화됩니다.'); fetchPendingPayments() }
+            .from(table)
+            .update({ payment_confirmed_at: confirmedAt })
+            .eq('id', item.id)
+
+        if (error) {
+            toast.error(error.message)
+        } else {
+            toast.success('입금 확인 완료! 배송 단계가 활성화됩니다.')
+
+            // 브랜드 알림
+            if (item.brand_id) {
+                await supabase.from('notifications').insert({
+                    recipient_id: item.brand_id,
+                    type: 'payment_confirmed',
+                    content: '광고비 입금이 확인되었습니다. 이제 제품을 배송해 주세요.',
+                    reference_id: item.id,
+                })
+            }
+            // 크리에이터 알림
+            if (item.influencer_id) {
+                await supabase.from('notifications').insert({
+                    recipient_id: item.influencer_id,
+                    type: 'payment_confirmed',
+                    content: '브랜드 광고비 입금이 확인되었습니다. 배송 준비 중입니다.',
+                    reference_id: item.id,
+                })
+            }
+
+            fetchPendingPayments()
+            fetchConfirmedPayments()
+        }
         setConfirmingId(null)
     }
 
@@ -237,7 +339,70 @@ export default function AdminPage() {
         setPayingId(null)
     }
 
-    // ── Helpers ───────────────────────────────────────────────────
+    // ── 예치금 충전 확인 ──────────────────────────────────────────
+    const fetchPendingDeposits = useCallback(async () => {
+        setLoadingDeposits(true)
+        try {
+            const { data, error } = await supabase
+                .from('brand_deposits')
+                .select('*')
+                .eq('type', 'charge')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false })
+            if (error) console.error('[Admin] fetchPendingDeposits:', error)
+            setPendingDeposits(data ?? [])
+        } finally { setLoadingDeposits(false) }
+    }, [supabase])
+
+    const handleConfirmDeposit = async (deposit: any, amount: number) => {
+        setConfirmingDepositId(deposit.id)
+        try {
+            // 1. 현재 잔액 조회
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('deposit_balance')
+                .eq('id', deposit.brand_id)
+                .single()
+            const currentBalance = profileData?.deposit_balance ?? 0
+            const newBalance = currentBalance + amount
+
+            // 2. brand_deposits 레코드 업데이트
+            const { error: txErr } = await supabase
+                .from('brand_deposits')
+                .update({
+                    amount,
+                    balance_after: newBalance,
+                    status: 'confirmed',
+                    confirmed_by: user?.id,
+                    confirmed_at: new Date().toISOString(),
+                })
+                .eq('id', deposit.id)
+            if (txErr) throw txErr
+
+            // 3. profiles.deposit_balance 업데이트
+            const { error: balErr } = await supabase
+                .from('profiles')
+                .update({ deposit_balance: newBalance })
+                .eq('id', deposit.brand_id)
+            if (balErr) throw balErr
+
+            // 4. 브랜드 알림
+            await supabase.from('notifications').insert({
+                recipient_id: deposit.brand_id,
+                type: 'deposit_confirmed',
+                content: `예치금 ₩${amount.toLocaleString()} 충전이 완료되었습니다. 현재 잔액: ₩${newBalance.toLocaleString()}`,
+                reference_id: deposit.id,
+            })
+
+            toast.success(`₩${amount.toLocaleString()} 충전 완료!`)
+            fetchPendingDeposits()
+        } catch (err: any) {
+            toast.error(err?.message ?? '충전 확인 중 오류가 발생했습니다.')
+        } finally {
+            setConfirmingDepositId(null)
+        }
+    }
+
     const typeLabel: Record<string, string> = {
         product_application: '제품 지원',
         moment_proposal: '모먼트 제안',
@@ -271,6 +436,8 @@ export default function AdminPage() {
                         <TabsTrigger value="proposals" className="gap-1.5"><Briefcase className="h-3.5 w-3.5" /> 협업 제안 ({proposals.length})</TabsTrigger>
                         <TabsTrigger value="workspaces" className="gap-1.5"><Layers className="h-3.5 w-3.5" /> 워크스페이스 ({workspaces.length})</TabsTrigger>
                         <TabsTrigger value="payments" className="gap-1.5 text-amber-600"><AlertCircle className="h-3.5 w-3.5" /> 입금 확인 ({pendingPayments.length})</TabsTrigger>
+                        <TabsTrigger value="payments_done" className="gap-1.5 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> 입금완료 ({confirmedPayments.length})</TabsTrigger>
+                        <TabsTrigger value="deposits" className="gap-1.5 text-orange-600"><Wallet className="h-3.5 w-3.5" /> 예치금 충전 ({pendingDeposits.length})</TabsTrigger>
                         <TabsTrigger value="settlements" className="gap-1.5 text-emerald-600"><Wallet className="h-3.5 w-3.5" /> 정산 관리 ({settlements.length})</TabsTrigger>
                     </TabsList>
 
@@ -363,9 +530,14 @@ export default function AdminPage() {
                         ) : (
                             <div className="grid gap-3">
                                 {pendingPayments.map(p => (
-                                    <Card key={p.id} className="flex items-center justify-between p-4">
+                                    <Card key={`${p.type}-${p.id}`} className="flex items-center justify-between p-4">
                                         <div className="space-y-1">
-                                            <p className="text-sm font-bold">{p.brand?.display_name ?? '브랜드'} → {p.influencer?.display_name ?? '크리에이터'}</p>
+                                            <div className="flex items-center gap-2">
+                                                <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', typeColor[p.type] ?? 'bg-muted')}>
+                                                    {typeLabel[p.type] ?? p.type}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm font-bold">{p.brand_id?.slice(0, 8) ?? '브랜드'} → {p.influencer_id?.slice(0, 8) ?? '크리에이터'}</p>
                                             <p className="text-xs text-muted-foreground">
                                                 금액: <span className="font-mono font-bold text-foreground">{(p.price_offer ?? 0).toLocaleString()}원</span>
                                                 {' '}(+VAT {Math.round((p.price_offer ?? 0) * 0.1).toLocaleString()}원)
@@ -373,7 +545,7 @@ export default function AdminPage() {
                                             <p className="text-[10px] text-muted-foreground">계약일: {new Date(p.created_at).toLocaleDateString()}</p>
                                         </div>
                                         <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
-                                            onClick={() => handleConfirmPayment(p.id)} disabled={confirmingId === p.id}>
+                                            onClick={() => handleConfirmPayment(p)} disabled={confirmingId === p.id}>
                                             <CheckCircle2 className="h-3.5 w-3.5" /> 입금 확인
                                         </Button>
                                     </Card>
@@ -382,7 +554,40 @@ export default function AdminPage() {
                         )}
                     </TabsContent>
 
-                    {/* ── 정산 관리 ── */}
+                    {/* ── 입금완료 ── */}
+                    <TabsContent value="payments_done" className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <p className="text-sm text-muted-foreground">입금 확인 완료된 협업 목록</p>
+                            <Button size="sm" variant="outline" onClick={fetchConfirmedPayments}>새로고침</Button>
+                        </div>
+                        {loadingConfirmed ? <p className="text-sm text-muted-foreground">로딩 중...</p> : confirmedPayments.length === 0 ? (
+                            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">입금 확인 완료 내역이 없습니다.</CardContent></Card>
+                        ) : (
+                            <div className="grid gap-3">
+                                {confirmedPayments.map(p => (
+                                    <Card key={`done-${p.type}-${p.id}`} className="flex items-center justify-between p-4 border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/40 dark:bg-emerald-900/10">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', typeColor[p.type] ?? 'bg-muted')}>
+                                                    {typeLabel[p.type] ?? p.type}
+                                                </span>
+                                                <Badge className="bg-emerald-500 text-[10px] h-5">입금완료</Badge>
+                                            </div>
+                                            <p className="text-sm font-bold">{p.brand_id?.slice(0, 8) ?? '브랜드'} → {p.influencer_id?.slice(0, 8) ?? '크리에이터'}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                금액: <span className="font-mono font-bold text-foreground">{(p.price_offer ?? 0).toLocaleString()}원</span>
+                                                {' '}(+VAT {Math.round((p.price_offer ?? 0) * 0.1).toLocaleString()}원)
+                                            </p>
+                                            <p className="text-[10px] text-emerald-600 font-medium">
+                                                ✅ 확인일시: {p.payment_confirmed_at ? new Date(p.payment_confirmed_at).toLocaleString('ko-KR') : '-'}
+                                            </p>
+                                        </div>
+                                        <CheckCircle2 className="h-6 w-6 text-emerald-500 shrink-0" />
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </TabsContent>
                     <TabsContent value="settlements" className="space-y-4">
                         <div className="flex justify-between items-center">
                             <p className="text-sm text-muted-foreground">크리에이터 정산 현황. 이체 완료 후 "지급 완료" 버튼을 눌러주세요.</p>
@@ -417,6 +622,53 @@ export default function AdminPage() {
                                         {s.status === 'paid' && (
                                             <p className="text-xs text-emerald-600">{s.paid_at ? new Date(s.paid_at).toLocaleDateString() : ''}</p>
                                         )}
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </TabsContent>
+
+                    {/* ── 예치금 충전 확인 ── */}
+                    <TabsContent value="deposits" className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <p className="text-sm text-muted-foreground">브랜드가 요청한 충전 대기 목록 (수동 입금 후 확인)</p>
+                            <Button size="sm" variant="outline" onClick={fetchPendingDeposits}>새로고침</Button>
+                        </div>
+                        {loadingDeposits ? <p className="text-sm text-muted-foreground">로딩 중...</p> : pendingDeposits.length === 0 ? (
+                            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">충전 대기 건이 없습니다 ✅</CardContent></Card>
+                        ) : (
+                            <div className="grid gap-3">
+                                {pendingDeposits.map((d: any) => (
+                                    <Card key={d.id} className="flex items-center justify-between p-4">
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-bold">브랜드 ID: {d.brand_id?.slice(0, 8)}</p>
+                                            <p className="text-xs text-muted-foreground">노트: {d.note ?? '-'}</p>
+                                            <p className="text-[10px] text-muted-foreground">요청일시: {new Date(d.created_at).toLocaleString('ko-KR')}</p>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="number"
+                                                    placeholder="충전 금액"
+                                                    className="w-36 h-8 rounded-md border border-input px-2 text-xs text-right font-mono"
+                                                    id={`deposit-amount-${d.id}`}
+                                                />
+                                                <span className="text-xs text-muted-foreground">원</span>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                className="bg-orange-500 hover:bg-orange-600 text-white gap-2"
+                                                onClick={() => {
+                                                    const input = document.getElementById(`deposit-amount-${d.id}`) as HTMLInputElement
+                                                    const amount = parseInt(input?.value ?? '0', 10)
+                                                    if (!amount || amount <= 0) { toast.error('충전 금액을 입력하세요.'); return }
+                                                    handleConfirmDeposit(d, amount)
+                                                }}
+                                                disabled={confirmingDepositId === d.id}
+                                            >
+                                                <CheckCircle2 className="h-3.5 w-3.5" /> 충전 확인
+                                            </Button>
+                                        </div>
                                     </Card>
                                 ))}
                             </div>

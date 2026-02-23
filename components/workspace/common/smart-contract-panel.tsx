@@ -1,13 +1,14 @@
 "use client"
 
-import React, { useState, useRef, useEffect } from 'react';
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
+import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, FileSignature, ShieldCheck, Download, Pencil, Save, X, Loader2, RotateCcw, PenTool } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Proposal } from "@/lib/types/proposal";
+import { cn } from "@/lib/utils";
+import { BadgeCheck, CheckCircle2, Clock, Copy, CreditCard, Download, FileSignature, FileText, Loader2, Pencil, PenTool, RotateCcw, Save, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from 'react';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
 // ───── Types ─────
@@ -180,6 +181,7 @@ function SignatureCanvas({
 
 // ───── Main Panel ─────
 export function SmartContractPanel({ proposal, userType, onSign, onSaveContract, onUndoSign, isSigning, fullWidth }: SmartContractPanelProps) {
+    const { supabase } = useAuth();
     const [contractContent, setContractContent] = useState<string>(proposal.contract_content || '');
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState('');
@@ -191,6 +193,51 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     const updateProposal = useWorkspaceStore((state) => state.updateProposal);
     const setContractViewOpen = useWorkspaceStore((state) => state.setContractViewOpen);
 
+    // ── 예치금 잔액 (브랜드 뷰에서만 사용) ──
+    const [depositBalance, setDepositBalance] = useState<number | null>(null);
+    const [isPayingDeposit, setIsPayingDeposit] = useState(false);
+    const [payTab, setPayTab] = useState<'transfer' | 'deposit'>('transfer');
+
+    // ── 프로필 추가 파싱 ──
+    const [brandProfile, setBrandProfile] = useState<any>(null);
+    const [creatorProfile, setCreatorProfile] = useState<any>(null);
+
+    const p = proposal as any;
+    const brandId = p.brand_id || p.brandId;
+    const influencerId = p.influencer_id || p.influencerId;
+
+    useEffect(() => {
+        const fetchProfiles = async () => {
+            const profileColumns = [
+                'id', 'display_name', 'email', 'phone',
+                // Brand fields
+                'representative_name', 'business_number', 'company_address', 'company_phone',
+                'tax_email', 'business_category', 'business_type',
+                'contact_person_name', 'contact_person_phone', 'contact_person_email', 'settlement_bank',
+                // Creator fields
+                'legal_name', 'birth_date', 'legal_address', 'shipping_address',
+                'creator_business_number', 'bank_name', 'account_number', 'account_holder',
+            ].join(',');
+
+            const ids = [brandId, influencerId].filter(Boolean);
+            if (!ids.length) return;
+
+            const { data } = await supabase
+                .from('profiles')
+                .select(profileColumns)
+                .in('id', ids);
+
+            if (data) {
+                const bProfile = data.find((d: any) => d.id === brandId);
+                const cProfile = data.find((d: any) => d.id === influencerId);
+                if (bProfile) setBrandProfile(bProfile);
+                if (cProfile) setCreatorProfile(cProfile);
+            }
+        };
+        fetchProfiles();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [brandId, influencerId]);
+
     // Status Logic
     const isBrandSigned = !!proposal.brand_signature;
     const isInfluencerSigned = !!proposal.influencer_signature;
@@ -198,8 +245,8 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     const isAnySigned = isBrandSigned || isInfluencerSigned;
     const canEdit = userType === 'brand' && !isAnySigned;
 
-    const brandName = proposal.brandName || proposal.brand_name || "브랜드(갑)";
-    const influencerName = proposal.influencerName || "크리에이터(을)";
+    const brandName = brandProfile?.display_name || (proposal as any).brandName || (proposal as any).brand_name || "브랜드(갑)";
+    const influencerName = creatorProfile?.legal_name || creatorProfile?.display_name || (proposal as any).influencerName || "크리에이터(을)";
 
     // Format date/time in KST
     const formatKST = (dateStr: string | null | undefined) => {
@@ -212,12 +259,86 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
         }) + ' KST';
     };
 
-    // Generate AI contract on first load if no content exists
+    // ── File upload state ──
+    const [isParsingFile, setIsParsingFile] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // ── 자동 생성 제거: 브랜드가 명시적으로 선택해야 생성 함
+    // useEffect로 양쪽에서 자동 호출하는 버그 수정
+
+    // ── 워크스페이스가 수신 홈에서 열릴 때 예치금 잡아오기 ──
     useEffect(() => {
-        if (!contractContent && !isGenerating) {
-            generateContract();
+        const fetchDepositBalance = async () => {
+            if (userType !== 'brand' || !brandId) return;
+            const { data } = await supabase
+                .from('profiles')
+                .select('deposit_balance')
+                .eq('id', brandId)
+                .single();
+            if (data) setDepositBalance(data.deposit_balance ?? 0);
+        };
+        if (isFullySigned) fetchDepositBalance();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [brandId, isFullySigned, userType]);
+
+    const handlePayFromDeposit = async () => {
+        const cost: number = (proposal as any).price_offer ?? 0;
+        const totalWithVat = Math.round(cost * 1.1);
+        if (depositBalance === null || depositBalance < totalWithVat) {
+            return;
         }
-    }, []);
+        setIsPayingDeposit(true);
+        try {
+            const newBalance = depositBalance - totalWithVat;
+            const proposalType = (proposal as any).moment_id
+                ? 'moment_proposal'
+                : (proposal as any).campaign_id
+                    ? 'campaign_application'
+                    : 'product_application';
+
+            // 1. 거래 내역 삽입
+            const { error: txErr } = await supabase.from('brand_deposits').insert({
+                brand_id: brandId,
+                type: 'use',
+                amount: totalWithVat,
+                balance_after: newBalance,
+                reference_id: proposal.id,
+                reference_type: proposalType,
+                note: `워크스페이스 광고비 자동 차감 (${(proposal as any).product_name ?? ''})`,
+                status: 'confirmed',
+                confirmed_at: new Date().toISOString(),
+            });
+            if (txErr) throw txErr;
+
+            // 2. 예치금 잔액 차감
+            const { error: balErr } = await supabase
+                .from('profiles')
+                .update({ deposit_balance: newBalance })
+                .eq('id', brandId);
+            if (balErr) throw balErr;
+
+            // 3. payment_confirmed_at 세팅
+            const tableMap: Record<string, string> = {
+                product_application: 'product_applications',
+                moment_proposal: 'moment_proposals',
+                campaign_application: 'campaign_applications',
+            };
+            const table = tableMap[proposalType] ?? 'product_applications';
+            const { error: payErr } = await supabase
+                .from(table)
+                .update({ payment_confirmed_at: new Date().toISOString() })
+                .eq('id', proposal.id);
+            if (payErr) throw payErr;
+
+            updateProposal({ payment_confirmed_at: new Date().toISOString() } as any);
+            setDepositBalance(newBalance);
+        } catch (err) {
+            console.error('[SmartContractPanel] deposit payment failed:', err);
+        } finally {
+            setIsPayingDeposit(false);
+        }
+    };
+
 
     const generateContract = async () => {
         setIsGenerating(true);
@@ -225,7 +346,14 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             const res = await fetch('/api/generate-contract', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ proposal, brandName, influencerName, messages: [] }),
+                body: JSON.stringify({
+                    proposal,
+                    brandName,
+                    influencerName,
+                    messages: [],
+                    brandProfile: brandProfile || null,
+                    creatorProfile: creatorProfile || null,
+                }),
             });
             const data = await res.json();
             if (data.result) {
@@ -237,6 +365,53 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             console.error('[SmartContractPanel] AI contract generation failed:', err);
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const fileName = file.name.toLowerCase();
+        const isHwp = fileName.endsWith('.hwp') || fileName.endsWith('.hwpx');
+        if (isHwp) {
+            alert('HWP(한글) 파일은 지원되지 않습니다.\nSupabase 파일을 PDF 또는 DOCX로 변환 후 업로드해주세요.');
+            return;
+        }
+
+        setIsParsingFile(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('proposal', JSON.stringify(proposal));
+            formData.append('brandName', brandName);
+            formData.append('influencerName', influencerName);
+            formData.append('brandProfile', JSON.stringify(brandProfile || {}));
+            formData.append('creatorProfile', JSON.stringify(creatorProfile || {}));
+
+            const res = await fetch('/api/parse-contract', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert(data.error || '파일 파싱에 실패했습니다.');
+                return;
+            }
+
+            if (data.result) {
+                setContractContent(data.result);
+                if (onSaveContract) await onSaveContract(data.result);
+                updateProposal({ contract_content: data.result } as any);
+            }
+        } catch (err) {
+            console.error('[SmartContractPanel] File parse error:', err);
+            alert('파일 업로드 중 오류가 발생했습니다.');
+        } finally {
+            setIsParsingFile(false);
+            // reset input
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -372,44 +547,68 @@ body { background: #fff !important; color: #111 !important; }
             <div className={cn("flex-1 min-h-0 flex flex-col", fullWidth && "overflow-hidden")}>
                 {/* Top Section: 계약서 보기 */}
                 <div className={cn("flex-1 min-h-0 flex flex-col", signatureExpanded && "border-b")}>
-                    {/* Contract Toolbar */}
-                    <div className="px-4 py-2 border-b flex items-center justify-between bg-background/80 shrink-0">
-                        <span className="text-xs text-muted-foreground">
-                            {isAnySigned ? '🔒 서명이 완료되어 수정할 수 없습니다' : '📄 AI가 자동 생성한 계약서'}
-                        </span>
-                        <div className="flex gap-1.5">
-                            {canEdit && !isEditing && (
-                                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleStartEdit}>
-                                    <Pencil className="h-3 w-3 mr-1" /> 수정
-                                </Button>
-                            )}
-                            {isEditing && (
-                                <>
-                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancelEdit}>
-                                        <X className="h-3 w-3 mr-1" /> 취소
+                    {/* Contract Toolbar -- 계약서 있을 때만 표시 */}
+                    {contractContent && (
+                        <div className="px-4 py-2 border-b flex items-center justify-between bg-background/80 shrink-0">
+                            <span className="text-xs text-muted-foreground">
+                                {isAnySigned ? '🔒 서명이 완료되어 수정할 수 없습니다' : '📄 브랜드가 작성한 계약서'}
+                            </span>
+                            <div className="flex gap-1.5">
+                                {/* 브랜드 전용: 재생성 / 파일로 교체 / 수정 */}
+                                {canEdit && !isEditing && (
+                                    <>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={generateContract} disabled={isGenerating}>
+                                            {isGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                                            재생성
+                                        </Button>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => fileInputRef.current?.click()} disabled={isParsingFile}>
+                                            {isParsingFile ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+                                            파일 교체
+                                        </Button>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleStartEdit}>
+                                            <Pencil className="h-3 w-3 mr-1" /> 수정
+                                        </Button>
+                                    </>
+                                )}
+                                {isEditing && (
+                                    <>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCancelEdit}>
+                                            <X className="h-3 w-3 mr-1" /> 취소
+                                        </Button>
+                                        <Button size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700" onClick={handleSaveEdit} disabled={isSaving}>
+                                            {isSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
+                                            저장
+                                        </Button>
+                                    </>
+                                )}
+                                {!isEditing && contractContent && (
+                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleDownloadPdf} disabled={isPdfGenerating}>
+                                        {isPdfGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
+                                        PDF
                                     </Button>
-                                    <Button size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700" onClick={handleSaveEdit} disabled={isSaving}>
-                                        {isSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
-                                        저장
-                                    </Button>
-                                </>
-                            )}
-                            {!isEditing && contractContent && (
-                                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleDownloadPdf} disabled={isPdfGenerating}>
-                                    {isPdfGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
-                                    PDF
-                                </Button>
-                            )}
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Hidden file input */}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                    />
 
                     {/* Contract Content */}
                     <ScrollArea className="flex-1">
-                        {isGenerating ? (
+                        {(isGenerating || isParsingFile) ? (
                             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                                 <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-3" />
-                                <p className="text-sm font-medium">AI가 계약서를 생성하고 있습니다...</p>
-                                <p className="text-xs mt-1">약 5~10초 소요됩니다</p>
+                                <p className="text-sm font-medium">
+                                    {isParsingFile ? '파일을 분석하고 조항을 추출하는 중입니다...' : 'AI가 계약서를 생성하고 있습니다...'}
+                                </p>
+                                <p className="text-xs mt-1">약 10~20초 소요됩니다</p>
                             </div>
                         ) : isEditing ? (
                             <div className="p-4">
@@ -420,6 +619,43 @@ body { background: #fff !important; color: #111 !important; }
                                     placeholder="계약서 내용을 수정하세요..."
                                 />
                             </div>
+                        ) : !contractContent ? (
+                            /* ── 계약서 없음: 브랜드 vs 크리에이터 분기 ── */
+                            userType === 'brand' ? (
+                                <div className="flex flex-col items-center justify-center py-12 px-6 gap-4">
+                                    <FileSignature className="h-10 w-10 text-indigo-400 mb-1" />
+                                    <p className="text-sm font-semibold text-foreground">계약서 작성 방법을 선택하세요</p>
+                                    <p className="text-xs text-muted-foreground text-center">작성된 계약서는 크리에이터 워크스페이스에 자동으로 공유됩니다</p>
+                                    <div className="grid grid-cols-2 gap-3 w-full max-w-sm mt-2">
+                                        <button
+                                            onClick={generateContract}
+                                            disabled={isGenerating}
+                                            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 transition-all cursor-pointer"
+                                        >
+                                            <Sparkles className="h-6 w-6 text-indigo-500" />
+                                            <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-400">AI 자동 생성</span>
+                                            <span className="text-[10px] text-muted-foreground text-center">제안 조건 기반으로 AI가 자동 작성</span>
+                                        </button>
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isParsingFile}
+                                            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-blue-200 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all cursor-pointer"
+                                        >
+                                            <FileText className="h-6 w-6 text-blue-500" />
+                                            <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">파일 업로드</span>
+                                            <span className="text-[10px] text-muted-foreground text-center">PDF · DOCX 업로드 후 AI가 조항 추출</span>
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground mt-1">※ HWP 파일은 PDF 또는 DOCX로 변환 후 업로드해주세요</p>
+                                </div>
+                            ) : (
+                                /* 크리에이터: 대기 상태 */
+                                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                                    <Clock className="h-8 w-8 text-indigo-300 mb-3" />
+                                    <p className="text-sm font-medium">계약서 작성 중</p>
+                                    <p className="text-xs mt-1">브랜드가 계약서를 작성하면 여기에 표시됩니다</p>
+                                </div>
+                            )
                         ) : (
                             <div ref={contractRef} className={cn("p-6", fullWidth && "max-w-4xl mx-auto")}>
                                 {/* Top Signature Boxes (duplicate for PDF safety) */}
@@ -503,6 +739,157 @@ body { background: #fff !important; color: #111 !important; }
                         )}
                     </ScrollArea>
                 </div>
+
+                {/* ── 입금 안내 배너: 양측 서명 완료 후 브랜드 뷰에만 ── */}
+                {isFullySigned && userType === 'brand' && (
+                    (proposal as any).payment_confirmed_at ? (
+                        <div className="mx-4 mb-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/25 px-4 py-3 flex items-center gap-3">
+                            <BadgeCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <div>
+                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">입금 확인 완료</p>
+                                <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/60 mt-0.5">
+                                    {new Date((proposal as any).payment_confirmed_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 확인됨 · 배송 단계가 활성화되었습니다.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="mx-4 mb-3 rounded-xl border-2 border-orange-400 dark:border-orange-600 bg-orange-50 dark:bg-orange-950/30 px-4 py-3 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                                <p className="text-xs font-bold text-orange-700 dark:text-orange-300">💰 광고비 결제 안내</p>
+                            </div>
+                            {/* 탭 전환 */}
+                            <div className="flex rounded-lg bg-orange-100 dark:bg-orange-900/40 p-0.5 gap-0.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setPayTab('transfer')}
+                                    className={cn(
+                                        'flex-1 text-[11px] font-bold py-1.5 rounded-md transition-all',
+                                        payTab === 'transfer'
+                                            ? 'bg-white dark:bg-orange-800 text-orange-700 dark:text-orange-200 shadow-sm'
+                                            : 'text-orange-600/70 dark:text-orange-400/60 hover:text-orange-700'
+                                    )}
+                                >
+                                    계좌이체
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPayTab('deposit')}
+                                    className={cn(
+                                        'flex-1 text-[11px] font-bold py-1.5 rounded-md transition-all',
+                                        payTab === 'deposit'
+                                            ? 'bg-white dark:bg-orange-800 text-orange-700 dark:text-orange-200 shadow-sm'
+                                            : 'text-orange-600/70 dark:text-orange-400/60 hover:text-orange-700'
+                                    )}
+                                >
+                                    예치금 차감
+                                    {depositBalance !== null && depositBalance > 0 && (
+                                        <span className="ml-1 text-[9px] bg-orange-500 text-white rounded-full px-1.5 py-0.5">
+                                            {depositBalance.toLocaleString()}원
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+
+                            {payTab === 'transfer' ? (
+                                <>
+                                    <p className="text-[10px] text-orange-800 dark:text-orange-200 leading-relaxed">
+                                        계약이 완전히 체결되었습니다. 아래 계좌로 광고비를 입금해 주세요.<br />
+                                        입금 확인 후 배송 단계가 자동으로 활성화됩니다.
+                                    </p>
+                                    <div className="rounded-lg bg-white dark:bg-orange-950/40 border border-orange-200 dark:border-orange-700 p-3 space-y-2 text-xs">
+                                        <div className="flex justify-between">
+                                            <span className="text-orange-700/70 dark:text-orange-300/60">은행</span>
+                                            <span className="font-bold text-orange-900 dark:text-orange-100">우리은행</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-orange-700/70 dark:text-orange-300/60">계좌번호</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-mono font-bold tracking-wide text-orange-900 dark:text-orange-100">1005-504-356962</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigator.clipboard.writeText('1005504356962')}
+                                                    className="p-0.5 rounded hover:bg-orange-100 dark:hover:bg-orange-800 transition-colors"
+                                                    title="계좌번호 복사"
+                                                >
+                                                    <Copy className="h-3 w-3 text-orange-500" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-orange-700/70 dark:text-orange-300/60">예금주</span>
+                                            <span className="font-bold text-orange-900 dark:text-orange-100">주식회사 인비저블 컴퍼니</span>
+                                        </div>
+                                        {(proposal as any).price_offer > 0 && (
+                                            <div className="flex justify-between pt-2 border-t border-orange-200 dark:border-orange-700">
+                                                <span className="text-orange-700/70 dark:text-orange-300/60">입금 금액 (VAT 10% 포함)</span>
+                                                <span className="font-bold text-orange-600 dark:text-orange-400 text-sm">
+                                                    {Math.round((proposal as any).price_offer * 1.1).toLocaleString()}원
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-orange-600/60 dark:text-orange-400/40">
+                                        ※ 입금자명: <span className="font-mono font-semibold">[회사명]_{(proposal as any)?.id?.toString().slice(0, 8)}</span> 형식으로 입력해 주세요.
+                                    </p>
+                                </>
+                            ) : (
+                                /* 예치금 차감 탭 */
+                                <div className="space-y-3">
+                                    {(() => {
+                                        const cost = (proposal as any).price_offer ?? 0;
+                                        const totalWithVat = Math.round(cost * 1.1);
+                                        const bal = depositBalance ?? 0;
+                                        const sufficient = bal >= totalWithVat;
+                                        const afterPay = bal - totalWithVat;
+                                        return (
+                                            <>
+                                                <div className="rounded-lg bg-white dark:bg-orange-950/40 border border-orange-200 dark:border-orange-700 p-3 space-y-2 text-xs">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-orange-700/70">현재 예치금 잔액</span>
+                                                        <span className={cn('font-bold', sufficient ? 'text-orange-900 dark:text-orange-100' : 'text-red-600')}>{bal.toLocaleString()}원</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-orange-700/70">차감 금액 (VAT 포함)</span>
+                                                        <span className="font-bold text-orange-900 dark:text-orange-100">-{totalWithVat.toLocaleString()}원</span>
+                                                    </div>
+                                                    <div className="flex justify-between pt-2 border-t border-orange-200 dark:border-orange-700">
+                                                        <span className="text-orange-700/70">결제 후 잔액</span>
+                                                        <span className={cn('font-black text-sm', sufficient ? 'text-emerald-600' : 'text-red-600')}>
+                                                            {sufficient ? afterPay.toLocaleString() : '잔액 부족'}원
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {!sufficient && (
+                                                    <p className="text-[10px] text-red-500 dark:text-red-400">
+                                                        예치금이 부족합니다. 사이드바 예치금 관리에서 충전해 주세요.
+                                                    </p>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={handlePayFromDeposit}
+                                                    disabled={!sufficient || isPayingDeposit}
+                                                    className={cn(
+                                                        'w-full py-2.5 rounded-lg text-xs font-bold transition-all',
+                                                        sufficient && !isPayingDeposit
+                                                            ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-orange-200'
+                                                            : 'bg-muted text-muted-foreground cursor-not-allowed'
+                                                    )}
+                                                >
+                                                    {isPayingDeposit ? '처리 중...' : `지금 결제하기 — ${totalWithVat.toLocaleString()}원`}
+                                                </button>
+                                                <p className="text-[10px] text-orange-600/60 dark:text-orange-400/40">
+                                                    예치금 차감 결제는 즉시 확인되어 배송 단계가 바로 활성화됩니다.
+                                                </p>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                            )}
+                        </div>
+
+                    )
+                )}
 
                 {/* Bottom Section: Collapsible Signature Area */}
                 <div className="shrink-0 border-t">

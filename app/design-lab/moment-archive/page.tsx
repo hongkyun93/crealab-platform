@@ -1,15 +1,11 @@
 "use client"
 
-import React, { useState } from "react"
-import { SiteHeader } from "@/components/site-header"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import {
-    Calendar, ArrowLeft,
-    Package, Clock, Tv, Sparkles, BadgeCheck, MessageCircle,
-    ChevronRight
-} from "lucide-react"
 import { MomentGridCard } from "@/components/shared/MomentGridCard"
+import { SiteHeader } from "@/components/site-header"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft, BadgeCheck, Calendar, ChevronRight, Clock, MessageCircle, Package, Sparkles, Tv } from "lucide-react"
+import { useState } from "react"
 
 // ─── DUMMY DATA ──────────────────────────────────
 const CREATOR = {

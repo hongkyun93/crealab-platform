@@ -2,8 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
-import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 export default function LoginTestPage() {
     const supabase = createClient()
@@ -20,39 +20,31 @@ export default function LoginTestPage() {
     }
 
     const handleLogin = async (email: string, roleName: string) => {
-        console.log(`[Login] Starting login for ${roleName} (${email})`)
         setLoading(roleName)
         try {
-            console.log(`[Login] Attempting password '12341234'...`)
             const { data, error } = await loginWithTimeout({
                 email,
                 password: "12341234",
             })
 
-            console.log(`[Login] Success! Logged in as ${roleName}`, data.user?.id)
 
             // Refetch to ensure session is active before redirect
             await supabase.auth.refreshSession() // Explicit refresh
 
             // Redirect based on role logic
             if (roleName === "Kim Sumin") {
-                console.log(`[Login] Redirecting to /creator...`)
                 window.location.href = "/creator"
             } else if (roleName === "Voib" || roleName === "365mc") {
-                console.log(`[Login] Redirecting to /brand...`)
                 window.location.href = "/brand"
             } else if (roleName === "Admin") {
-                console.log(`[Login] Redirecting to /admin...`)
                 window.location.href = "/admin"
             } else {
-                console.log(`[Login] Redirecting to reload...`)
                 window.location.reload()
             }
         } catch (e: any) {
             console.error(`[Login] Exception caught:`, e)
             alert(`로그인 실패: ${e.message}`)
         } finally {
-            console.log(`[Login] Finally block executed. Clearing loading state.`)
             setLoading(null)
         }
     }

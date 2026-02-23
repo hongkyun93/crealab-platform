@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, TrendingUp, Eye, Heart, MessageCircle, Share2, Bookmark, Lightbulb, X, ImagePlus, Loader2, BarChart3, Image as ImageIcon, Film } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { BarChart3, Bookmark, Eye, Film, Heart, Image as ImageIcon, Lightbulb, Loader2, MessageCircle, Share2, Sparkles, TrendingUp, X } from "lucide-react"
+import { useCallback, useRef, useState } from "react"
 import { toast } from "sonner"
 
 interface AnalysisResult {

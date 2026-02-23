@@ -1,19 +1,12 @@
 "use client"
 
-import React from "react"
-import { usePathname, useRouter } from "next/navigation"
-import {
-    LayoutDashboard,
-    MessageSquare,
-    Search,
-    User,
-    Settings,
-    FileText,
-    Image as ImageIcon,
-    Bell
-} from "lucide-react"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import {
+    Bell, Image as ImageIcon, LayoutDashboard, Search,
+    User
+} from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 
 interface CreatorSidebarProps {
     className?: string

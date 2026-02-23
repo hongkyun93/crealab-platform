@@ -1,17 +1,13 @@
 "use client"
 
-import React, { useState } from 'react'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
-    Calendar, MapPin, Gift, Clock, CreditCard, ChevronRight,
-    Star, Users, TrendingUp, CheckCircle2, AlertCircle, FileText,
-    Camera, Video, Instagram, Youtube, Hash, ExternalLink,
-    Briefcase, Layout, List, Grid, Monitor, Phone, Filter
+    Briefcase, Calendar, Camera, CheckCircle2, ChevronRight, Filter, Gift, Layout
 } from "lucide-react"
 import Link from "next/link"
+import { useState } from 'react'
 
 // --- Real Mock Data (Plan/Proposal Context) ---
 const MOMENT_PLAN_DATA = [

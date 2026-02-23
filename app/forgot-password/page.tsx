@@ -2,13 +2,13 @@
 
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { createClient } from "@/lib/supabase/client"
+import { AlertCircle, ArrowLeft, CheckCircle2, Mail } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { AlertCircle, ArrowLeft, Mail, CheckCircle2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 export default function ForgotPasswordPage() {
     const router = useRouter()
@@ -46,9 +46,9 @@ export default function ForgotPasswordPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+        <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
             <SiteHeader />
-            <main className="flex items-center justify-center px-4 py-24">
+            <main className="flex-1 flex items-center justify-center px-4 py-12">
                 <Card className="w-full max-w-md shadow-lg">
                     <CardHeader className="text-center">
                         <CardTitle className="text-2xl font-bold">

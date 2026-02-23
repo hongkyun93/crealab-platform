@@ -1,22 +1,14 @@
 "use client"
 
-import { SiteHeader } from "@/components/site-header"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, User, BadgeCheck, MessageCircle, Share2, MapPin, Package, Send, SearchX, Loader2, Lock, Banknote, Tv, Instagram, Youtube, Music, FileText, MoreHorizontal, Globe, Sparkles, Clock } from "lucide-react"
-import { CHANNELS, CHANNEL_SUBTYPES, getChannelSubtypeLabel } from "@/components/shared/ChannelSelector"
+import { submitDirectProposal } from "@/app/actions/proposal"
 import { CreatorProfileCard } from "@/components/profile/CreatorProfileCard"
-import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useEffect, useState } from "react"
 import { ReadonlyProposalDialog } from "@/components/proposal/readonly-proposal-dialog"
-import type { InfluencerEvent, MomentProposal } from "@/lib/types" // Added MomentProposal
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { SiteHeader } from "@/components/site-header"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Button } from "@/components/ui/button"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
@@ -25,14 +17,21 @@ import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Textarea } from "@/components/ui/textarea"
+import type { InfluencerEvent, MomentProposal } from "@/lib/types"; // Added MomentProposal
+import { cn, formatDateToMonth } from "@/lib/utils"
 import { format } from "date-fns"
 import { ko } from "date-fns/locale"
-import { cn, formatDateToMonth } from "@/lib/utils"
-import { submitDirectProposal } from "@/app/actions/proposal"
+import { ArrowLeft, BadgeCheck, Calendar, Clock, FileText, Globe, Instagram, Loader2, Lock, MessageCircle, Music, Package, SearchX, Send, Share2, Sparkles, Tv, Youtube } from "lucide-react"
+import Link from "next/link"
+import { useParams, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 export default function EventDetailPage() {
     const params = useParams()
@@ -227,7 +226,6 @@ ${u.name}의 담당자입니다.
 
         setIsSubmitting(true)
         try {
-            console.log("Submitting proposal via Server Action...")
 
             const proposalData = {
                 influencer_id: event.influencerId,

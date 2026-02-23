@@ -1,6 +1,6 @@
+import { createClient } from "@/lib/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
     // 인증 검증: 로그인된 사용자만 사용 가능
@@ -22,7 +22,8 @@ export async function POST(req: Request) {
         const { productName, sellingPoints, category, requiredShots } = await req.json();
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash" });
+
 
         const systemPrompt = `
 당신은 베테랑 콘텐츠 기획자이자 인플루언서 매니지먼트 전문가입니다.
@@ -54,7 +55,6 @@ export async function POST(req: Request) {
         const response = await result.response;
         const text = response.text();
 
-        console.log("AI Raw Response:", text);
 
         // Clean up markdown if present
         const jsonText = text.replace(/```json/g, "").replace(/```/g, "").trim();

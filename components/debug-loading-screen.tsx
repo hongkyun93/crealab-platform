@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
-import { Loader2, CheckCircle2, XCircle, RefreshCw, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface LoadingState {
     name: string

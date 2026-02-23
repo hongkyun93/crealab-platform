@@ -1,8 +1,8 @@
 "use client"
 
-import React from "react"
-import { cn } from "@/lib/utils"
-import { Filter, Star, Instagram, Youtube, Music, FileText, Check } from "lucide-react"
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { MomentGridCard } from "@/components/shared/MomentGridCard"
+import { MomentTableView } from "@/components/shared/MomentTableView"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -14,12 +14,10 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import { LayoutGrid, Table as TableIcon } from "lucide-react"
-import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
-import { MomentGridCard } from "@/components/shared/MomentGridCard"
-import { MomentTableView } from "@/components/shared/MomentTableView"
+import { cn } from "@/lib/utils"
+import { Check, FileText, Filter, Instagram, LayoutGrid, Music, Star, Table as TableIcon, Youtube } from "lucide-react"
+import React, { useState } from "react"
 import { toast } from "sonner"
-import { useState } from "react"
 
 interface DiscoverViewProps {
     filteredEvents: any[]

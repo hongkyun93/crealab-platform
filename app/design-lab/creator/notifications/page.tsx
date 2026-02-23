@@ -1,17 +1,10 @@
 "use client"
 
-import React, { useState } from 'react'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
-import {
-    Bell, MessageSquare, CheckCircle2, Clock, Calendar,
-    FileText, DollarSign, MoreHorizontal, AlertCircle,
-    Zap, Heart, UserPlus, Gift, TrendingUp, Briefcase,
-    X, Check, Mail, Smartphone
-} from "lucide-react"
+import { AlertCircle, Bell, Briefcase, Check, Clock, DollarSign, FileText, Gift, TrendingUp, X } from "lucide-react"
+import { useState } from 'react'
 
 // --- Rich Realistic Mock Data (Creator Notifications Context) ---
 const NOTIFICATION_DATA_POOL = [

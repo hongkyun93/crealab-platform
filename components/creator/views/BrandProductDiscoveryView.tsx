@@ -1,10 +1,10 @@
 "use client"
 
-import React from "react"
-import { ShoppingBag, ExternalLink, FileText, ImageIcon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { ExternalLink, ImageIcon, ShoppingBag } from "lucide-react"
+import React from "react"
 
 interface BrandProductDiscoveryViewProps {
     products: any[]

@@ -1,7 +1,7 @@
 
 // This is the core store for managing the workspace state
-import { create } from 'zustand';
 import { Proposal } from '@/lib/types'; // Assuming Proposal type is here
+import { create } from 'zustand';
 
 interface WorkspaceState {
     // Data

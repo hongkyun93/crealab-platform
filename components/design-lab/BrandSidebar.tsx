@@ -1,21 +1,13 @@
 "use client"
 
-import React from "react"
-import { usePathname, useRouter } from "next/navigation"
-import {
-    Briefcase,
-    LayoutDashboard,
-    Package,
-    Search,
-    User,
-    Bell,
-    FileText,
-    LogOut,
-    Menu,
-    ShoppingBag
-} from "lucide-react"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import {
+    Bell, Briefcase, FileText, LayoutDashboard,
+    Package,
+    Search, ShoppingBag, User
+} from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 
 interface BrandSidebarProps {
     className?: string

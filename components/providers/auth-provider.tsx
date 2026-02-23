@@ -1,11 +1,11 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, useRef } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { SupabaseClient } from "@supabase/supabase-js"
-import type { User } from "@/lib/types"
-import { useRouter } from "next/navigation"
 import { isDemoModeActive } from "@/lib/contexts/demo-context"
+import { createClient } from "@/lib/supabase/client"
+import type { User } from "@/lib/types"
+import { SupabaseClient } from "@supabase/supabase-js"
+import { useRouter } from "next/navigation"
+import React, { createContext, useContext, useEffect, useRef, useState } from "react"
 
 // Demo mode constants
 const DEMO_ACCOUNTS: Record<string, string> = {

@@ -1,24 +1,17 @@
 "use client"
 
-import React from "react"
+import InsightAnalyzer from "@/components/creator/InsightAnalyzer"
+import { type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
+import { useTeam } from "@/components/providers/team-provider"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
-import { RateCardMessage } from "@/components/chat/rate-card-message"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn, formatDateToMonth, formatPriceRange } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuRadioItem,
-    DropdownMenuRadioGroup,
+    DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
     Table,
@@ -26,49 +19,39 @@ import {
     TableCell,
     TableHead,
     TableHeader,
-    TableRow,
+    TableRow
 } from "@/components/ui/table"
-import { Bell, Briefcase, Calendar, ChevronRight, Plus, Rocket, Settings, ShoppingBag, User, Trash2, Pencil, BadgeCheck, Search, ExternalLink, Filter, Send, Gift, Megaphone, FileText, Upload, X, Package, Archive, Lock, Star, MessageSquare, Clock, Download, MapPin, Info, Check, Image as ImageIcon, CalendarIcon, Sparkles, MoreVertical, ArrowRight, LayoutGrid, List, Banknote, Table as TableIcon, Menu, Building2, Shield } from "lucide-react"
-import Link from "next/link"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useTeam } from "@/components/providers/team-provider"
-import { MOCK_INFLUENCER_USER, type SubmissionFeedback, type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
-import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout";
-import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store";
-import { ProductDetailView } from "@/components/dashboard/product-detail-view"
-import InsightAnalyzer from "@/components/creator/InsightAnalyzer"
+import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout"
+import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
+import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
+import { ArrowRight, BadgeCheck, Banknote, Bell, Briefcase, Building2, Calendar, ChevronRight, ExternalLink, FileText, Filter, Gift, Image as ImageIcon, LayoutGrid, List, Megaphone, Menu, Package, Plus, Rocket, Search, Send, Settings, Shield, ShoppingBag, Sparkles, Star, Table as TableIcon, X } from "lucide-react"
+import Link from "next/link"
+import React from "react"
 
-import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Checkbox } from "@/components/ui/checkbox"
-import { AvatarUpload } from "@/components/ui/avatar-upload"
+import { Badge } from "@/components/ui/badge"
 import {
     Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
+    DialogContent, DialogDescription,
+    DialogFooter, DialogHeader,
+    DialogTitle
 } from "@/components/ui/dialog"
 import {
     Sheet,
     SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
+    SheetHeader, SheetTrigger
 } from "@/components/ui/sheet"
 
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 
-import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
-import { DebugMonitor } from "@/components/debug-monitor"
-import { CalendarView } from "@/components/dashboard/calendar-view"
 import dynamic from 'next/dynamic'
+import { useRouter, useSearchParams } from "next/navigation"
 
 // Dialog Components - Dynamically loaded for code splitting
 const CreatorProposalDialog = dynamic(() => import("@/components/dialogs/CreatorProposalDialog").then(m => ({ default: m.CreatorProposalDialog })))
@@ -84,35 +67,34 @@ const SignatureCanvasDynamic = dynamic(() => import('react-signature-canvas'), {
 }) as any
 
 // View Components
-import { DashboardView } from "@/components/creator/views/DashboardView"
-import { MomentsView } from "@/components/creator/views/MomentsView"
 import { MomentCard } from "@/components/creator/MomentCard"
 import { ApplicationsView } from "@/components/creator/views/ApplicationsView"
+import { DashboardView } from "@/components/creator/views/DashboardView"
 import { InboundProposalsView } from "@/components/creator/views/InboundProposalsView"
+import { MomentsView } from "@/components/creator/views/MomentsView"
 
 // Imports for Design Options
-import { BrandProductDiscoveryView } from "@/components/creator/views/BrandProductDiscoveryView"
-import { BrandProductListView } from "@/components/creator/views/BrandProductListView"
-import { BrandProductDetailView } from "@/components/creator/views/BrandProductDetailView"
 import { CampaignCardA } from "@/components/creator/campaign-cards/CampaignCardA"
 import { CampaignCardB } from "@/components/creator/campaign-cards/CampaignCardB"
 import { CampaignCardC } from "@/components/creator/campaign-cards/CampaignCardC"
+import { BrandProductDetailView } from "@/components/creator/views/BrandProductDetailView"
+import { BrandProductDiscoveryView } from "@/components/creator/views/BrandProductDiscoveryView"
+import { BrandProductListView } from "@/components/creator/views/BrandProductListView"
 
 // MCN Components
-import { TeamMembersCard } from "@/components/mcn/team-members-card"
-import { TeamStatistics } from "@/components/mcn/team-statistics"
-import { InviteLinkGenerator } from "@/components/mcn/invite-link-generator"
-import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
-import { Users as UsersIcon } from "lucide-react"
 import { CampaignCardD } from "@/components/creator/campaign-cards/CampaignCardD"
 import { CampaignCardE } from "@/components/creator/campaign-cards/CampaignCardE"
 import { SettingsView } from "@/components/creator/views/SettingsView"
-import { CampaignListRow } from "@/components/creator/CampaignListRow"
+import { InviteLinkGenerator } from "@/components/mcn/invite-link-generator"
+import { TeamMembersCard } from "@/components/mcn/team-members-card"
+import { TeamStatistics } from "@/components/mcn/team-statistics"
+import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
+import { Users as UsersIcon } from "lucide-react"
 
 import { POPULAR_TAGS } from "@/lib/constants/categories"
 
-import { Suspense } from "react"
 import { DemoBanner } from "@/components/demo-banner"
+import { Suspense } from "react"
 const INITIAL_CAMPAIGNS: Campaign[] = []
 
 // Dialog components imported from @/components/dialogs/
@@ -305,7 +287,7 @@ function InfluencerDashboardContent() {
             setChatProposal(target)
             setCurrentView('workspace')
         }
-    }, [searchParams, brandProposals, campaignProposals, momentProposals, isAuthLoading, chatProposal]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [searchParams, brandProposals, campaignProposals, momentProposals, isAuthLoading, chatProposal])  
 
     useEffect(() => {
         const fetchTeamMembers = async () => {
@@ -579,10 +561,8 @@ function InfluencerDashboardContent() {
     useEffect(() => {
         const proposalId = searchParams.get('proposalId')
         if (proposalId && !chatProposal && brandProposals && brandProposals.length > 0) {
-            console.log("Checking for proposalId:", proposalId)
             const targetProposal = brandProposals.find((p: any) => p.id === proposalId)
             if (targetProposal) {
-                console.log("Auto-opening proposal from URL:", targetProposal)
                 setChatProposal(targetProposal)
             }
         }
@@ -627,7 +607,6 @@ function InfluencerDashboardContent() {
         if (chatProposal) {
             const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
             const pId = chatProposal.id.toString()
-            console.log('[Creator] Fetching feedback for:', pId, 'isCampaign:', isCampaign)
             if (isCampaign) {
                 fetchSubmissionFeedback(pId, undefined)
             } else {
@@ -1201,6 +1180,9 @@ function InfluencerDashboardContent() {
                                             contract_status={proposal.contract_status}
                                             delivery_status={proposal.delivery_status}
                                             content_submission_status={proposal.content_submission_status}
+                                            payment_confirmed_at={(proposal as any).payment_confirmed_at}
+                                            brand_signature={(proposal as any).brand_signature}
+                                            influencer_signature={(proposal as any).influencer_signature}
                                         />
                                     </div>
 
@@ -1467,7 +1449,6 @@ function InfluencerDashboardContent() {
 
 
     const handleContentSubmission = async () => {
-        console.log('[CreatorUpload] handleContentSubmission triggered', { submissionFile, submissionUrl })
         if (!chatProposal) {
             console.error('[CreatorUpload] No chatProposal found')
             return
@@ -1494,7 +1475,6 @@ function InfluencerDashboardContent() {
                 const fileName = `${proposalId}_v${Date.now()}.${fileExt}`
                 const filePath = `submissions/${fileName}`
 
-                console.log('Uploading file to:', filePath)
 
                 fileUrl = await new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest()
@@ -1528,7 +1508,6 @@ function InfluencerDashboardContent() {
                     xhr.send(fileToUpload)
                 })
 
-                console.log('File uploaded successfully. URL:', fileUrl)
             }
 
             const currentVersion = chatProposal.content_submission_version || 0.9
@@ -1742,7 +1721,6 @@ function InfluencerDashboardContent() {
             // Check Inbound (Brand Proposals) first
             const inbound = brandProposals.find(p => p.id === proposalId)
             if (inbound) {
-                console.log('[NotificationNav] Found Inbound Proposal:', proposalId)
                 setCurrentView('inbound_list')
                 setChatProposal(inbound)
                 setIsChatOpen(true)
@@ -1752,7 +1730,6 @@ function InfluencerDashboardContent() {
             // Check Outbound (Campaign Applications)
             const outbound = campaignProposals.find(p => p.id === proposalId)
             if (outbound) {
-                console.log('[NotificationNav] Found Outbound Proposal:', proposalId)
                 setCurrentView('campaigns_list')
                 // For campaign applications, we might need a different view state or just open chat if supported
                 // Currently campaigns_list opens details. Let's try to open the chat associated with it if possible.
@@ -1864,7 +1841,6 @@ function InfluencerDashboardContent() {
         setIsUpdatingStatus(true)
 
         try {
-            console.log(`[handleStatusUpdate] Updating proposal ${proposalId} to ${status}`)
             const success = await updateBrandProposal(proposalId, { status })
             if (!success) {
                 setIsUpdatingStatus(false)

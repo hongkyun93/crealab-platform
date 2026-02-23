@@ -1,32 +1,9 @@
 "use client"
 
-import React from "react"
-import { Camera, Image as ImageIcon, Save, AlertCircle, Calculator } from "lucide-react" // Explicit import for debugging
-import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
-import { RateCardMessage } from "@/components/chat/rate-card-message"
-import { BrandWorkspaceLayout } from "@/components/workspace/brand/layout";
-import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store";
+import { ProductDetailView } from "@/components/dashboard/product-detail-view"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { ChannelSelector } from "@/components/shared/ChannelSelector"
 import { SiteHeader } from "@/components/site-header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { toast } from "sonner"
-import { cn, formatDateToMonth } from "@/lib/utils"
-import dynamic from 'next/dynamic'
-// [PERF Plan B] AIPriceCalculator is only shown in a specific tab. Dynamic import removes it from initial bundle.
-const AIPriceCalculator = dynamic(() => import('@/components/ai-price-calculator').then(m => m.AIPriceCalculator), {
-    ssr: false,
-    loading: () => <div className="w-full h-32 bg-muted/30 rounded-xl flex items-center justify-center text-sm text-muted-foreground">AI 가격 계산기 로딩 중...</div>
-})
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -35,100 +12,61 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
+    AlertDialogTitle
 } from "@/components/ui/alert-dialog"
-import {
-    BadgeCheck,
-    CheckCircle2,
-    Calendar,
-    FileText,
-    Filter,
-    MapPin,
-    Settings,
-    Package,
-    Send,
-    X,
-    Trash2,
-    Pencil,
-    Search,
-    Bell,
-    Plus,
-    ArrowRight,
-    Loader2,
-    Globe,
-    Info,
-    ShoppingBag,
-
-    ExternalLink,
-    Upload,
-    Gift,
-    Star,
-    Briefcase,
-    Link as LinkIcon,
-    AtSign,
-    Hash,
-    MoreVertical,
-    MessageSquare,
-    Check,
-    Clock,
-    Megaphone,
-    Download,
-    ChevronRight,
-    Menu,
-} from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-// [PERF Plan B] SignatureCanvas is only needed when the signature modal opens.
-const SignatureCanvas = dynamic(() => import('react-signature-canvas'), {
-    ssr: false,
-    loading: () => <div className="w-full h-48 bg-muted/30 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center text-sm text-muted-foreground">서명 영역 로딩 중...</div>
-}) as any
-import Link from "next/link"
-import { ProductDetailView } from "@/components/dashboard/product-detail-view"
-import { useEffect, useState, Suspense, useRef, useCallback, useMemo } from "react"
-import { MOCK_BRAND_USER } from "@/components/providers/legacy-platform-hook"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
     Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    DialogDescription,
+    DialogContent, DialogDescription, DialogFooter, DialogHeader,
+    DialogTitle
 } from "@/components/ui/dialog"
-import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from "@/components/ui/sheet"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from "@/components/ui/select"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { AvatarUpload } from "@/components/ui/avatar-upload"
-import { ChannelSelector } from "@/components/shared/ChannelSelector"
+import { Textarea } from "@/components/ui/textarea"
+import { BrandWorkspaceLayout } from "@/components/workspace/brand/layout"
+import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
+import {
+    ArrowRight, AtSign, BadgeCheck, Bell, Briefcase, Calculator, Camera, CheckCircle2, ChevronRight, FileText, Info, Loader2, Package, Pencil,
+    Search, Send, Settings, ShoppingBag, Upload, Wallet, X
+} from "lucide-react"; // Explicit import for debugging
+import dynamic from 'next/dynamic'
+import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
+// [PERF Plan B] AIPriceCalculator is only shown in a specific tab. Dynamic import removes it from initial bundle.
+const AIPriceCalculator = dynamic(() => import('@/components/ai-price-calculator').then(m => m.AIPriceCalculator), {
+    ssr: false,
+    loading: () => <div className="w-full h-32 bg-muted/30 rounded-xl flex items-center justify-center text-sm text-muted-foreground">AI 가격 계산기 로딩 중...</div>
+})
+// [PERF Plan B] SignatureCanvas is only needed when the signature modal opens.
+const SignatureCanvas = dynamic(() => import('react-signature-canvas'), {
+    ssr: false,
+    loading: () => <div className="w-full h-48 bg-muted/30 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center text-sm text-muted-foreground">서명 영역 로딩 중...</div>
+}) as any
 
 // Brand View Components
 import { BrandProfileView } from "@/components/brand/views/BrandProfileView"
-import { MyProductsView } from "@/components/brand/views/MyProductsView"
+import { DepositView } from "@/components/brand/views/DepositView"
 import { DiscoverView } from "@/components/brand/views/DiscoverView"
 import { MyCampaignsView } from "@/components/brand/views/MyCampaignsView"
+import { MyProductsView } from "@/components/brand/views/MyProductsView"
 import { WorkspaceView } from "@/components/brand/views/WorkspaceView"
 import { ReadonlyProposalDialog } from "@/components/proposal/readonly-proposal-dialog"
 
-import { POPULAR_TAGS } from "@/lib/constants/categories"
 import { DemoBanner } from "@/components/demo-banner"
+import { POPULAR_TAGS } from "@/lib/constants/categories"
 
 function BrandDashboardContent() {
 
@@ -265,7 +203,6 @@ function BrandDashboardContent() {
         if (chatProposal) {
             const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
             const pId = chatProposal.id.toString()
-            console.log('[Brand] Fetching feedback for:', pId, 'isCampaign:', isCampaign)
             // [FIX] fetchSubmissionFeedback(proposalId?: string, productApplicationId?: string)
             // campaign → proposalId, brand/moment → productApplicationId
             if (isCampaign) {
@@ -290,7 +227,6 @@ function BrandDashboardContent() {
         if (isAuthLoading) return;
 
         if (proposalId && !chatProposal) {
-            console.log("[Brand] Checking URL proposalId:", proposalId)
 
             // Search in brandProposals (Direct Offers)
             let target = brandProposals.find((p: any) => p.id === proposalId)
@@ -311,7 +247,6 @@ function BrandDashboardContent() {
             }
 
             if (target) {
-                console.log("[Brand] Auto-opening proposal:", target)
                 setChatProposal(target)
                 setIsChatOpen(true)
             }
@@ -332,6 +267,14 @@ function BrandDashboardContent() {
         router.replace(newUrl, { scroll: false })
     }, [isChatOpen, chatProposal?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+    // [FIX] 워크스페이스가 열릴 때마다 최신 DB 데이터 강제 fetch
+    // Realtime 미작동 시에도 브랜드가 크리에이터 배송지, 입금 정보 등을 정확히 볼 수 있게 함
+    useEffect(() => {
+        if (isChatOpen && chatProposal?.id) {
+            refreshData()
+        }
+    }, [isChatOpen, chatProposal?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
     // Fetch Messages when Chat Opens, workspaceTab])
 
 
@@ -348,7 +291,12 @@ function BrandDashboardContent() {
             const updatedBrand = brandProposals.find((p: any) => p.id === chatProposal.id);
             const updatedCampaign = campaignProposals.find((p: any) => p.id === chatProposal.id);
             const updatedMoment = (momentProposals as any[])?.find((p: any) => p.id === chatProposal.id);
-            const updated = updatedBrand || updatedCampaign || updatedMoment;
+            // [FIX] moment proposal은 brandProposals(mappedMoment)에도 포함되지만
+            // Realtime 업데이트 시 momentProposals(rawMomentProposals)만 갱신됨.
+            // updatedMoment가 있으면 최신 필드들을 brandProposal 위에 merge하여 사용.
+            const updated = updatedMoment
+                ? { ...(updatedBrand || updatedMoment), ...updatedMoment }
+                : updatedBrand || updatedCampaign;
             if (updated) {
                 setChatProposal(updated);
             }
@@ -885,14 +833,12 @@ function BrandDashboardContent() {
         }
 
         setIsImageUploading(true)
-        console.log('[handleImageUpload] Starting upload for file:', file.name, 'size:', file.size)
 
         try {
             const fileExt = file.name.split('.').pop()
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
             const filePath = `products/${fileName}`
 
-            console.log('[handleImageUpload] Target path:', filePath)
 
             // Create a timeout promise
             const timeoutPromise = new Promise((_, reject) =>
@@ -915,12 +861,10 @@ function BrandDashboardContent() {
                 throw error
             }
 
-            console.log('[handleImageUpload] Upload successful, getting public URL...')
             const { data: { publicUrl } } = supabase.storage
                 .from('product-images')
                 .getPublicUrl(filePath)
 
-            console.log('[handleImageUpload] Public URL:', publicUrl)
             setNewProductImage(publicUrl)
         } catch (error: any) {
             console.error('[handleImageUpload] Exception:', error)
@@ -1169,7 +1113,6 @@ function BrandDashboardContent() {
             let insertedProposal;
             try {
                 if (proposalData.event_id) {
-                    console.log("[submitProposal] Routing to Moment Proposal...", proposalData);
                     insertedProposal = await createMomentProposal({
                         ...proposalData,
                         moment_id: proposalData.event_id // Map event_id to moment_id
@@ -1277,7 +1220,6 @@ function BrandDashboardContent() {
         // Prevent duplicate submissions or submitting while image is still uploading
         if (isUploading) return
 
-        console.log('[handleFinalSubmit] Starting upload for:', newProductName)
         setIsUploading(true)
 
         try {
@@ -1300,7 +1242,6 @@ function BrandDashboardContent() {
                 channels: newProductChannels
             }
 
-            console.log('[handleFinalSubmit] Product data prepared:', productData)
 
             let result;
             if (editingProductId) {
@@ -1309,7 +1250,6 @@ function BrandDashboardContent() {
                 result = await addProduct(productData)
             }
 
-            console.log('[handleFinalSubmit] Result:', result)
 
 
             // Clear inputs
@@ -1330,7 +1270,6 @@ function BrandDashboardContent() {
 
             setPreviewModalOpen(false) // Close preview
             setProductModalOpen(false) // Close form
-            console.log('[handleFinalSubmit] Success!')
             toast.success(isEditing ? "제품이 성공적으로 수정되었습니다!" : "제품이 성공적으로 등록되었습니다!")
             setProductModalOpen(false);
             refreshData()
@@ -1534,6 +1473,14 @@ function BrandDashboardContent() {
                         />
                     </div>
                 )
+            case "deposit":
+                return (
+                    <DepositView
+                        userId={user?.id as string}
+                        depositBalance={displayUser?.deposit_balance || 0}
+                        onBalanceRefresh={refreshData}
+                    />
+                )
             case "discover-products":
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -1668,6 +1615,14 @@ function BrandDashboardContent() {
                             </div>
                         )}
                     </div>
+                )
+            case "deposit":
+                return (
+                    <DepositView
+                        userId={user?.id ?? ''}
+                        depositBalance={(user as any)?.deposit_balance ?? 0}
+                        onBalanceRefresh={refreshData}
+                    />
                 )
             case "settings":
                 return (
@@ -1869,6 +1824,13 @@ function BrandDashboardContent() {
                             </Button>
 
                             <div className="my-2 border-t" />
+                            <Button
+                                variant={currentView === "deposit" ? "secondary" : "ghost"}
+                                className="w-full justify-start"
+                                onClick={() => setCurrentView("deposit")}
+                            >
+                                <Wallet className="mr-2 h-4 w-4" /> 예치금 관리
+                            </Button>
                             <Button
                                 variant={currentView === "settings" ? "secondary" : "ghost"}
                                 className="w-full justify-start"

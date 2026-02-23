@@ -1,21 +1,20 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { ProgressBar } from '../common/progress-bar';
-import { StageCard } from '../common/stage-card';
-import { useWorkspaceStore } from '../hooks/use-workspace-store';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { ConditionsPanel } from '../common/conditions-panel';
-import { useUnifiedProvider } from '@/components/providers/unified-provider';
-import { SmartContractPanel } from '../common/smart-contract-panel';
-import { FileText, CheckCircle2, MapPin, Truck, Package, Loader2, Pencil, User, Upload, Download, Video, Eye } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { validateContentFile, formatFileSize, isVideo } from '@/lib/utils/file-validation';
+import { useUnifiedProvider } from '@/components/providers/unified-provider';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { validateContentFile } from '@/lib/utils/file-validation';
+import { CheckCircle2, Eye, FileText, Loader2, MapPin, Package, Pencil, BarChart3, Sparkles, Truck, Upload, User, Video } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { ConditionsPanel } from '../common/conditions-panel';
+import { ProgressBar } from '../common/progress-bar';
+import { StageCard } from '../common/stage-card';
+import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
 export function CreatorInfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
@@ -50,6 +49,16 @@ export function CreatorInfoPanel() {
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadTarget, setUploadTarget] = useState<'draft' | 'final' | 'clean'>('draft');
 
+    // 성과 제출 상태
+    const insightFileRef = useRef<HTMLInputElement>(null);
+    const [insightPreview, setInsightPreview] = useState<string | null>(null);
+    const [insightFile, setInsightFile] = useState<File | null>(null);
+    const [insightResult, setInsightResult] = useState<any>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isSubmittingPerf, setIsSubmittingPerf] = useState(false);
+    const [perfSubmitted, setPerfSubmitted] = useState<any>(null);
+    const [perfLoading, setPerfLoading] = useState(false);
+
     // Pre-fill from proposal data or user profile
     useEffect(() => {
         if (proposal?.receiver_name) {
@@ -62,6 +71,140 @@ export function CreatorInfoPanel() {
             setShipAddress(user.address || '');
         }
     }, [proposal?.receiver_name, user]);
+
+    // 관리자가 입금 확인하면 자동으로 shipping 단계로 전환
+    useEffect(() => {
+        const paid = !!(proposal as any)?.payment_confirmed_at;
+        const stage = useWorkspaceStore.getState().currentStage;
+        if (paid && stage === 'contract') {
+            useWorkspaceStore.getState().setCurrentStage('shipping');
+        }
+    }, [(proposal as any)?.payment_confirmed_at]);
+
+    // completed 단계 진입 시 기존 성과 데이터 조회
+    useEffect(() => {
+        if (currentStage !== 'completed' || !proposal?.id) return;
+        const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+            ? 'moment_proposal'
+            : (proposal as any).campaignId || (proposal as any).campaign_id
+                ? 'campaign_application'
+                : 'product_application';
+        const fetchPerf = async () => {
+            setPerfLoading(true);
+            try {
+                const { data } = await supabase
+                    .from('campaign_performance')
+                    .select('*')
+                    .eq('proposal_type', proposalType)
+                    .eq('proposal_id', proposal!.id.toString())
+                    .maybeSingle();
+                setPerfSubmitted(data || null);
+            } finally {
+                setPerfLoading(false);
+            }
+        };
+        fetchPerf();
+    }, [currentStage, proposal?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleInsightAnalyze = async () => {
+        if (!insightFile) return;
+        setIsAnalyzing(true);
+        try {
+            const formData = new FormData();
+            formData.append('image', insightFile);
+            const res = await fetch('/api/analyze-insight', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.error) { toast.error(data.error); return; }
+            setInsightResult(data);
+            toast.success('AI 분석 완료!');
+        } catch {
+            toast.error('분석 중 오류가 발생했습니다.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleSubmitPerformance = async () => {
+        if (!insightResult || !proposal?.id || !user?.id) return;
+        setIsSubmittingPerf(true);
+        try {
+            // 1. 스크린샷 Storage 업로드
+            let screenshotUrl: string | null = null;
+            if (insightFile) {
+                const { data: { session } } = await supabase.auth.getSession();
+                const ext = insightFile.name.split('.').pop() || 'jpg';
+                const filePath = `performance/${proposal.id.toString()}/screenshot.${ext}`;
+                const uploadUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
+                await new Promise<void>((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.addEventListener('load', () => {
+                        if (xhr.status >= 200 && xhr.status < 300) resolve();
+                        else reject(new Error(`업로드 실패 (${xhr.status})`));
+                    });
+                    xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
+                    xhr.open('POST', uploadUrl);
+                    xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token}`);
+                    xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                    xhr.setRequestHeader('x-upsert', 'true');
+                    xhr.send(insightFile);
+                });
+                const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(filePath);
+                screenshotUrl = publicUrl;
+            }
+
+            // 2. 수치 추출
+            const metrics = insightResult?.extracted?.metrics || {};
+            const likes = metrics.likes || 0;
+            const comments = metrics.comments || 0;
+            const shares = metrics.shares || 0;
+            const saves = metrics.saves || 0;
+            const reach = metrics.reach || 0;
+            const totalEngagement = likes + comments + shares + saves;
+            const priceOffer = (proposal as any).price_offer || 0;
+            const engagementRate = reach > 0 ? parseFloat(((totalEngagement / reach) * 100).toFixed(2)) : 0;
+            const cpe = totalEngagement > 0 ? parseFloat((priceOffer / totalEngagement).toFixed(2)) : null;
+            const cpr = reach > 0 ? parseFloat((priceOffer / reach).toFixed(2)) : null;
+
+            const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+                ? 'moment_proposal'
+                : (proposal as any).campaignId || (proposal as any).campaign_id
+                    ? 'campaign_application'
+                    : 'product_application';
+
+            const brandId = (proposal as any).brand_id || (proposal as any).brandId;
+
+            // 3. campaign_performance INSERT
+            const { data, error } = await supabase
+                .from('campaign_performance')
+                .insert({
+                    proposal_type: proposalType,
+                    proposal_id: proposal.id.toString(),
+                    creator_id: user.id,
+                    brand_id: brandId,
+                    views: metrics.views || null,
+                    likes: likes || null,
+                    comments: comments || null,
+                    shares: shares || null,
+                    saves: saves || null,
+                    reach: reach || null,
+                    engagement_rate: engagementRate,
+                    cpe,
+                    cpr,
+                    screenshot_url: screenshotUrl,
+                    submitted_by: user.id,
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            setPerfSubmitted(data);
+            toast.success('성과 데이터가 제출되었습니다! 🎉');
+        } catch (err: any) {
+            toast.error(err.message || '제출 중 오류가 발생했습니다.');
+        } finally {
+            setIsSubmittingPerf(false);
+        }
+    };
 
     const handleConditionSave = async (updates: any) => {
         if (!proposal?.id) return;
@@ -219,7 +362,8 @@ export function CreatorInfoPanel() {
         const updates: any = {
             influencer_signature: null,
             influencer_signed_at: null,
-            contract_status: proposal.brand_signature ? 'partial' : null,
+            contract_status: proposal.brand_signature ? 'partial' : 'none',
+
         };
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).momentId) {
@@ -262,9 +406,9 @@ export function CreatorInfoPanel() {
 
             {/* 3. Next Action Callout */}
             <div className="px-6 py-3">
-                <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-100/50 rounded-full -mr-8 -mt-8" />
-                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1 block">
+                <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/50 rounded-lg p-4 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-100/50 dark:bg-indigo-800/20 rounded-full -mr-8 -mt-8" />
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1 block">
                         Action Required
                     </span>
                     <p className="text-sm font-medium text-foreground">
@@ -833,6 +977,169 @@ export function CreatorInfoPanel() {
                             )}
                         </div>
                     </StageCard>
+
+                    {/* Stage 5: Completed — 성과 제출 */}
+                    {currentStage === 'completed' && (
+                        <StageCard
+                            id="completed"
+                            title="협업 완료 · 성과 제출"
+                            isActive={true}
+                            isCompleted={false}
+                            summary={perfSubmitted ? '✅ 성과 제출 완료' : '인사이트 스크린샷을 제출해주세요'}
+                        >
+                            <div className="space-y-3">
+                                {perfLoading ? (
+                                    <div className="flex items-center justify-center py-4">
+                                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                    </div>
+                                ) : perfSubmitted ? (
+                                    // 제출 완료 상태
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3">
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                            <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">성과 데이터 제출 완료</p>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            {[
+                                                { label: '도달', value: perfSubmitted.reach },
+                                                { label: '좋아요', value: perfSubmitted.likes },
+                                                { label: '댓글', value: perfSubmitted.comments },
+                                                { label: '저장', value: perfSubmitted.saves },
+                                                { label: '공유', value: perfSubmitted.shares },
+                                                { label: '조회수', value: perfSubmitted.views },
+                                            ].map(item => (
+                                                <div key={item.label} className="bg-muted/30 rounded-lg p-2 text-center">
+                                                    <p className="text-[10px] text-muted-foreground">{item.label}</p>
+                                                    <p className="text-sm font-bold">
+                                                        {item.value != null
+                                                            ? item.value >= 10000
+                                                                ? `${(item.value / 10000).toFixed(1)}만`
+                                                                : item.value.toLocaleString()
+                                                            : '—'}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-800/40 rounded-lg p-2.5 text-center">
+                                                <p className="text-[10px] text-indigo-600/70">CPE</p>
+                                                <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                                                    {perfSubmitted.cpe != null ? `${Math.round(perfSubmitted.cpe).toLocaleString()}원` : '—'}
+                                                </p>
+                                            </div>
+                                            <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-800/40 rounded-lg p-2.5 text-center">
+                                                <p className="text-[10px] text-violet-600/70">CPR</p>
+                                                <p className="text-sm font-bold text-violet-700 dark:text-violet-300">
+                                                    {perfSubmitted.cpr != null ? `${Math.round(perfSubmitted.cpr).toLocaleString()}원` : '—'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    // 제출 폼
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-muted-foreground">
+                                            협업이 완료되었습니다! 포스팅한 게시물의 인사이트 스크린샷을 업로드해주세요.
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground bg-muted/30 rounded-md p-2 leading-relaxed">
+                                            특정 게시물 열기 → 하단 &ldquo;인사이트 보기&rdquo; → 스크린샷
+                                        </p>
+
+                                        <input
+                                            ref={insightFileRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                setInsightFile(file);
+                                                setInsightResult(null);
+                                                const reader = new FileReader();
+                                                reader.onload = (ev) => setInsightPreview(ev.target?.result as string);
+                                                reader.readAsDataURL(file);
+                                                e.target.value = '';
+                                            }}
+                                        />
+
+                                        {!insightPreview ? (
+                                            <button
+                                                onClick={() => insightFileRef.current?.click()}
+                                                className="w-full border-2 border-dashed border-primary/30 rounded-lg p-4 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                                            >
+                                                <BarChart3 className="h-6 w-6 mx-auto mb-1.5 text-muted-foreground/40" />
+                                                <p className="text-xs text-muted-foreground">인사이트 스크린샷 업로드</p>
+                                            </button>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <div className="relative">
+                                                    <img
+                                                        src={insightPreview}
+                                                        alt="insight"
+                                                        className="w-full max-h-40 object-contain rounded-lg border"
+                                                    />
+                                                    <button
+                                                        onClick={() => { setInsightPreview(null); setInsightFile(null); setInsightResult(null); }}
+                                                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                                                    >
+                                                        <span className="text-xs leading-none px-0.5">✕</span>
+                                                    </button>
+                                                </div>
+
+                                                {!insightResult ? (
+                                                    <Button
+                                                        size="sm"
+                                                        className="w-full h-8 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
+                                                        onClick={handleInsightAnalyze}
+                                                        disabled={isAnalyzing}
+                                                    >
+                                                        {isAnalyzing
+                                                            ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />엔이 분석중...</>
+                                                            : <><Sparkles className="h-3.5 w-3.5 mr-1.5" />AI 분석하기</>}
+                                                    </Button>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        <div className="grid grid-cols-3 gap-1.5">
+                                                            {[
+                                                                { label: '도달', value: insightResult.extracted?.metrics?.reach },
+                                                                { label: '좋아요', value: insightResult.extracted?.metrics?.likes },
+                                                                { label: '댓글', value: insightResult.extracted?.metrics?.comments },
+                                                                { label: '저장', value: insightResult.extracted?.metrics?.saves },
+                                                                { label: '공유', value: insightResult.extracted?.metrics?.shares },
+                                                                { label: '조회수', value: insightResult.extracted?.metrics?.views },
+                                                            ].map(item => (
+                                                                <div key={item.label} className="bg-muted/30 rounded-lg p-1.5 text-center">
+                                                                    <p className="text-[10px] text-muted-foreground">{item.label}</p>
+                                                                    <p className="text-xs font-bold">
+                                                                        {item.value != null
+                                                                            ? item.value >= 10000
+                                                                                ? `${(item.value / 10000).toFixed(1)}만`
+                                                                                : item.value.toLocaleString()
+                                                                            : '—'}
+                                                                    </p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <Button
+                                                            size="sm"
+                                                            className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 font-bold"
+                                                            onClick={handleSubmitPerformance}
+                                                            disabled={isSubmittingPerf}
+                                                        >
+                                                            {isSubmittingPerf
+                                                                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />제출중...</>
+                                                                : <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />성과 제출 완료</>}
+                                                        </Button>
+                                                        <p className="text-[10px] text-muted-foreground text-center">수치가 정확한지 확인 후 제출해주세요.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </StageCard>
+                    )}
                 </div>
             </ScrollArea >
         </div >

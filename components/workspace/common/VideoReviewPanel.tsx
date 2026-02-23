@@ -1,20 +1,19 @@
 "use client"
 
-import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { useWorkspaceStore } from '../hooks/use-workspace-store'
 import { useUnifiedProvider } from '@/components/providers/unified-provider'
-import { ChatArea } from './chat-area'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { toast } from 'sonner'
+import { Textarea } from '@/components/ui/textarea'
+import type { SubmissionFeedback } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
-    Play, Pause, Volume2, VolumeX, Maximize, BookmarkPlus,
-    CheckCircle2, Upload, Send, Clock, ChevronRight,
-    Loader2, X, FileVideo, AlertCircle, MessageSquare
+    AlertCircle, BookmarkPlus,
+    CheckCircle2, Clock, Download, FileVideo, Loader2, Maximize, MessageSquare, Pause, Play, Send, Upload, Video, Volume2, VolumeX, X
 } from 'lucide-react'
-import type { SubmissionFeedback } from '@/lib/types'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { useWorkspaceStore } from '../hooks/use-workspace-store'
+import { ChatArea } from './chat-area'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +53,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
         sendSubmissionFeedback,
         fetchSubmissionFeedback,
         supabase,
+        sendNotification,
     } = useUnifiedProvider() as any
 
     // ── video refs ──
@@ -111,10 +111,17 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
     const feedbackProposalId = isCampaign ? proposalId : undefined
     const feedbackBrandProposalId = !isCampaign ? proposalId : undefined
 
+    const [videoTab, setVideoTab] = useState<'draft' | 'final' | 'clean'>('draft')
+
     // ── video url ──
-    const videoFileUrl = (proposal as any)?.content_submission_file_url || ''
-    const videoLinkUrl = (proposal as any)?.content_submission_url || ''
-    const activeVideoUrl = videoFileUrl || videoLinkUrl
+    const draftFileUrl = (proposal as any)?.content_submission_file_url || ''
+    const draftLinkUrl = (proposal as any)?.content_submission_url || ''
+    const draftUrlData = draftFileUrl || draftLinkUrl
+    const finalUrlData = (proposal as any)?.content_final_url || ''
+    const cleanUrlData = (proposal as any)?.content_clean_url || ''
+
+    // Set the currently visible video based on the selected tab
+    const activeVideoUrl = videoTab === 'clean' ? cleanUrlData : videoTab === 'final' ? finalUrlData : draftUrlData
     const isNative = !!activeVideoUrl && isVideoUrl(activeVideoUrl)
     const isBrandApproved = !!(proposal as any)?.content_final_approved_at
     // ── revision gate: set when brand clicks "검토 완료" OR "수정 요청" ──
@@ -637,7 +644,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                 >
                                     <p className="font-mono text-amber-500 font-semibold mb-0.5">{formatTime(b.video_timestamp_seconds!)}</p>
                                     {b.sender_name && <p className="text-muted-foreground text-[10px]">{b.sender_name}</p>}
-                                    <p className="leading-snug mt-0.5 line-clamp-2">{b.content}</p>
+                                    <p className="leading-snug mt-0.5 whitespace-pre-wrap">{b.content}</p>
                                 </div>
                             )
                         })()}
@@ -730,7 +737,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                     {fb.video_timestamp_seconds != null && (
                                         <span className="font-mono font-bold shrink-0">{formatTime(fb.video_timestamp_seconds)}</span>
                                     )}
-                                    <span className="truncate opacity-80 flex-1">{fb.content}</span>
+                                    <span className="opacity-80 flex-1 whitespace-pre-wrap leading-tight py-0.5">{fb.content}</span>
                                     {/* X 삭제 버튼 */}
                                     <button
                                         className="shrink-0 ml-0.5 rounded-full p-0.5 opacity-0 group-hover/chip:opacity-100 hover:bg-black/10 dark:hover:bg-white/20 transition-all"
@@ -822,7 +829,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
 
     // ─── render: video player ───────────────────────────────────────────
 
-    const renderVideoArea = () => {
+    const renderVideoPlayerOrPlaceholder = () => {
         if (!activeVideoUrl) {
             // ── 크리에이터: 초안 업로드 폼 ──
             if (userType === 'creator') {
@@ -944,16 +951,136 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
         )
     }
 
+    const renderTabs = () => {
+        if (!draftUrlData && !finalUrlData && !cleanUrlData) return null
+
+        return (
+            <div className="flex gap-1.5 p-1 bg-muted/60 rounded-lg shrink-0 overflow-x-auto mt-1 mb-2">
+                <button
+                    onClick={() => setVideoTab('draft')}
+                    disabled={!draftUrlData}
+                    className={cn(
+                        "flex-1 min-w-[80px] text-[11px] font-bold py-1.5 px-2 rounded-md transition-all flex items-center justify-center gap-1.5",
+                        videoTab === 'draft' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5",
+                        !draftUrlData && "opacity-40 cursor-not-allowed"
+                    )}
+                >
+                    <Video className="h-3 w-3" />
+                    초안 {draftUrlData ? '' : '(대기)'}
+                </button>
+                <button
+                    onClick={() => setVideoTab('final')}
+                    disabled={!finalUrlData}
+                    className={cn(
+                        "flex-1 min-w-[80px] text-[11px] font-bold py-1.5 px-2 rounded-md transition-all flex items-center justify-center gap-1.5",
+                        videoTab === 'final' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5",
+                        !finalUrlData && "opacity-40 cursor-not-allowed"
+                    )}
+                >
+                    <FileVideo className="h-3 w-3" />
+                    최종본 {finalUrlData ? '' : '(대기)'}
+                </button>
+                {finalUrlData && (
+                    <a href={finalUrlData} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center bg-background/50 hover:bg-background border rounded-md px-2 text-muted-foreground hover:text-primary transition-colors" title="다운로드/새창열기">
+                        <Download className="h-3 w-3" />
+                    </a>
+                )}
+                <button
+                    onClick={() => setVideoTab('clean')}
+                    disabled={!cleanUrlData}
+                    className={cn(
+                        "flex-1 min-w-[80px] text-[11px] font-bold py-1.5 px-2 rounded-md transition-all flex items-center justify-center gap-1.5",
+                        videoTab === 'clean' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5",
+                        !cleanUrlData && "opacity-40 cursor-not-allowed"
+                    )}
+                >
+                    <FileVideo className="h-3 w-3" />
+                    클린본 {cleanUrlData ? '' : '(대기)'}
+                </button>
+                {cleanUrlData && (
+                    <a href={cleanUrlData} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center bg-background/50 hover:bg-background border rounded-md px-2 text-muted-foreground hover:text-primary transition-colors" title="다운로드/새창열기">
+                        <Download className="h-3 w-3" />
+                    </a>
+                )}
+            </div>
+        )
+    }
+
+    const renderVideoArea = () => {
+        return (
+            <div className="flex flex-col">
+                {renderTabs()}
+                {renderVideoPlayerOrPlaceholder()}
+            </div>
+        )
+    }
+
     // ─── render: bottom action area ───────────────────────────────────────
 
     const renderActionArea = () => {
         // ── BRAND ──────────────────────────────────────────
         if (userType === 'brand') {
+            const isCompleted = proposal?.status === 'completed' || proposal?.content_submission_status === 'completed'
+            const isFullySubmitted = !!finalUrlData && !!cleanUrlData
+
             // • 최종 승인 완료 상태
             if (isBrandApproved) {
+                if (isCompleted) {
+                    return (
+                        <div className="shrink-0 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 bg-emerald-50 dark:bg-emerald-950/20 flex flex-col gap-3 text-sm">
+                            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold">
+                                <CheckCircle2 className="h-5 w-5 shrink-0" />
+                                <span>협업이 모두 완료되었습니다.</span>
+                            </div>
+                            <p className="text-[11px] text-emerald-600/80">정산 승인이 완료되어 지급 대기 중입니다.</p>
+                        </div>
+                    )
+                }
+
+                if (isFullySubmitted) {
+                    return (
+                        <div className="shrink-0 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 bg-emerald-50 dark:bg-emerald-950/20 flex flex-col gap-3">
+                            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-sm font-bold">
+                                <CheckCircle2 className="h-5 w-5 shrink-0" />
+                                <span>크리에이터가 최종본과 클린본 제출을 완료했습니다.</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                                    size="sm"
+                                    onClick={async () => {
+                                        if (!proposalId) return;
+                                        const updates: any = { status: 'completed', content_submission_status: 'completed' };
+                                        let success = false;
+                                        if (isMoment) success = await updateMomentProposal(proposalId, updates);
+                                        else if (isCampaign) success = await updateProposal(proposalId, updates);
+                                        else success = await updateBrandProposal(proposalId, updates);
+                                        if (success) {
+                                            useWorkspaceStore.getState().updateProposal(updates);
+                                            refreshData();
+                                            toast.success('협업이 완료되었습니다. 관리자가 크리에이터 정산을 진행합니다. 🎉');
+                                            const creatorId = (proposal as any)?.influencer_id || (proposal as any)?.creator_id;
+                                            if (creatorId) {
+                                                sendNotification(creatorId, '협업이 완료되었습니다! 감사합니다.', 'collaboration_complete', proposalId);
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <CheckCircle2 className="h-4 w-4 mr-1.5" /> 협업 완료 및 정산 승인
+                                </Button>
+                            </div>
+                            <p className="text-[10px] text-emerald-600/70 text-center">
+                                완료 버튼을 누르면 크리에이터에게 비용 지급이 승인되며 수정이 불가능합니다.
+                            </p>
+                        </div>
+                    )
+                }
+
                 return (
                     <div className="shrink-0 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3 bg-emerald-50 dark:bg-emerald-950/20 flex items-center gap-3 text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-                        <CheckCircle2 className="h-5 w-5 shrink-0" />
+                        <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
                         최종 승인됨 · 크리에이터의 최종본/클린본 제출을 기다립니다
                     </div>
                 )

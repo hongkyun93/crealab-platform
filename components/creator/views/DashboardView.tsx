@@ -1,7 +1,7 @@
-import React from "react"
-import { Calendar, Megaphone, Bell } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { CalendarView } from "@/components/dashboard/calendar-view"
+import { Badge } from "@/components/ui/badge"
+import { Bell, Calendar, Megaphone } from "lucide-react"
+import React from "react"
 
 interface DashboardViewProps {
     activeMoments: any[]

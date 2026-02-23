@@ -1,17 +1,12 @@
 "use client"
 
-import React, { useState } from 'react'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-    Calendar, Users, DollarSign, Edit, Archive, MoreHorizontal,
-    Megaphone, CheckCircle2, Clock, AlertCircle, PlusCircle,
-    TrendingUp, BarChart, ArrowRight, Target, Layout, List,
-    PieChart, Activity, Box, Filter
-} from "lucide-react"
+import { Activity, Calendar, Edit, MoreHorizontal, PlusCircle } from "lucide-react"
+import { useState } from 'react'
 
 // --- Realistic Mock Data (Campaign Management Context) ---
 const MY_CAMPAIGNS = [

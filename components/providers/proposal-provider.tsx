@@ -1,9 +1,9 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
+import type { MomentProposal, ProductApplication, Proposal } from "@/lib/types"
+import React, { createContext, useContext, useEffect, useRef, useState } from "react"
 import { useAuth } from "./auth-provider"
-import type { Proposal, ProductApplication, MomentProposal } from "@/lib/types"
 
 interface ProposalContextType {
     campaignProposals: Proposal[]
@@ -419,7 +419,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 content_clean_url: p.content_clean_url,
                 content_final_approved_at: p.content_final_approved_at,
                 content_revision_requested_at: p.content_revision_requested_at,
-                workspace_id: p.workspace_id // [Workspaces]
+                workspace_id: p.workspace_id, // [Workspaces]
+                payment_confirmed_at: p.payment_confirmed_at, // [입금 확인 게이트]
+                // [FIX] 배송/물류 필드 — 없으면 brand sync useEffect에서 undefined로 덮어씌워짐
+                receiver_name: p.receiver_name,
+                shipping_phone: p.shipping_phone,
+                shipping_address: p.shipping_address,
+                tracking_number: p.tracking_number,
+                delivery_status: p.delivery_status,
             }))
 
             setMomentProposals(rawMomentProposals)

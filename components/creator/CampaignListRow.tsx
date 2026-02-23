@@ -1,8 +1,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronRight } from "lucide-react"
 import { Campaign } from "@/lib/types/campaign"
-import { formatDateToMonth } from "@/lib/utils"
+import { ChevronRight } from "lucide-react"
 
 interface CampaignListRowProps {
     campaign: Campaign

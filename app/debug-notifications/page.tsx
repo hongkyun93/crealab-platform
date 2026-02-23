@@ -1,7 +1,7 @@
 ﻿"use client"
 
-import { useEffect, useState } from "react"
 import { usePlatform } from "@/components/providers/legacy-platform-hook"
+import { useEffect, useState } from "react"
 
 export default function DebugNotificationsPage() {
     const [logs, setLogs] = useState<string[]>([])

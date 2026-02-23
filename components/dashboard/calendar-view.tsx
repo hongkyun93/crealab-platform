@@ -1,13 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { Calendar } from "@/components/ui/calendar"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List as ListIcon, Lock } from "lucide-react"
+import { useState } from "react"
 
 export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMoments = [], onSelectEvent }: { activeMoments?: any[], upcomingMoments?: any[], pastMoments?: any[], onSelectEvent?: (event: any) => void }) {
     const [date, setDate] = useState<Date | undefined>(new Date())

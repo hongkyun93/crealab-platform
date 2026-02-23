@@ -1,7 +1,7 @@
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Send, ChevronRight } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { Send } from "lucide-react"
 
 import { Campaign } from "@/lib/types/campaign"
 

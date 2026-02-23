@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { connectInstagramAccount } from '@/app/actions/instagram'
+import { connectInstagramAccount } from '@/app/actions/instagram';
+import { useEffect, useState } from 'react';
 
 declare global {
     interface Window {

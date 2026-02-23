@@ -1,14 +1,14 @@
 "use client"
 
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Calendar, DollarSign, Target, User, CheckCircle2, Building2 } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import type { Campaign } from "@/lib/types"
+import { ArrowLeft, Building2, CheckCircle2, DollarSign, Target } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { useEffect, useState } from "react"
-import type { Campaign } from "@/lib/types"
 
 export default function CampaignDetailPage() {
     const params = useParams()

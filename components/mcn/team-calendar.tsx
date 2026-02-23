@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/providers/auth-provider"
 import { useTeam } from "@/components/providers/team-provider"
-import { ChevronLeft, ChevronRight, Loader2, Calendar as CalendarIcon, Package, Megaphone } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 // Unified calendar event type
 interface CalendarEvent {

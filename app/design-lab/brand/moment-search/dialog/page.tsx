@@ -1,18 +1,14 @@
 "use client"
 
-import React, { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from "@/components/ui/sheet"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle2, X, Calendar, MapPin, Tag, Heart, Eye, MessageSquare, Share2, MoreHorizontal, Clock, AlertCircle, FileText, Send, DollarSign, Briefcase, Camera, Video, Image as ImageIcon, Sparkles, User, Globe, Lock, ArrowRight, Instagram, Youtube, ChevronLeft, Package } from "lucide-react"
+import { ArrowRight, Calendar, CheckCircle2, ChevronLeft, FileText, Globe, Heart, Image as ImageIcon, Instagram, MapPin, MessageSquare, MoreHorizontal, Package, Send, Sparkles, X, Youtube } from "lucide-react"
 import Link from "next/link"
-import { cn } from "@/lib/utils"
+import React from "react"
 
 // --- Mock Data (Rich & Complete) ---
 const MOMENT_DATA = {

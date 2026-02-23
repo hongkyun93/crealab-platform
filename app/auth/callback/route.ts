@@ -11,12 +11,10 @@ export async function GET(request: Request) {
 
     if (code) {
         const supabase = await createClient()
-        console.log('[Auth Callback] Exchanging code for session...')
 
         const { error, data } = await supabase.auth.exchangeCodeForSession(code)
 
         if (!error && data?.user) {
-            console.log('[Auth Callback] Session exchange successful for user:', data.user.id)
 
             try {
                 const { data: profile } = await supabase
@@ -29,12 +27,10 @@ export async function GET(request: Request) {
                 const isNewUser = (new Date().getTime() - new Date(data.user.created_at).getTime()) < 60 * 1000
                 let userRole = profile?.role
 
-                console.log(`[Auth Callback] DB role: ${userRole}, Pref role: ${roleType}, isNew: ${isNewUser}`)
 
                 // Priority: Use DB role if exists, otherwise use roleType hint or default to influencer
                 if (!userRole) {
                     userRole = (roleType as any) || 'creator'
-                    console.log(`[Auth Callback] Assigning role: ${userRole}`)
                     await supabase.from('profiles').update({ role: userRole }).eq('id', data.user.id)
                 }
 
@@ -47,6 +43,8 @@ export async function GET(request: Request) {
                     next = isNewUser ? '/brand/settings' : '/brand'
                 } else if (userRole === 'creator') {
                     next = isNewUser ? '/creator?view=settings' : '/creator'
+                } else if (userRole === 'mcn') {
+                    next = '/mcn'
                 } else if (userRole === 'admin') {
                     next = '/admin'
                 }

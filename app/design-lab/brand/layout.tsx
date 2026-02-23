@@ -1,5 +1,5 @@
-import { SiteHeader } from "@/components/site-header"
 import { DesignLabBrandSidebar } from "@/components/design-lab/BrandSidebar"
+import { SiteHeader } from "@/components/site-header"
 
 export default function BrandDesignLabLayout({
     children,

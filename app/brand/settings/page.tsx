@@ -1,19 +1,19 @@
 ﻿"use client"
 
+import { AccountDeleteDialog } from "@/components/account-delete-dialog"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Camera } from "lucide-react"
-import { AccountDeleteDialog } from "@/components/account-delete-dialog"
-import Link from "next/link"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { ArrowLeft, Camera } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 
 export default function BrandSettingsPage() {
     const { user, updateUser } = useUnifiedProvider()

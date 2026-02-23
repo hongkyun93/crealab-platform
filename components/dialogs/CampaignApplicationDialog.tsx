@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -8,23 +8,23 @@ import {
     DialogDescription,
     DialogFooter,
     DialogHeader,
-    DialogTitle,
+    DialogTitle
 } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from "@/components/ui/select"
-import { Loader2, Send, Sparkles } from "lucide-react"
-import { toast } from "sonner"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { Loader2, Send, Sparkles } from "lucide-react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 interface CampaignApplicationDialogProps {
     open: boolean

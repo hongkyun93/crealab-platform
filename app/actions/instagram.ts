@@ -1,7 +1,7 @@
 'use server'
 
+import { getInstagramBusinessAccount, getInstagramProfile, getLongLivedUserAccessToken } from '@/lib/instagram'
 import { createClient } from '@/lib/supabase/server'
-import { getLongLivedUserAccessToken, getInstagramBusinessAccount, getInstagramProfile } from '@/lib/instagram'
 import { revalidatePath } from 'next/cache'
 
 export async function connectInstagramAccount(shortLivedToken: string) {

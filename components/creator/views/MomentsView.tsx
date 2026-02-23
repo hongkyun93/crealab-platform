@@ -1,13 +1,12 @@
-import React from "react"
-import { useRouter } from "next/navigation"
-import { ChevronRight, Info, ArrowLeft, Calendar, Clock, Tv, Package, Sparkles, MessageCircle, BadgeCheck } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LayoutGrid, Table as TableIcon } from "lucide-react"
 import { MomentGridCard } from "@/components/shared/MomentGridCard"
 import { MomentTableView } from "@/components/shared/MomentTableView"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
+import { ArrowLeft, BadgeCheck, Calendar, ChevronRight, Clock, Info, LayoutGrid, MessageCircle, Package, Sparkles, Table as TableIcon, Tv } from "lucide-react"
+import { useRouter } from "next/navigation"
+import React from "react"
 
 const CHANNEL_LABELS: Record<string, string> = {
     instagram_reels: '🎞️ 릴스', instagram_feed: '📷 피드', instagram_story: '⭕ 스토리',

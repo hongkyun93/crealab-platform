@@ -1,17 +1,17 @@
 "use client"
 
-import React, { useMemo, useState, useEffect } from "react"
-import Link from "next/link"
-import { CheckCircle2, X, LayoutGrid, Table2, List, Ban, ChevronRight, FileText } from "lucide-react"
-import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
+import { Ban, ChevronRight, FileText, LayoutGrid, List, Table2 } from "lucide-react"
+import Link from "next/link"
+import React, { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 
 interface WorkspaceViewProps {
     campaignProposals: any[]
@@ -589,6 +589,9 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                                 contract_status={item.contract_status}
                                                 delivery_status={item.delivery_status}
                                                 content_submission_status={item.content_submission_status}
+                                                payment_confirmed_at={(item as any).payment_confirmed_at}
+                                                brand_signature={(item as any).brand_signature}
+                                                influencer_signature={(item as any).influencer_signature}
                                             />
                                         </div>
 

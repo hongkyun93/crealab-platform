@@ -1,8 +1,8 @@
-import { Card, CardHeader, CardContent, CardFooter, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Link as LinkIcon, Send } from "lucide-react"
+import { Card, CardFooter } from "@/components/ui/card"
 import { formatDateToMonth } from "@/lib/utils"
+import { Send } from "lucide-react"
 
 import { Campaign } from "@/lib/types/campaign"
 

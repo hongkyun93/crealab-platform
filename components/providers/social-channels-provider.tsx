@@ -1,9 +1,9 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react"
-import { useAuth } from "./auth-provider"
 import { type SocialChannel } from "@/lib/types/user"
+import { createContext, ReactNode, useCallback, useContext, useState } from "react"
 import { toast } from "sonner"
+import { useAuth } from "./auth-provider"
 
 interface SocialChannelsContextType {
     channels: SocialChannel[]

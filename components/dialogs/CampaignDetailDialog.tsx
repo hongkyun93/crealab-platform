@@ -1,18 +1,15 @@
 "use client"
 
+import { CampaignDetailContent } from "@/components/campaign/campaign-detail-content"
+import { CampaignApplicationDialog } from "@/components/dialogs/CampaignApplicationDialog"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogTitle,
+    DialogContent, DialogTitle
 } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Calendar, FileText, Gift, Megaphone, Send, User, X, CheckCircle2, Instagram, Youtube, MessageCircle, Hash, Link as LinkIcon, Users, Loader2, Upload } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { useState, useRef, useEffect } from "react"
-import { CampaignDetailContent } from "@/components/campaign/campaign-detail-content"
-import { CampaignApplicationDialog } from "@/components/dialogs/CampaignApplicationDialog"
+import { Send } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 interface CampaignDetailDialogProps {
     open: boolean

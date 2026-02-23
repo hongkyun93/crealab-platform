@@ -1,6 +1,6 @@
+import { updateSession } from '@/lib/supabase/middleware'
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl
@@ -15,8 +15,29 @@ export async function middleware(request: NextRequest) {
         return response
     }
 
-    // /brand 또는 /creator 경로 보호
-    if (pathname.startsWith('/brand') || pathname.startsWith('/creator')) {
+    // /debug-*: 프로덕션에서는 접근 차단 (JWT 토큰·세션 정보 노출 방지)
+    if (pathname.startsWith('/debug-') && process.env.NODE_ENV === 'production') {
+        return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // /design-lab: 프로덕션에서는 차단 (프로토타입 페이지 41개)
+    if (pathname.startsWith('/design-lab') && process.env.NODE_ENV === 'production') {
+        return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    // /login_test: 프로덕션에서는 차단 (테스트 페이지)
+    if (pathname.startsWith('/login_test') && process.env.NODE_ENV === 'production') {
+        return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // /brand, /creator, /admin, /mcn 경로 보호
+    const isProtected =
+        pathname.startsWith('/brand') ||
+        pathname.startsWith('/creator') ||
+        pathname.startsWith('/admin') ||
+        pathname.startsWith('/mcn')
+
+    if (isProtected) {
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -44,8 +65,7 @@ export async function middleware(request: NextRequest) {
         // 1. FAST CHECK: Metadata (JWT)
         let role = user.user_metadata?.role
 
-        // 2. SAFE FALLBACK: RPC (if metadata missing)
-        // We use RPC because direct table query hits RLS recursion (Creator Hang)
+        // 2. SAFE FALLBACK: RPC
         if (!role) {
             console.log('[Middleware] Role missing in metadata, checking RPC...')
             const { data: userData } = await supabase.rpc('get_current_user_info')
@@ -54,7 +74,7 @@ export async function middleware(request: NextRequest) {
             }
         }
 
-        // 3. LEGACY FALLBACK: Profiles table (Only if RPC failed/missing)
+        // 3. LEGACY FALLBACK: Profiles table
         if (!role) {
             const { data: profile } = await supabase
                 .from('profiles')
@@ -69,13 +89,36 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/onboarding', request.url))
         }
 
-        // admin은 모든 경로 허용
+        // /admin: admin role만 허용
+        if (pathname.startsWith('/admin')) {
+            if (role !== 'admin') {
+                // role별 홈으로 리다이렉트
+                const home = role === 'brand' || role === 'agency' ? '/brand'
+                    : role === 'mcn' ? '/mcn'
+                        : '/creator'
+                return NextResponse.redirect(new URL(home, request.url))
+            }
+            return response
+        }
+
+        // /mcn: mcn role만 허용
+        if (pathname.startsWith('/mcn')) {
+            if (role !== 'mcn') {
+                const home = role === 'admin' ? '/admin'
+                    : role === 'brand' || role === 'agency' ? '/brand'
+                        : '/creator'
+                return NextResponse.redirect(new URL(home, request.url))
+            }
+            return response
+        }
+
+        // admin은 /brand, /creator 모두 허용
         if (role === 'admin') return response
 
         // /brand: brand 또는 agency만 허용
         if (pathname.startsWith('/brand')) {
             if (role !== 'brand' && role !== 'agency') {
-                return NextResponse.redirect(new URL('/creator', request.url))
+                return NextResponse.redirect(new URL(role === 'mcn' ? '/mcn' : '/creator', request.url))
             }
         }
 
