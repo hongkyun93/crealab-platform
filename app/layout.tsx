@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -60,6 +61,19 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <UnifiedProvider>
+          {/* Google Analytics GA4 */}
+          <Script
+            src="https://www.googletagmanager.com/gtag/js?id=G-05LF1JN67S"
+            strategy="afterInteractive"
+          />
+          <Script id="ga4-init" strategy="afterInteractive">
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-05LF1JN67S');
+            `}
+          </Script>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"

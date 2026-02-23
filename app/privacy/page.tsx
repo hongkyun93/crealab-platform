@@ -152,7 +152,73 @@ export default function PrivacyPage() {
                 </section>
 
                 <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-3">10. 개인정보처리방침의 변경</h2>
+                    <h2 className="text-xl font-semibold text-foreground mb-3">10. 쿠키(Cookie)의 운용 및 거부</h2>
+                    <p className="mb-2">회사는 서비스 최적화 및 이용자 편의를 위해 쿠키를 사용합니다.</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                        <li><strong>쿠키란:</strong> 웹사이트 운영에 이용되는 서버가 이용자 브라우저에 보내는 소량의 정보로서 이용자 PC 내 하드디스크에 저장됩니다.</li>
+                        <li><strong>사용 목적:</strong> 로그인 상태 유지, 서비스 이용 통계 분석(Google Analytics), 맞춤형 서비스 제공</li>
+                        <li><strong>수집 항목:</strong> 세션 식별자, 방문 페이지, 체류 시간, 접속 기기 정보</li>
+                        <li><strong>보유 기간:</strong> 세션 쿠키(브라우저 종료 시 소멸), 영구 쿠키(최대 1년)</li>
+                    </ul>
+                    <p className="mt-2"><strong>쿠키 거부 방법:</strong> 웹브라우저 설정을 통해 모든 쿠키를 허용/거부하거나 쿠키 저장 시 확인을 요청할 수 있습니다. 단, 쿠키 저장을 거부할 경우 일부 서비스 이용이 어려울 수 있습니다.</p>
+                    <ul className="list-disc pl-5 space-y-1 mt-2 text-sm">
+                        <li>Chrome: 설정 → 개인정보 보호 및 보안 → 쿠키 및 기타 사이트 데이터</li>
+                        <li>Safari: 환경설정 → 개인 정보 보호 → 쿠키 및 웹사이트 데이터</li>
+                        <li>Edge: 설정 → 쿠키 및 사이트 권한 → 쿠키 및 사이트 데이터</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 className="text-xl font-semibold text-foreground mb-3">11. 개인정보의 국외 이전</h2>
+                    <p className="mb-3">회사는 서비스 제공을 위해 아래와 같이 개인정보를 국외로 이전합니다. 이는 「개인정보 보호법」 제28조의8에 따른 고지입니다.</p>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm border-collapse border border-border">
+                            <thead>
+                                <tr className="bg-muted">
+                                    <th className="border border-border px-3 py-2 text-left">이전받는 자</th>
+                                    <th className="border border-border px-3 py-2 text-left">국가</th>
+                                    <th className="border border-border px-3 py-2 text-left">이전 목적</th>
+                                    <th className="border border-border px-3 py-2 text-left">이전 항목</th>
+                                    <th className="border border-border px-3 py-2 text-left">보유기간</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="border border-border px-3 py-2">Supabase Inc.</td>
+                                    <td className="border border-border px-3 py-2">미국</td>
+                                    <td className="border border-border px-3 py-2">DB 저장·인증</td>
+                                    <td className="border border-border px-3 py-2">전체 수집 항목</td>
+                                    <td className="border border-border px-3 py-2">회원 탈퇴 시까지</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-border px-3 py-2">Vercel Inc.</td>
+                                    <td className="border border-border px-3 py-2">미국</td>
+                                    <td className="border border-border px-3 py-2">서비스 호스팅</td>
+                                    <td className="border border-border px-3 py-2">접속 로그, IP</td>
+                                    <td className="border border-border px-3 py-2">3개월</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-border px-3 py-2">Google LLC</td>
+                                    <td className="border border-border px-3 py-2">미국</td>
+                                    <td className="border border-border px-3 py-2">소셜 로그인 / AI 분석 / 방문 통계</td>
+                                    <td className="border border-border px-3 py-2">이메일, 이름, 방문 로그</td>
+                                    <td className="border border-border px-3 py-2">위탁 계약 종료 시까지</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-border px-3 py-2">Meta Platforms, Inc.</td>
+                                    <td className="border border-border px-3 py-2">미국</td>
+                                    <td className="border border-border px-3 py-2">Instagram 인사이트 연동</td>
+                                    <td className="border border-border px-3 py-2">SNS 활동 데이터</td>
+                                    <td className="border border-border px-3 py-2">위탁 계약 종료 시까지</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="mt-2 text-sm">이전에 동의하지 않을 권리가 있으나, 동의 거부 시 서비스 이용이 제한될 수 있습니다. 문의: ivsb0525@gmail.com</p>
+                </section>
+
+                <section>
+                    <h2 className="text-xl font-semibold text-foreground mb-3">12. 개인정보처리방침의 변경</h2>
                     <p>이 개인정보처리방침은 시행일로부터 적용되며, 법령 및 방침에 따른 변경 내용의 추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 서비스 내 공지사항을 통하여 고지합니다.</p>
                 </section>
 
