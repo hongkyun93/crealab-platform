@@ -18,6 +18,7 @@ async function fetchProducts(): Promise<Product[]> {
       profiles(display_name, avatar_url, description)
     `)
         .order('created_at', { ascending: false })
+        .limit(100)
 
     if (error) {
         // Ignore AbortError (happens when component unmounts during fetch)

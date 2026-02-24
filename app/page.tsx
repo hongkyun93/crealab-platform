@@ -1,6 +1,7 @@
 "use client"
 
 import { SiteHeader } from "@/components/site-header"
+import { BrandName } from "@/components/ui/brand-name"
 import { Button } from "@/components/ui/button"
 import {
     ArrowRight, Building2, CheckCircle2, Clock, Heart, Search, Shield, Sparkles, Star, Target, TrendingUp, Users, Zap
@@ -110,7 +111,7 @@ function MatchingPanel({ moment }: { moment: typeof MOMENT_EXAMPLES[number] }) {
             <div className="rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50/50 dark:from-violet-950/30 dark:to-purple-950/20 dark:border-violet-800/40 p-4">
                 <div className="flex items-center gap-2 mb-3">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white"><Sparkles className="h-3.5 w-3.5" /></div>
-                    <div><p className="text-[11px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">크리에이터 모먼트</p><p className="text-[10px] text-muted-foreground">CreadyPick에서 발견</p></div>
+                    <div><p className="text-[11px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">크리에이터 모먼트</p><p className="text-[10px] text-muted-foreground"><BrandName />에서 발견</p></div>
                 </div>
                 <div className="bg-white/80 dark:bg-background/60 rounded-lg p-3 border border-violet-100 dark:border-violet-900/30 space-y-2">
                     <div className="flex items-center gap-2">
@@ -218,7 +219,7 @@ export default function HomeLandingPage() {
                                                 <div className="w-3 h-3 rounded-full bg-yellow-500" />
                                                 <div className="w-3 h-3 rounded-full bg-green-500" />
                                             </div>
-                                            <span className="text-xs text-slate-600 font-mono">CreadyPick Matching Engine</span>
+                                            <span className="text-xs text-slate-600 font-mono"><BrandName /> Matching Engine</span>
                                         </div>
                                         <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 space-y-3">
                                             <div className="flex items-center gap-3">
@@ -264,7 +265,7 @@ export default function HomeLandingPage() {
                     <div className="container mx-auto px-6 md:px-8" style={{ maxWidth: "1400px" }}>
                         <RevealSection className="text-center space-y-4 mb-16">
                             <h2 className="text-3xl md:text-4xl font-black">이런 고민, 있으신가요?</h2>
-                            <p className="text-muted-foreground text-lg">CreadyPick이 해결해 드립니다</p>
+                            <p className="text-muted-foreground text-lg"><BrandName />이 해결해 드립니다</p>
                         </RevealSection>
 
                         <div className="grid lg:grid-cols-3 gap-6">
@@ -410,7 +411,7 @@ export default function HomeLandingPage() {
                 <section className="py-24 bg-slate-50 dark:bg-slate-950/50 border-y">
                     <div className="container mx-auto px-6 md:px-8 max-w-5xl">
                         <RevealSection className="text-center space-y-4 mb-16">
-                            <h2 className="text-3xl md:text-4xl font-black">왜 CreadyPick인가?</h2>
+                            <h2 className="text-3xl md:text-4xl font-black">왜 <BrandName />인가?</h2>
                             <p className="text-muted-foreground text-lg">기존 인플루언서 플랫폼과 근본적으로 다릅니다</p>
                         </RevealSection>
                         <div className="grid md:grid-cols-3 gap-8">

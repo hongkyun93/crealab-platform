@@ -3,7 +3,7 @@
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useCreatorProfile } from "@/lib/hooks/use-creator-profile"
-import { ArrowUpRight, BookOpen, Calendar, Gift, Globe, Instagram, Loader2, MapPin, Music2, Sparkles, Star, Youtube } from "lucide-react"
+import { ArrowUpRight, BookOpen, Calendar, CheckCircle, Gift, Globe, Instagram, Loader2, MapPin, Music2, Sparkles, Star, Youtube } from "lucide-react"
 import { useRouter } from "next/navigation"
 import React, { useState } from "react"
 
@@ -116,7 +116,7 @@ function CreatorProfileCardContent({
     // Loading state
     if (isLoading || !profile) {
         return (
-            <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/90 backdrop-blur-xl shadow-[0_20px_80px_rgba(139,92,246,0.3)] text-white [&>button]:text-white">
+            <DialogContent className="max-w-xl p-0 overflow-hidden overflow-y-auto max-h-[90vh] rounded-3xl border border-white/10 bg-slate-900/90 backdrop-blur-xl shadow-[0_20px_80px_rgba(139,92,246,0.3)] text-white [&>button]:text-white">
                 <DialogTitle className="sr-only">크리에이터 프로필</DialogTitle>
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
                     <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
@@ -127,10 +127,10 @@ function CreatorProfileCardContent({
     }
 
     const totalFollowers = profile.channels.reduce((s, ch) => s + ch.followersCount, 0)
-    const displayHandle = profile.handle ? (profile.handle.startsWith("@") ? profile.handle : `@${profile.handle}`) : profile.displayName
+    const displayHandle = profile.displayName || (profile.handle ? `@${profile.handle.replace(/^@/, '')}` : '@creator')
 
     return (
-        <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/90 backdrop-blur-xl shadow-[0_20px_80px_rgba(139,92,246,0.3)] text-white [&>button]:text-white">
+        <DialogContent className="max-w-xl p-0 overflow-hidden overflow-y-auto max-h-[90vh] rounded-3xl border border-white/10 bg-slate-900/90 backdrop-blur-xl shadow-[0_20px_80px_rgba(139,92,246,0.3)] text-white [&>button]:text-white">
             <DialogTitle className="sr-only">크리에이터 프로필</DialogTitle>
 
             {/* Purple glow */}
@@ -184,23 +184,51 @@ function CreatorProfileCardContent({
                 )}
             </div>
 
-            {/* Stats: Followers / Moments / Price Range */}
-            <div className="mx-6 p-3 rounded-2xl bg-white/5 border border-white/10 grid grid-cols-3 gap-2 text-center">
-                <div>
-                    <div className="text-lg font-bold text-purple-300">{fmtFollowers(totalFollowers)}</div>
-                    <div className="text-[10px] text-white/40 mt-0.5">총 팔로워</div>
-                </div>
-                <div>
-                    <div className="text-lg font-bold text-fuchsia-300">{profile.moments.length}</div>
-                    <div className="text-[10px] text-white/40 mt-0.5">모먼트</div>
-                </div>
-                <div>
-                    <div className="text-lg font-bold text-pink-300">
-                        {getPriceRange(profile.priceVideo, profile.priceFeed, profile.priceStory)}
-                    </div>
-                    <div className="text-[10px] text-white/40 mt-0.5">예상 단가</div>
-                </div>
-            </div>
+            {/* Stats: Followers / Engagement Rate / Estimated Price (by calculator formula) */}
+            {(() => {
+                const er = profile.avgEngagementRate ??
+                    (totalFollowers >= 1000000 ? 0.012 : totalFollowers >= 100000 ? 0.025 : totalFollowers >= 10000 ? 0.04 : 0.06)
+                const cpe = totalFollowers >= 1000000 ? 3000 : totalFollowers >= 100000 ? 1500 : totalFollowers >= 10000 ? 800 : 500
+                const est = Math.round(totalFollowers * er * cpe)
+                const fmtKrw = (n: number) => {
+                    if (n >= 10000000) return `${(n / 10000000).toFixed(1)}억`
+                    if (n >= 10000) return `${(n / 10000).toFixed(0)}만`
+                    return `${n.toLocaleString()}`
+                }
+                const priceRange = totalFollowers > 0
+                    ? `${fmtKrw(Math.round(est * 0.8))}~${fmtKrw(Math.round(est * 1.2))}원`
+                    : '-'
+
+                return (
+                    <>
+                        <div className="mx-6 p-3 rounded-2xl bg-white/5 border border-white/10 grid grid-cols-3 gap-2 text-center">
+                            <div>
+                                <div className="text-lg font-bold text-purple-300">{fmtFollowers(totalFollowers)}</div>
+                                <div className="text-[10px] text-white/40 mt-0.5">총 팔로워</div>
+                            </div>
+                            <div>
+                                <div className="text-lg font-bold text-emerald-300">{(er * 100).toFixed(1)}%</div>
+                                <div className="text-[10px] text-white/40 mt-0.5">
+                                    참여율{profile.avgEngagementRate ? ' ✦' : ''}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-sm font-bold text-pink-300 leading-snug mt-0.5">{priceRange}</div>
+                                <div className="text-[10px] text-white/40 mt-0.5">예상 단가</div>
+                            </div>
+                        </div>
+                        {profile.collabCount > 0 && (
+                            <div className="mx-6 mt-1.5 flex items-center gap-1.5">
+                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
+                                <span className="text-[10px] text-emerald-400/80">
+                                    {profile.collabCount}건 협업 완료
+                                    {profile.avgEngagementRate ? ' · 실제 데이터 기반' : ''}
+                                </span>
+                            </div>
+                        )}
+                    </>
+                )
+            })()}
 
             {/* Channels */}
             {profile.channels.length > 0 && (
@@ -219,7 +247,14 @@ function CreatorProfileCardContent({
                                             {cfg.icon}
                                         </div>
                                         <div className="min-w-0">
-                                            <div className="text-xs font-medium truncate">{ch.handle}</div>
+                                            <div className="flex items-center gap-1">
+                                                <div className="text-xs font-medium truncate">{ch.handle}</div>
+                                                {(ch as any).igUserId && (
+                                                    <span className="shrink-0 flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                                                        <CheckCircle className="h-2 w-2" />인증
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="text-[10px] text-white/40">{fmtFollowers(ch.followersCount)}</div>
                                         </div>
                                     </div>
@@ -229,6 +264,118 @@ function CreatorProfileCardContent({
                     </div>
                 </div>
             )}
+
+            {/* Rate Card */}
+            {(profile.priceVideo > 0 || profile.priceFeed > 0 || profile.priceStory > 0) && (
+                <div className="px-6 py-3">
+                    <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                        <span className="text-purple-400">💰</span>단가표
+                    </h3>
+                    <div className="divide-y divide-white/5 bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                        {profile.priceVideo > 0 && (
+                            <div className="flex items-center justify-between px-3 py-2">
+                                <span className="text-xs text-white/50">🎬 릴스 / 숏폼</span>
+                                <span className="text-xs font-semibold text-white">{fmtPrice(profile.priceVideo)}</span>
+                            </div>
+                        )}
+                        {profile.priceFeed > 0 && (
+                            <div className="flex items-center justify-between px-3 py-2">
+                                <span className="text-xs text-white/50">🖼 피드 게시물</span>
+                                <span className="text-xs font-semibold text-white">{fmtPrice(profile.priceFeed)}</span>
+                            </div>
+                        )}
+                        {profile.priceStory > 0 && (
+                            <div className="flex items-center justify-between px-3 py-2">
+                                <span className="text-xs text-white/50">⭕ 스토리</span>
+                                <span className="text-xs font-semibold text-white">{fmtPrice(profile.priceStory)}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Instagram Demographics */}
+            {(() => {
+                const igCh = profile.channels.find(ch => ch.platform === 'instagram' && ch.igDemographics)
+                if (!igCh?.igDemographics) return null
+                const dem = igCh.igDemographics
+
+                // 성별 비율 계산 (audience_gender_age: "FEMALE": 200, "MALE": 150)
+                const genderMap: Record<string, number> = dem.audience_gender_age || {}
+                const fTotal = genderMap['FEMALE'] || genderMap['F'] || 0
+                const mTotal = genderMap['MALE'] || genderMap['M'] || 0
+                const uTotal = 0
+                // 연령대 (audience_age: "18-24": 100, "25-34": 90)
+                const ageBuckets: Record<string, number> = dem.audience_age || {}
+                const total = fTotal + mTotal + uTotal || 1
+                const fPct = Math.round((fTotal / total) * 100)
+                const mPct = Math.round((mTotal / total) * 100)
+
+                // 상위 3개 연령대
+                const topAges = Object.entries(ageBuckets)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .map(([age, cnt]) => ({ age, pct: Math.round((cnt / total) * 100) }))
+
+                // 상위 도시
+                const cityMap: Record<string, number> = dem.audience_city || {}
+                const topCities = Object.entries(cityMap)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .map(([city, cnt]) => {
+                        const cityName = city.split(',')[0].trim()
+                        return { city: cityName, pct: Math.round((cnt / (Object.values(cityMap).reduce((a, b) => a + b, 0) || 1)) * 100) }
+                    })
+
+                if (fTotal === 0 && mTotal === 0 && topCities.length === 0) return null
+
+                return (
+                    <div className="px-6 py-3">
+                        <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                            <span className="text-purple-400">📊</span>사람들
+                        </h3>
+                        <div className="space-y-3 p-3 rounded-2xl bg-white/5 border border-white/10">
+                            {/* 성별 */}
+                            {(fTotal > 0 || mTotal > 0) && (
+                                <div>
+                                    <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                                        <span>여성 {fPct}%</span>
+                                        <span>남성 {mPct}%</span>
+                                    </div>
+                                    <div className="flex h-2 rounded-full overflow-hidden gap-0.5">
+                                        <div className="bg-gradient-to-r from-pink-500 to-fuchsia-500 rounded-full transition-all" style={{ width: `${fPct}%` }} />
+                                        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all" style={{ width: `${mPct}%` }} />
+                                    </div>
+                                </div>
+                            )}
+                            {/* 상위 연령대 */}
+                            {topAges.length > 0 && (
+                                <div className="space-y-1">
+                                    {topAges.map(({ age, pct }) => (
+                                        <div key={age} className="flex items-center gap-2">
+                                            <span className="text-[10px] text-white/40 w-10 shrink-0">{age}</span>
+                                            <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                                <div className="h-full bg-purple-400/70 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                            </div>
+                                            <span className="text-[10px] text-white/50 w-7 text-right">{pct}%</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {/* 상위 도시 */}
+                            {topCities.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {topCities.map(({ city, pct }) => (
+                                        <span key={city} className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60">
+                                            {city} {pct}%
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
+            })()}
 
             {/* Moments */}
             {profile.moments.length > 0 && (

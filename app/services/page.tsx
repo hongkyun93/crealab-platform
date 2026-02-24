@@ -1,6 +1,7 @@
 "use client"
 
 import { SiteHeader } from "@/components/site-header"
+import { BrandName } from "@/components/ui/brand-name"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -148,7 +149,7 @@ function MatchingPanel({ moment }: { moment: typeof MOMENT_EXAMPLES[number] }) {
             <div className="rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50/50 dark:from-violet-950/30 dark:to-purple-950/20 dark:border-violet-800/40 p-4">
                 <div className="flex items-center gap-2 mb-3">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white"><Sparkles className="h-3.5 w-3.5" /></div>
-                    <div><p className="text-[11px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">크리에이터 모먼트</p><p className="text-[10px] text-muted-foreground">CreadyPick에서 발견</p></div>
+                    <div><p className="text-[11px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">크리에이터 모먼트</p><p className="text-[10px] text-muted-foreground"><BrandName />에서 발견</p></div>
                 </div>
                 <div className="bg-white/80 dark:bg-background/60 rounded-lg p-3 border border-violet-100 dark:border-violet-900/30 space-y-2">
                     <div className="flex items-center gap-2">
@@ -203,7 +204,7 @@ export default function ServicesDesignPage() {
                             제품이 필요한{" "}<span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">바로 그 순간</span>에 연결합니다
                         </h1>
                         <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                            CreadyPick은 <strong className="text-white">&quot;누구&quot;</strong>에게는 물론,<br /><strong className="text-white">&quot;언제&quot;</strong> 맡길지에 집중합니다.
+                            <BrandName />은 <strong className="text-white">&quot;누구&quot;</strong>에게는 물론,<br /><strong className="text-white">&quot;언제&quot;</strong> 맡길지에 집중합니다.
                         </p>
                     </div>
                     <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none" />
@@ -212,7 +213,7 @@ export default function ServicesDesignPage() {
                 {/* ─── Before vs After (Story) ─── */}
                 <section className="container mx-auto px-6 md:px-8 max-w-5xl py-16">
                     <Reveal className="text-center space-y-3 mb-10">
-                        <h2 className="text-2xl md:text-3xl font-black">기존 방식 vs CreadyPick</h2>
+                        <h2 className="text-2xl md:text-3xl font-black">기존 방식 vs <BrandName /></h2>
                         <p className="text-muted-foreground">같은 예산, 완전히 다른 결과</p>
                     </Reveal>
                     <Reveal delay={100}>
@@ -228,7 +229,7 @@ export default function ServicesDesignPage() {
                                 <div className="pt-4 border-t text-center"><p className="text-3xl font-black text-red-400/60">ROI ???</p><p className="text-xs text-muted-foreground">성과 예측 불가능</p></div>
                             </CardContent></Card>
                             <Card className="bg-gradient-to-br from-primary/5 to-violet-500/5 border-primary/20 shadow-lg shadow-primary/5"><CardContent className="p-8 space-y-4">
-                                <span className="inline-block text-xs font-bold uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full">CreadyPick 방식</span>
+                                <span className="inline-block text-xs font-bold uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full"><BrandName /> 방식</span>
                                 <h3 className="text-xl font-bold text-primary">&quot;누구(Who) + 언제(When) 둘 다&quot;</h3>
                                 <div className="space-y-2 text-sm">
                                     {["모먼트 검색으로 최적 크리에이터 발견", "수락 확률 ↑↑", "\"필요해서 쓰는 제품\" → 진정성 극대화", "시청자도 공감하며 구매 전환"].map((t, i) => (
@@ -289,7 +290,7 @@ export default function ServicesDesignPage() {
                 <section className="bg-slate-50 dark:bg-slate-950/50 border-y py-20">
                     <div className="container mx-auto px-6 md:px-8 max-w-5xl">
                         <Reveal className="text-center space-y-3 mb-12">
-                            <h2 className="text-2xl md:text-3xl font-black">왜 CreadyPick인가?</h2>
+                            <h2 className="text-2xl md:text-3xl font-black">왜 <BrandName />인가?</h2>
                             <p className="text-muted-foreground">기존 플랫폼과 근본적으로 다릅니다</p>
                         </Reveal>
                         <div className="grid md:grid-cols-3 gap-6">

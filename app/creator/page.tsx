@@ -287,7 +287,7 @@ function InfluencerDashboardContent() {
             setChatProposal(target)
             setCurrentView('workspace')
         }
-    }, [searchParams, brandProposals, campaignProposals, momentProposals, isAuthLoading, chatProposal])  
+    }, [searchParams, brandProposals, campaignProposals, momentProposals, isAuthLoading, chatProposal])
 
     useEffect(() => {
         const fetchTeamMembers = async () => {
@@ -1426,6 +1426,16 @@ function InfluencerDashboardContent() {
     const [shippingZip, setShippingZip] = useState("")
     const [isSavingShipping, setIsSavingShipping] = useState(false)
     const [activeProposalTab, setActiveProposalTab] = useState("chat") // Controlled tab state for Proposal Dialog
+
+    // 프로포절 다이얼로그 열릴 때 기존 배송지 정보 자동 채우기
+    useEffect(() => {
+        if (chatProposal) {
+            setShippingName((chatProposal as any).receiver_name || "")
+            setShippingPhone((chatProposal as any).shipping_phone || "")
+            setShippingAddress((chatProposal as any).shipping_address || "")
+        }
+    }, [(chatProposal as any)?.id])
+
 
     // Content Submission States
 

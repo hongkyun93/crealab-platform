@@ -49,6 +49,7 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
                     profiles(display_name, avatar_url)
                 `)
                 .order('created_at', { ascending: false })
+                .limit(100)
                 .abortSignal(signal || null as any)
 
             // Filter by team_id if available (Team-based)

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 import { formatDateToMonth } from "@/lib/utils"
-import { ArrowRight, Bell, Link as LinkIcon, Package, Pencil, Plus } from "lucide-react"
+import { ArrowRight, Bell, Link as LinkIcon, Package, Pencil, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import React, { useMemo } from "react"
@@ -37,6 +37,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
     const [optimisticImage, setOptimisticImage] = React.useState<string | null>(null)
     const [confirmStatusData, setConfirmStatusData] = React.useState<{ id: string, currentStatus: string } | null>(null)
     const [confirmAcceptId, setConfirmAcceptId] = React.useState<string | null>(null)
+    const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null)
     const supabase = createClient()
 
     // Reset optimistic image when selection changes
@@ -115,6 +116,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
 
     // List View State (Moved up for Hook Rules)
     const [activeTab, setActiveTab] = React.useState<"active" | "closed">("active")
+    const [pageSize, setPageSize] = React.useState<20 | 50 | 100>(50)
 
     const filteredCampaigns = useMemo(() => {
         const now = new Date()
@@ -267,9 +269,26 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                     <h1 className="text-3xl font-bold tracking-tight">캠페인 관리</h1>
                     <p className="text-muted-foreground mt-1">등록하신 캠페인 공고를 관리하고 지원자를 확인하세요.</p>
                 </div>
-                <Button asChild className="gap-2">
-                    <Link href="/brand/new"><Plus className="h-4 w-4" /> 새 캠페인 등록</Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                    {/* Page Size Selector */}
+                    <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
+                        {([20, 50, 100] as const).map(n => (
+                            <button
+                                key={n}
+                                onClick={() => setPageSize(n)}
+                                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${pageSize === n
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                {n}
+                            </button>
+                        ))}
+                    </div>
+                    <Button asChild className="gap-2">
+                        <Link href="/brand/new"><Plus className="h-4 w-4" /> 새 캠페인 등록</Link>
+                    </Button>
+                </div>
             </div>
 
             {/* Campaign Status Tabs */}
@@ -308,7 +327,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                 </Card>
             ) : (
                 <div className="space-y-4">
-                    {filteredCampaigns.map((c) => {
+                    {filteredCampaigns.slice(0, pageSize).map((c) => {
                         const appCount = campaignProposals.filter(p => p.campaignId === c.id && p.type === 'creator_apply').length
                         return (
                             <Card
@@ -441,6 +460,17 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                             >
                                                 {c.status === 'active' ? '마감하기' : '재진행'}
                                             </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-2 text-xs md:w-full text-destructive hover:bg-destructive/10"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setConfirmDeleteId(c.id.toString())
+                                                }}
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5 mr-1" />삭제
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>
@@ -482,6 +512,25 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                     }
                 }}
                 confirmText={confirmStatusData?.currentStatus === 'active' ? "마감" : "진행"}
+            />
+
+            <ConfirmDialog
+                open={!!confirmDeleteId}
+                onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+                title="캠페인 삭제"
+                description="이 캠페인을 삭제하시겠습니까? 삭제된 캠페인은 복구할 수 없습니다."
+                onConfirm={async () => {
+                    if (confirmDeleteId) {
+                        try {
+                            await deleteCampaign(confirmDeleteId)
+                            toast.success('캠페인이 삭제되었습니다.')
+                        } catch (e) {
+                            toast.error('삭제에 실패했습니다.')
+                        }
+                        setConfirmDeleteId(null)
+                    }
+                }}
+                confirmText="삭제"
             />
         </div>
     )

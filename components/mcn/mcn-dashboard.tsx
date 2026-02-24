@@ -79,7 +79,43 @@ export function McnDashboard() {
     } | null>(null)
     const [splitRatios, setSplitRatios] = useState<Record<string, number>>({})
 
-    // ── Business Info state ──────────────────────────────────────
+    // 수익 배분율을 DB에서 로드 (마운트/팀 변경 시)
+    useEffect(() => {
+        if (!currentTeam?.id) return
+        supabase
+            .from('mcn_revenue_splits')
+            .select('creator_id, split_ratio')
+            .eq('team_id', currentTeam.id)
+            .then(({ data }) => {
+                if (data && data.length > 0) {
+                    const ratios: Record<string, number> = {}
+                    data.forEach((r: any) => { ratios[r.creator_id] = r.split_ratio })
+                    setSplitRatios(ratios)
+                }
+            })
+    }, [currentTeam?.id, supabase])
+
+    // ── 성과 데이터 로드 (팀 관리 탭) ─────────────────────────────
+    const [perfData, setPerfData] = useState<Record<string, { latest: any; count: number }>>({})
+    useEffect(() => {
+        if (!currentTeam?.id || summaryData.length === 0) return
+        const creatorIds = summaryData.map(c => c.user_id)
+        supabase
+            .from('campaign_performance')
+            .select('creator_id, engagement_rate, cpe, cpr, created_at')
+            .in('creator_id', creatorIds)
+            .order('created_at', { ascending: false })
+            .then(({ data }) => {
+                if (!data) return
+                const grouped: Record<string, { latest: any; count: number }> = {}
+                data.forEach((row: any) => {
+                    if (!grouped[row.creator_id]) grouped[row.creator_id] = { latest: row, count: 1 }
+                    else grouped[row.creator_id].count++
+                })
+                setPerfData(grouped)
+            })
+    }, [currentTeam?.id, summaryData, supabase])
+
     const [bizInfo, setBizInfo] = useState({
         business_registration_number: '',
         representative_name: '',
@@ -638,54 +674,115 @@ export function McnDashboard() {
                         <TeamStatistics summaryData={summaryData} />
                     </div>
 
-                    {/* 수익 배분율 카드 */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                                <Users className="h-4 w-4 text-muted-foreground" />
-                                크리에이터 수익 배분율
-                                <span className="text-xs font-normal text-muted-foreground ml-1">(협업 완료 시 자동 정산에 적용)</span>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {summaryData.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">소속 크리에이터가 없습니다.</p>
-                            ) : (
-                                <div className="divide-y">
-                                    {summaryData.map(c => {
-                                        const ratio = splitRatios[c.user_id] ?? 0.7
-                                        return (
-                                            <div key={c.user_id} className="flex items-center justify-between py-2.5">
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar className="h-7 w-7">
-                                                        <AvatarImage src={c.avatar_url || ''} />
-                                                        <AvatarFallback className="text-xs">{c.display_name?.[0]}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <p className="text-sm font-medium leading-tight">{c.display_name}</p>
-                                                        <p className="text-xs text-muted-foreground">크리에이터 {Math.round(ratio * 100)}% / MCN {Math.round((1 - ratio) * 100)}%</p>
+                    {/* 수익 배분율 + 성과 패널 2열 그리드 */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                        {/* 수익 배분율 카드 (좌측) */}
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-muted-foreground" />
+                                    크리에이터 수익 배분율
+                                    <span className="text-xs font-normal text-muted-foreground ml-1">(자동 정산 적용)</span>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {summaryData.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">소속 크리에이터가 없습니다.</p>
+                                ) : (
+                                    <div className="divide-y">
+                                        {summaryData.map(c => {
+                                            const ratio = splitRatios[c.user_id] ?? 0.7
+                                            return (
+                                                <div key={c.user_id} className="flex items-center justify-between py-2.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar className="h-7 w-7">
+                                                            <AvatarImage src={c.avatar_url || ''} />
+                                                            <AvatarFallback className="text-xs">{c.display_name?.[0]}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="text-sm font-medium leading-tight">{c.display_name}</p>
+                                                            <p className="text-xs text-muted-foreground">크리에이터 {Math.round(ratio * 100)}% / MCN {Math.round((1 - ratio) * 100)}%</p>
+                                                        </div>
                                                     </div>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 text-xs"
+                                                        onClick={() => setSplitEditorCreator({
+                                                            id: c.user_id,
+                                                            name: c.display_name || '크리에이터',
+                                                            avatar: c.avatar_url,
+                                                            currentRatio: ratio,
+                                                        })}
+                                                    >
+                                                        설정
+                                                    </Button>
                                                 </div>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-7 text-xs"
-                                                    onClick={() => setSplitEditorCreator({
-                                                        id: c.user_id,
-                                                        name: c.display_name || '크리에이터',
-                                                        avatar: c.avatar_url,
-                                                        currentRatio: ratio,
-                                                    })}
-                                                >
-                                                    배분율 설정
-                                                </Button>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* 광고 성과 패널 (우측) */}
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                                    크리에이터 광고 성과
+                                    <span className="text-xs font-normal text-muted-foreground ml-1">(최근 협업 기준)</span>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {summaryData.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">소속 크리에이터가 없습니다.</p>
+                                ) : (
+                                    <div className="divide-y">
+                                        {summaryData.map(c => {
+                                            const perf = perfData[c.user_id]
+                                            return (
+                                                <div key={c.user_id} className="flex items-center justify-between py-2.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar className="h-7 w-7">
+                                                            <AvatarImage src={c.avatar_url || ''} />
+                                                            <AvatarFallback className="text-xs">{c.display_name?.[0]}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="text-sm font-medium leading-tight">{c.display_name}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {perf ? `${perf.count}건 완료` : '성과 없음'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {perf?.latest ? (
+                                                        <div className="flex gap-3 text-right">
+                                                            {perf.latest.cpe != null && (
+                                                                <div>
+                                                                    <p className="text-[10px] text-muted-foreground">CPE</p>
+                                                                    <p className="text-xs font-semibold">₩{Math.round(perf.latest.cpe).toLocaleString()}</p>
+                                                                </div>
+                                                            )}
+                                                            {perf.latest.engagement_rate != null && (
+                                                                <div>
+                                                                    <p className="text-[10px] text-muted-foreground">참여율</p>
+                                                                    <p className="text-xs font-semibold text-emerald-600">{perf.latest.engagement_rate}%</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">-</span>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                    </div>
 
                     {/* MCN 사업자 정보 */}
                     <Card>

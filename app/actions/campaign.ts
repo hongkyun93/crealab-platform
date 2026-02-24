@@ -127,6 +127,17 @@ export async function deleteCampaign(id: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '로그인이 필요합니다.' }
 
+    // 1. 연관된 campaign_applications 먼저 삭제 (FK 제약 해소)
+    const { error: appError } = await supabase
+        .from('campaign_applications')
+        .delete()
+        .eq('campaign_id', id)
+
+    if (appError) {
+        return { error: `지원서 삭제 실패: ${appError.message}` }
+    }
+
+    // 2. 캠페인 삭제
     const { error } = await supabase
         .from('campaigns')
         .delete()

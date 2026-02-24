@@ -13,9 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
 import { cn } from "@/lib/utils"
-import { BookOpen, Instagram, Loader2, Lock, Music2, Plus, Save, Trash2, Youtube } from "lucide-react"
+import { BookOpen, Instagram, Loader2, Lock, Music2, Plus, Save, Trash2, TrendingUp, Youtube } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
 
 import { POPULAR_TAGS as PROFILE_CATEGORIES } from "@/lib/constants/categories"
 
@@ -158,6 +160,9 @@ function SocialChannelCard({ channel, userId }: { channel: any, userId: string }
 export function SettingsView() {
     const { user, updateUser, isLoading } = useUnifiedProvider()
     const { effectiveUser, effectiveUserId, isProxyMode } = useEffectiveUser()
+
+    // 내 광고 가치 계산기 성과 데이터
+    const [perfStats, setPerfStats] = useState<{ avgEngagementRate: number | null, avgCpe: number | null, count: number } | null>(null)
     const { channels, fetchChannels, createChannel, deleteChannel, setPrimaryChannel, updateChannel } = useSocialChannels()
 
     // Form State
@@ -238,6 +243,54 @@ export function SettingsView() {
             fetchChannels(effectiveUserId)
         }
     }, [effectiveUserId, fetchChannels])
+
+    // Instagram OAuth 결과 처리
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    useEffect(() => {
+        const igConnected = searchParams.get('ig_connected')
+        const igError = searchParams.get('ig_error')
+        if (igConnected === 'true') {
+            toast.success('📸 Instagram이 성공적으로 연결되었습니다!')
+            if (effectiveUserId) fetchChannels(effectiveUserId)
+            router.replace('/creator?tab=settings')
+        } else if (igError) {
+            const msg = igError === 'no_business_account'
+                ? 'Instagram 비즈니스 계정이 연결된 Facebook 페이지를 찾지 못했습니다.'
+                : igError === 'cancelled'
+                    ? '연결이 취소되었습니다.'
+                    : 'Instagram 연결 중 오류가 발생했습니다.'
+            toast.error(msg)
+            router.replace('/creator?tab=settings')
+        }
+    }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // 성과 데이터 로드 (가치 계산기용)
+    useEffect(() => {
+        if (!effectiveUserId) return
+        const supabase = createClient()
+        supabase
+            .from('campaign_performance')
+            .select('engagement_rate, cpe')
+            .eq('creator_id', effectiveUserId)
+            .then(({ data }) => {
+                if (data && data.length > 0) {
+                    const validER = data.filter(d => d.engagement_rate != null)
+                    const validCpe = data.filter(d => d.cpe != null)
+                    setPerfStats({
+                        avgEngagementRate: validER.length > 0
+                            ? validER.reduce((s, d) => s + d.engagement_rate, 0) / validER.length
+                            : null,
+                        avgCpe: validCpe.length > 0
+                            ? validCpe.reduce((s, d) => s + d.cpe, 0) / validCpe.length
+                            : null,
+                        count: data.length
+                    })
+                } else {
+                    setPerfStats({ avgEngagementRate: null, avgCpe: null, count: 0 })
+                }
+            })
+    }, [effectiveUserId])
 
     const toggleTag = (tag: string) => {
         if (selectedTags.includes(tag)) {
@@ -462,68 +515,83 @@ export function SettingsView() {
                                     <CardDescription>연결된 채널을 통해 브랜드에게 더 많은 정보를 제공하세요</CardDescription>
                                 </div>
 
-                                <Dialog open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button className="gap-2" variant="outline">
-                                            <Plus className="h-4 w-4" />
-                                            채널 추가
+                                <div className="flex items-center gap-2">
+                                    {/* Instagram OAuth 연결 버튼 */}
+                                    {effectiveUserId && (
+                                        <Button
+                                            variant="outline"
+                                            className="gap-2 border-pink-200 text-pink-600 hover:bg-pink-50"
+                                            onClick={() => {
+                                                window.location.href = `/api/instagram/connect?userId=${effectiveUserId}`
+                                            }}
+                                        >
+                                            <Instagram className="h-4 w-4" />
+                                            Instagram 연결
                                         </Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>소셜 채널 추가</DialogTitle>
-                                            <DialogDescription>
-                                                활동 중인 소셜 미디어 채널을 추가하여 브랜드에게 어필하세요.
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="grid gap-4 py-4">
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="platform">플랫폼</Label>
-                                                <Select value={newChannelPlatform} onValueChange={setNewChannelPlatform}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="플랫폼 선택" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="instagram">Instagram</SelectItem>
-                                                        <SelectItem value="youtube">YouTube</SelectItem>
-                                                        <SelectItem value="blog">Naver Blog</SelectItem>
-                                                        <SelectItem value="tiktok">TikTok</SelectItem>
-                                                        <SelectItem value="other">기타 (Web)</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="handle">계정/핸들 (ID)</Label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">
-                                                        {newChannelPlatform === 'instagram' || newChannelPlatform === 'tiktok' ? '@' : ''}
-                                                    </span>
+                                    )}
+                                    <Dialog open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button className="gap-2" variant="outline">
+                                                <Plus className="h-4 w-4" />
+                                                채널 추가
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>소셜 채널 추가</DialogTitle>
+                                                <DialogDescription>
+                                                    활동 중인 소셜 미디어 채널을 추가하여 브랜드에게 어필하세요.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="grid gap-4 py-4">
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="platform">플랫폼</Label>
+                                                    <Select value={newChannelPlatform} onValueChange={setNewChannelPlatform}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="플랫폼 선택" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="instagram">Instagram</SelectItem>
+                                                            <SelectItem value="youtube">YouTube</SelectItem>
+                                                            <SelectItem value="blog">Naver Blog</SelectItem>
+                                                            <SelectItem value="tiktok">TikTok</SelectItem>
+                                                            <SelectItem value="other">기타 (Web)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="handle">계정/핸들 (ID)</Label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">
+                                                            {newChannelPlatform === 'instagram' || newChannelPlatform === 'tiktok' ? '@' : ''}
+                                                        </span>
+                                                        <Input
+                                                            id="handle"
+                                                            value={newChannelHandle}
+                                                            onChange={(e) => setNewChannelHandle(e.target.value)}
+                                                            className={newChannelPlatform === 'instagram' || newChannelPlatform === 'tiktok' ? 'pl-7' : ''}
+                                                            placeholder={newChannelPlatform === 'youtube' ? '채널명 입력' : 'username'}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="channelFollowers">팔로워/구독자 수</Label>
                                                     <Input
-                                                        id="handle"
-                                                        value={newChannelHandle}
-                                                        onChange={(e) => setNewChannelHandle(e.target.value)}
-                                                        className={newChannelPlatform === 'instagram' || newChannelPlatform === 'tiktok' ? 'pl-7' : ''}
-                                                        placeholder={newChannelPlatform === 'youtube' ? '채널명 입력' : 'username'}
+                                                        id="channelFollowers"
+                                                        type="number"
+                                                        value={newChannelFollowers}
+                                                        onChange={(e) => setNewChannelFollowers(e.target.value)}
+                                                        placeholder="0"
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="channelFollowers">팔로워/구독자 수</Label>
-                                                <Input
-                                                    id="channelFollowers"
-                                                    type="number"
-                                                    value={newChannelFollowers}
-                                                    onChange={(e) => setNewChannelFollowers(e.target.value)}
-                                                    placeholder="0"
-                                                />
-                                            </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button variant="outline" onClick={() => setIsAddChannelOpen(false)}>취소</Button>
-                                            <Button onClick={handleAddChannel}>추가하기</Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
+                                            <DialogFooter>
+                                                <Button variant="outline" onClick={() => setIsAddChannelOpen(false)}>취소</Button>
+                                                <Button onClick={handleAddChannel}>추가하기</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -548,10 +616,74 @@ export function SettingsView() {
 
                     {/* Edit Channel Dialog */}
 
+                    {/* 평트떼지 가치 계산기 */}
+                    <Card className="border-emerald-200/60 bg-gradient-to-br from-emerald-50/40 to-transparent">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                                내 광고 가치 계산기
+                                <span className="text-xs font-normal text-muted-foreground ml-1">
+                                    {perfStats?.count ? `${perfStats.count}건 협업 데이터 기반` : '업계 평균 기준 예상치'}
+                                </span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {(() => {
+                                const totalFollowers = channels.reduce((s, ch) => s + (ch.followersCount || 0), 0)
+                                if (totalFollowers === 0) {
+                                    return <p className="text-sm text-muted-foreground">소셜 채널을 연결하면 예상 단가를 확인할 수 있습니다.</p>
+                                }
+                                const er = perfStats?.avgEngagementRate ??
+                                    (totalFollowers >= 1000000 ? 0.012 : totalFollowers >= 100000 ? 0.025 : totalFollowers >= 10000 ? 0.04 : 0.06)
+                                const cpe = perfStats?.avgCpe ??
+                                    (totalFollowers >= 1000000 ? 3000 : totalFollowers >= 100000 ? 1500 : totalFollowers >= 10000 ? 800 : 500)
+                                const estimatedValue = Math.round(totalFollowers * er * cpe)
+                                const minValue = Math.round(estimatedValue * 0.8)
+                                const maxValue = Math.round(estimatedValue * 1.2)
+                                const fmt = (n: number) => {
+                                    if (n >= 10000000) return `${(n / 10000000).toFixed(1)}억원`
+                                    if (n >= 10000) return `${(n / 10000).toFixed(0)}만원`
+                                    return `${n.toLocaleString()}원`
+                                }
+                                return (
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-3 gap-3 text-center">
+                                            <div className="p-2 rounded-lg bg-white border">
+                                                <p className="text-[10px] text-muted-foreground">팔로워</p>
+                                                <p className="text-sm font-semibold">
+                                                    {totalFollowers >= 10000 ? `${(totalFollowers / 10000).toFixed(1)}만` : totalFollowers.toLocaleString()}
+                                                </p>
+                                            </div>
+                                            <div className="p-2 rounded-lg bg-white border">
+                                                <p className="text-[10px] text-muted-foreground">참여율</p>
+                                                <p className="text-sm font-semibold text-emerald-600">{(er * 100).toFixed(1)}%</p>
+                                            </div>
+                                            <div className="p-2 rounded-lg bg-white border">
+                                                <p className="text-[10px] text-muted-foreground">CPE</p>
+                                                <p className="text-sm font-semibold">₩{Math.round(cpe).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-center">
+                                            <p className="text-xs text-muted-foreground mb-1">예상 광고 단가 범위</p>
+                                            <p className="text-xl font-bold text-emerald-700">
+                                                {fmt(minValue)} ~ {fmt(maxValue)}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">
+                                                {perfStats?.count
+                                                    ? `실제 ${perfStats.count}건 협업의 평균 CPE ⋅ 참여율 기반`
+                                                    : '캔페인 데이터가 쌓일수록 더 정확해집니다'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )
+                            })()}
+                        </CardContent>
+                    </Card>
 
+                    {/* 활동 정보 & 정산 정보 */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>활동 정보 & 정산 정보</CardTitle>
+                            <CardTitle>활동 정보 &amp; 정산 정보</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-8">
                             {/* Rate Card - Extended Version (5 fields) */}

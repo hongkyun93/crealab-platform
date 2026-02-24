@@ -149,6 +149,7 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
     `)
         .eq('is_private', false)
         .order('created_at', { ascending: false })
+        .limit(100)
 
     if (error) {
         // Ignore AbortError (Request Cancelled)

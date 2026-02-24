@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { validateContentFile } from '@/lib/utils/file-validation';
-import { CheckCircle2, Eye, FileText, Loader2, MapPin, Package, Pencil, BarChart3, Sparkles, Truck, Upload, User, Video } from 'lucide-react';
+import { BarChart3, CheckCircle2, Eye, FileText, Instagram, Loader2, MapPin, Package, Pencil, Sparkles, Truck, Upload, User, Video } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ConditionsPanel } from '../common/conditions-panel';
@@ -59,6 +59,13 @@ export function CreatorInfoPanel() {
     const [perfSubmitted, setPerfSubmitted] = useState<any>(null);
     const [perfLoading, setPerfLoading] = useState(false);
 
+    // Instagram 자동 성과 수집 상태
+    const [igTab, setIgTab] = useState<'instagram' | 'screenshot'>('instagram');
+    const [igMediaList, setIgMediaList] = useState<any[]>([]);
+    const [igMediaLoading, setIgMediaLoading] = useState(false);
+    const [igSelectedMedia, setIgSelectedMedia] = useState<any>(null);
+    const [igFetchingInsights, setIgFetchingInsights] = useState(false);
+
     // Pre-fill from proposal data or user profile
     useEffect(() => {
         if (proposal?.receiver_name) {
@@ -105,6 +112,58 @@ export function CreatorInfoPanel() {
         };
         fetchPerf();
     }, [currentStage, proposal?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Instagram 게시물 목록 불러오기
+    const handleFetchIgMedia = async () => {
+        if (!user?.id) return;
+        setIgMediaLoading(true);
+        try {
+            const res = await fetch(`/api/instagram/media?userId=${user.id}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '게시물을 불러오지 못했습니다.');
+            setIgMediaList(data.data || []);
+        } catch (err: any) {
+            toast.error(err.message);
+            setIgTab('screenshot');
+        } finally {
+            setIgMediaLoading(false);
+        }
+    };
+
+    // Instagram 인사이트 기반 성과 제출
+    const handleSubmitWithIg = async () => {
+        if (!igSelectedMedia || !proposal?.id || !user?.id) return;
+        setIgFetchingInsights(true);
+        try {
+            const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+                ? 'moment_proposal'
+                : (proposal as any).campaignId || (proposal as any).campaign_id
+                    ? 'campaign_application'
+                    : 'product_application';
+            const brandId = (proposal as any).brand_id || (proposal as any).brandId;
+            const priceOffer = (proposal as any).price_offer || 0;
+            const res = await fetch('/api/instagram/insights', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mediaId: igSelectedMedia.id,
+                    userId: user.id,
+                    proposalType,
+                    proposalId: proposal.id.toString(),
+                    brandId,
+                    priceOffer,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '성과 제출 실패');
+            setPerfSubmitted(data.data);
+            toast.success('Instagram 인사이트 기반 성과 제출 완료! 🎉');
+        } catch (err: any) {
+            toast.error(err.message);
+        } finally {
+            setIgFetchingInsights(false);
+        }
+    };
 
     const handleInsightAnalyze = async () => {
         if (!insightFile) return;
@@ -1036,101 +1095,199 @@ export function CreatorInfoPanel() {
                                         </div>
                                     </div>
                                 ) : (
-                                    // 제출 폼
+                                    // 제출 폼 (탭: Instagram 자동 / 스크린샷)
                                     <div className="space-y-3">
-                                        <p className="text-xs text-muted-foreground">
-                                            협업이 완료되었습니다! 포스팅한 게시물의 인사이트 스크린샷을 업로드해주세요.
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground bg-muted/30 rounded-md p-2 leading-relaxed">
-                                            특정 게시물 열기 → 하단 &ldquo;인사이트 보기&rdquo; → 스크린샷
-                                        </p>
-
-                                        <input
-                                            ref={insightFileRef}
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (!file) return;
-                                                setInsightFile(file);
-                                                setInsightResult(null);
-                                                const reader = new FileReader();
-                                                reader.onload = (ev) => setInsightPreview(ev.target?.result as string);
-                                                reader.readAsDataURL(file);
-                                                e.target.value = '';
-                                            }}
-                                        />
-
-                                        {!insightPreview ? (
+                                        {/* 탭 선택기 */}
+                                        <div className="flex rounded-lg bg-muted/30 p-0.5 gap-0.5">
                                             <button
-                                                onClick={() => insightFileRef.current?.click()}
-                                                className="w-full border-2 border-dashed border-primary/30 rounded-lg p-4 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                                                onClick={() => { setIgTab('instagram'); if (igMediaList.length === 0) handleFetchIgMedia(); }}
+                                                className={`flex-1 text-xs font-medium rounded-md py-1.5 flex items-center justify-center gap-1 transition-colors ${igTab === 'instagram'
+                                                        ? 'bg-white dark:bg-zinc-800 shadow-sm text-foreground'
+                                                        : 'text-muted-foreground hover:text-foreground'
+                                                    }`}
                                             >
-                                                <BarChart3 className="h-6 w-6 mx-auto mb-1.5 text-muted-foreground/40" />
-                                                <p className="text-xs text-muted-foreground">인사이트 스크린샷 업로드</p>
+                                                <Instagram className="h-3 w-3" /> 자동 가져오기
                                             </button>
-                                        ) : (
-                                            <div className="space-y-2">
-                                                <div className="relative">
-                                                    <img
-                                                        src={insightPreview}
-                                                        alt="insight"
-                                                        className="w-full max-h-40 object-contain rounded-lg border"
-                                                    />
-                                                    <button
-                                                        onClick={() => { setInsightPreview(null); setInsightFile(null); setInsightResult(null); }}
-                                                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
-                                                    >
-                                                        <span className="text-xs leading-none px-0.5">✕</span>
-                                                    </button>
-                                                </div>
+                                            <button
+                                                onClick={() => setIgTab('screenshot')}
+                                                className={`flex-1 text-xs font-medium rounded-md py-1.5 flex items-center justify-center gap-1 transition-colors ${igTab === 'screenshot'
+                                                        ? 'bg-white dark:bg-zinc-800 shadow-sm text-foreground'
+                                                        : 'text-muted-foreground hover:text-foreground'
+                                                    }`}
+                                            >
+                                                <BarChart3 className="h-3 w-3" /> 스크린샷
+                                            </button>
+                                        </div>
 
-                                                {!insightResult ? (
-                                                    <Button
-                                                        size="sm"
-                                                        className="w-full h-8 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
-                                                        onClick={handleInsightAnalyze}
-                                                        disabled={isAnalyzing}
-                                                    >
-                                                        {isAnalyzing
-                                                            ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />엔이 분석중...</>
-                                                            : <><Sparkles className="h-3.5 w-3.5 mr-1.5" />AI 분석하기</>}
-                                                    </Button>
+                                        {igTab === 'instagram' ? (
+                                            /* Instagram 자동 수집 탭 */
+                                            <div className="space-y-2">
+                                                {igMediaLoading ? (
+                                                    <div className="flex items-center justify-center py-6 gap-2">
+                                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                        <span className="text-xs text-muted-foreground">게시물 불러오는 중...</span>
+                                                    </div>
+                                                ) : igMediaList.length === 0 ? (
+                                                    <div className="text-center py-4 space-y-2">
+                                                        <Instagram className="h-6 w-6 mx-auto text-muted-foreground/40" />
+                                                        <p className="text-xs text-muted-foreground">Instagram 게시물을 불러옵니다</p>
+                                                        <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={handleFetchIgMedia}>
+                                                            <Instagram className="h-3.5 w-3.5" /> 게시물 불러오기
+                                                        </Button>
+                                                    </div>
+                                                ) : !igSelectedMedia ? (
+                                                    <div className="space-y-2">
+                                                        <p className="text-xs text-muted-foreground">이 캠페인에 해당하는 게시물 선택</p>
+                                                        <div className="grid grid-cols-3 gap-1">
+                                                            {igMediaList.map((media) => {
+                                                                const thumb = media.thumbnail_url || media.media_url;
+                                                                return (
+                                                                    <button
+                                                                        key={media.id}
+                                                                        onClick={() => setIgSelectedMedia(media)}
+                                                                        className="aspect-square rounded-md overflow-hidden bg-muted/30 hover:ring-2 hover:ring-primary transition-all"
+                                                                    >
+                                                                        {thumb ? (
+                                                                            <img src={thumb} alt="" className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                                <Video className="h-4 w-4 text-muted-foreground" />
+                                                                            </div>
+                                                                        )}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
                                                 ) : (
                                                     <div className="space-y-2">
-                                                        <div className="grid grid-cols-3 gap-1.5">
-                                                            {[
-                                                                { label: '도달', value: insightResult.extracted?.metrics?.reach },
-                                                                { label: '좋아요', value: insightResult.extracted?.metrics?.likes },
-                                                                { label: '댓글', value: insightResult.extracted?.metrics?.comments },
-                                                                { label: '저장', value: insightResult.extracted?.metrics?.saves },
-                                                                { label: '공유', value: insightResult.extracted?.metrics?.shares },
-                                                                { label: '조회수', value: insightResult.extracted?.metrics?.views },
-                                                            ].map(item => (
-                                                                <div key={item.label} className="bg-muted/30 rounded-lg p-1.5 text-center">
-                                                                    <p className="text-[10px] text-muted-foreground">{item.label}</p>
-                                                                    <p className="text-xs font-bold">
-                                                                        {item.value != null
-                                                                            ? item.value >= 10000
-                                                                                ? `${(item.value / 10000).toFixed(1)}만`
-                                                                                : item.value.toLocaleString()
-                                                                            : '—'}
-                                                                    </p>
-                                                                </div>
-                                                            ))}
+                                                        <div className="flex items-center gap-2 bg-muted/30 rounded-lg p-2">
+                                                            <div className="w-10 h-10 rounded-md overflow-hidden bg-muted shrink-0">
+                                                                {(igSelectedMedia.thumbnail_url || igSelectedMedia.media_url) ? (
+                                                                    <img src={igSelectedMedia.thumbnail_url || igSelectedMedia.media_url} alt="" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center">
+                                                                        <Video className="h-3 w-3 text-muted-foreground" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs font-medium truncate">{igSelectedMedia.caption?.slice(0, 40) || '캡션 없음'}</p>
+                                                                <p className="text-[10px] text-muted-foreground">❤️ {igSelectedMedia.like_count || 0} · 💬 {igSelectedMedia.comments_count || 0}</p>
+                                                            </div>
+                                                            <button onClick={() => setIgSelectedMedia(null)} className="text-xs text-muted-foreground hover:text-foreground px-1">✕</button>
                                                         </div>
                                                         <Button
                                                             size="sm"
-                                                            className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 font-bold"
-                                                            onClick={handleSubmitPerformance}
-                                                            disabled={isSubmittingPerf}
+                                                            className="w-full h-9 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold"
+                                                            onClick={handleSubmitWithIg}
+                                                            disabled={igFetchingInsights}
                                                         >
-                                                            {isSubmittingPerf
-                                                                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />제출중...</>
-                                                                : <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />성과 제출 완료</>}
+                                                            {igFetchingInsights
+                                                                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />인사이트 수집 중...</>
+                                                                : <><Instagram className="h-3.5 w-3.5 mr-1.5" />Instagram 인사이트 제출</>}
                                                         </Button>
-                                                        <p className="text-[10px] text-muted-foreground text-center">수치가 정확한지 확인 후 제출해주세요.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            /* 기존 스크린샷 탭 */
+                                            <div className="space-y-3">
+                                                <p className="text-xs text-muted-foreground">
+                                                    포스팅한 게시물의 인사이트 스크린샷을 업로드해주세요.
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground bg-muted/30 rounded-md p-2 leading-relaxed">
+                                                    특정 게시물 열기 → 하단 &ldquo;인사이트 보기&rdquo; → 스크린샷
+                                                </p>
+
+                                                <input
+                                                    ref={insightFileRef}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file) return;
+                                                        setInsightFile(file);
+                                                        setInsightResult(null);
+                                                        const reader = new FileReader();
+                                                        reader.onload = (ev) => setInsightPreview(ev.target?.result as string);
+                                                        reader.readAsDataURL(file);
+                                                        e.target.value = '';
+                                                    }}
+                                                />
+
+                                                {!insightPreview ? (
+                                                    <button
+                                                        onClick={() => insightFileRef.current?.click()}
+                                                        className="w-full border-2 border-dashed border-primary/30 rounded-lg p-4 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                                                    >
+                                                        <BarChart3 className="h-6 w-6 mx-auto mb-1.5 text-muted-foreground/40" />
+                                                        <p className="text-xs text-muted-foreground">인사이트 스크린샷 업로드</p>
+                                                    </button>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        <div className="relative">
+                                                            <img
+                                                                src={insightPreview}
+                                                                alt="insight"
+                                                                className="w-full max-h-40 object-contain rounded-lg border"
+                                                            />
+                                                            <button
+                                                                onClick={() => { setInsightPreview(null); setInsightFile(null); setInsightResult(null); }}
+                                                                className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                                                            >
+                                                                <span className="text-xs leading-none px-0.5">✕</span>
+                                                            </button>
+                                                        </div>
+
+                                                        {!insightResult ? (
+                                                            <Button
+                                                                size="sm"
+                                                                className="w-full h-8 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
+                                                                onClick={handleInsightAnalyze}
+                                                                disabled={isAnalyzing}
+                                                            >
+                                                                {isAnalyzing
+                                                                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />AI 분석중...</>
+                                                                    : <><Sparkles className="h-3.5 w-3.5 mr-1.5" />AI 분석하기</>}
+                                                            </Button>
+                                                        ) : (
+                                                            <div className="space-y-2">
+                                                                <div className="grid grid-cols-3 gap-1.5">
+                                                                    {[
+                                                                        { label: '도달', value: insightResult.extracted?.metrics?.reach },
+                                                                        { label: '좋아요', value: insightResult.extracted?.metrics?.likes },
+                                                                        { label: '댓글', value: insightResult.extracted?.metrics?.comments },
+                                                                        { label: '저장', value: insightResult.extracted?.metrics?.saves },
+                                                                        { label: '공유', value: insightResult.extracted?.metrics?.shares },
+                                                                        { label: '조회수', value: insightResult.extracted?.metrics?.views },
+                                                                    ].map(item => (
+                                                                        <div key={item.label} className="bg-muted/30 rounded-lg p-1.5 text-center">
+                                                                            <p className="text-[10px] text-muted-foreground">{item.label}</p>
+                                                                            <p className="text-xs font-bold">
+                                                                                {item.value != null
+                                                                                    ? item.value >= 10000
+                                                                                        ? `${(item.value / 10000).toFixed(1)}만`
+                                                                                        : item.value.toLocaleString()
+                                                                                    : '—'}
+                                                                            </p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 font-bold"
+                                                                    onClick={handleSubmitPerformance}
+                                                                    disabled={isSubmittingPerf}
+                                                                >
+                                                                    {isSubmittingPerf
+                                                                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />제출중...</>
+                                                                        : <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />성과 제출 완료</>}
+                                                                </Button>
+                                                                <p className="text-[10px] text-muted-foreground text-center">수치가 정확한지 확인 후 제출해주세요.</p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>

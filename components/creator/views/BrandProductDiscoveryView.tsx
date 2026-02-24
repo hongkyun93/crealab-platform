@@ -17,10 +17,29 @@ export const BrandProductDiscoveryView = React.memo(function BrandProductDiscove
     handleViewGuide,
     handlePropose
 }: BrandProductDiscoveryViewProps) {
+    const [pageSize, setPageSize] = React.useState<20 | 50 | 100>(50)
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-
-
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+            {/* Page Size Selector */}
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                    {products.length > pageSize ? `총 ${products.length}개 중 최신 ${pageSize}개 표시` : `총 ${products.length}개`}
+                </p>
+                <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
+                    {([20, 50, 100] as const).map(n => (
+                        <button
+                            key={n}
+                            onClick={() => setPageSize(n)}
+                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${pageSize === n
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            {n}
+                        </button>
+                    ))}
+                </div>
+            </div>
             {products.length === 0 ? (
                 <Card className="p-12 text-center border-dashed">
                     <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -31,7 +50,7 @@ export const BrandProductDiscoveryView = React.memo(function BrandProductDiscove
                 </Card>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {products.map((p) => (
+                    {products.slice(0, pageSize).map((p) => (
                         <Card key={p.id} className="overflow-hidden flex flex-col h-full border-border/60 hover:shadow-md transition-all group cursor-pointer" onClick={() => handlePropose(p)}>
                             <div className="aspect-square bg-muted flex items-center justify-center text-4xl relative">
                                 {p.image.startsWith('http') ? (

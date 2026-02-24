@@ -12,12 +12,16 @@ export interface CreatorProfile {
     priceVideo: number
     priceFeed: number
     priceStory: number
+    collabCount: number                 // campaign_performance 완료 건수
+    avgEngagementRate: number | null     // 실제 캠페인 평균 참여율 (없으면 null)
     channels: {
         id: string
         platform: string
         handle: string
         followersCount: number
         isPrimary: boolean
+        igUserId?: string  // Instagram API 인증 여부
+        igDemographics?: Record<string, any>  // 팔로워 인구통계 캐시
     }[]
     moments: {
         id: string
@@ -65,7 +69,7 @@ export function useCreatorProfile(creatorId: string | null) {
                         price_video,
                         price_feed,
                         price_story,
-                        social_channels(id, platform, handle, followers_count, is_primary)
+                        social_channels(id, platform, handle, followers_count, is_primary, ig_user_id, ig_demographics)
                     `)
                     .eq('id', creatorId)
                     .single()
@@ -90,6 +94,18 @@ export function useCreatorProfile(creatorId: string | null) {
                     // Non-fatal: still show profile without moments
                 }
 
+                // Query 3: campaign_performance stats
+                const { data: perfData } = await supabase
+                    .from('campaign_performance')
+                    .select('engagement_rate')
+                    .eq('creator_id', creatorId)
+
+                const validEr = (perfData || []).filter((p: any) => p.engagement_rate && p.engagement_rate > 0)
+                const avgEngagementRate = validEr.length > 0
+                    ? validEr.reduce((s: number, p: any) => s + p.engagement_rate, 0) / validEr.length
+                    : null
+                const collabCount = (perfData || []).length
+
                 if (!cancelled && profileData) {
                     setProfile({
                         id: profileData.id,
@@ -102,12 +118,16 @@ export function useCreatorProfile(creatorId: string | null) {
                         priceVideo: profileData.price_video || 0,
                         priceFeed: profileData.price_feed || 0,
                         priceStory: profileData.price_story || 0,
+                        collabCount,
+                        avgEngagementRate,
                         channels: ((profileData as any).social_channels || []).map((c: any) => ({
                             id: c.id,
                             platform: c.platform || '',
                             handle: c.handle || '',
                             followersCount: c.followers_count || 0,
                             isPrimary: c.is_primary || false,
+                            igUserId: c.ig_user_id || undefined,
+                            igDemographics: c.ig_demographics || undefined,
                         })),
                         moments: (momentsData || []).map((m: any) => ({
                             id: m.id,

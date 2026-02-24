@@ -68,6 +68,7 @@ export const DiscoverView = React.memo(function DiscoverView({
 }: DiscoverViewProps) {
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+    const [pageSize, setPageSize] = useState<20 | 50 | 100>(50)
 
     // Multi-select toggle helper (min 1 selection)
     const toggleMulti = (setter: (fn: (prev: string[]) => string[]) => void, key: string, allOptions?: string[]) => {
@@ -99,9 +100,24 @@ export const DiscoverView = React.memo(function DiscoverView({
                     <h1 className="text-3xl font-bold tracking-tight">모먼트 검색</h1>
                     <p className="text-muted-foreground mt-1">우리 브랜드와 딱 맞는 모먼트를 가진 크리에이터를 찾아보세요.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                    {/* Page Size Selector */}
+                    <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
+                        {([20, 50, 100] as const).map(n => (
+                            <button
+                                key={n}
+                                onClick={() => setPageSize(n)}
+                                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${pageSize === n
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                {n}
+                            </button>
+                        ))}
+                    </div>
                     {/* View Switcher */}
-                    <div className="flex items-center gap-1 bg-muted p-1 rounded-lg mr-2">
+                    <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
                         <Button
                             variant={viewMode === 'table' ? 'default' : 'ghost'}
                             size="icon"
@@ -121,7 +137,6 @@ export const DiscoverView = React.memo(function DiscoverView({
                             <LayoutGrid className="h-4 w-4" />
                         </Button>
                     </div>
-
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="gap-2">
@@ -280,6 +295,31 @@ export const DiscoverView = React.memo(function DiscoverView({
                             ))}
                         </div>
                     </div>
+                    {/* Instagram 인증 필터 */}
+                    <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
+                        <span className="text-sm font-semibold w-24 pt-1">Instagram</span>
+                        <div className="flex flex-wrap gap-2 flex-1">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSortOrder('latest')}
+                                className={cn('gap-1.5', sortOrder !== 'verified' && 'bg-primary/10 text-primary font-medium')}
+                            >
+                                전체
+                                {sortOrder !== 'verified' && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSortOrder('verified')}
+                                className={cn('gap-1.5', sortOrder === 'verified' && 'bg-primary/10 text-primary font-medium')}
+                            >
+                                <Instagram className="h-3.5 w-3.5 text-pink-500" />
+                                API 인증됨
+                                {sortOrder === 'verified' && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
+                            </Button>
+                        </div>
+                    </div>
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold w-24 pt-1">전문 분야</span>
                         <div className="flex flex-wrap gap-2 flex-1">
@@ -317,9 +357,14 @@ export const DiscoverView = React.memo(function DiscoverView({
                 </CardContent>
             </Card>
 
+            {filteredEvents.length > pageSize && (
+                <p className="text-xs text-muted-foreground text-right -mb-2">
+                    총 {filteredEvents.length}개 중 최신 {pageSize}개 표시
+                </p>
+            )}
             {viewMode === 'grid' ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {filteredEvents.map((item) => {
+                    {filteredEvents.slice(0, pageSize).map((item) => {
                         const isFavorite = favorites.some(f => f.target_id === item.id && f.target_type === 'event')
                         return (
                             <MomentGridCard
@@ -346,7 +391,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                 </div>
             ) : (
                 <MomentTableView
-                    items={filteredEvents}
+                    items={filteredEvents.slice(0, pageSize)}
                     getCreator={(item) => ({
                         name: item.influencer,
                         avatar: item.avatar,

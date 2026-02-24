@@ -45,6 +45,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     const { supabase, refreshData } = useUnifiedProvider()
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'table'>('list')
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
+    const [pageSize, setPageSize] = useState<20 | 50 | 100>(50)
     const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false, title: '', description: '', onConfirm: () => { } })
 
     // Reset sub-tab when main workspace tab changes
@@ -661,34 +662,50 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </div>
 
                 {/* View Mode Selector */}
-                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg self-start">
-                    <Button
-                        variant={viewMode === 'list' ? 'default' : 'ghost'}
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setViewMode('list')}
-                        title="리스트 보기"
-                    >
-                        <List className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setViewMode('grid')}
-                        title="그리드 보기"
-                    >
-                        <LayoutGrid className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant={viewMode === 'table' ? 'default' : 'ghost'}
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setViewMode('table')}
-                        title="테이블 보기"
-                    >
-                        <Table2 className="h-4 w-4" />
-                    </Button>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
+                        {([20, 50, 100] as const).map(n => (
+                            <button
+                                key={n}
+                                onClick={() => setPageSize(n)}
+                                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${pageSize === n
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                {n}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                        <Button
+                            variant={viewMode === 'list' ? 'default' : 'ghost'}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setViewMode('list')}
+                            title="리스트 보기"
+                        >
+                            <List className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setViewMode('grid')}
+                            title="그리드 보기"
+                        >
+                            <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant={viewMode === 'table' ? 'default' : 'ghost'}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setViewMode('table')}
+                            title="테이블 보기"
+                        >
+                            <Table2 className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -725,19 +742,19 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </div>
 
                 <TabsContent value="all" className="space-y-4">
-                    {renderItems(filterByType(allWorkspaceItems, workspaceSubTab), 'all')}
+                    {renderItems(filterByType(allWorkspaceItems, workspaceSubTab).slice(0, pageSize), 'all')}
                 </TabsContent>
 
                 <TabsContent value="active" className="space-y-4">
-                    {renderItems(filterByType(allActive, workspaceSubTab), 'active')}
+                    {renderItems(filterByType(allActive, workspaceSubTab).slice(0, pageSize), 'active')}
                 </TabsContent>
 
                 <TabsContent value="inbound" className="space-y-4">
-                    {renderItems(filterByType(inboundApplications, workspaceSubTab), 'inbound')}
+                    {renderItems(filterByType(inboundApplications, workspaceSubTab).slice(0, pageSize), 'inbound')}
                 </TabsContent>
 
                 <TabsContent value="outbound" className="space-y-4">
-                    {renderItems(filterByType(outboundOffers, workspaceSubTab), 'outbound')}
+                    {renderItems(filterByType(outboundOffers, workspaceSubTab).slice(0, pageSize), 'outbound')}
                     <div className="flex justify-end mt-4">
                         <Button variant="outline" asChild>
                             <Link href="/brand?view=discover">크리에이터 찾으러 가기</Link>
@@ -746,11 +763,11 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </TabsContent>
 
                 <TabsContent value="rejected" className="space-y-4">
-                    {renderItems(filterByType(allRejected, workspaceSubTab), 'rejected')}
+                    {renderItems(filterByType(allRejected, workspaceSubTab).slice(0, pageSize), 'rejected')}
                 </TabsContent>
 
                 <TabsContent value="completed" className="space-y-4">
-                    {renderItems(filterByType(allCompleted, workspaceSubTab), 'completed')}
+                    {renderItems(filterByType(allCompleted, workspaceSubTab).slice(0, pageSize), 'completed')}
                 </TabsContent>
             </Tabs>
 
