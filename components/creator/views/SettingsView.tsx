@@ -723,13 +723,41 @@ export function SettingsView() {
                                 }
                                 const baseCpe = CATEGORY_CPE[primaryTag] ?? 800
 
-                                // ── 3. ER 프리미엄 ──
-                                const erPremium = er >= 0.08 ? 1.5 : er >= 0.04 ? 1.0 : er >= 0.02 ? 0.7 : 0.4
-                                const erLabel = er >= 0.08 ? '팬덤형' : er >= 0.04 ? '우수' : er >= 0.02 ? '평균' : '도달형'
-                                const erColor = er >= 0.08 ? 'text-purple-600 bg-purple-50 border-purple-200'
-                                    : er >= 0.04 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                                        : er >= 0.02 ? 'text-blue-600 bg-blue-50 border-blue-200'
-                                            : 'text-slate-500 bg-slate-50 border-slate-200'
+                                // ── 3. ER 프리미엄 (팔로워 티어별 기대값 대비 상대 평가) ──
+                                // 각 팔로워 규모에서 "보통" 수준의 ER이 다르기 때문에
+                                // 절대값(8%)이 아닌, 티어 기대값 대비 비율(erRatio)로 평가
+                                const erBenchmark =
+                                    totalFollowers >= 1000000 ? 0.010  // 메가: 기대 1%
+                                        : totalFollowers >= 500000 ? 0.015 // 대형: 1.5%
+                                            : totalFollowers >= 100000 ? 0.025 // 매크로: 2.5%
+                                                : totalFollowers >= 10000 ? 0.040  // 마이크로: 4%
+                                                    : 0.060                        // 나노: 6%
+
+                                const erRatio = erBenchmark > 0 ? er / erBenchmark : 1.0
+
+                                // erRatio: 1.0 = 해당 티어 평균 / 2.0 = 2배 우수 / 0.5 = 절반
+                                const erPremium =
+                                    erRatio >= 3.0 ? 2.0   // 티어 기대값의 3배 이상 → 최상위
+                                        : erRatio >= 2.0 ? 1.6 // 2배 이상 → 팬덤형
+                                            : erRatio >= 1.5 ? 1.3 // 1.5배 → 우수
+                                                : erRatio >= 1.0 ? 1.0 // 기대 수준 → 평균
+                                                    : erRatio >= 0.7 ? 0.75 // 기대 미달
+                                                        : 0.5              // 저조
+
+                                const erLabel =
+                                    erRatio >= 3.0 ? `최상위 (기대치 ${erRatio.toFixed(1)}배)`
+                                        : erRatio >= 2.0 ? `팬덤형 (${erRatio.toFixed(1)}배)`
+                                            : erRatio >= 1.5 ? `우수 (${erRatio.toFixed(1)}배)`
+                                                : erRatio >= 1.0 ? `평균 (${erRatio.toFixed(1)}배)`
+                                                    : erRatio >= 0.7 ? `기대 미달 (${erRatio.toFixed(1)}배)`
+                                                        : `저조 (${erRatio.toFixed(1)}배)`
+
+                                const erColor =
+                                    erRatio >= 2.0 ? 'text-purple-600 bg-purple-50 border-purple-200'
+                                        : erRatio >= 1.5 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                                            : erRatio >= 1.0 ? 'text-blue-600 bg-blue-50 border-blue-200'
+                                                : 'text-orange-500 bg-orange-50 border-orange-200'
+
                                 const effectiveCpe = perfStats?.avgCpe ?? Math.round(baseCpe * erPremium)
 
                                 // ── 4. 콘텐츠 유형 배율 ──
