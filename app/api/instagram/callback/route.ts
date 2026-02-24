@@ -164,47 +164,23 @@ export async function GET(request: Request) {
         const igInfo = await igRes.json()
         if (igInfo.error) throw new Error(igInfo.error.message)
 
-        // 5. Supabase에 저장 (service role로 bypass RLS)
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const supabaseServiceKey = process.env.SUPABASE_ADMIN_KEY
-        console.log('[Instagram OAuth] supabaseUrl:', !!supabaseUrl, 'serviceKey:', !!supabaseServiceKey, 'keyLen:', supabaseServiceKey?.length)
-        if (!supabaseUrl || !supabaseServiceKey) {
-            throw new Error(`Missing Supabase env: url=${!!supabaseUrl}, key=${!!supabaseServiceKey}`)
-        }
-        const supabase = createClient(supabaseUrl, supabaseServiceKey)
+        // 5. Supabase에 저장 (SECURITY DEFINER 함수로 RLS 우회 - anon key 사용)
+        // NEXT_PUBLIC_ 변수는 Vercel에서 확실히 주입됨
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
 
-        // 기존 instagram 채널이 있으면 업데이트, 없으면 삽입
-        const { data: existing } = await supabase
-            .from('social_channels')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('platform', 'instagram')
-            .maybeSingle()
+        const { error: rpcError } = await supabase.rpc('save_instagram_connection', {
+            p_user_id: userId,
+            p_handle: igInfo.username || '',
+            p_followers_count: igInfo.followers_count || 0,
+            p_ig_user_id: igUserId,
+            p_ig_access_token: pageAccessToken,
+        })
 
-        if (existing?.id) {
-            await supabase
-                .from('social_channels')
-                .update({
-                    handle: igInfo.username || '',
-                    followers_count: igInfo.followers_count || 0,
-                    ig_user_id: igInfo.id,
-                    ig_access_token: pageAccessToken,
-                })
-                .eq('id', existing.id)
-        } else {
-            await supabase
-                .from('social_channels')
-                .insert({
-                    user_id: userId,
-                    platform: 'instagram',
-                    handle: igInfo.username || '',
-                    followers_count: igInfo.followers_count || 0,
-                    is_primary: true,
-                    is_public: true,
-                    ig_user_id: igInfo.id,
-                    ig_access_token: pageAccessToken,
-                })
-        }
+        if (rpcError) throw new Error(rpcError.message)
+
 
         return NextResponse.redirect(`${settingsUrl}&ig_connected=true`)
     } catch (err: any) {
