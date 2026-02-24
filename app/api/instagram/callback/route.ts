@@ -166,7 +166,7 @@ export async function GET(request: Request) {
 
         // 5. Supabase에 저장 (service role로 bypass RLS)
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        const supabaseServiceKey = process.env.SUPABASE_ADMIN_KEY
         console.log('[Instagram OAuth] supabaseUrl:', !!supabaseUrl, 'serviceKey:', !!supabaseServiceKey, 'keyLen:', supabaseServiceKey?.length)
         if (!supabaseUrl || !supabaseServiceKey) {
             throw new Error(`Missing Supabase env: url=${!!supabaseUrl}, key=${!!supabaseServiceKey}`)
