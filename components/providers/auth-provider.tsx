@@ -200,6 +200,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         if (mounted && fetchedUser) {
                             console.log('[AuthProvider] Background profile fetch complete')
                             setUser(fetchedUser)
+
+                            // 온보딩 필요 여부 체크 (role 미설정 신규 유저)
+                            const needsOnboarding = !fetchedUser.onboardingCompleted &&
+                                fetchedUser.role !== 'admin' &&
+                                fetchedUser.role !== 'mcn' &&
+                                fetchedUser.role !== 'creator' &&
+                                fetchedUser.role !== 'brand' &&
+                                fetchedUser.role !== 'agency'
+
+                            if (needsOnboarding && window.location.pathname !== '/onboarding') {
+                                router.push('/onboarding')
+                            }
                         }
                     }).catch(e => {
                         console.warn('[AuthProvider] Background profile fetch failed:', e)

@@ -28,14 +28,14 @@ export async function GET(request: Request) {
                 let userRole = profile?.role
 
 
-                // Priority: Use DB role if exists, otherwise use roleType hint or default to influencer
-                if (!userRole) {
-                    userRole = (roleType as any) || 'creator'
+                // Priority: Use DB role if exists, otherwise use roleType hint
+                if (!userRole && roleType) {
+                    userRole = roleType as any
                     await supabase.from('profiles').update({ role: userRole }).eq('id', data.user.id)
                 }
 
                 // Sync auth metadata to DB role
-                if (data.user.user_metadata?.role !== userRole) {
+                if (userRole && data.user.user_metadata?.role !== userRole) {
                     await supabase.auth.updateUser({ data: { role: userRole } })
                 }
 
@@ -47,6 +47,9 @@ export async function GET(request: Request) {
                     next = '/mcn'
                 } else if (userRole === 'admin') {
                     next = '/admin'
+                } else {
+                    // role 없는 신규 유저 → 온보딩에서 역할 선택
+                    next = '/onboarding'
                 }
             } catch (e) {
                 console.error('Profile fetch error', e)
