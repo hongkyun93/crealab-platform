@@ -203,6 +203,13 @@ export function SettingsView() {
     const [isBusinessRegistered, setIsBusinessRegistered] = useState(false)
     const [creatorBusinessNumber, setCreatorBusinessNumber] = useState("")
 
+    // 광고 가치 계산기 옵션
+    const [calcContentType, setCalcContentType] = useState<'reels' | 'feed' | 'story' | 'youtube'>('reels')
+    const [calcUsageRights, setCalcUsageRights] = useState(false)
+    const [calcExclusivity, setCalcExclusivity] = useState(false)
+    const [calcHighProduction, setCalcHighProduction] = useState(false)
+    const [calcSeason, setCalcSeason] = useState(false)
+
 
 
     // Initialize state from effectiveUser
@@ -674,42 +681,49 @@ export function SettingsView() {
                                     return <p className="text-sm text-muted-foreground">소셜 채널을 연결하면 예상 단가를 확인할 수 있습니다.</p>
                                 }
 
-                                // ── 1. 참여율 (실적 우선, 없으면 팔로워 티어 추정) ──
+                                // ── 1. 참여율 ──
                                 const er: number = perfStats?.avgEngagementRate ??
-                                    (totalFollowers >= 1000000 ? 0.012
-                                        : totalFollowers >= 100000 ? 0.025
-                                            : totalFollowers >= 10000 ? 0.04
-                                                : 0.06)
+                                    (totalFollowers >= 1000000 ? 0.012 : totalFollowers >= 100000 ? 0.025 : totalFollowers >= 10000 ? 0.04 : 0.06)
 
-                                // ── 2. 카테고리별 기준 CPE ──
+                                // ── 2. 카테고리 CPE ──
                                 const primaryTag = selectedTags[0] || ''
                                 const CATEGORY_CPE: Record<string, number> = {
                                     '💊 건강': 2200, '💉 시술/병원': 2200, '🥗 다이어트': 2000,
-                                    '💄 뷰티': 1800,
-                                    '💻 테크/IT': 1600,
-                                    '💍 웨딩/결혼': 1500,
-                                    '👶 육아': 1300,
-                                    '🏋️ 헬스/운동': 1300,
-                                    '👗 패션': 1200,
-                                    '✈️ 여행': 1100,
-                                    '🏡 리빙/인테리어': 1000,
-                                    '🐶 반려동물': 900,
-                                    '🍽️ 맛집': 700,
-                                    '🎮 게임': 600,
+                                    '💄 뷰티': 1800, '💻 테크/IT': 1600, '💍 웨딩/결혼': 1500,
+                                    '👶 육아': 1300, '🏋️ 헬스/운동': 1300, '👗 패션': 1200,
+                                    '✈️ 여행': 1100, '🏡 리빙/인테리어': 1000, '🐶 반려동물': 900,
+                                    '🍽️ 맛집': 700, '🎮 게임': 600,
                                 }
                                 const baseCpe = CATEGORY_CPE[primaryTag] ?? 800
 
-                                // ── 3. 참여율 프리미엄 ──
+                                // ── 3. ER 프리미엄 ──
                                 const erPremium = er >= 0.08 ? 1.5 : er >= 0.04 ? 1.0 : er >= 0.02 ? 0.7 : 0.4
                                 const erLabel = er >= 0.08 ? '팬덤형' : er >= 0.04 ? '우수' : er >= 0.02 ? '평균' : '도달형'
                                 const erColor = er >= 0.08 ? 'text-purple-600 bg-purple-50 border-purple-200'
                                     : er >= 0.04 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
                                         : er >= 0.02 ? 'text-blue-600 bg-blue-50 border-blue-200'
                                             : 'text-slate-500 bg-slate-50 border-slate-200'
-
-                                // ── 4. 최종 단가 계산 ──
                                 const effectiveCpe = perfStats?.avgCpe ?? Math.round(baseCpe * erPremium)
-                                const estimatedValue = Math.round(totalFollowers * er * effectiveCpe)
+
+                                // ── 4. 콘텐츠 유형 배율 ──
+                                const CONTENT_MULT: Record<string, number> = {
+                                    reels: 1.5, feed: 1.0, story: 0.5, youtube: 3.0
+                                }
+                                const CONTENT_LABEL: Record<string, string> = {
+                                    reels: '릴스/쇼츠 ×1.5', feed: '피드(사진) ×1.0', story: '스토리 ×0.5', youtube: '유튜브 ×3.0'
+                                }
+                                const contentMult = CONTENT_MULT[calcContentType] ?? 1.0
+
+                                // ── 5. 부가 조건 배율 ──
+                                const usageMult = calcUsageRights ? 1.35 : 1.0
+                                const exclusivityMult = calcExclusivity ? 1.5 : 1.0
+                                const productionMult = calcHighProduction ? 1.3 : 1.0
+                                const seasonMult = calcSeason ? 1.15 : 1.0
+                                const totalAddMult = usageMult * exclusivityMult * productionMult * seasonMult
+
+                                // ── 6. 최종 계산 ──
+                                const base = Math.round(totalFollowers * er * effectiveCpe)
+                                const estimatedValue = Math.round(base * contentMult * totalAddMult)
                                 const minValue = Math.round(estimatedValue * 0.8)
                                 const maxValue = Math.round(estimatedValue * 1.2)
 
@@ -718,14 +732,12 @@ export function SettingsView() {
                                     if (n >= 10000) return `${Math.round(n / 10000)}만원`
                                     return `${n.toLocaleString()}원`
                                 }
-
-                                // 팔로워 티어 라벨
                                 const tierLabel = totalFollowers >= 1000000 ? '메가' : totalFollowers >= 100000 ? '매크로' : totalFollowers >= 10000 ? '마이크로' : '나노'
                                 const tierColor = totalFollowers >= 1000000 ? 'text-orange-600' : totalFollowers >= 100000 ? 'text-blue-600' : totalFollowers >= 10000 ? 'text-emerald-600' : 'text-slate-500'
 
                                 return (
                                     <div className="space-y-4">
-                                        {/* 지표 요약 */}
+                                        {/* 기본 지표 */}
                                         <div className="grid grid-cols-4 gap-2 text-center">
                                             <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
                                                 <p className="text-[10px] text-muted-foreground">팔로워</p>
@@ -751,9 +763,62 @@ export function SettingsView() {
                                             </div>
                                         </div>
 
-                                        {/* 단가 범위 */}
+                                        {/* 콘텐츠 유형 */}
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-semibold text-slate-600">📹 콘텐츠 유형</p>
+                                            <div className="grid grid-cols-4 gap-1.5">
+                                                {(['reels', 'feed', 'story', 'youtube'] as const).map((ct) => (
+                                                    <button
+                                                        key={ct}
+                                                        onClick={() => setCalcContentType(ct)}
+                                                        className={`py-2 px-1 rounded-lg text-[11px] font-medium border transition-all ${calcContentType === ct
+                                                            ? 'bg-slate-900 text-white border-slate-900'
+                                                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                                                            }`}
+                                                    >
+                                                        {ct === 'reels' ? '🎬 릴스' : ct === 'feed' ? '🖼️ 피드' : ct === 'story' ? '⏱️ 스토리' : '▶️ 유튜브'}
+                                                        <span className="block text-[9px] opacity-60 mt-0.5">
+                                                            {ct === 'reels' ? '×1.5' : ct === 'feed' ? '×1.0' : ct === 'story' ? '×0.5' : '×3.0'}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* 부가 조건 */}
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-semibold text-slate-600">➕ 부가 조건 (해당되면 체크)</p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {[
+                                                    { key: 'usage', label: '2차 활용권', desc: '광고 소재 재사용', mult: '+35%', active: calcUsageRights, set: setCalcUsageRights },
+                                                    { key: 'excl', label: '독점 계약', desc: '경쟁사 협업 제한', mult: '+50%', active: calcExclusivity, set: setCalcExclusivity },
+                                                    { key: 'prod', label: '고제작 난이도', desc: '스튜디오·모델 포함', mult: '+30%', active: calcHighProduction, set: setCalcHighProduction },
+                                                    { key: 'season', label: '시의성 콘텐츠', desc: '트렌드·시즌 한정', mult: '+15%', active: calcSeason, set: setCalcSeason },
+                                                ].map(({ key, label, desc, mult, active, set }) => (
+                                                    <button
+                                                        key={key}
+                                                        onClick={() => set(!active)}
+                                                        className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left transition-all ${active
+                                                            ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                                                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                                            }`}
+                                                    >
+                                                        <div className={`mt-0.5 h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 ${active ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300'
+                                                            }`}>
+                                                            {active && <span className="text-white text-[10px] font-bold">✓</span>}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[11px] font-semibold leading-tight">{label} <span className="text-[10px] font-normal text-emerald-600">{mult}</span></p>
+                                                            <p className="text-[10px] text-muted-foreground">{desc}</p>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* 최종 단가 */}
                                         <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 text-center">
-                                            <p className="text-xs text-muted-foreground mb-1">예상 광고 단가 범위 (1콘텐츠 기준)</p>
+                                            <p className="text-xs text-muted-foreground mb-1">예상 광고 단가 범위 ({CONTENT_LABEL[calcContentType]})</p>
                                             <p className="text-2xl font-bold text-emerald-700 tracking-tight">
                                                 {fmt(minValue)} ~ {fmt(maxValue)}
                                             </p>
@@ -766,13 +831,17 @@ export function SettingsView() {
                                         <div className="text-[10px] text-muted-foreground space-y-1 bg-slate-50 rounded-lg px-3 py-2.5 border">
                                             <p className="font-semibold text-slate-600 mb-1">📐 계산 근거</p>
                                             <p>팔로워 {totalFollowers.toLocaleString()} × ER {(er * 100).toFixed(1)}% × 실효CPE ₩{effectiveCpe.toLocaleString()}</p>
+                                            <p>× 콘텐츠({contentMult}) × 부가조건({totalAddMult.toFixed(2)}) = ₩{estimatedValue.toLocaleString()}</p>
                                             <p className="text-slate-400">
-                                                {primaryTag ? `카테고리(${primaryTag}) 기준 CPE ₩${baseCpe.toLocaleString()}` : '카테고리 미설정 (기본 CPE 적용)'} · ER 보정 ×{erPremium}
+                                                {primaryTag ? `카테고리(${primaryTag}) CPE ₩${baseCpe.toLocaleString()}` : '카테고리 미설정'} · ER보정 ×{erPremium}
+                                                {calcUsageRights ? ' · 2차활용+35%' : ''}
+                                                {calcExclusivity ? ' · 독점+50%' : ''}
+                                                {calcHighProduction ? ' · 고제작+30%' : ''}
+                                                {calcSeason ? ' · 시의성+15%' : ''}
                                             </p>
                                             {!primaryTag && (
-                                                <p className="text-amber-500 font-medium">💡 카테고리 태그를 설정하면 더 정확한 단가가 계산됩니다</p>
+                                                <p className="text-amber-500 font-medium">💡 카테고리 태그를 설정하면 더 정확합니다</p>
                                             )}
-                                            <p className="text-slate-400">{perfStats?.count ? `실적 ${perfStats.count}건 데이터 반영` : '※ 실제 협업 데이터가 쌓일수록 정확도 향상'}</p>
                                         </div>
                                     </div>
                                 )
@@ -786,6 +855,7 @@ export function SettingsView() {
                             <CardTitle>활동 정보 &amp; 정산 정보</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-8">
+
                             {/* Rate Card - Extended Version (5 fields) */}
                             <div className="space-y-4">
                                 <h3 className="text-base font-semibold">예상 단가표 (Rate Card)</h3>
@@ -1010,22 +1080,25 @@ export function SettingsView() {
                         </CardFooter>
                     </Card>
                 </>
-            )}
+            )
+            }
 
             {/* 위험 구역 - 프록시 모드에서는 숨김 */}
-            {!isProxyMode && (
-                <Card className="border-destructive/30">
-                    <CardHeader>
-                        <CardTitle className="text-destructive text-base">위험 구역</CardTitle>
-                        <CardDescription>
-                            계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <AccountDeleteDialog />
-                    </CardContent>
-                </Card>
-            )}
-        </div>
+            {
+                !isProxyMode && (
+                    <Card className="border-destructive/30">
+                        <CardHeader>
+                            <CardTitle className="text-destructive text-base">위험 구역</CardTitle>
+                            <CardDescription>
+                                계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AccountDeleteDialog />
+                        </CardContent>
+                    </Card>
+                )
+            }
+        </div >
     )
 }
