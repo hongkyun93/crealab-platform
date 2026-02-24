@@ -116,7 +116,8 @@ export default function OnboardingPage() {
             if (error) throw error
 
             toast.success("팀에 합류했습니다!")
-            window.location.href = '/creator'
+            // agency는 /brand 접근 권한 O, /mcn 접근 권한 X (미듸웨어 참조)
+            window.location.href = selectedRole === 'mcn' ? '/mcn' : selectedRole === 'agency' ? '/brand' : '/creator'
         } catch (error) {
             console.error('Invite accept error:', error)
             toast.error('초대 수락 실패')
@@ -148,7 +149,8 @@ export default function OnboardingPage() {
             if (teamError) throw teamError
 
             toast.success("팀을 생성했습니다!")
-            window.location.href = '/creator'
+            // agency는 /brand 접근 권한 O, /mcn 접근 권한 X (미듸웨어 참조)
+            window.location.href = selectedRole === 'mcn' ? '/mcn' : selectedRole === 'agency' ? '/brand' : '/creator'
         } catch (error) {
             console.error('Team creation error:', error)
             toast.error('팀 생성 실패')

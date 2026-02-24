@@ -14,6 +14,7 @@ interface MyProductsViewProps {
     handleViewGuide: (product: any) => void
     handleEditProduct: (product: any) => void
     deleteProduct: (id: string) => Promise<void>
+    onViewDetail?: (productId: string) => void
 }
 
 export function MyProductsView({
@@ -21,7 +22,8 @@ export function MyProductsView({
     setProductModalOpen,
     handleViewGuide,
     handleEditProduct,
-    deleteProduct
+    deleteProduct,
+    onViewDetail
 }: MyProductsViewProps) {
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
@@ -49,18 +51,21 @@ export function MyProductsView({
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {products.map((p) => (
-                        <Card key={p.id} className="overflow-hidden flex flex-col h-full border-border/60 hover:shadow-md transition-all">
-                            <div className="aspect-square bg-muted flex items-center justify-center text-4xl relative group">
+                        <Card key={p.id} className="overflow-hidden flex flex-col h-full border-border/60 hover:shadow-md transition-all group">
+                            <div
+                                className={`aspect-square bg-muted flex items-center justify-center text-4xl relative ${onViewDetail ? 'cursor-pointer' : ''}`}
+                                onClick={() => onViewDetail && onViewDetail(String(p.id))}
+                            >
                                 {p.image.startsWith('http') ? (
-                                    <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                                    <img src={p.image} alt={p.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                 ) : (
-                                    <span>{p.image}</span>
+                                    <span className="transition-transform group-hover:scale-125">{p.image}</span>
                                 )}
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                    <Button size="icon" variant="secondary" className="rounded-full h-10 w-10">
-                                        {/* <ImageIcon className="h-5 w-5" /> */}
-                                    </Button>
-                                </div>
+                                {onViewDetail && (
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                        <span className="text-white text-sm font-bold">자세히 보기</span>
+                                    </div>
+                                )}
                             </div>
                             <CardHeader className="pb-2">
                                 <div className="flex items-start justify-between gap-2">
@@ -87,6 +92,16 @@ export function MyProductsView({
                                 </div>
                             </CardContent>
                             <CardFooter className="border-t pt-4 bg-muted/10 flex gap-2">
+                                {onViewDetail && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="flex-1 h-8 text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                                        onClick={() => onViewDetail(String(p.id))}
+                                    >
+                                        <ExternalLink className="h-3 w-3" /> 상세보기
+                                    </Button>
+                                )}
                                 <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs gap-1" asChild>
                                     <a href={p.link} target="_blank" rel="noopener noreferrer">
                                         <ExternalLink className="h-3 w-3" /> 웹사이트

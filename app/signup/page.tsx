@@ -39,7 +39,7 @@ function SignupContent() {
         setError("")
         try {
             const supabase = createClient()
-            const redirectUrl = `${window.location.origin}/auth/callback`
+            const redirectUrl = `${window.location.origin}/auth/callback?role_type=${role}`
 
 
             const { data, error } = await supabase.auth.signInWithOAuth({
@@ -176,7 +176,7 @@ function SignupContent() {
                                     </div>
                                     <div className="relative flex justify-center text-xs uppercase">
                                         <span className="bg-background px-2 text-muted-foreground">
-                                            Or continue with
+                                            또는 소셜 계정으로 계속하기
                                         </span>
                                     </div>
                                 </div>

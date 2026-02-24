@@ -5,7 +5,12 @@ export interface InfluencerEvent {
     influencerId?: string
     handle: string
     avatar: string
-    priceVideo?: number
+    priceVideo?: number      // 숏폼 영상 (Reels) 단가
+    priceFeed?: number       // 이미지 피드 단가
+    usageRightsPrice?: number // 2차 활용 권한 단가
+    usageRightsMonth?: number // 2차 활용 권한 기간 (개월)
+    autoDmPrice?: number     // 자동 DM 단가
+    autoDmMonth?: number     // 자동 DM 기간 (개월)
     event: string // Title in DB
     title?: string // Alias for event
     date: string

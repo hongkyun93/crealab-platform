@@ -16,6 +16,7 @@ import { useFileUpload } from "@/lib/hooks/use-file-upload"
 import { formatFileSize, isImage } from "@/lib/utils/file-validation"
 import { BadgeCheck, Download, FileText, MoreVertical, Paperclip, Phone, Search, Send, Video, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
 
 export default function MessagePage() {
     const { user, messages: allMessages, sendMessage, brandProposals } = useUnifiedProvider()
@@ -31,6 +32,10 @@ export default function MessagePage() {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const { uploadFile, uploading } = useFileUpload()
+
+    // 대화내용 검색
+    const [chatSearchOpen, setChatSearchOpen] = useState(false)
+    const [chatSearchQuery, setChatSearchQuery] = useState('')
 
     const displayUser = user || MOCK_INFLUENCER_USER
 
@@ -208,7 +213,7 @@ export default function MessagePage() {
 
         // Guest users cannot send messages
         if (!user) {
-            alert("메시지를 보내려면 먼저 로그인해 주세요.")
+            toast.error("메시지를 보내려면 먼저 로그인해 주세요.")
             return
         }
 
@@ -287,7 +292,7 @@ export default function MessagePage() {
             URL.revokeObjectURL(url)
         } catch (err) {
             console.error('[Download] Error:', err)
-            alert('파일 다운로드에 실패했습니다.')
+            toast.error('파일 다운로드에 실패했습니다.')
         }
     }
 
@@ -311,9 +316,9 @@ export default function MessagePage() {
     }
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="h-screen bg-background flex flex-col overflow-hidden">
             <SiteHeader />
-            <div className="flex-1 container max-w-[1920px] py-6 px-4 md:px-8 h-[calc(100vh-3.5rem)]">
+            <div className="flex-1 container max-w-[1920px] py-6 px-4 md:px-8 overflow-hidden" style={{ height: 'calc(100vh - 3.5rem)' }}>
                 <div className="grid grid-cols-12 h-full gap-6 bg-card rounded-xl border shadow-sm overflow-hidden">
 
                     {/* Sidebar / Thread List */}
@@ -392,7 +397,7 @@ export default function MessagePage() {
                     </div>
 
                     {/* Main Chat Area */}
-                    <div className="col-span-12 md:col-span-5 lg:col-span-6 flex flex-col">
+                    <div className="col-span-12 md:col-span-5 lg:col-span-6 flex flex-col h-full overflow-hidden">
                         {activeThread ? (
                             <>
                                 {/* Chat Header */}
@@ -427,11 +432,36 @@ export default function MessagePage() {
                                     </div>
                                 </div>
 
+                                {/* 대화내용 검색바 - 항상 표시 */}
+                                <div className="px-4 py-2 border-b bg-muted/10 flex items-center gap-2">
+                                    <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <input
+                                        placeholder="대화내용 검색..."
+                                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+                                        value={chatSearchQuery}
+                                        onChange={e => setChatSearchQuery(e.target.value)}
+                                    />
+                                    {chatSearchQuery && (
+                                        <>
+                                            <span className="text-xs text-muted-foreground shrink-0 font-medium">
+                                                {activeThread?.messages.filter(m => (m.content || '').toLowerCase().includes(chatSearchQuery.toLowerCase())).length || 0}건
+                                            </span>
+                                            <button onClick={() => setChatSearchQuery('')} className="text-muted-foreground hover:text-foreground">
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+
                                 {/* Message List */}
                                 <ScrollArea className="flex-1 p-6 bg-muted/5">
                                     <div className="flex flex-col gap-6 max-w-3xl mx-auto">
-                                        {activeThread.messages.map((msg, index) => {
+                                        {(chatSearchQuery
+                                            ? activeThread.messages.filter(m => m.content?.toLowerCase().includes(chatSearchQuery.toLowerCase()))
+                                            : activeThread.messages
+                                        ).map((msg, index) => {
                                             const isMe = msg.senderId === displayUser.id
+                                            const highlight = !!(chatSearchQuery && msg.content?.toLowerCase().includes(chatSearchQuery.toLowerCase()))
 
                                             return (
                                                 <div key={msg.id} className={`flex gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
@@ -450,7 +480,7 @@ export default function MessagePage() {
                                                                 className={`px-4 py-2.5 rounded-2xl text-sm shadow-sm ${isMe
                                                                     ? "bg-primary text-primary-foreground rounded-tr-none"
                                                                     : "bg-white dark:bg-muted/50 border rounded-tl-none"
-                                                                    }`}
+                                                                    } ${highlight ? 'ring-2 ring-yellow-400 ring-offset-1' : ''}`}
                                                             >
                                                                 {msg.content}
                                                                 {msg.proposalId && renderProposalCard(msg.proposalId)}

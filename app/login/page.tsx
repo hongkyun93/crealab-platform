@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AlertCircle, ArrowRight, Briefcase } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useState } from "react"
 
 import { createClient } from "@/lib/supabase/client"
 import { useEffect } from "react"
@@ -18,13 +18,37 @@ import { useEffect } from "react"
 const supabaseCleanup = createClient()
 
 export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginPageContent />
+        </Suspense>
+    )
+}
+
+function LoginPageContent() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const nextUrl = searchParams.get('next')
     const { login } = useUnifiedProvider()
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
 
-    // 로그인 페이지 진입 시: 캐시/세션 정리 (5초 후)
-    // signOut은 이미 logout()에서 호출되므로 여기서 다시 호출하면 새 세션을 죽임
+    // ⚠️ [GHOST SESSION FIX - 절대 삭제하지 마세요]
+    // 로그인 페이지 진입 5초 후, 브라우저에 남아있는 stale Supabase 데이터를 정리합니다.
+    //
+    // 이 코드가 존재하는 이유:
+    //   logout() → supabase.auth.signOut()을 호출해도, 드물게 localStorage/sessionStorage/쿠키에
+    //   sb-* 항목이 잔존하여 로그인 페이지에서 "이미 로그인된 상태"처럼 동작하는 ghost session 버그가 있었음.
+    //   이 cleanup이 해당 잔존 데이터를 제거해서 신규 로그인이 정상 작동하게 함.
+    //
+    // 왜 supabase.auth.signOut()은 여기서 호출하지 않나?
+    //   만약 OAuth 콜백(auth/callback)을 통해 막 로그인한 직후 이 페이지로 리다이렉트되는 경우,
+    //   signOut()을 다시 호출하면 방금 만들어진 새 세션을 죽여버립니다.
+    //   따라서 signOut은 하지 않고 localStorage/쿠키 항목만 직접 삭제합니다.
+    //
+    // 왜 5초 딜레이?
+    //   즉시 실행 시, 정상적인 로그인 흐름 도중 개입할 위험이 있기 때문.
+    //   5초면 로그인 관련 쿠키 세팅이 완료된 이후이므로 안전합니다.
     const [cleanupDone, setCleanupDone] = useState(false)
     useEffect(() => {
         const cleanup = () => {
@@ -107,6 +131,11 @@ export default function LoginPage() {
             // Small delay to ensure auth cookies are fully set by the browser
             // before the hard redirect triggers server-side middleware
             await new Promise(resolve => setTimeout(resolve, 500))
+            // next 파라미터가 있으면 로그인 후 원래 페이지로 복귀 (공유링크 → 로그인 → 복귀)
+            if (nextUrl) {
+                window.location.href = nextUrl
+                return
+            }
             if (user.role === 'brand' || user.role === 'agency') {
                 window.location.href = '/brand'
             } else if (user.role === 'mcn') {

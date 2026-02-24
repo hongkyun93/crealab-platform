@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { TeamInvitation, TeamMember, TeamRole } from "@/lib/types/team"
-import { ArrowLeft, Loader2, Mail, UserPlus, Users, X } from "lucide-react"
+import { ArrowLeft, Loader2, Mail, Pencil, Trash2, UserPlus, Users, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -41,6 +41,17 @@ export default function TeamSettingsPage() {
     // Create Team Form State
     const [teamName, setTeamName] = useState("")
     const [teamSlug, setTeamSlug] = useState("")
+
+    // Edit Team Form State (G1)
+    const [isEditingTeam, setIsEditingTeam] = useState(false)
+    const [editTeamName, setEditTeamName] = useState("")
+    const [editTeamSlug, setEditTeamSlug] = useState("")
+    const [isSavingTeam, setIsSavingTeam] = useState(false)
+
+    // Delete Team State (G4)
+    const [showDeleteTeam, setShowDeleteTeam] = useState(false)
+    const [deleteConfirmName, setDeleteConfirmName] = useState("")
+    const [isDeletingTeam, setIsDeletingTeam] = useState(false)
 
     // Invite Member Form State
     const [inviteEmail, setInviteEmail] = useState("")
@@ -81,33 +92,33 @@ export default function TeamSettingsPage() {
 
     const handleCreateTeam = async () => {
         if (!teamName || !teamSlug) {
-            alert("팀 이름과 슬러그를 입력해주세요.")
+            toast.error("팀 이름과 슬러그를 입력해주세요.")
             return
         }
 
         const newTeam = await createTeam(teamName, teamSlug)
         if (newTeam) {
-            alert("팀이 생성되었습니다!")
+            toast.success("팀이 생성되었습니다!")
             setTeamName("")
             setTeamSlug("")
         } else {
-            alert("팀 생성에 실패했습니다.")
+            toast.error("팀 생성에 실패했습니다.")
         }
     }
 
     const handleInviteMember = async () => {
         if (!currentTeam || !inviteEmail) {
-            alert("이메일을 입력해주세요.")
+            toast.error("이메일을 입력해주세요.")
             return
         }
 
         const success = await inviteMember(currentTeam.id, inviteEmail, inviteRole)
         if (success) {
-            alert("초대를 보냈습니다!")
+            toast.success("초대를 보냈습니다!")
             setInviteEmail("")
             loadTeamData()
         } else {
-            alert("초대에 실패했습니다.")
+            toast.error("초대에 실패했습니다.")
         }
     }
 
@@ -115,10 +126,10 @@ export default function TeamSettingsPage() {
 
         const success = await updateMemberRole(memberId, newRole)
         if (success) {
-            alert("역할이 변경되었습니다!")
+            toast.success("역할이 변경되었습니다!")
             loadTeamData()
         } else {
-            alert("역할 변경에 실패했습니다.")
+            toast.error("역할 변경에 실패했습니다.")
         }
     }
 
@@ -131,10 +142,10 @@ export default function TeamSettingsPage() {
 
         const success = await removeMember(memberToDelete)
         if (success) {
-            alert("멤버가 제거되었습니다!")
+            toast.success("멤버가 제거되었습니다!")
             loadTeamData()
         } else {
-            alert("멤버 제거에 실패했습니다.")
+            toast.error("멤버 제거에 실패했습니다.")
         }
         setMemberToDelete(null)
     }
@@ -142,10 +153,61 @@ export default function TeamSettingsPage() {
     const handleCancelInvitation = async (invitationId: string) => {
         const success = await cancelInvitation(invitationId)
         if (success) {
-            alert("초대가 취소되었습니다!")
+            toast.success("초대가 취소되었습니다!")
             loadTeamData()
         } else {
-            alert("초대 취소에 실패했습니다.")
+            toast.error("초대 취소에 실패했습니다.")
+        }
+    }
+
+    // G1: 팀 이름/슬러그 수정
+    const handleStartEditTeam = () => {
+        setEditTeamName(currentTeam?.name || "")
+        setEditTeamSlug(currentTeam?.slug || "")
+        setIsEditingTeam(true)
+    }
+
+    const handleSaveTeam = async () => {
+        if (!currentTeam || !editTeamName || !editTeamSlug) {
+            toast.error("팀 이름과 슬러그를 입력해주세요.")
+            return
+        }
+        setIsSavingTeam(true)
+        try {
+            const { error } = await supabase
+                .from('teams')
+                .update({ name: editTeamName, slug: editTeamSlug })
+                .eq('id', currentTeam.id)
+            if (error) throw error
+            toast.success("팀 정보가 수정되었습니다!")
+            setIsEditingTeam(false)
+            window.location.reload()
+        } catch (err: any) {
+            toast.error(err.message || "팀 수정에 실패했습니다.")
+        } finally {
+            setIsSavingTeam(false)
+        }
+    }
+
+    // G4: 팀 삭제
+    const handleDeleteTeam = async () => {
+        if (!currentTeam || deleteConfirmName !== currentTeam.name) {
+            toast.error("팀 이름이 일치하지 않습니다.")
+            return
+        }
+        setIsDeletingTeam(true)
+        try {
+            const { error } = await supabase
+                .from('teams')
+                .delete()
+                .eq('id', currentTeam.id)
+            if (error) throw error
+            toast.success("팀이 삭제되었습니다.")
+            window.location.href = '/creator'
+        } catch (err: any) {
+            toast.error(err.message || "팀 삭제에 실패했습니다.")
+            setIsDeletingTeam(false)
+            setShowDeleteTeam(false)
         }
     }
 
@@ -184,6 +246,67 @@ export default function TeamSettingsPage() {
 
                 {/* MEMBERS TAB */}
                 <TabsContent value="members" className="space-y-6 mt-6">
+
+                    {/* G1: 팀 정보 수정 카드 */}
+                    {currentTeam && (
+                        <Card>
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle className="flex items-center gap-2">
+                                            팀 정보
+                                        </CardTitle>
+                                        <CardDescription>팀 이름과 슬러그를 수정합니다.</CardDescription>
+                                    </div>
+                                    {!isEditingTeam && (
+                                        <Button variant="outline" size="sm" className="gap-2" onClick={handleStartEditTeam}>
+                                            <Pencil className="h-4 w-4" /> 수정
+                                        </Button>
+                                    )}
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                {isEditingTeam ? (
+                                    <div className="space-y-4">
+                                        <div className="grid gap-2">
+                                            <Label>팀 이름</Label>
+                                            <Input
+                                                value={editTeamName}
+                                                onChange={(e) => {
+                                                    setEditTeamName(e.target.value)
+                                                    setEditTeamSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))
+                                                }}
+                                                placeholder="팀 이름"
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label>슬러그 (URL 식별자)</Label>
+                                            <Input
+                                                value={editTeamSlug}
+                                                onChange={(e) => setEditTeamSlug(e.target.value)}
+                                                placeholder="team-slug"
+                                            />
+                                            <p className="text-xs text-muted-foreground">영문, 숫자, 하이픈(-)만 사용 가능합니다.</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button onClick={handleSaveTeam} disabled={isSavingTeam}>
+                                                {isSavingTeam ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                                저장
+                                            </Button>
+                                            <Button variant="outline" onClick={() => setIsEditingTeam(false)}>취소</Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-4">
+                                        <div>
+                                            <p className="font-semibold text-lg">{currentTeam.name}</p>
+                                            <p className="text-sm text-muted-foreground">슬러그: {currentTeam.slug}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                     {/* Invite Section */}
                     <Card>
                         <CardHeader>
@@ -412,9 +535,34 @@ export default function TeamSettingsPage() {
                             </Button>
                         </CardContent>
                     </Card>
+
+                    {/* G4: 팀 삭제 위험 구역 */}
+                    {currentTeam && (
+                        <Card className="mt-6 border-destructive/40">
+                            <CardHeader>
+                                <CardTitle className="text-destructive flex items-center gap-2">
+                                    <Trash2 className="h-5 w-5" />
+                                    위험 구역
+                                </CardTitle>
+                                <CardDescription>
+                                    팀을 삭제하면 모든 멤버 정보와 초대 기록이 영구적으로 제거됩니다.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => { setDeleteConfirmName(""); setShowDeleteTeam(true) }}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    {currentTeam.name} 팀 삭제
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
                 </TabsContent>
             </Tabs>
 
+            {/* AlertDialog: 멤버 제거 */}
             <AlertDialog open={!!memberToDelete} onOpenChange={(open) => !open && setMemberToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -427,6 +575,36 @@ export default function TeamSettingsPage() {
                         <AlertDialogCancel onClick={() => setMemberToDelete(null)}>취소</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmRemoveMember} className="bg-red-600 hover:bg-red-700">
                             제거하기
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* AlertDialog: 팀 삭제 (G4) */}
+            <AlertDialog open={showDeleteTeam} onOpenChange={(open) => !open && setShowDeleteTeam(false)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>정말 팀을 삭제하시겠습니까?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            이 작업은 되돌릴 수 없습니다. 확인을 위해 팀 이름 <strong>{currentTeam?.name}</strong>을 정확히 입력해주세요.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="px-6 pb-2">
+                        <Input
+                            placeholder={currentTeam?.name}
+                            value={deleteConfirmName}
+                            onChange={(e) => setDeleteConfirmName(e.target.value)}
+                        />
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>취소</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteTeam}
+                            disabled={deleteConfirmName !== currentTeam?.name || isDeletingTeam}
+                            className="bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                        >
+                            {isDeletingTeam ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            팀 삭제
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

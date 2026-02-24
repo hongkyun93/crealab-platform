@@ -7,6 +7,7 @@ import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     DropdownMenu,
     DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -27,18 +28,12 @@ import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
-import { ArrowRight, BadgeCheck, Banknote, Bell, Briefcase, Building2, Calendar, ChevronRight, ExternalLink, FileText, Filter, Gift, Image as ImageIcon, LayoutGrid, List, Megaphone, Menu, Package, Plus, Rocket, Search, Send, Settings, Shield, ShoppingBag, Sparkles, Star, Table as TableIcon, X } from "lucide-react"
+import { ArrowRight, BadgeCheck, Banknote, Bell, Briefcase, Building2, Calendar, ChevronRight, ExternalLink, FileText, Filter, Gift, Image as ImageIcon, LayoutGrid, List, Megaphone, Menu, Package, Pencil, Plus, Rocket, Search, Send, Settings, Shield, ShoppingBag, Sparkles, Star, Table as TableIcon, X } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import {
-    Dialog,
-    DialogContent, DialogDescription,
-    DialogFooter, DialogHeader,
-    DialogTitle
-} from "@/components/ui/dialog"
 import {
     Sheet,
     SheetContent,
@@ -170,6 +165,18 @@ function InfluencerDashboardContent() {
     // Design Option State
     const [designOption, setDesignOption] = useState<'A' | 'B' | 'C' | 'D' | 'E'>('C')
     const [productViewMode, setProductViewMode] = useState<'grid' | 'list'>('grid')
+
+    // === G: Search / Filter / Pagination states ===
+    // 브랜드 캐페인 둘러보기
+    const [campaignSearchQuery, setCampaignSearchQuery] = useState('')
+    const [campaignTagFilter, setCampaignTagFilter] = useState<string[]>([])
+    const [campaignPageSize, setCampaignPageSize] = useState<20 | 50 | 100>(50)
+    const [campaignFavoritesOnly, setCampaignFavoritesOnly] = useState(false)
+    // 브랜드 제품 둘러보기
+    const [productTagFilter, setProductTagFilter] = useState<string[]>([])
+    const [productPageSize, setProductPageSize] = useState<20 | 50 | 100>(50)
+    // 워크스페이스 아카이브 검색
+    const [workspaceSearchQuery, setWorkspaceSearchQuery] = useState('')
 
     // Guide Modal State
     const [guideModalOpen, setGuideModalOpen] = useState(false)
@@ -838,13 +845,27 @@ function InfluencerDashboardContent() {
 
     // Deduplicate by ID
     const seenIds = new Set<string>()
-    const allWorkspaceItems = allWorkspaceItemsRaw
+    const allWorkspaceItemsDeduped = allWorkspaceItemsRaw
         .filter(item => {
             if (seenIds.has(item.id)) return false
             seenIds.add(item.id)
             return true
         })
         .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+
+    // Apply workspace search query filter
+    const applyWorkspaceSearch = (items: any[]) => {
+        const q = workspaceSearchQuery.toLowerCase()
+        if (!q) return items
+        return items.filter(item =>
+            (item.brand_name || '').toLowerCase().includes(q) ||
+            (item.product_name || '').toLowerCase().includes(q) ||
+            (item.campaign_title || item.title || '').toLowerCase().includes(q) ||
+            (item.moment_title || item.event || '').toLowerCase().includes(q) ||
+            (item.message || '').toLowerCase().includes(q)
+        )
+    }
+    const allWorkspaceItems = applyWorkspaceSearch(allWorkspaceItemsDeduped)
 
     // Filter items by type (moment/campaign/brand)
     const filterByType = (items: any[], type: 'all' | 'moment' | 'campaign' | 'brand') => {
@@ -1206,6 +1227,20 @@ function InfluencerDashboardContent() {
                                             </Button>
                                         </div>
                                     )}
+
+                                    {/* G3: 크리에이터가 보낸 지원서 수정 (outbound + pending/applied) */}
+                                    {type === 'outbound' && (proposal.status === 'applied' || proposal.status === 'pending' || !proposal.status) && (
+                                        <div className="shrink-0">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                                                onClick={(e) => { e.stopPropagation(); handleOpenEditApplication(proposal); }}
+                                            >
+                                                <Pencil className="mr-1 h-3 w-3" /> 수정
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1399,7 +1434,7 @@ function InfluencerDashboardContent() {
             toast.success("배송지 정보가 저장되었습니다.")
         } catch (e) {
             console.error("Shipping info save failed:", e)
-            alert("저장 중 오류가 발생했습니다.")
+            toast.error("저장 중 오류가 발생했습니다.")
         } finally {
             setIsSavingShipping(false)
         }
@@ -1567,13 +1602,13 @@ function InfluencerDashboardContent() {
                 !isCampaignProposal ? proposalId : undefined
             )
 
-            alert(`작업물(v${nextVersion})이 제출되었습니다.`)
+            toast.success(`작업물(v${nextVersion})이 제출되었습니다.`)
             setSubmissionUrl("")
             setSubmissionFile(null)
             setIsReuploading(false)
         } catch (e) {
             console.error("Submission failed:", e)
-            alert("제출 중 오류가 발생했습니다.")
+            toast.error("제출 중 오류가 발생했습니다.")
         } finally {
             setIsSubmittingContent(false)
             setUploadProgress(0)
@@ -1960,6 +1995,46 @@ function InfluencerDashboardContent() {
             },
             variant: "destructive"
         })
+    }
+
+    // G3: Edit outbound (creator→brand) application
+    const [editingApplication, setEditingApplication] = useState<any>(null)
+    const [editAppealMessage, setEditAppealMessage] = useState('')
+    const [editDesiredCost, setEditDesiredCost] = useState('')
+    const [isSavingApplication, setIsSavingApplication] = useState(false)
+
+    const handleOpenEditApplication = (proposal: any) => {
+        setEditingApplication(proposal)
+        setEditAppealMessage(proposal.motivation || proposal.content_plan || '')
+        setEditDesiredCost(proposal.desired_cost?.toString() || proposal.cost?.toString() || '')
+    }
+
+    const handleSaveEditApplication = async () => {
+        if (!editingApplication) return
+        setIsSavingApplication(true)
+        try {
+            const isCampaign = !!editingApplication.campaignId || !!editingApplication.campaign_id || editingApplication.type === 'creator_apply'
+            if (isCampaign) {
+                const success = await updateProposal(editingApplication.id, {
+                    motivation: editAppealMessage,
+                    desired_cost: editDesiredCost ? parseInt(editDesiredCost) : undefined,
+                } as any)
+                if (!success) throw new Error('업데이트 실패')
+            } else {
+                const { error } = await supabase
+                    .from('product_applications')
+                    .update({ content_plan: editAppealMessage })
+                    .eq('id', editingApplication.id)
+                if (error) throw error
+            }
+            toast.success('지원서가 수정되었습니다.')
+            setEditingApplication(null)
+            await refreshData()
+        } catch (err: any) {
+            toast.error(err.message || '지원서 수정에 실패했습니다.')
+        } finally {
+            setIsSavingApplication(false)
+        }
     }
 
     const renderProposalCard = (proposalId: string) => {
@@ -2456,41 +2531,55 @@ function InfluencerDashboardContent() {
 
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                             <div>
                                 <h1 className="text-3xl font-bold tracking-tight">워크스페이스 아카이브</h1>
                                 <p className="text-muted-foreground">브랜드와 진행 중인 모든 협업을 한곳에서 관리하세요.</p>
                             </div>
-                            <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-                                <Button
-                                    variant={workspaceViewMode === 'list' ? 'default' : 'ghost'}
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => setWorkspaceViewMode('list')}
-                                    title="리스트형"
-                                >
-                                    <List className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant={workspaceViewMode === 'grid' ? 'default' : 'ghost'}
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => setWorkspaceViewMode('grid')}
-                                    title="그리드형"
-                                >
-                                    <LayoutGrid className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant={workspaceViewMode === 'table' ? 'default' : 'ghost'}
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => setWorkspaceViewMode('table')}
-                                    title="테이블형"
-                                >
-                                    <TableIcon className="h-4 w-4" />
-                                </Button>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {/* 검색창 */}
+                                <div className="relative min-w-[200px] flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="브랜드명, 제품명, 캠페인 검색"
+                                        className="pl-9 h-9"
+                                        value={workspaceSearchQuery}
+                                        onChange={(e) => setWorkspaceSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                                {/* 뷰 모드 */}
+                                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                                    <Button
+                                        variant={workspaceViewMode === 'list' ? 'default' : 'ghost'}
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => setWorkspaceViewMode('list')}
+                                        title="리스트형"
+                                    >
+                                        <List className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant={workspaceViewMode === 'grid' ? 'default' : 'ghost'}
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => setWorkspaceViewMode('grid')}
+                                        title="그리드형"
+                                    >
+                                        <LayoutGrid className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant={workspaceViewMode === 'table' ? 'default' : 'ghost'}
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => setWorkspaceViewMode('table')}
+                                        title="테이블형"
+                                    >
+                                        <TableIcon className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
+
 
                         <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="w-full">
                             <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
@@ -2523,33 +2612,33 @@ function InfluencerDashboardContent() {
 
                             {/* Tab 1: Active (In Progress) */}
                             <TabsContent value="active" className="space-y-4 mt-6">
-                                {renderSubTabs(allActive)}
-                                {renderWorkspaceItems(filterByType(allActive, workspaceSubTab), 'active')}
+                                {renderSubTabs(applyWorkspaceSearch(allActive))}
+                                {renderWorkspaceItems(filterByType(applyWorkspaceSearch(allActive), workspaceSubTab), 'active')}
                             </TabsContent>
 
                             {/* Tab 2: Inbound Proposals (Received) - Moments only, no sub-tabs */}
                             <TabsContent value="inbound" className="space-y-4 mt-6">
-                                {renderWorkspaceItems(inboundProposals, 'inbound')}
+                                {renderWorkspaceItems(applyWorkspaceSearch(inboundProposals), 'inbound')}
                             </TabsContent>
 
                             {/* Tab 3: Outbound Applications (Sent) */}
                             <TabsContent value="outbound" className="space-y-4 mt-6">
-                                {renderSubTabs(outboundApplications)}
-                                {renderWorkspaceItems(filterByType(outboundApplications, workspaceSubTab), 'outbound')}
+                                {renderSubTabs(applyWorkspaceSearch(outboundApplications))}
+                                {renderWorkspaceItems(filterByType(applyWorkspaceSearch(outboundApplications), workspaceSubTab), 'outbound')}
                             </TabsContent>
 
 
 
                             {/* Tab 5: Completed */}
                             <TabsContent value="completed" className="space-y-4 mt-6">
-                                {renderSubTabs(allCompleted)}
-                                {renderWorkspaceItems(filterByType(allCompleted, workspaceSubTab), 'completed')}
+                                {renderSubTabs(applyWorkspaceSearch(allCompleted))}
+                                {renderWorkspaceItems(filterByType(applyWorkspaceSearch(allCompleted), workspaceSubTab), 'completed')}
                             </TabsContent>
 
                             {/* Tab 4: Rejected - Added Missing Tab Content */}
                             <TabsContent value="rejected" className="space-y-4 mt-6">
-                                {renderSubTabs(rejectedProposals)}
-                                {renderWorkspaceItems(filterByType(rejectedProposals, workspaceSubTab), 'rejected')}
+                                {renderSubTabs(applyWorkspaceSearch(rejectedProposals))}
+                                {renderWorkspaceItems(filterByType(applyWorkspaceSearch(rejectedProposals), workspaceSubTab), 'rejected')}
                             </TabsContent>
                         </Tabs>
                     </div>
@@ -2664,17 +2753,17 @@ function InfluencerDashboardContent() {
                                     마음에 들면 광고나 공구를 먼저 제안해보세요.
                                 </p>
                             </div>
-                            <div className="flex w-full max-w-md items-center space-x-2">
+                            <div className="flex w-full max-w-lg items-center gap-2">
                                 <Button
                                     variant={favoritesOnly ? "secondary" : "outline"}
                                     size="icon"
                                     onClick={() => setFavoritesOnly(!favoritesOnly)}
                                     className={favoritesOnly ? "bg-yellow-100 text-yellow-600 border-yellow-200 hover:bg-yellow-200" : "text-muted-foreground"}
-                                    title="즐겨찾기만 보기"
+                                    title="즐곯찾기만 보기"
                                 >
                                     <Star className={`h-4 w-4 ${favoritesOnly ? "fill-current" : ""}`} />
                                 </Button>
-                                <div className="relative w-full">
+                                <div className="relative flex-1">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="브랜드, 제품명 검색"
@@ -2682,6 +2771,18 @@ function InfluencerDashboardContent() {
                                         value={productSearchQuery}
                                         onChange={(e) => setProductSearchQuery(e.target.value)}
                                     />
+                                </div>
+                                <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0">
+                                    {([20, 50, 100] as const).map(n => (
+                                        <button
+                                            key={n}
+                                            onClick={() => setProductPageSize(n)}
+                                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${productPageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                                                }`}
+                                        >
+                                            {n}
+                                        </button>
+                                    ))}
                                 </div>
                                 <div className="flex items-center gap-1 bg-muted p-1 rounded-lg shrink-0">
                                     <Button
@@ -2706,7 +2807,48 @@ function InfluencerDashboardContent() {
                             </div>
                         </div>
 
-                        {filteredProducts.length === 0 ? (
+                        {/* 카테고리 태그 필터 */}
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setProductTagFilter([])}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${productTagFilter.length === 0
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'border-border text-muted-foreground hover:border-primary/50'
+                                    }`}
+                            >
+                                전체
+                            </button>
+                            {POPULAR_TAGS.map(tag => (
+                                <button
+                                    key={tag}
+                                    onClick={() => setProductTagFilter(prev =>
+                                        prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                                    )}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${productTagFilter.includes(tag)
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'border-border text-muted-foreground hover:border-primary/50'
+                                        }`}
+                                >
+                                    {tag}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* 필터링 통계 */}
+                        <p className="text-sm text-muted-foreground">
+                            {(() => {
+                                const total = filteredProducts.length
+                                const shown = Math.min(total, productPageSize)
+                                return total > shown ? `총 ${total}개 중 ${shown}개 표시` : `총 ${total}개`
+                            })()}
+                        </p>
+
+                        {filteredProducts.filter(p =>
+                            productTagFilter.length === 0 || productTagFilter.some(tag => {
+                                const tagWord = tag.replace(/^.{1,2} /, '').toLowerCase()
+                                return (p.category || '').toLowerCase().includes(tagWord) || (p.tags || []).some((t: string) => t.toLowerCase().includes(tagWord))
+                            })
+                        ).length === 0 ? (
                             <Card className="p-20 text-center border-dashed bg-muted/20">
                                 <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
                                 <h3 className="text-lg font-medium text-muted-foreground">검색 결과가 없습니다.</h3>
@@ -2715,7 +2857,12 @@ function InfluencerDashboardContent() {
                             <div className="space-y-6">
                                 {productViewMode === 'grid' ? (
                                     <BrandProductDiscoveryView
-                                        products={filteredProducts}
+                                        products={filteredProducts.filter(p =>
+                                            productTagFilter.length === 0 || productTagFilter.some(tag => {
+                                                const tagWord = tag.replace(/^.{1,2} /, '').toLowerCase()
+                                                return (p.category || '').toLowerCase().includes(tagWord) || (p.tags || []).some((t: string) => t.toLowerCase().includes(tagWord))
+                                            })
+                                        ).slice(0, productPageSize)}
                                         handleViewGuide={(p) => {
                                             if (p.link) window.open(p.link, '_blank');
                                         }}
@@ -2726,7 +2873,12 @@ function InfluencerDashboardContent() {
                                     />
                                 ) : (
                                     <BrandProductListView
-                                        products={filteredProducts}
+                                        products={filteredProducts.filter(p =>
+                                            productTagFilter.length === 0 || productTagFilter.some(tag => {
+                                                const tagWord = tag.replace(/^.{1,2} /, '').toLowerCase()
+                                                return (p.category || '').toLowerCase().includes(tagWord) || (p.tags || []).some((t: string) => t.toLowerCase().includes(tagWord))
+                                            })
+                                        ).slice(0, productPageSize)}
                                         handleViewGuide={(p) => {
                                             if (p.link) window.open(p.link, '_blank');
                                         }}
@@ -2753,133 +2905,160 @@ function InfluencerDashboardContent() {
 
 
             case "discover-campaigns":
+                const filteredCampaigns = campaigns.filter(c => {
+                    if (c.status === 'closed') return false
+                    const q = campaignSearchQuery.toLowerCase()
+                    const matchesSearch = !q ||
+                        (c.title || '').toLowerCase().includes(q) ||
+                        (c.brand || '').toLowerCase().includes(q) ||
+                        (c.category || '').toLowerCase().includes(q) ||
+                        (c.description || '').toLowerCase().includes(q)
+                    const matchesTag = campaignTagFilter.length === 0 || campaignTagFilter.some(tag => {
+                        const tagWord = tag.replace(/^.{1,2} /, '').toLowerCase()
+                        return (c.category || '').toLowerCase().includes(tagWord) ||
+                            (c.tags || []).some((t: string) => t.toLowerCase().includes(tagWord))
+                    })
+                    const matchesFav = !campaignFavoritesOnly || favorites?.some((f: any) => f.target_id === c.id && f.target_type === 'campaign')
+                    return matchesSearch && matchesTag && matchesFav
+                })
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        {/* 헤더 */}
                         <div className="flex flex-col gap-4">
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-start flex-wrap gap-3">
                                 <div>
                                     <h1 className="text-3xl font-bold tracking-tight">브랜드 캠페인 둘러보기</h1>
                                     <p className="text-muted-foreground mt-1 text-sm">
                                         브랜드가 등록한 캠페인을 확인하고 지원해보세요.
                                     </p>
                                 </div>
-                                <div className="bg-muted p-1 rounded-lg flex items-center gap-1 overflow-x-auto max-w-[calc(100vw-40px)] scrollbar-hide">
-                                    <Button
-                                        variant={designOption === 'A' ? 'default' : 'ghost'}
-                                        size="sm"
-                                        onClick={() => setDesignOption('A')}
-                                        className="text-xs h-7 whitespace-nowrap"
-                                    >
-                                        A: 브랜드(세로)
-                                    </Button>
-                                    <Button
-                                        variant={designOption === 'D' ? 'default' : 'ghost'}
-                                        size="sm"
-                                        onClick={() => setDesignOption('D')}
-                                        className="text-xs h-7 whitespace-nowrap"
-                                    >
-                                        D: 브랜드(가로)
-                                    </Button>
-                                    <Button
-                                        variant={designOption === 'B' ? 'default' : 'ghost'}
-                                        size="sm"
-                                        onClick={() => setDesignOption('B')}
-                                        className="text-xs h-7 whitespace-nowrap"
-                                    >
-                                        B: 비주얼
-                                    </Button>
-                                    <Button
-                                        variant={designOption === 'C' ? 'default' : 'ghost'}
-                                        size="sm"
-                                        onClick={() => setDesignOption('C')}
-                                        className="text-xs h-7 whitespace-nowrap"
-                                    >
-                                        C: 네모카드
-                                    </Button>
-                                    <Button
-                                        variant={designOption === 'E' ? 'default' : 'ghost'}
-                                        size="sm"
-                                        onClick={() => setDesignOption('E')}
-                                        className="text-xs h-7 whitespace-nowrap"
-                                    >
-                                        E: 리스트
-                                    </Button>
+                                {/* 디자인 옵션 (유지) */}
+                                <div className="bg-muted p-1 rounded-lg flex items-center gap-1 overflow-x-auto scrollbar-hide">
+                                    {(['A', 'D', 'B', 'C', 'E'] as const).map(opt => (
+                                        <Button
+                                            key={opt}
+                                            variant={designOption === opt ? 'default' : 'ghost'}
+                                            size="sm"
+                                            onClick={() => setDesignOption(opt)}
+                                            className="text-xs h-7 whitespace-nowrap"
+                                        >
+                                            {opt === 'A' ? 'A: 브랜드(세로)' : opt === 'D' ? 'D: 브랜드(가로)' : opt === 'B' ? 'B: 비주얼' : opt === 'C' ? 'C: 네모카드' : 'E: 리스트'}
+                                        </Button>
+                                    ))}
                                 </div>
+                            </div>
+
+                            {/* 검색 + 즐겨찾기 + 페이지네이션 */}
+                            <div className="flex flex-wrap gap-2 items-center">
+                                <Button
+                                    variant={campaignFavoritesOnly ? "secondary" : "outline"}
+                                    size="icon"
+                                    onClick={() => setCampaignFavoritesOnly(!campaignFavoritesOnly)}
+                                    className={campaignFavoritesOnly ? "bg-yellow-100 text-yellow-600 border-yellow-200 hover:bg-yellow-200" : "text-muted-foreground"}
+                                    title="즐겨찾기만 보기"
+                                >
+                                    <Star className={`h-4 w-4 ${campaignFavoritesOnly ? "fill-current" : ""}`} />
+                                </Button>
+                                <div className="relative flex-1 min-w-[200px]">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="캠페인명, 브랜드, 카테고리 검색"
+                                        className="pl-9"
+                                        value={campaignSearchQuery}
+                                        onChange={(e) => setCampaignSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0">
+                                    {([20, 50, 100] as const).map(n => (
+                                        <button
+                                            key={n}
+                                            onClick={() => setCampaignPageSize(n)}
+                                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${campaignPageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                                                }`}
+                                        >
+                                            {n}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 태그 필터 */}
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    onClick={() => setCampaignTagFilter([])}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${campaignTagFilter.length === 0
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'border-border text-muted-foreground hover:border-primary/50'
+                                        }`}
+                                >
+                                    전체
+                                </button>
+                                {POPULAR_TAGS.map(tag => (
+                                    <button
+                                        key={tag}
+                                        onClick={() => setCampaignTagFilter(prev =>
+                                            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                                        )}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${campaignTagFilter.includes(tag)
+                                            ? 'bg-primary text-primary-foreground border-primary'
+                                            : 'border-border text-muted-foreground hover:border-primary/50'
+                                            }`}
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        {campaigns.filter(c => c.status !== 'closed').length === 0 ? (
+                        {/* 통계 */}
+                        <p className="text-sm text-muted-foreground">
+                            {filteredCampaigns.length > campaignPageSize
+                                ? `총 ${filteredCampaigns.length}개 중 ${campaignPageSize}개 표시`
+                                : `총 ${filteredCampaigns.length}개`}
+                        </p>
+
+                        {filteredCampaigns.length === 0 ? (
                             <Card className="p-20 text-center border-dashed bg-muted/20">
                                 <Megaphone className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
-                                <h3 className="text-lg font-medium text-muted-foreground">등록된 캠페인이 없습니다.</h3>
+                                <h3 className="text-lg font-medium text-muted-foreground">검색 결과가 없습니다.</h3>
                             </Card>
                         ) : (
                             <div className={`grid gap-6 ${['D', 'E'].includes(designOption) ? 'grid-cols-1' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
-                                {campaigns.filter(c => c.status !== 'closed').map((camp) => (
+                                {filteredCampaigns.slice(0, campaignPageSize).map((camp) => (
                                     <div key={camp.id} className={['D', 'E'].includes(designOption) ? 'w-full' : ''}>
                                         {designOption === 'A' && (
                                             <CampaignCardA
                                                 campaign={camp}
-                                                onClick={() => {
-                                                    setSelectedCampaign(camp);
-                                                    setIsCampaignDetailOpen(true);
-                                                }}
-                                                onApply={(e: React.MouseEvent) => {
-                                                    e.stopPropagation();
-                                                    handleApplyClick(camp);
-                                                }}
+                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
+                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
                                             />
                                         )}
                                         {designOption === 'B' && (
                                             <CampaignCardB
                                                 campaign={camp}
-                                                onClick={() => {
-                                                    setSelectedCampaign(camp);
-                                                    setIsCampaignDetailOpen(true);
-                                                }}
-                                                onApply={(e: React.MouseEvent) => {
-                                                    e.stopPropagation();
-                                                    handleApplyClick(camp);
-                                                }}
+                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
+                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
                                             />
                                         )}
                                         {designOption === 'C' && (
                                             <CampaignCardC
                                                 campaign={camp}
-                                                onClick={() => {
-                                                    setSelectedCampaign(camp);
-                                                    setIsCampaignDetailOpen(true);
-                                                }}
-                                                onApply={(e: React.MouseEvent) => {
-                                                    e.stopPropagation();
-                                                    handleApplyClick(camp);
-                                                }}
+                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
+                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
                                             />
                                         )}
                                         {designOption === 'D' && (
                                             <CampaignCardD
                                                 campaign={camp}
-                                                onClick={() => {
-                                                    setSelectedCampaign(camp);
-                                                    setIsCampaignDetailOpen(true);
-                                                }}
-                                                onApply={(e: React.MouseEvent) => {
-                                                    e.stopPropagation();
-                                                    handleApplyClick(camp);
-                                                }}
+                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
+                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
                                             />
                                         )}
                                         {designOption === 'E' && (
                                             <CampaignCardE
                                                 campaign={camp}
-                                                onClick={() => {
-                                                    setSelectedCampaign(camp);
-                                                    setIsCampaignDetailOpen(true);
-                                                }}
-                                                onApply={(e: React.MouseEvent) => {
-                                                    e.stopPropagation();
-                                                    handleApplyClick(camp);
-                                                }}
+                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
+                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
                                             />
                                         )}
                                     </div>
@@ -3856,6 +4035,44 @@ function InfluencerDashboardContent() {
                         }}
                         currentUserId={user?.id}
                     />
+
+                    {/* G3: 크리에이터가 보낸 지원서 수정 다이얼로그 */}
+                    <Dialog open={!!editingApplication} onOpenChange={(open) => !open && setEditingApplication(null)}>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>지원서 수정</DialogTitle>
+                                <DialogDescription>
+                                    {editingApplication?.campaign_name || editingApplication?.brand_name || '캐맠페인'}에 보낸 지원서를 수정합니다.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-2">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">희망 비용 (원)</label>
+                                    <Input
+                                        type="number"
+                                        value={editDesiredCost}
+                                        onChange={(e) => setEditDesiredCost(e.target.value)}
+                                        placeholder="예: 200000"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">지원 동기 / 콘텐츠 계획</label>
+                                    <Textarea
+                                        value={editAppealMessage}
+                                        onChange={(e) => setEditAppealMessage(e.target.value)}
+                                        className="min-h-[120px]"
+                                        placeholder="지원 동기나 콘텐츠 계획을 수정하세요."
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setEditingApplication(null)}>취소</Button>
+                                <Button onClick={handleSaveEditApplication} disabled={isSavingApplication}>
+                                    {isSavingApplication ? '저장 중...' : '저장'}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
 
                     {/* Confirm Dialog for Accept/Reject Actions */}
                     {

@@ -9,6 +9,7 @@ import { ArrowLeft, Building2, CheckCircle2, DollarSign, Target } from "lucide-r
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 export default function CampaignDetailPage() {
     const params = useParams()
@@ -105,7 +106,13 @@ export default function CampaignDetailPage() {
                                     <span className="text-emerald-600 font-bold">{campaign.matchScore}%</span>
                                 </div>
                                 <div className="pt-4">
-                                    <Button className="w-full gap-2" size="lg" onClick={() => alert("지원이 완료되었습니다! (프로토타입)")}>
+                                    <Button className="w-full gap-2" size="lg" onClick={() => {
+                                        if (!user) {
+                                            router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`)
+                                            return
+                                        }
+                                        toast.success("지원이 완료되었습니다! (프로토타입)")
+                                    }}>
                                         <CheckCircle2 className="h-5 w-5" /> 지원하기
                                     </Button>
                                     <p className="text-xs text-center text-muted-foreground mt-2">

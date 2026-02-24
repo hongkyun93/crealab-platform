@@ -68,7 +68,10 @@ export async function GET(request: Request) {
             }
         } else if (error) {
             console.error('[Auth Callback] Exchange error:', error)
-            return NextResponse.redirect(`${origin}/auth/debug?error=${encodeURIComponent(JSON.stringify(error))}&message=${encodeURIComponent(error.message)}`)
+            // ⚠️ error 객체 전체를 URL에 노출하지 않음 (민감 정보 포함 가능)
+            // 전체 JSON 대신 'status' 코드만 전달
+            const safeCode = (error as any).status ?? 'unknown'
+            return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${encodeURIComponent(safeCode)}&message=${encodeURIComponent(error.message)}`)
         }
     }
 

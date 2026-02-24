@@ -20,6 +20,16 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
+    // /debug-session: 세션 디버그 페이지 프로덕션 차단
+    if (pathname.startsWith('/debug-session') && process.env.NODE_ENV === 'production') {
+        return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // /sentry-example-page: Sentry 테스트 페이지 프로덕션 차단
+    if (pathname.startsWith('/sentry-example-page') && process.env.NODE_ENV === 'production') {
+        return NextResponse.redirect(new URL('/', request.url))
+    }
+
     // /design-lab: 프로덕션에서는 차단 (프로토타입 페이지 41개)
     if (pathname.startsWith('/design-lab') && process.env.NODE_ENV === 'production') {
         return NextResponse.redirect(new URL('/', request.url))

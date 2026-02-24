@@ -816,11 +816,15 @@ function BrandDashboardContent() {
         { k: 'over_300', l: '300만원 이상', min: 3000000, max: Infinity },
     ]
 
-    const filteredProducts = products?.filter(p =>
-        p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-        p.brandName?.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(productSearchQuery.toLowerCase())
-    ) || []
+    const filteredProducts = products?.filter(p => {
+        const q = productSearchQuery.toLowerCase()
+        if (!q) return true
+        return (
+            p.name.toLowerCase().includes(q) ||
+            (p.brandName || '').toLowerCase().includes(q) ||
+            (p.category || '').toLowerCase().includes(q)
+        )
+    }) || []
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -1323,7 +1327,10 @@ function BrandDashboardContent() {
     // The page-level brandId filter was causing campaigns to not display
     const myCampaigns = campaigns  // Already filtered by RLS (team_id) and Provider
     const mySentProposals = brandProposals  // Already filtered by RLS
-    const myProducts = products  // Already filtered by RLS
+    // [FIX] 내 브랜드 제품만: RLS가 동작 안 할 경우를 대비해 brandId로 추가 필터링
+    const myProducts = user?.id
+        ? (products || []).filter(p => p.brandId === user.id)
+        : (products || [])
 
     // Filter items by type (moment/campaign/brand)
     const filterByType = (items: any[], type: 'all' | 'moment' | 'campaign' | 'brand') => {
@@ -1462,6 +1469,10 @@ function BrandDashboardContent() {
                         handleViewGuide={handleViewGuide}
                         handleEditProduct={handleEditProduct}
                         deleteProduct={deleteProduct}
+                        onViewDetail={(productId) => {
+                            setSelectedProductId(productId)
+                            setCurrentView("product-detail")
+                        }}
                     />
                 )
             case "product-detail":

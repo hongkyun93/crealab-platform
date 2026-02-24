@@ -5,10 +5,14 @@ import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
-import { Ban, ChevronRight, FileText, LayoutGrid, List, Table2 } from "lucide-react"
+import { Ban, ChevronRight, FileText, LayoutGrid, List, Pencil, Table2 } from "lucide-react"
 import Link from "next/link"
 import React, { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -47,6 +51,158 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
     const [pageSize, setPageSize] = useState<20 | 50 | 100>(50)
     const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false, title: '', description: '', onConfirm: () => { } })
+
+    // G2: Edit proposal state
+    const [editingProposal, setEditingProposal] = useState<any>(null)
+    const [editMessage, setEditMessage] = useState('')
+    const [editCompensation, setEditCompensation] = useState('')
+    const [isSavingEdit, setIsSavingEdit] = useState(false)
+
+    // === 정산서 / 인보이스 발급 ===
+    const handleDownloadSettlement = (e: React.MouseEvent, item: any) => {
+        e.stopPropagation()
+        const docNo = `CPK-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(item.id || '').slice(-6).toUpperCase()}`
+        const today = new Date().toLocaleDateString('ko-KR')
+        const amount = item.price_offer || item.priceOffer || item.budget || 0
+        const amountText = amount > 0 ? `${Number(amount).toLocaleString()}원` : '협의 금액'
+        const win = window.open('', '', 'width=800,height=700')
+        win?.document.write(`
+            <html><head><title>협업 정산서</title>
+            <style>
+                body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 50px; color: #111; line-height: 1.7; }
+                .header { text-align: center; border-bottom: 3px double #111; padding-bottom: 20px; margin-bottom: 30px; }
+                .title { font-size: 26px; font-weight: bold; letter-spacing: 8px; margin-bottom: 4px; }
+                .subtitle { font-size: 12px; color: #555; }
+                .doc-no { text-align: right; font-size: 11px; color: #666; margin-bottom: 20px; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th { background: #f5f5f5; padding: 10px 14px; font-size: 13px; border: 1px solid #ddd; text-align: left; }
+                td { padding: 10px 14px; font-size: 13px; border: 1px solid #ddd; }
+                .amount-row td { font-weight: bold; font-size: 16px; background: #f9f9f9; }
+                .footer { margin-top: 60px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #ddd; padding-top: 15px; }
+                .seal { margin-top: 30px; text-align: right; font-size: 13px; }
+            </style>
+            </head><body>
+            <div class="doc-no">문서번호: ${docNo} | 발급일: ${today}</div>
+            <div class="header">
+                <div class="title">협 업 정 산 서</div>
+                <div class="subtitle">Collaboration Settlement Statement | Powered by Creadypick</div>
+            </div>
+            <table>
+                <tr><th style="width:30%">브랜드</th><td>${item.brand_name || 'Creadypick 브랜드'}</td></tr>
+                <tr><th>크리에이터</th><td>${item.influencer_name || item.influencerName || '-'}</td></tr>
+                <tr><th>협업 유형</th><td>${item.campaign_id || item.campaignId ? '캠페인 협업' : item.moment_id ? '모먼트 협업' : '브랜드 직접 제안'}</td></tr>
+                <tr><th>제품/서비스</th><td>${item.product_name || item.productName || item.campaign_title || '-'}</td></tr>
+                <tr><th>협업 시작일</th><td>${item.created_at ? new Date(item.created_at).toLocaleDateString('ko-KR') : '-'}</td></tr>
+                <tr><th>협업 완료일</th><td>${item.completed_at ? new Date(item.completed_at).toLocaleDateString('ko-KR') : today}</td></tr>
+                <tr class="amount-row"><th>정산 금액</th><td>${amountText}</td></tr>
+            </table>
+            <p style="font-size:12px; color:#888; margin-top:10px">※ 본 정산서는 Creadypick 플랫폼을 통해 자동 발급된 협업 정산 내역서입니다.</p>
+            <p style="font-size:12px; color:#888">※ 전자세금계산서가 필요하신 경우 별도 요청해 주시기 바랍니다.</p>
+            <div class="seal">발급기관: Creadypick &nbsp;&nbsp;&nbsp; (인)</div>
+            <div class="footer">본 문서는 Creadypick 플랫폼 협업 정산 기록을 토대로 자동 생성되었습니다. | creadypick.com</div>
+            <script>window.onload = function(){ window.print(); }</script>
+            </body></html>`)
+        win?.document.close()
+    }
+
+    const handleDownloadInvoice = (e: React.MouseEvent, item: any) => {
+        e.stopPropagation()
+        const docNo = `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(item.id || '').slice(-6).toUpperCase()}`
+        const today = new Date().toLocaleDateString('ko-KR')
+        const amount = item.price_offer || item.priceOffer || item.budget || 0
+        const vat = Math.round(Number(amount) * 0.1)
+        const win = window.open('', '', 'width=800,height=750')
+        win?.document.write(`
+            <html><head><title>거래명세서 (인보이스)</title>
+            <style>
+                body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 50px; color: #111; line-height: 1.7; }
+                .header { text-align: center; border-bottom: 3px double #111; padding-bottom: 20px; margin-bottom: 30px; }
+                .title { font-size: 26px; font-weight: bold; letter-spacing: 6px; margin-bottom: 4px; }
+                .subtitle { font-size: 12px; color: #555; }
+                .meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 12px; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th { background: #f0f0f0; padding: 10px 14px; font-size: 12px; border: 1px solid #ccc; text-align: center; }
+                td { padding: 10px 14px; font-size: 13px; border: 1px solid #ccc; text-align: center; }
+                .total-section { margin-top: 10px; text-align: right; }
+                .total-section table { width: 300px; margin-left: auto; }
+                .footer { margin-top: 50px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #ddd; padding-top: 15px; }
+            </style>
+            </head><body>
+            <div class="header">
+                <div class="title">거 래 명 세 서</div>
+                <div class="subtitle">Invoice | Powered by Creadypick</div>
+            </div>
+            <div class="meta">
+                <div><b>공급자:</b> Creadypick (플랫폼)</div>
+                <div><b>문서번호:</b> ${docNo} &nbsp; <b>발급일:</b> ${today}</div>
+            </div>
+            <table>
+                <tr>
+                    <th>거래처 (브랜드)</th>
+                    <th>크리에이터</th>
+                    <th>거래일</th>
+                    <th>계약상태</th>
+                </tr>
+                <tr>
+                    <td>${item.brand_name || 'Creadypick 브랜드'}</td>
+                    <td>${item.influencer_name || item.influencerName || '-'}</td>
+                    <td>${item.completed_at ? new Date(item.completed_at).toLocaleDateString('ko-KR') : today}</td>
+                    <td>완료</td>
+                </tr>
+            </table>
+            <table>
+                <tr><th>#</th><th>품목</th><th>규격/내용</th><th>수량</th><th>단가</th><th>공급가액</th></tr>
+                <tr>
+                    <td>1</td>
+                    <td>${item.campaign_id || item.campaignId ? '캠페인 광고' : '브랜드 협업 광고'}</td>
+                    <td>${item.product_name || item.productName || item.campaign_title || '콘텐츠 협업'}</td>
+                    <td>1</td>
+                    <td>${amount > 0 ? Number(amount).toLocaleString() + '원' : '협의'}</td>
+                    <td>${amount > 0 ? Number(amount).toLocaleString() + '원' : '협의'}</td>
+                </tr>
+            </table>
+            <div class="total-section">
+                <table>
+                    <tr><td><b>공급가액</b></td><td>${amount > 0 ? Number(amount).toLocaleString() + '원' : '협의'}</td></tr>
+                    <tr><td>부가세 (10%)</td><td>${amount > 0 ? vat.toLocaleString() + '원' : '별도 협의'}</td></tr>
+                    <tr style="font-weight:bold; font-size:15px"><td>합 계</td><td>${amount > 0 ? (Number(amount) + vat).toLocaleString() + '원' : '협의'}</td></tr>
+                </table>
+            </div>
+            <p style="font-size:11px; color:#888; margin-top:20px">※ 부가세 납부 의무는 거래 당사자에게 있으며, 면세 사업자의 경우 별도 확인이 필요합니다.</p>
+            <div class="footer">본 문서는 Creadypick 플랫폼 협업 기록을 토대로 자동 생성된 거래명세서입니다. | creadypick.com</div>
+            <script>window.onload = function(){ window.print(); }</script>
+            </body></html>`)
+        win?.document.close()
+    }
+
+    const handleOpenEditProposal = (e: React.MouseEvent, item: any) => {
+        e.stopPropagation()
+        setEditingProposal(item)
+        setEditMessage(item.message || '')
+        setEditCompensation(item.compensation || item.product_name || '')
+    }
+
+    const handleSaveEditProposal = async () => {
+        if (!editingProposal) return
+        setIsSavingEdit(true)
+        try {
+            const { error } = await supabase
+                .from('moment_proposals')
+                .update({
+                    message: editMessage,
+                    compensation: editCompensation,
+                })
+                .eq('id', editingProposal.id)
+            if (error) throw error
+            toast.success('제안이 수정되었습니다.')
+            setEditingProposal(null)
+            await refreshData()
+        } catch (err: any) {
+            toast.error(err.message || '제안 수정에 실패했습니다.')
+        } finally {
+            setIsSavingEdit(false)
+        }
+    }
 
     // Reset sub-tab when main workspace tab changes
     useEffect(() => {
@@ -631,7 +787,15 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                         )}
 
                                         {isOutbound && (!item.status || item.status === 'offered' || item.status === 'negotiating') && (
-                                            <div className="shrink-0">
+                                            <div className="flex gap-2 shrink-0">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                                                    onClick={(e) => handleOpenEditProposal(e, item)}
+                                                >
+                                                    <Pencil className="mr-1 h-3 w-3" /> 수정
+                                                </Button>
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
@@ -669,8 +833,8 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                 key={n}
                                 onClick={() => setPageSize(n)}
                                 className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${pageSize === n
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'text-muted-foreground hover:text-foreground'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
                                 {n}
@@ -783,6 +947,43 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 description={confirmDialog.description}
                 variant={confirmDialog.variant}
             />
+
+            {/* G2: Edit Proposal Dialog */}
+            <Dialog open={!!editingProposal} onOpenChange={(open) => !open && setEditingProposal(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>제안 수정</DialogTitle>
+                        <DialogDescription>
+                            {editingProposal?.influencerName || editingProposal?.influencer_name}님에게 보낸 제안을 수정합니다.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label>원고료 / 제안 조건</Label>
+                            <Input
+                                value={editCompensation}
+                                onChange={(e) => setEditCompensation(e.target.value)}
+                                placeholder="예: 200,000원"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>전달 메시지</Label>
+                            <Textarea
+                                value={editMessage}
+                                onChange={(e) => setEditMessage(e.target.value)}
+                                className="min-h-[120px]"
+                                placeholder="크리에이터에게 전달할 메시지를 수정하세요."
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingProposal(null)}>취소</Button>
+                        <Button onClick={handleSaveEditProposal} disabled={isSavingEdit}>
+                            {isSavingEdit ? '저장 중...' : '저장'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 })

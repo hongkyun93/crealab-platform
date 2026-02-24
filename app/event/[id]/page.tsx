@@ -32,6 +32,7 @@ import { ArrowLeft, BadgeCheck, Calendar, Clock, FileText, Globe, Instagram, Loa
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 export default function EventDetailPage() {
     const params = useParams()
@@ -192,7 +193,8 @@ ${u.name}의 담당자입니다.
 
     const handlePropose = () => {
         if (!user) {
-            router.push("/login")
+            // 공유링크 플로우: 로그인 후 이 페이지로 자동 복귀
+            router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`)
             return
         }
         // Pre-fill channel from creator's preferred channels
@@ -220,7 +222,7 @@ ${u.name}의 담당자입니다.
         if (!user || !event) return
 
         if (!productName || !proposalMessage) {
-            alert("제품명과 제안 메시지는 필수입니다.")
+            toast.error("제품명과 제안 메시지는 필수입니다.")
             return
         }
 
@@ -314,7 +316,7 @@ ${u.name}의 담당자입니다.
             }
 
             // Success
-            alert("제안서가 성공적으로 발송되었습니다!")
+            toast.success("제안서가 성공적으로 발송되었습니다!")
             setShowProposalDialog(false)
 
             // Trigger manual refresh in background (Do not await)
@@ -340,9 +342,9 @@ ${u.name}의 담당자입니다.
             console.error("Failed to submit proposal:", error)
 
             if (error.message === 'REQUEST_TIMEOUT') {
-                alert("서버 응답이 지연되고 있습니다. (15초 초과)\n잠시 후 다시 시도해 주세요. 네트워크 상태를 확인 부탁드립니다.")
+                toast.error("서버 응답이 지연되고 있습니다. (15초 초과)\n잠시 후 다시 시도해 주세요. 네트워크 상태를 확인 부탁드립니다.")
             } else {
-                alert(`제안서 발송 중 예기치 못한 오류가 발생했습니다: ${error.message || "알 수 없음"}`)
+                toast.error(`제안서 발송 중 예기치 못한 오류가 발생했습니다: ${error.message || "알 수 없음"}`)
             }
 
         } finally {
@@ -570,7 +572,6 @@ ${u.name}의 담당자입니다.
                                         <div className="flex items-center gap-1.5">
                                             <Lock className="h-3 w-3 text-muted-foreground/50" />
                                             <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none">
-                                                {/* @ts-ignore */}
                                                 {event.priceVideo ? `₩${event.priceVideo.toLocaleString()}` : '협의 필요'}
                                             </span>
                                         </div>
@@ -580,8 +581,7 @@ ${u.name}의 담당자입니다.
                                         <div className="flex items-center gap-1.5">
                                             <Lock className="h-3 w-3 text-muted-foreground/50" />
                                             <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none">
-                                                {/* @ts-ignore */}
-                                                {event.priceFeed ? `₩${(event as any).priceFeed.toLocaleString()}` : '협의 필요'}
+                                                {event.priceFeed ? `₩${event.priceFeed.toLocaleString()}` : '협의 필요'}
                                             </span>
                                         </div>
                                     </div>
@@ -590,8 +590,7 @@ ${u.name}의 담당자입니다.
                                         <div className="flex items-center gap-1.5">
                                             <Lock className="h-3 w-3 text-muted-foreground/50" />
                                             <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none">
-                                                {/* @ts-ignore */}
-                                                {(event as any).usageRightsPrice ? `${(event as any).usageRightsMonth}개월 / ₩${(event as any).usageRightsPrice.toLocaleString()}` : '협의 필요'}
+                                                {event.usageRightsPrice ? `${event.usageRightsMonth}개월 / ₩${event.usageRightsPrice.toLocaleString()}` : '협의 필요'}
                                             </span>
                                         </div>
                                     </div>
@@ -600,8 +599,7 @@ ${u.name}의 담당자입니다.
                                         <div className="flex items-center gap-1.5">
                                             <Lock className="h-3 w-3 text-muted-foreground/50" />
                                             <span className="font-bold text-emerald-700 text-sm blur-[6px] select-none">
-                                                {/* @ts-ignore */}
-                                                {(event as any).autoDmPrice ? `${(event as any).autoDmMonth}개월 / ₩${(event as any).autoDmPrice.toLocaleString()}` : '협의 필요'}
+                                                {event.autoDmPrice ? `${event.autoDmMonth}개월 / ₩${event.autoDmPrice.toLocaleString()}` : '협의 필요'}
                                             </span>
                                         </div>
                                     </div>
@@ -699,7 +697,10 @@ ${u.name}의 담당자입니다.
                                     </>
                                 )}
 
-                                <Button variant="outline" className="w-full gap-2" onClick={() => alert("링크가 복사되었습니다!")}>
+                                <Button variant="outline" className="w-full gap-2" onClick={() => {
+                                    navigator.clipboard.writeText(window.location.href)
+                                    toast.success("링크가 복사되었습니다!")
+                                }}>
                                     <Share2 className="h-4 w-4" /> 공유하기
                                 </Button>
                             </div>
