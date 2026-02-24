@@ -165,10 +165,13 @@ export async function GET(request: Request) {
         if (igInfo.error) throw new Error(igInfo.error.message)
 
         // 5. Supabase에 저장 (service role로 bypass RLS)
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        )
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        console.log('[Instagram OAuth] supabaseUrl:', !!supabaseUrl, 'serviceKey:', !!supabaseServiceKey, 'keyLen:', supabaseServiceKey?.length)
+        if (!supabaseUrl || !supabaseServiceKey) {
+            throw new Error(`Missing Supabase env: url=${!!supabaseUrl}, key=${!!supabaseServiceKey}`)
+        }
+        const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
         // 기존 instagram 채널이 있으면 업데이트, 없으면 삽입
         const { data: existing } = await supabase
