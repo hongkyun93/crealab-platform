@@ -686,482 +686,143 @@ export function SettingsView() {
                         </CardContent>
                     </Card>
 
-                    {/* Edit Channel Dialog */}
+                    {/* 활동 정보 & 정산 정보 */ }
+    <Card>
+        <CardHeader>
+            <CardTitle>활동 정보 &amp; 정산 정보</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-8">
 
-                    {/* 내 광고 가치 계산기 */}
-                    <Card className="border-emerald-200/60 bg-gradient-to-br from-emerald-50/40 to-transparent">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-emerald-600" />
-                                내 광고 가치 계산기
-                                <span className="text-xs font-normal text-muted-foreground ml-1">
-                                    {perfStats?.count ? `${perfStats.count}건 실적 데이터 기반` : '업계 평균 기준 예상치'}
-                                </span>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {(() => {
-                                const totalFollowers = channels.reduce((s, ch) => s + (ch.followersCount || 0), 0)
-                                if (totalFollowers === 0) {
-                                    return <p className="text-sm text-muted-foreground">소셜 채널을 연결하면 예상 단가를 확인할 수 있습니다.</p>
-                                }
-
-                                // ── 1. 참여율 (우선순위: Instagram API실측 > 캠페인실적 > 팔로워티어추정)
-                                const igErRaw = igStats?.er != null ? igStats.er / 100 : null
-                                const er: number = igErRaw
-                                    ?? (perfStats?.avgEngagementRate != null ? perfStats.avgEngagementRate / 100 : null)
-                                    ?? (totalFollowers >= 1000000 ? 0.012 : totalFollowers >= 100000 ? 0.025 : totalFollowers >= 10000 ? 0.04 : 0.06)
-                                const erSource = igErRaw != null ? 'instagram_api' : perfStats?.avgEngagementRate != null ? 'campaign' : 'estimate'
-                                const erSourceLabel = erSource === 'instagram_api' ? '📸 Instagram 실측' : erSource === 'campaign' ? '📊 캠페인 실적' : '📐 추정값'
-                                const erSourceColor = erSource === 'instagram_api' ? 'text-pink-600 bg-pink-50 border-pink-200' : erSource === 'campaign' ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-slate-500 bg-slate-50 border-slate-200'
-
-                                // ── 2. 카테고리 CPE ──
-                                const primaryTag = selectedTags[0] || ''
-                                const CATEGORY_CPE: Record<string, number> = {
-                                    '💊 건강': 1100, '💉 시술/병원': 1100, '🥗 다이어트': 1000,
-                                    '💄 뷰티': 900, '💻 테크/IT': 800, '💍 웨딩/결혼': 750,
-                                    '👶 육아': 650, '🏋️ 헬스/운동': 650, '👗 패션': 600,
-                                    '✈️ 여행': 550, '🏡 리빙/인테리어': 500, '🐶 반려동물': 450,
-                                    '🍽️ 맛집': 350, '🎮 게임': 300,
-                                }
-                                const baseCpe = CATEGORY_CPE[primaryTag] ?? 400
-
-                                // ── 3. ER 프리미엄 (팔로워 티어별 기대값 대비 상대 평가) ──
-                                // 각 팔로워 규모에서 "보통" 수준의 ER이 다르기 때문에
-                                // 절대값(8%)이 아닌, 티어 기대값 대비 비율(erRatio)로 평가
-                                const erBenchmark =
-                                    totalFollowers >= 1000000 ? 0.010  // 메가: 기대 1%
-                                        : totalFollowers >= 500000 ? 0.015 // 대형: 1.5%
-                                            : totalFollowers >= 100000 ? 0.025 // 매크로: 2.5%
-                                                : totalFollowers >= 10000 ? 0.040  // 마이크로: 4%
-                                                    : 0.060                        // 나노: 6%
-
-                                const erRatio = erBenchmark > 0 ? er / erBenchmark : 1.0
-
-                                // erRatio: 1.0 = 해당 티어 평균 / 2.0 = 2배 우수 / 0.5 = 절반
-                                const erPremium =
-                                    erRatio >= 3.0 ? 2.0   // 티어 기대값의 3배 이상 → 최상위
-                                        : erRatio >= 2.0 ? 1.6 // 2배 이상 → 팬덤형
-                                            : erRatio >= 1.5 ? 1.3 // 1.5배 → 우수
-                                                : erRatio >= 1.0 ? 1.0 // 기대 수준 → 평균
-                                                    : erRatio >= 0.7 ? 0.75 // 기대 미달
-                                                        : 0.5              // 저조
-
-                                const erLabel =
-                                    erRatio >= 3.0 ? `최상위 (기대치 ${erRatio.toFixed(1)}배)`
-                                        : erRatio >= 2.0 ? `팬덤형 (${erRatio.toFixed(1)}배)`
-                                            : erRatio >= 1.5 ? `우수 (${erRatio.toFixed(1)}배)`
-                                                : erRatio >= 1.0 ? `평균 (${erRatio.toFixed(1)}배)`
-                                                    : erRatio >= 0.7 ? `기대 미달 (${erRatio.toFixed(1)}배)`
-                                                        : `저조 (${erRatio.toFixed(1)}배)`
-
-                                const erColor =
-                                    erRatio >= 2.0 ? 'text-purple-600 bg-purple-50 border-purple-200'
-                                        : erRatio >= 1.5 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                                            : erRatio >= 1.0 ? 'text-blue-600 bg-blue-50 border-blue-200'
-                                                : 'text-orange-500 bg-orange-50 border-orange-200'
-
-                                // ── 실효 CPE 구성 요소 (UI 표시 + 계산 동시에 사용) ──
-                                // erPremium 제거 - ER은 팔로워×ER에서 이미 반영됨 (이중 계산 방지)
-                                const baseCpeWithEr = baseCpe
-
-                                const femaleCategories = ['\ud83d\udc84 \ub274\ud2f0', '\ud83d\udc57 \ud328\uc158', '\ud83d\udc76 \uc721\uc544', '\ud83d\udc8d \uc6e8\ub529/\uacb0\ud63c']
-
-                                const reachAdj: number | null = igStats?.reachRate != null
-                                    ? (igStats.reachRate >= 40 ? 1.15 : igStats.reachRate >= 25 ? 1.05 : igStats.reachRate >= 15 ? 1.0 : igStats.reachRate >= 8 ? 0.85 : 0.7)
-                                    : null
-                                const reachAdjLabel = reachAdj == null ? null
-                                    : reachAdj >= 1.1 ? `\ub3c4\ub2ec${igStats!.reachRate}% \uc9c4\uc131 +${Math.round((reachAdj - 1) * 100)}%`
-                                        : reachAdj < 1.0 ? `\ub3c4\ub2ec${igStats!.reachRate}% \uc720\ub839\ud314\ub85c\uc6cc ${Math.round((reachAdj - 1) * 100)}%`
-                                            : null
-
-                                const saveAdj: number | null = igStats?.saveRate != null
-                                    ? (igStats.saveRate >= 5 ? 1.25 : igStats.saveRate >= 3 ? 1.15 : igStats.saveRate >= 1.5 ? 1.05 : null)
-                                    : null
-                                const saveAdjLabel = saveAdj != null ? `\uc800\uc7a5\ub960${igStats!.saveRate}% \uad6c\ub9e4\uc758\ud5a5 +${Math.round((saveAdj - 1) * 100)}%` : null
-
-                                const femaleAdj: number | null = (igStats?.audienceFemaleRatio != null && femaleCategories.includes(primaryTag))
-                                    ? (igStats.audienceFemaleRatio >= 70 ? 1.20 : igStats.audienceFemaleRatio >= 60 ? 1.10 : null)
-                                    : null
-                                const femaleAdjLabel = femaleAdj != null ? `\uc5ec\uc131${igStats!.audienceFemaleRatio}%+\uce74\ud14c\uace0\ub9ac \ub9e4\uce6d +${Math.round((femaleAdj - 1) * 100)}%` : null
-
-                                const ageAdj: number | null = (igStats?.audienceAge2534Ratio != null && igStats.audienceAge2534Ratio >= 30) ? 1.10 : null
-                                const ageAdjLabel = ageAdj != null ? `25~34\uc138 ${igStats!.audienceAge2534Ratio}% \uc18c\ube44\ub825\ub300 +10%` : null
-
-                                const domesticAdj: number | null = (igStats?.audienceDomesticRatio != null && igStats.audienceDomesticRatio >= 75) ? 1.08 : null
-                                const domesticAdjLabel = domesticAdj != null ? `\uad6d\ub0b4 ${igStats!.audienceDomesticRatio}% \ud55c\uad6d\ube0c\ub79c\ub4dc\ucd5c\uc801 +8%` : null
-
-                                const effectiveCpe = perfStats?.avgCpe ?? (() => {
-                                    let cpe = baseCpeWithEr
-                                    if (reachAdj != null) cpe = Math.round(cpe * reachAdj)
-                                    if (saveAdj != null) cpe = Math.round(cpe * saveAdj)
-                                    if (femaleAdj != null) cpe = Math.round(cpe * femaleAdj)
-                                    if (ageAdj != null) cpe = Math.round(cpe * ageAdj)
-                                    if (domesticAdj != null) cpe = Math.round(cpe * domesticAdj)
-                                    return cpe
-                                })()
-
-                                // ── 4. 콘텐츠 유형 배율 ──
-                                const CONTENT_MULT: Record<string, number> = {
-                                    reels: 1.5, feed: 1.0, story: 0.5
-                                }
-                                const CONTENT_LABEL: Record<string, string> = {
-                                    reels: '릴스/쇼츠 ×1.5', feed: '피드(사진) ×1.0', story: '스토리 ×0.5'
-                                }
-                                const contentMult = CONTENT_MULT[calcContentType] ?? 1.0
-
-                                // ── 5. 부가 조건 배율 ──
-                                const usageMult = calcUsageRights ? 1.35 : 1.0
-                                const exclusivityMult = calcExclusivity ? 1.5 : 1.0
-                                const productionMult = calcHighProduction ? 1.3 : 1.0
-                                const seasonMult = calcSeason ? 1.15 : 1.0
-                                const totalAddMult = usageMult * exclusivityMult * productionMult * seasonMult
-
-                                // ── 6. 최종 계산 ──
-                                const base = Math.round(totalFollowers * er * effectiveCpe)
-                                const estimatedValue = Math.round(base * contentMult * totalAddMult)
-                                const minValue = Math.round(estimatedValue * 0.8)
-                                const maxValue = Math.round(estimatedValue * 1.2)
-
-                                const fmt = (n: number) => {
-                                    if (n >= 100000000) return `${(n / 100000000).toFixed(1)}억`
-                                    if (n >= 10000) return `${Math.round(n / 10000)}만원`
-                                    return `${n.toLocaleString()}원`
-                                }
-                                const tierLabel = totalFollowers >= 1000000 ? '메가' : totalFollowers >= 100000 ? '매크로' : totalFollowers >= 10000 ? '마이크로' : '나노'
-                                const tierColor = totalFollowers >= 1000000 ? 'text-orange-600' : totalFollowers >= 100000 ? 'text-blue-600' : totalFollowers >= 10000 ? 'text-emerald-600' : 'text-slate-500'
-
-                                return (
-                                    <div className="space-y-4">
-                                        {/* 기본 지표 */}
-                                        <div className="grid grid-cols-4 gap-2 text-center">
-                                            <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
-                                                <p className="text-[10px] text-muted-foreground">팔로워</p>
-                                                <p className={`text-sm font-bold ${tierColor}`}>
-                                                    {totalFollowers >= 10000 ? `${(totalFollowers / 10000).toFixed(1)}만` : totalFollowers.toLocaleString()}
-                                                </p>
-                                                <p className={`text-[9px] font-medium ${tierColor}`}>{tierLabel}</p>
-                                            </div>
-                                            <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
-                                                <p className="text-[10px] text-muted-foreground">참여율</p>
-                                                <p className="text-sm font-bold text-emerald-600">{(er * 100).toFixed(1)}%</p>
-                                                <span className={`inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${erSourceColor}`}>{erSourceLabel}</span>
-                                            </div>
-                                            <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
-                                                <p className="text-[10px] text-muted-foreground">카테고리 CPE</p>
-                                                <p className="text-sm font-bold">₩{baseCpe.toLocaleString()}</p>
-                                                <p className="text-[9px] text-muted-foreground truncate">{primaryTag || '미설정'}</p>
-                                            </div>
-                                            <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
-                                                <p className="text-[10px] text-muted-foreground">실효 CPE</p>
-                                                <p className="text-sm font-bold text-indigo-600">₩{effectiveCpe.toLocaleString()}</p>
-                                                <p className="text-[9px] text-muted-foreground">{erLabel}</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Instagram 실측 인사이트 패널 */}
-                                        {igStatsLoading ? (
-                                            <div className="px-3 py-2.5 rounded-lg bg-pink-50 border border-pink-200 text-[10px] text-pink-500 animate-pulse">
-                                                📸 Instagram 실측 데이터 불러오는 중...
-                                            </div>
-                                        ) : igStats && igStats.source === 'instagram_api' ? (
-                                            <div className="px-3 py-2.5 rounded-lg bg-pink-50 border border-pink-200 space-y-2">
-                                                <p className="text-[10px] font-semibold text-pink-700 flex items-center gap-1">
-                                                    📸 Instagram 실측 인사이트
-                                                    <span className="text-[9px] font-normal text-pink-400">최근 {igStats.postCount}개 게시물 기준</span>
-                                                </p>
-                                                {/* 게시물 인사이트 */}
-                                                <div className="grid grid-cols-4 gap-2 text-center">
-                                                    <div>
-                                                        <p className="text-[9px] text-pink-400">평균 도달</p>
-                                                        <p className="text-[11px] font-bold text-pink-700">
-                                                            {igStats.avgReach != null ? igStats.avgReach.toLocaleString() : '-'}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] text-pink-400">도달률</p>
-                                                        <p className="text-[11px] font-bold text-pink-700">
-                                                            {igStats.reachRate != null ? `${igStats.reachRate}%` : '-'}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] text-pink-400">평균 저장</p>
-                                                        <p className="text-[11px] font-bold text-pink-700">
-                                                            {igStats.avgSaves != null ? igStats.avgSaves.toLocaleString() : '-'}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] text-pink-400">저장률</p>
-                                                        <p className="text-[11px] font-bold text-pink-700">
-                                                            {igStats.saveRate != null ? `${igStats.saveRate}%` : '-'}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                {/* 오디언스 데모그래픽 */}
-                                                {(igStats.audienceFemaleRatio != null || igStats.audienceAge2534Ratio != null || igStats.audienceDomesticRatio != null) && (
-                                                    <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-pink-200">
-                                                        <div>
-                                                            <p className="text-[9px] text-pink-400">여성 팔로워</p>
-                                                            <p className="text-[11px] font-bold text-pink-700">
-                                                                {igStats.audienceFemaleRatio != null ? `${igStats.audienceFemaleRatio}%` : '-'}
-                                                            </p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[9px] text-pink-400">25~34세</p>
-                                                            <p className="text-[11px] font-bold text-pink-700">
-                                                                {igStats.audienceAge2534Ratio != null ? `${igStats.audienceAge2534Ratio}%` : '-'}
-                                                            </p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[9px] text-pink-400">국내 팔로워</p>
-                                                            <p className="text-[11px] font-bold text-pink-700">
-                                                                {igStats.audienceDomesticRatio != null ? `${igStats.audienceDomesticRatio}%` : '-'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ) : null}
-
-
-
-                                        <div className="space-y-2">
-                                            <p className="text-xs font-semibold text-slate-600">📹 콘텐츠 유형</p>
-                                            <div className="grid grid-cols-3 gap-1.5">
-                                                {(['reels', 'feed', 'story'] as const).map((ct) => (
-                                                    <button
-                                                        key={ct}
-                                                        onClick={() => setCalcContentType(ct)}
-                                                        className={`py-2 px-1 rounded-lg text-[11px] font-medium border transition-all ${calcContentType === ct
-                                                            ? 'bg-slate-900 text-white border-slate-900'
-                                                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-                                                            }`}
-                                                    >
-                                                        {ct === 'reels' ? '🎦 릴스' : ct === 'feed' ? '🖼️ 피드' : '⏱️ 스토리'}
-                                                        <span className="block text-[9px] opacity-60 mt-0.5">
-                                                            {ct === 'reels' ? '×1.5' : ct === 'feed' ? '×1.0' : '×0.5'}
-                                                        </span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* 부가 조건 */}
-                                        <div className="space-y-2">
-                                            <p className="text-xs font-semibold text-slate-600">➕ 부가 조건 (해당되면 체크)</p>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {[
-                                                    { key: 'usage', label: '2차 활용권', desc: '광고 소재 재사용', mult: '+35%', active: calcUsageRights, set: setCalcUsageRights },
-                                                    { key: 'excl', label: '독점 계약', desc: '경쟁사 협업 제한', mult: '+50%', active: calcExclusivity, set: setCalcExclusivity },
-                                                    { key: 'prod', label: '고제작 난이도', desc: '스튜디오·모델 포함', mult: '+30%', active: calcHighProduction, set: setCalcHighProduction },
-                                                    { key: 'season', label: '시의성 콘텐츠', desc: '트렌드·시즌 한정', mult: '+15%', active: calcSeason, set: setCalcSeason },
-                                                ].map(({ key, label, desc, mult, active, set }) => (
-                                                    <button
-                                                        key={key}
-                                                        onClick={() => set(!active)}
-                                                        className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left transition-all ${active
-                                                            ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                                                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                                                            }`}
-                                                    >
-                                                        <div className={`mt-0.5 h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 ${active ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300'
-                                                            }`}>
-                                                            {active && <span className="text-white text-[10px] font-bold">✓</span>}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[11px] font-semibold leading-tight">{label} <span className="text-[10px] font-normal text-emerald-600">{mult}</span></p>
-                                                            <p className="text-[10px] text-muted-foreground">{desc}</p>
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* 최종 단가 */}
-                                        <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 text-center">
-                                            <p className="text-xs text-muted-foreground mb-1">예상 광고 단가 범위 ({CONTENT_LABEL[calcContentType]})</p>
-                                            <p className="text-2xl font-bold text-emerald-700 tracking-tight">
-                                                {fmt(minValue)} ~ {fmt(maxValue)}
-                                            </p>
-                                            <p className="text-[11px] text-emerald-600 mt-1.5 font-medium">
-                                                평균 {fmt(Math.round((minValue + maxValue) / 2))}
-                                            </p>
-                                        </div>
-
-                                        {/* 계산 근거 - 단계별 시각화 */}
-                                        <div className="space-y-2 bg-slate-50 rounded-lg px-3 py-2.5 border">
-                                            <p className="text-[10px] font-semibold text-slate-600">📐 실효 CPE 계산 과정</p>
-                                            <div className="space-y-1">
-                                                {[
-                                                    { label: `카테고리 기준 CPE`, value: `₩${baseCpe.toLocaleString()}`, note: primaryTag || '미설정', color: 'text-slate-600' },
-                                                    ...(reachAdj != null && reachAdj !== 1.0 ? [{ label: '도달률 보정', value: `₩${Math.round(baseCpe * reachAdj).toLocaleString()}`, note: reachAdjLabel!, color: reachAdj >= 1.0 ? 'text-emerald-600' : 'text-red-500' }] : []),
-                                                    ...(saveAdj != null ? [{ label: '저장률 보정', value: '', note: saveAdjLabel!, color: 'text-emerald-600' }] : []),
-                                                    ...(femaleAdj != null ? [{ label: '여성 오디언스 보정', value: '', note: femaleAdjLabel!, color: 'text-pink-600' }] : []),
-                                                    ...(ageAdj != null ? [{ label: '25~34세 보정', value: '', note: ageAdjLabel!, color: 'text-purple-600' }] : []),
-                                                    ...(domesticAdj != null ? [{ label: '국내 팔로워 보정', value: '', note: domesticAdjLabel!, color: 'text-blue-600' }] : []),
-                                                    { label: '최종 실효 CPE', value: `₩${effectiveCpe.toLocaleString()}`, note: perfStats?.avgCpe ? '실제 캠페인 데이터' : '계산값', color: 'text-indigo-600 font-bold' },
-                                                ].map((step, i) => (
-                                                    <div key={i} className="flex items-center justify-between text-[10px]">
-                                                        <span className="text-slate-500">{step.label}</span>
-                                                        <span className={`${step.color} text-right`}>
-                                                            {step.value && <span className="font-semibold mr-1">{step.value}</span>}
-                                                            <span className="opacity-70">{step.note}</span>
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="pt-1.5 border-t text-[10px] text-slate-400">
-                                                <p>최종: {totalFollowers.toLocaleString()} × {(er * 100).toFixed(1)}% × ₩{effectiveCpe.toLocaleString()} × 콘텐츠{contentMult} × 부가{totalAddMult.toFixed(2)} = ₩{estimatedValue.toLocaleString()}</p>
-                                                {calcUsageRights && <span className="mr-2">· 2차활용+35%</span>}
-                                                {calcExclusivity && <span className="mr-2">· 독점+50%</span>}
-                                                {calcHighProduction && <span className="mr-2">· 고제작+30%</span>}
-                                                {calcSeason && <span>· 시의성+15%</span>}
-                                                {!primaryTag && <p className="text-amber-500 font-medium mt-0.5">💡 카테고리 태그를 설정하면 더 정확합니다</p>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )
-                            })()}
-                        </CardContent>
-                    </Card>
-
-                    {/* 활동 정보 & 정산 정보 */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>활동 정보 &amp; 정산 정보</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-8">
-
-                            {/* Rate Card - Extended Version (5 fields) */}
-                            <div className="space-y-4">
-                                <h3 className="text-base font-semibold">예상 단가표 (Rate Card)</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>숏폼 영상 (Reels/Shorts)</Label>
-                                        <div className="relative">
-                                            <Input
-                                                type="number"
-                                                value={priceVideo}
-                                                onChange={(e) => setPriceVideo(e.target.value)}
-                                                className="pr-8"
-                                                placeholder="0"
-                                            />
-                                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>피드 게시물 (Photo/Carousel)</Label>
-                                        <div className="relative">
-                                            <Input
-                                                type="number"
-                                                value={priceFeed}
-                                                onChange={(e) => setPriceFeed(e.target.value)}
-                                                className="pr-8"
-                                                placeholder="0"
-                                            />
-                                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>스토리 (Story)</Label>
-                                        <div className="relative">
-                                            <Input
-                                                type="number"
-                                                value={priceStory}
-                                                onChange={(e) => setPriceStory(e.target.value)}
-                                                className="pr-8"
-                                                placeholder="0"
-                                            />
-                                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>2차 활용권</Label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="relative">
-                                                <Input
-                                                    type="number"
-                                                    value={usageRightsMonth}
-                                                    onChange={(e) => setUsageRightsMonth(e.target.value)}
-                                                    className="pr-8"
-                                                    placeholder="기간"
-                                                />
-                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
-                                            </div>
-                                            <div className="relative">
-                                                <Input
-                                                    type="number"
-                                                    value={usageRightsPrice}
-                                                    onChange={(e) => setUsageRightsPrice(e.target.value)}
-                                                    className="pr-8"
-                                                    placeholder="비용"
-                                                />
-                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>자동 DM 발송</Label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="relative">
-                                                <Input
-                                                    type="number"
-                                                    value={autoDmMonth}
-                                                    onChange={(e) => setAutoDmMonth(e.target.value)}
-                                                    className="pr-8"
-                                                    placeholder="기간"
-                                                />
-                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
-                                            </div>
-                                            <div className="relative">
-                                                <Input
-                                                    type="number"
-                                                    value={autoDmPrice}
-                                                    onChange={(e) => setAutoDmPrice(e.target.value)}
-                                                    className="pr-8"
-                                                    placeholder="비용"
-                                                />
-                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+            {/* Rate Card - Extended Version (5 fields) */}
+            <div className="space-y-4">
+                <h3 className="text-base font-semibold">예상 단가표 (Rate Card)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>숏폼 영상 (Reels/Shorts)</Label>
+                        <div className="relative">
+                            <Input
+                                type="number"
+                                value={priceVideo}
+                                onChange={(e) => setPriceVideo(e.target.value)}
+                                className="pr-8"
+                                placeholder="0"
+                            />
+                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>피드 게시물 (Photo/Carousel)</Label>
+                        <div className="relative">
+                            <Input
+                                type="number"
+                                value={priceFeed}
+                                onChange={(e) => setPriceFeed(e.target.value)}
+                                className="pr-8"
+                                placeholder="0"
+                            />
+                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>스토리 (Story)</Label>
+                        <div className="relative">
+                            <Input
+                                type="number"
+                                value={priceStory}
+                                onChange={(e) => setPriceStory(e.target.value)}
+                                className="pr-8"
+                                placeholder="0"
+                            />
+                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>2차 활용권</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="relative">
+                                <Input
+                                    type="number"
+                                    value={usageRightsMonth}
+                                    onChange={(e) => setUsageRightsMonth(e.target.value)}
+                                    className="pr-8"
+                                    placeholder="기간"
+                                />
+                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
                             </div>
-
-                            {/* Bank Info */}
-                            <div className="space-y-4 pt-4 border-t">
-                                <h3 className="text-base font-semibold">정산 계좌 정보</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>은행명</Label>
-                                        <Input
-                                            value={bankName}
-                                            onChange={(e) => setBankName(e.target.value)}
-                                            placeholder="예: 카카오뱅크"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>계좌번호</Label>
-                                        <Input
-                                            value={accountNumber}
-                                            onChange={(e) => setAccountNumber(e.target.value)}
-                                            placeholder="하이픈(-) 포함"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>예금주</Label>
-                                        <Input
-                                            value={accountHolder}
-                                            onChange={(e) => setAccountHolder(e.target.value)}
-                                            placeholder="실명 입력"
-                                        />
-                                    </div>
-                                </div>
+                            <div className="relative">
+                                <Input
+                                    type="number"
+                                    value={usageRightsPrice}
+                                    onChange={(e) => setUsageRightsPrice(e.target.value)}
+                                    className="pr-8"
+                                    placeholder="비용"
+                                />
+                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>자동 DM 발송</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="relative">
+                                <Input
+                                    type="number"
+                                    value={autoDmMonth}
+                                    onChange={(e) => setAutoDmMonth(e.target.value)}
+                                    className="pr-8"
+                                    placeholder="기간"
+                                />
+                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
+                            </div>
+                            <div className="relative">
+                                <Input
+                                    type="number"
+                                    value={autoDmPrice}
+                                    onChange={(e) => setAutoDmPrice(e.target.value)}
+                                    className="pr-8"
+                                    placeholder="비용"
+                                />
+                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                    {/* Creator Legal/Tax Info */}
+            {/* Bank Info */}
+            <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-base font-semibold">정산 계좌 정보</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                        <Label>은행명</Label>
+                        <Input
+                            value={bankName}
+                            onChange={(e) => setBankName(e.target.value)}
+                            placeholder="예: 카카오뱅크"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>계좌번호</Label>
+                        <Input
+                            value={accountNumber}
+                            onChange={(e) => setAccountNumber(e.target.value)}
+                            placeholder="하이픈(-) 포함"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>예금주</Label>
+                        <Input
+                            value={accountHolder}
+                            onChange={(e) => setAccountHolder(e.target.value)}
+                            placeholder="실명 입력"
+                        />
+                    </div>
+                </div>
+            </div>
+        </CardContent>
+    </Card>
+
+    {/* Creator Legal/Tax Info */ }
                     <Card>
                         <CardHeader>
                             <CardTitle>계약서 · 세무 정보</CardTitle>
@@ -1257,24 +918,24 @@ export function SettingsView() {
                     </Card>
                 </>
             )
-            }
+}
 
-            {/* 위험 구역 - 프록시 모드에서는 숨김 */}
-            {
-                !isProxyMode && (
-                    <Card className="border-destructive/30">
-                        <CardHeader>
-                            <CardTitle className="text-destructive text-base">위험 구역</CardTitle>
-                            <CardDescription>
-                                계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <AccountDeleteDialog />
-                        </CardContent>
-                    </Card>
-                )
-            }
+{/* 위험 구역 - 프록시 모드에서는 숨김 */ }
+{
+    !isProxyMode && (
+        <Card className="border-destructive/30">
+            <CardHeader>
+                <CardTitle className="text-destructive text-base">위험 구역</CardTitle>
+                <CardDescription>
+                    계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <AccountDeleteDialog />
+            </CardContent>
+        </Card>
+    )
+}
         </div >
     )
 }
