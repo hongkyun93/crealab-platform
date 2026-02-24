@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "CreadyPick | 제품이 필요한 바로 그 순간에 연결합니다",
+    default: "CreadyPick | 광고는 타이밍!",
     template: "%s | CreadyPick",
   },
   description: "크리에이터의 라이프 모먼트(이사, 결혼, 여행 등)에 맞춰 브랜드 제품을 연결하는 세계 유일의 타이밍 매칭 플랫폼. 가입비 무료, 수수료 0%.",
