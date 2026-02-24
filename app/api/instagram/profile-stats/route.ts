@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/instagram/profile-stats?userId={userId}
-// 최근 게시물 인사이트 기반 실제 ER, 평균 도달수, 저장률 반환
+// 최근 게시물 인사이트 + 오디언스 데모그래픽 기반 실제 ER, 저장률, 도달률, 오디언스 분석 반환
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('userId')
@@ -31,14 +31,26 @@ export async function GET(req: NextRequest) {
 
     const { ig_user_id, ig_access_token, followers_count } = channel
 
-    // 2. 최근 12개 게시물 목록 조회
-    const mediaRes = await fetch(
-        `https://graph.facebook.com/v19.0/${ig_user_id}/media` +
-        `?fields=id,media_type,like_count,comments_count,timestamp` +
-        `&limit=12` +
-        `&access_token=${ig_access_token}`
-    )
-    const mediaData = await mediaRes.json()
+    // 2. 최근 12개 게시물 목록 + 오디언스 데모그래픽 병렬 조회
+    const [mediaRes, audienceRes] = await Promise.all([
+        fetch(
+            `https://graph.facebook.com/v19.0/${ig_user_id}/media` +
+            `?fields=id,media_type,like_count,comments_count,timestamp` +
+            `&limit=12` +
+            `&access_token=${ig_access_token}`
+        ),
+        fetch(
+            `https://graph.facebook.com/v19.0/${ig_user_id}/insights` +
+            `?metric=audience_gender_age,audience_country,audience_city` +
+            `&period=lifetime` +
+            `&access_token=${ig_access_token}`
+        )
+    ])
+
+    const [mediaData, audienceData] = await Promise.all([
+        mediaRes.json(),
+        audienceRes.json()
+    ])
 
     if (mediaData.error) {
         console.error('[profile-stats] Media fetch error:', mediaData.error)
@@ -46,11 +58,48 @@ export async function GET(req: NextRequest) {
     }
 
     const posts: any[] = mediaData.data || []
-    if (posts.length === 0) {
-        return NextResponse.json({ er: null, avgReach: null, avgSaves: null, postCount: 0 })
+
+    // 3. 오디언스 데이터 파싱
+    let audienceFemaleRatio: number | null = null
+    let audienceAge2534Ratio: number | null = null
+    let audienceDomesticRatio: number | null = null
+
+    if (!audienceData.error && audienceData.data) {
+        for (const metric of audienceData.data) {
+            if (metric.name === 'audience_gender_age' && metric.values?.[0]?.value) {
+                const genderAge: Record<string, number> = metric.values[0].value
+                const total = Object.values(genderAge).reduce((s: number, v: unknown) => s + (typeof v === 'number' ? v : 0), 0)
+                if (total > 0) {
+                    // 여성 비율
+                    const femaleTotal = Object.entries(genderAge)
+                        .filter(([k]) => k.startsWith('F.'))
+                        .reduce((s, [, v]) => s + (v as number), 0)
+                    audienceFemaleRatio = parseFloat(((femaleTotal / total) * 100).toFixed(1))
+
+                    // 25~34세 비율 (F.25-34 + M.25-34)
+                    const age2534 = (genderAge['F.25-34'] || 0) + (genderAge['M.25-34'] || 0)
+                    audienceAge2534Ratio = parseFloat(((age2534 / total) * 100).toFixed(1))
+                }
+            }
+            if (metric.name === 'audience_country' && metric.values?.[0]?.value) {
+                const countries: Record<string, number> = metric.values[0].value
+                const total = Object.values(countries).reduce((s: number, v: unknown) => s + (typeof v === 'number' ? v : 0), 0)
+                if (total > 0) {
+                    const kr = countries['KR'] || 0
+                    audienceDomesticRatio = parseFloat(((kr / total) * 100).toFixed(1))
+                }
+            }
+        }
     }
 
-    // 3. 각 게시물 인사이트 병렬 조회 (reach, saved)
+    // 4. 각 게시물 인사이트 병렬 조회 (reach, saved)
+    if (posts.length === 0) {
+        return NextResponse.json({
+            er: null, avgReach: null, avgSaves: null, postCount: 0,
+            audienceFemaleRatio, audienceAge2534Ratio, audienceDomesticRatio,
+        })
+    }
+
     const insightResults = await Promise.allSettled(
         posts.map(async (post) => {
             const mediaType: string = post.media_type || 'IMAGE'
@@ -86,23 +135,20 @@ export async function GET(req: NextRequest) {
         })
     )
 
-    // 4. 유효한 결과만 집계
+    // 5. 유효한 결과 집계
     const validPosts = insightResults
         .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
         .map(r => r.value)
-        .filter(p => p.reach > 0) // reach 0인 게시물 제외
+        .filter(p => p.reach > 0)
 
     if (validPosts.length === 0) {
-        // reach 데이터 없으면 팔로워 기반 fallback
         const totalEngagement = posts.reduce((s, p) => s + (p.like_count || 0) + (p.comments_count || 0), 0)
         const avgEngagement = totalEngagement / posts.length
-        const er = followers_count > 0 ? parseFloat(((avgEngagement / followers_count) * 100).toFixed(2)) : null
+        const er = (followers_count || 0) > 0 ? parseFloat(((avgEngagement / followers_count) * 100).toFixed(2)) : null
         return NextResponse.json({
-            er,
-            avgReach: null,
-            avgSaves: null,
-            avgLikes: Math.round(posts.reduce((s, p) => s + (p.like_count || 0), 0) / posts.length),
-            postCount: posts.length,
+            er, avgReach: null, avgSaves: null, avgLikes: Math.round(avgEngagement), postCount: posts.length,
+            saveRate: null, reachRate: null,
+            audienceFemaleRatio, audienceAge2534Ratio, audienceDomesticRatio,
             source: 'followers_fallback',
         })
     }
@@ -115,11 +161,9 @@ export async function GET(req: NextRequest) {
 
     // ER = (좋아요 + 댓글 + 저장) / reach × 100
     const avgEngagement = avgLikes + avgComments + avgSaves
-    const er = avgReach > 0
-        ? parseFloat(((avgEngagement / avgReach) * 100).toFixed(2))
-        : null
+    const er = avgReach > 0 ? parseFloat(((avgEngagement / avgReach) * 100).toFixed(2)) : null
 
-    // 저장률 = saves / reach (전환 의도 지표)
+    // 저장률 = saves / reach (구매 의향 지표)
     const saveRate = avgReach > 0 ? parseFloat(((avgSaves / avgReach) * 100).toFixed(2)) : null
 
     // 도달률 = reach / followers (팔로워 품질 지표)
@@ -136,6 +180,9 @@ export async function GET(req: NextRequest) {
         avgViews,
         saveRate,
         reachRate,
+        audienceFemaleRatio,
+        audienceAge2534Ratio,
+        audienceDomesticRatio,
         postCount: validPosts.length,
         source: 'instagram_api',
     })

@@ -168,6 +168,9 @@ export function SettingsView() {
     const [igStats, setIgStats] = useState<{
         er: number | null, avgReach: number | null, avgLikes: number | null,
         avgSaves: number | null, saveRate: number | null, reachRate: number | null,
+        audienceFemaleRatio: number | null,
+        audienceAge2534Ratio: number | null,
+        audienceDomesticRatio: number | null,
         postCount: number, source: string
     } | null>(null)
     const [igStatsLoading, setIgStatsLoading] = useState(false)
@@ -758,7 +761,46 @@ export function SettingsView() {
                                             : erRatio >= 1.0 ? 'text-blue-600 bg-blue-50 border-blue-200'
                                                 : 'text-orange-500 bg-orange-50 border-orange-200'
 
-                                const effectiveCpe = perfStats?.avgCpe ?? Math.round(baseCpe * erPremium)
+                                const effectiveCpe = perfStats?.avgCpe ?? (() => {
+                                    let cpe = Math.round(baseCpe * erPremium)
+
+                                    // ── 도달률 보정: 유령 팔로워 페널티 / 진성 팔로워 보너스 ──
+                                    // reach rate = 평균도달 / 팔로워 (정상: 20~40%, 낮으면 유령 팔로워)
+                                    if (igStats?.reachRate != null) {
+                                        const rr = igStats.reachRate
+                                        const reachAdj = rr >= 40 ? 1.15 : rr >= 25 ? 1.05 : rr >= 15 ? 1.0 : rr >= 8 ? 0.85 : 0.7
+                                        cpe = Math.round(cpe * reachAdj)
+                                    }
+
+                                    // ── 저장률 보정: 구매 의향 지표 ──
+                                    // save rate = 저장 / 도달 (2%+ = 높음, 5%+ = 매우 높음)
+                                    if (igStats?.saveRate != null) {
+                                        const sr = igStats.saveRate
+                                        const saveAdj = sr >= 5 ? 1.25 : sr >= 3 ? 1.15 : sr >= 1.5 ? 1.05 : 1.0
+                                        cpe = Math.round(cpe * saveAdj)
+                                    }
+
+                                    // ── 오디언스 보정: 성별/연령/지역 ──
+                                    if (igStats?.audienceFemaleRatio != null) {
+                                        // 뷰티/패션/육아 카테고리는 여성 비율 높을수록 프리미엄
+                                        const femaleCategories = ['💄 뷰티', '👗 패션', '👶 육아', '💍 웨딩/결혼']
+                                        if (femaleCategories.includes(primaryTag) && igStats.audienceFemaleRatio >= 70) {
+                                            cpe = Math.round(cpe * 1.20) // 여성 70%+ + 여성 카테고리
+                                        } else if (femaleCategories.includes(primaryTag) && igStats.audienceFemaleRatio >= 60) {
+                                            cpe = Math.round(cpe * 1.10)
+                                        }
+                                    }
+                                    if (igStats?.audienceAge2534Ratio != null && igStats.audienceAge2534Ratio >= 30) {
+                                        // 25~34세 30%+ = 소비력 최고 연령대 → 프리미엄
+                                        cpe = Math.round(cpe * 1.10)
+                                    }
+                                    if (igStats?.audienceDomesticRatio != null && igStats.audienceDomesticRatio >= 75) {
+                                        // 국내 팔로워 75%+ = 한국 브랜드엔 최적
+                                        cpe = Math.round(cpe * 1.08)
+                                    }
+
+                                    return cpe
+                                })()
 
                                 // ── 4. 콘텐츠 유형 배율 ──
                                 const CONTENT_MULT: Record<string, number> = {
@@ -824,11 +866,12 @@ export function SettingsView() {
                                                 📸 Instagram 실측 데이터 불러오는 중...
                                             </div>
                                         ) : igStats && igStats.source === 'instagram_api' ? (
-                                            <div className="px-3 py-2.5 rounded-lg bg-pink-50 border border-pink-200 space-y-1.5">
+                                            <div className="px-3 py-2.5 rounded-lg bg-pink-50 border border-pink-200 space-y-2">
                                                 <p className="text-[10px] font-semibold text-pink-700 flex items-center gap-1">
                                                     📸 Instagram 실측 인사이트
                                                     <span className="text-[9px] font-normal text-pink-400">최근 {igStats.postCount}개 게시물 기준</span>
                                                 </p>
+                                                {/* 게시물 인사이트 */}
                                                 <div className="grid grid-cols-4 gap-2 text-center">
                                                     <div>
                                                         <p className="text-[9px] text-pink-400">평균 도달</p>
@@ -855,8 +898,32 @@ export function SettingsView() {
                                                         </p>
                                                     </div>
                                                 </div>
+                                                {/* 오디언스 데모그래픽 */}
+                                                {(igStats.audienceFemaleRatio != null || igStats.audienceAge2534Ratio != null || igStats.audienceDomesticRatio != null) && (
+                                                    <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-pink-200">
+                                                        <div>
+                                                            <p className="text-[9px] text-pink-400">여성 팔로워</p>
+                                                            <p className="text-[11px] font-bold text-pink-700">
+                                                                {igStats.audienceFemaleRatio != null ? `${igStats.audienceFemaleRatio}%` : '-'}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[9px] text-pink-400">25~34세</p>
+                                                            <p className="text-[11px] font-bold text-pink-700">
+                                                                {igStats.audienceAge2534Ratio != null ? `${igStats.audienceAge2534Ratio}%` : '-'}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[9px] text-pink-400">국내 팔로워</p>
+                                                            <p className="text-[11px] font-bold text-pink-700">
+                                                                {igStats.audienceDomesticRatio != null ? `${igStats.audienceDomesticRatio}%` : '-'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : null}
+
 
 
                                         <div className="space-y-2">
