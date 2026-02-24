@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
 import { cn } from "@/lib/utils"
-import { BookOpen, Instagram, Loader2, Lock, Music2, Plus, Save, Trash2, TrendingUp, Youtube } from "lucide-react"
+import { BookOpen, Instagram, Loader2, Lock, Music2, Plus, Save, Trash2, TrendingUp, Youtube, ChevronDown } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -250,7 +251,10 @@ export function SettingsView() {
     useEffect(() => {
         const igConnected = searchParams.get('ig_connected')
         const igError = searchParams.get('ig_error')
-        if (igConnected === 'true') {
+        const igConnectedBasic = searchParams.get('ig_connected_basic')
+        const igErrorBasic = searchParams.get('ig_error_basic')
+
+        if (igConnected === 'true' || igConnectedBasic === 'true') {
             toast.success('📸 Instagram이 성공적으로 연결되었습니다!')
             if (effectiveUserId) fetchChannels(effectiveUserId)
             router.replace('/creator?tab=settings')
@@ -260,6 +264,12 @@ export function SettingsView() {
                 : igError === 'cancelled'
                     ? '연결이 취소되었습니다.'
                     : 'Instagram 연결 중 오류가 발생했습니다.'
+            toast.error(msg)
+            router.replace('/creator?tab=settings')
+        } else if (igErrorBasic) {
+            const msg = igErrorBasic === 'cancelled'
+                ? 'Instagram 연결이 취소되었습니다.'
+                : 'Instagram 직접 연동 중 오류가 발생했습니다.'
             toast.error(msg)
             router.replace('/creator?tab=settings')
         }
@@ -518,16 +528,46 @@ export function SettingsView() {
                                 <div className="flex items-center gap-2">
                                     {/* Instagram OAuth 연결 버튼 */}
                                     {effectiveUserId && (
-                                        <Button
-                                            variant="outline"
-                                            className="gap-2 border-pink-200 text-pink-600 hover:bg-pink-50"
-                                            onClick={() => {
-                                                window.location.href = `/api/instagram/connect?userId=${effectiveUserId}`
-                                            }}
-                                        >
-                                            <Instagram className="h-4 w-4" />
-                                            Instagram 연결
-                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className="gap-2 border-pink-200 text-pink-600 hover:bg-pink-50"
+                                                >
+                                                    <Instagram className="h-4 w-4" />
+                                                    Instagram 연결
+                                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-[240px]">
+                                                <DropdownMenuLabel>연결 방식 선택</DropdownMenuLabel>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    onClick={() => window.location.href = `/api/instagram/connect?userId=${effectiveUserId}`}
+                                                    className="gap-2 cursor-pointer py-3"
+                                                >
+                                                    <div className="bg-pink-100 p-1.5 rounded-md">
+                                                        <TrendingUp className="h-4 w-4 text-pink-600" />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-sm">비즈니스 계정 연결 <span className="text-xs text-primary font-bold">(추천)</span></span>
+                                                        <span className="text-xs text-muted-foreground whitespace-normal">조회수 등 상세 통계 제공 (Facebook 필요)</span>
+                                                    </div>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => window.location.href = `/api/instagram/connect-basic?userId=${effectiveUserId}`}
+                                                    className="gap-2 cursor-pointer py-3"
+                                                >
+                                                    <div className="bg-slate-100 p-1.5 rounded-md">
+                                                        <Instagram className="h-4 w-4 text-slate-600" />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-sm">일반 인스타그램 연결</span>
+                                                        <span className="text-xs text-muted-foreground whitespace-normal">계정 소유 인증 전용 (팔로워 수 직접 기입)</span>
+                                                    </div>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     )}
                                     <Dialog open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen}>
                                         <DialogTrigger asChild>

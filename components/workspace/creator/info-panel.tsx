@@ -23,7 +23,7 @@ export function CreatorInfoPanel() {
 
     // Helper to determine stage status
     const getStageStatus = (stageId: string) => {
-        const stages = ['negotiation', 'contract', 'shipping', 'content', 'completed'];
+        const stages = ['negotiation', 'contract', 'shipping', 'content', 'settlement', 'final_complete'];
         const currentIndex = stages.indexOf(currentStage);
         const stageIndex = stages.indexOf(stageId);
 
@@ -88,9 +88,9 @@ export function CreatorInfoPanel() {
         }
     }, [(proposal as any)?.payment_confirmed_at]);
 
-    // completed 단계 진입 시 기존 성과 데이터 조회
+    // settlement 단계 진입 시 기존 성과 데이터 조회
     useEffect(() => {
-        if (currentStage !== 'completed' || !proposal?.id) return;
+        if (currentStage !== 'settlement' || !proposal?.id) return;
         const proposalType = (proposal as any).moment_id || (proposal as any).event_id
             ? 'moment_proposal'
             : (proposal as any).campaignId || (proposal as any).campaign_id
@@ -157,6 +157,19 @@ export function CreatorInfoPanel() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || '성과 제출 실패');
             setPerfSubmitted(data.data);
+            // 제출 완료 → proposal status 'completed' + 최종완료 단계로 이동
+            const completionUpdates: any = { status: 'completed', completed_at: new Date().toISOString() };
+            if ((proposal as any).moment_id || (proposal as any).event_id) {
+                await updateMomentProposal(proposal.id, completionUpdates);
+            } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                await updateProposal(proposal.id, completionUpdates);
+            } else {
+                await updateBrandProposal(proposal.id, completionUpdates);
+            }
+            useWorkspaceStore.getState().updateProposal(completionUpdates);
+            useWorkspaceStore.getState().setCurrentStage('final_complete');
+            refreshData();
+            if (brandId) sendNotification(brandId, '크리에이터가 성과를 제출했습니다! 확인해주세요.', 'performance_submitted', proposal.id?.toString());
             toast.success('Instagram 인사이트 기반 성과 제출 완료! 🎉');
         } catch (err: any) {
             toast.error(err.message);
@@ -257,6 +270,20 @@ export function CreatorInfoPanel() {
 
             if (error) throw error;
             setPerfSubmitted(data);
+            // 제출 완료 → proposal status 'completed' + 최종완료 단계로 이동
+            const completionUpdates: any = { status: 'completed', completed_at: new Date().toISOString() };
+            if ((proposal as any).moment_id || (proposal as any).event_id) {
+                await updateMomentProposal(proposal.id, completionUpdates);
+            } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                await updateProposal(proposal.id, completionUpdates);
+            } else {
+                await updateBrandProposal(proposal.id, completionUpdates);
+            }
+            useWorkspaceStore.getState().updateProposal(completionUpdates);
+            useWorkspaceStore.getState().setCurrentStage('final_complete');
+            refreshData();
+            const brandId2 = (proposal as any).brand_id || (proposal as any).brandId;
+            if (brandId2) sendNotification(brandId2, '크리에이터가 성과를 제출했습니다! 확인해주세요.', 'performance_submitted', proposal.id?.toString());
             toast.success('성과 데이터가 제출되었습니다! 🎉');
         } catch (err: any) {
             toast.error(err.message || '제출 중 오류가 발생했습니다.');
@@ -1037,8 +1064,8 @@ export function CreatorInfoPanel() {
                         </div>
                     </StageCard>
 
-                    {/* Stage 5: Completed — 성과 제출 */}
-                    {currentStage === 'completed' && (
+                    {/* Stage 5: Settlement — 협업 완료 · 성과 제출 */}
+                    {currentStage === 'settlement' && (
                         <StageCard
                             id="completed"
                             title="협업 완료 · 성과 제출"
@@ -1102,8 +1129,8 @@ export function CreatorInfoPanel() {
                                             <button
                                                 onClick={() => { setIgTab('instagram'); if (igMediaList.length === 0) handleFetchIgMedia(); }}
                                                 className={`flex-1 text-xs font-medium rounded-md py-1.5 flex items-center justify-center gap-1 transition-colors ${igTab === 'instagram'
-                                                        ? 'bg-white dark:bg-zinc-800 shadow-sm text-foreground'
-                                                        : 'text-muted-foreground hover:text-foreground'
+                                                    ? 'bg-white dark:bg-zinc-800 shadow-sm text-foreground'
+                                                    : 'text-muted-foreground hover:text-foreground'
                                                     }`}
                                             >
                                                 <Instagram className="h-3 w-3" /> 자동 가져오기
@@ -1111,8 +1138,8 @@ export function CreatorInfoPanel() {
                                             <button
                                                 onClick={() => setIgTab('screenshot')}
                                                 className={`flex-1 text-xs font-medium rounded-md py-1.5 flex items-center justify-center gap-1 transition-colors ${igTab === 'screenshot'
-                                                        ? 'bg-white dark:bg-zinc-800 shadow-sm text-foreground'
-                                                        : 'text-muted-foreground hover:text-foreground'
+                                                    ? 'bg-white dark:bg-zinc-800 shadow-sm text-foreground'
+                                                    : 'text-muted-foreground hover:text-foreground'
                                                     }`}
                                             >
                                                 <BarChart3 className="h-3 w-3" /> 스크린샷
@@ -1294,6 +1321,29 @@ export function CreatorInfoPanel() {
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        </StageCard>
+                    )}
+
+                    {/* Stage 6: Final Complete — 모든 과정 완료 */}
+                    {currentStage === 'final_complete' && (
+                        <StageCard
+                            id="final_complete"
+                            title="🎉 모든 협업 과정 완료"
+                            isActive={true}
+                            isCompleted={false}
+                            summary="성과 제출까지 완료되었습니다"
+                        >
+                            <div className="space-y-3">
+                                <div className="flex flex-col items-center gap-3 py-4 text-center">
+                                    <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                        <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-sm text-emerald-700 dark:text-emerald-300">협업이 성공적으로 완료되었습니다!</p>
+                                        <p className="text-xs text-muted-foreground mt-1">성과 데이터 제출이 완료되어 최종 정산이 처리됩니다.</p>
+                                    </div>
+                                </div>
                             </div>
                         </StageCard>
                     )}

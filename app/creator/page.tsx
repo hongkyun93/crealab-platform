@@ -648,7 +648,7 @@ function InfluencerDashboardContent() {
             useWorkspaceStore.getState().setProposal(chatProposal);
 
             // 2. Determine Current Stage
-            let stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'completed' = 'negotiation';
+            let stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete' = 'negotiation';
 
             if (chatProposal.brand_condition_confirmed && chatProposal.influencer_condition_confirmed) stage = 'contract';
             if (chatProposal.contract_status === 'signed') stage = 'contract'; // 계약 서명 완료 → 입금 대기
@@ -658,17 +658,24 @@ function InfluencerDashboardContent() {
             if (chatProposal.content_submission_url || chatProposal.content_submission_file_url) {
                 stage = 'content'; // 초안 제출 → content 단계 유지
             }
-            // [FIX] 최종본(content_final_url) 제출 완료 시에만 completed로 이동
-            // 클린본(content_clean_url)은 계약에 따라 없을 수 있으므로 고려하지 않음
-            if (chatProposal.content_final_url || chatProposal.status === 'completed') {
-                stage = 'completed';
+            // [FIX] 최종본(content_final_url) 제출 완료 시 content 단계 유지
+            if (chatProposal.content_final_url) {
+                stage = 'content';
+            }
+            // 브랜드가 협업완료/정산승인 → settlement 단계
+            if ((chatProposal as any).status === 'settlement') {
+                stage = 'settlement';
+            }
+            // 크리에이터 성과 제출 완료 → final_complete 단계
+            if ((chatProposal as any).status === 'completed') {
+                stage = 'final_complete';
             }
 
             useWorkspaceStore.getState().setCurrentStage(stage);
 
             // Auto-open VideoReviewPanel when content has been submitted
             const hasSubmittedContent = !!(chatProposal.content_submission_url || chatProposal.content_submission_file_url)
-            useWorkspaceStore.getState().setVideoReviewOpen(hasSubmittedContent && (stage === 'content' || stage === 'completed'))
+            useWorkspaceStore.getState().setVideoReviewOpen(hasSubmittedContent && (stage === 'content' || stage === 'settlement' || stage === 'final_complete'))
         }
     }, [chatProposal]);
 

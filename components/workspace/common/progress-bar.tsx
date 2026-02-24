@@ -9,7 +9,8 @@ const STAGES = [
     { id: 'contract', label: '계약서' },
     { id: 'shipping', label: '제품발송' },
     { id: 'content', label: '콘텐츠' },
-    { id: 'completed', label: '완료' },
+    { id: 'settlement', label: '정산' },
+    { id: 'final_complete', label: '최종완료' },
 ] as const;
 
 export function ProgressBar() {
@@ -26,7 +27,7 @@ export function ProgressBar() {
     return (
         <div className="w-full flex items-center justify-between px-2 py-4">
             {STAGES.map((stage, index) => {
-                const isCompleted = index < currentStepIndex || currentStage === 'completed';
+                const isCompleted = index < currentStepIndex || currentStage === 'final_complete';
                 const isCurrent = stage.id === currentStage;
 
                 return (

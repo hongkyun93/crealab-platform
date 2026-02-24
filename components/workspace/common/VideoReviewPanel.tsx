@@ -1052,18 +1052,19 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                     size="sm"
                                     onClick={async () => {
                                         if (!proposalId) return;
-                                        const updates: any = { status: 'completed', content_submission_status: 'completed' };
+                                        const updates: any = { status: 'settlement', content_submission_status: 'completed' };
                                         let success = false;
                                         if (isMoment) success = await updateMomentProposal(proposalId, updates);
                                         else if (isCampaign) success = await updateProposal(proposalId, updates);
                                         else success = await updateBrandProposal(proposalId, updates);
                                         if (success) {
                                             useWorkspaceStore.getState().updateProposal(updates);
+                                            useWorkspaceStore.getState().setCurrentStage('settlement');
                                             refreshData();
-                                            toast.success('협업이 완료되었습니다. 관리자가 크리에이터 정산을 진행합니다. 🎉');
+                                            toast.success('협업 완료 및 정산 승인되었습니다. 크리에이터가 성과를 제출합니다. 🎉');
                                             const creatorId = (proposal as any)?.influencer_id || (proposal as any)?.creator_id;
                                             if (creatorId) {
-                                                sendNotification(creatorId, '협업이 완료되었습니다! 감사합니다.', 'collaboration_complete', proposalId);
+                                                sendNotification(creatorId, '협업이 완료되었습니다! 인사이트 성과를 제출해주세요.', 'collaboration_complete', proposalId);
                                             }
                                         }
                                     }}

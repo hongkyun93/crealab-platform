@@ -6,7 +6,7 @@ import { create } from 'zustand';
 interface WorkspaceState {
     // Data
     proposal: Proposal | null;
-    currentStage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'completed';
+    currentStage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete';
 
     // UI State
     isChatOpen: boolean;
@@ -18,7 +18,7 @@ interface WorkspaceState {
     // Actions
     setProposal: (proposal: any) => void;
     updateProposal: (fields: Partial<Proposal>) => void;
-    setCurrentStage: (stage: WorkspaceState['currentStage']) => void;
+    setCurrentStage: (stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete') => void;
     setIsChatOpen: (isOpen: boolean) => void;
     toggleSection: (sectionId: string) => void;
     setMobileTab: (tab: WorkspaceState['activeMobileTab']) => void;

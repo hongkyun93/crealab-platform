@@ -41,9 +41,9 @@ export function InfoPanel() {
         }
     }, [(proposal as any)?.payment_confirmed_at]);
 
-    // completed 단계 진입 시 campaign_performance 조회
+    // settlement 또는 final_complete 단계 진입 시 campaign_performance 조회
     useEffect(() => {
-        if (currentStage !== 'completed' || !proposal?.id) return;
+        if ((currentStage !== 'settlement' && currentStage !== 'final_complete') || !proposal?.id) return;
         const proposalType = (proposal as any).moment_id || (proposal as any).event_id
             ? 'moment_proposal'
             : (proposal as any).campaignId || (proposal as any).campaign_id
@@ -74,7 +74,7 @@ export function InfoPanel() {
 
     // Helper to determine stage status
     const getStageStatus = (stageId: string) => {
-        const stages = ['negotiation', 'contract', 'shipping', 'content', 'completed'];
+        const stages = ['negotiation', 'contract', 'shipping', 'content', 'settlement', 'final_complete'];
         const currentIndex = stages.indexOf(currentStage);
         const stageIndex = stages.indexOf(stageId);
 
@@ -278,7 +278,8 @@ export function InfoPanel() {
                             currentStage === 'contract' ? '크리에이터의 서명을 기다리고 있습니다.' :
                                 currentStage === 'shipping' ? '운송장 번호를 입력해주세요.' :
                                     currentStage === 'content' ? '콘텐츠 초안을 확인해주세요.' :
-                                        '모든 단계가 완료되었습니다.'}
+                                        currentStage === 'settlement' ? '크리에이터의 성과 제출을 기다리고 있습니다.' :
+                                            '모든 단계가 완료되었습니다. 🎉'}
                     </p>
                     {/* The original CTA button was here, but the instruction removed it. */}
                 </div>
@@ -647,18 +648,18 @@ export function InfoPanel() {
                                                 size="sm"
                                                 onClick={async () => {
                                                     if (!proposal?.id) return;
-                                                    const updates: any = { status: 'completed', content_submission_status: 'completed' };
+                                                    const updates: any = { status: 'settlement', content_submission_status: 'completed' };
                                                     let success = false;
                                                     if ((proposal as any).moment_id) success = await updateMomentProposal(proposal.id, updates);
                                                     else if ((proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
                                                     else success = await updateBrandProposal(proposal.id, updates);
                                                     if (success) {
                                                         useWorkspaceStore.getState().updateProposal(updates);
-                                                        useWorkspaceStore.getState().setCurrentStage('completed');
+                                                        useWorkspaceStore.getState().setCurrentStage('settlement');
                                                         refreshData();
-                                                        toast.success('협업이 완료되었습니다. 관리자가 크리에이터 정산을 진행합니다. 🎉');
+                                                        toast.success('협업 완료 및 정산 승인되었습니다. 크리에이터가 성과를 제출합니다. 🎉');
                                                         const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
-                                                        if (creatorId) sendNotification(creatorId, '협업이 완료되었습니다! 감사합니다.', 'collaboration_complete', proposal.id?.toString());
+                                                        if (creatorId) sendNotification(creatorId, '협업이 완료되었습니다! 인사이트 성과를 제출해주세요.', 'collaboration_complete', proposal.id?.toString());
                                                     }
                                                 }}
                                             >
@@ -666,7 +667,7 @@ export function InfoPanel() {
                                             </Button>
                                             <p className="text-[10px] text-emerald-600/70 text-center leading-relaxed">
                                                 완료 버튼을 누르면 크리에이터에게 비용 지급이 승인되며 수정이 불가능합니다.<br />
-                                                (보관된 결제 대금 정산 대기조로 이동)
+                                                (크리에이터가 성과 데이터를 제출하면 최종 완료됩니다)
                                             </p>
                                         </div>
                                     )}
@@ -675,8 +676,8 @@ export function InfoPanel() {
                         </div>
                     </StageCard>
 
-                    {/* Stage 5: Completed — 성과 조회 */}
-                    {currentStage === 'completed' && (
+                    {/* Stage 5: Settlement — 정산 대기 & 성과 조회 */}
+                    {(currentStage === 'settlement' || currentStage === 'final_complete') && (
                         <StageCard
                             id="completed"
                             title="협업 완료 · 성과 확인"
