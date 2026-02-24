@@ -656,14 +656,14 @@ export function SettingsView() {
 
                     {/* Edit Channel Dialog */}
 
-                    {/* 평트떼지 가치 계산기 */}
+                    {/* 내 광고 가치 계산기 */}
                     <Card className="border-emerald-200/60 bg-gradient-to-br from-emerald-50/40 to-transparent">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-sm font-semibold flex items-center gap-2">
                                 <TrendingUp className="h-4 w-4 text-emerald-600" />
                                 내 광고 가치 계산기
                                 <span className="text-xs font-normal text-muted-foreground ml-1">
-                                    {perfStats?.count ? `${perfStats.count}건 협업 데이터 기반` : '업계 평균 기준 예상치'}
+                                    {perfStats?.count ? `${perfStats.count}건 실적 데이터 기반` : '업계 평균 기준 예상치'}
                                 </span>
                             </CardTitle>
                         </CardHeader>
@@ -673,46 +673,106 @@ export function SettingsView() {
                                 if (totalFollowers === 0) {
                                     return <p className="text-sm text-muted-foreground">소셜 채널을 연결하면 예상 단가를 확인할 수 있습니다.</p>
                                 }
-                                const er = perfStats?.avgEngagementRate ??
-                                    (totalFollowers >= 1000000 ? 0.012 : totalFollowers >= 100000 ? 0.025 : totalFollowers >= 10000 ? 0.04 : 0.06)
-                                const cpe = perfStats?.avgCpe ??
-                                    (totalFollowers >= 1000000 ? 3000 : totalFollowers >= 100000 ? 1500 : totalFollowers >= 10000 ? 800 : 500)
-                                const estimatedValue = Math.round(totalFollowers * er * cpe)
+
+                                // ── 1. 참여율 (실적 우선, 없으면 팔로워 티어 추정) ──
+                                const er: number = perfStats?.avgEngagementRate ??
+                                    (totalFollowers >= 1000000 ? 0.012
+                                        : totalFollowers >= 100000 ? 0.025
+                                            : totalFollowers >= 10000 ? 0.04
+                                                : 0.06)
+
+                                // ── 2. 카테고리별 기준 CPE ──
+                                const primaryTag = selectedTags[0] || ''
+                                const CATEGORY_CPE: Record<string, number> = {
+                                    '💊 건강': 2200, '💉 시술/병원': 2200, '🥗 다이어트': 2000,
+                                    '💄 뷰티': 1800,
+                                    '💻 테크/IT': 1600,
+                                    '💍 웨딩/결혼': 1500,
+                                    '👶 육아': 1300,
+                                    '🏋️ 헬스/운동': 1300,
+                                    '👗 패션': 1200,
+                                    '✈️ 여행': 1100,
+                                    '🏡 리빙/인테리어': 1000,
+                                    '🐶 반려동물': 900,
+                                    '🍽️ 맛집': 700,
+                                    '🎮 게임': 600,
+                                }
+                                const baseCpe = CATEGORY_CPE[primaryTag] ?? 800
+
+                                // ── 3. 참여율 프리미엄 ──
+                                const erPremium = er >= 0.08 ? 1.5 : er >= 0.04 ? 1.0 : er >= 0.02 ? 0.7 : 0.4
+                                const erLabel = er >= 0.08 ? '팬덤형' : er >= 0.04 ? '우수' : er >= 0.02 ? '평균' : '도달형'
+                                const erColor = er >= 0.08 ? 'text-purple-600 bg-purple-50 border-purple-200'
+                                    : er >= 0.04 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                                        : er >= 0.02 ? 'text-blue-600 bg-blue-50 border-blue-200'
+                                            : 'text-slate-500 bg-slate-50 border-slate-200'
+
+                                // ── 4. 최종 단가 계산 ──
+                                const effectiveCpe = perfStats?.avgCpe ?? Math.round(baseCpe * erPremium)
+                                const estimatedValue = Math.round(totalFollowers * er * effectiveCpe)
                                 const minValue = Math.round(estimatedValue * 0.8)
                                 const maxValue = Math.round(estimatedValue * 1.2)
+
                                 const fmt = (n: number) => {
-                                    if (n >= 10000000) return `${(n / 10000000).toFixed(1)}억원`
-                                    if (n >= 10000) return `${(n / 10000).toFixed(0)}만원`
+                                    if (n >= 100000000) return `${(n / 100000000).toFixed(1)}억`
+                                    if (n >= 10000) return `${Math.round(n / 10000)}만원`
                                     return `${n.toLocaleString()}원`
                                 }
+
+                                // 팔로워 티어 라벨
+                                const tierLabel = totalFollowers >= 1000000 ? '메가' : totalFollowers >= 100000 ? '매크로' : totalFollowers >= 10000 ? '마이크로' : '나노'
+                                const tierColor = totalFollowers >= 1000000 ? 'text-orange-600' : totalFollowers >= 100000 ? 'text-blue-600' : totalFollowers >= 10000 ? 'text-emerald-600' : 'text-slate-500'
+
                                 return (
-                                    <div className="space-y-3">
-                                        <div className="grid grid-cols-3 gap-3 text-center">
-                                            <div className="p-2 rounded-lg bg-white border">
+                                    <div className="space-y-4">
+                                        {/* 지표 요약 */}
+                                        <div className="grid grid-cols-4 gap-2 text-center">
+                                            <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
                                                 <p className="text-[10px] text-muted-foreground">팔로워</p>
-                                                <p className="text-sm font-semibold">
+                                                <p className={`text-sm font-bold ${tierColor}`}>
                                                     {totalFollowers >= 10000 ? `${(totalFollowers / 10000).toFixed(1)}만` : totalFollowers.toLocaleString()}
                                                 </p>
+                                                <p className={`text-[9px] font-medium ${tierColor}`}>{tierLabel}</p>
                                             </div>
-                                            <div className="p-2 rounded-lg bg-white border">
+                                            <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
                                                 <p className="text-[10px] text-muted-foreground">참여율</p>
-                                                <p className="text-sm font-semibold text-emerald-600">{(er * 100).toFixed(1)}%</p>
+                                                <p className="text-sm font-bold text-emerald-600">{(er * 100).toFixed(1)}%</p>
+                                                <span className={`inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${erColor}`}>{erLabel}</span>
                                             </div>
-                                            <div className="p-2 rounded-lg bg-white border">
-                                                <p className="text-[10px] text-muted-foreground">CPE</p>
-                                                <p className="text-sm font-semibold">₩{Math.round(cpe).toLocaleString()}</p>
+                                            <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
+                                                <p className="text-[10px] text-muted-foreground">카테고리 CPE</p>
+                                                <p className="text-sm font-bold">₩{baseCpe.toLocaleString()}</p>
+                                                <p className="text-[9px] text-muted-foreground truncate">{primaryTag || '미설정'}</p>
+                                            </div>
+                                            <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
+                                                <p className="text-[10px] text-muted-foreground">실효 CPE</p>
+                                                <p className="text-sm font-bold text-indigo-600">₩{effectiveCpe.toLocaleString()}</p>
+                                                <p className="text-[9px] text-muted-foreground">×{erPremium} 보정</p>
                                             </div>
                                         </div>
-                                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-center">
-                                            <p className="text-xs text-muted-foreground mb-1">예상 광고 단가 범위</p>
-                                            <p className="text-xl font-bold text-emerald-700">
+
+                                        {/* 단가 범위 */}
+                                        <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 text-center">
+                                            <p className="text-xs text-muted-foreground mb-1">예상 광고 단가 범위 (1콘텐츠 기준)</p>
+                                            <p className="text-2xl font-bold text-emerald-700 tracking-tight">
                                                 {fmt(minValue)} ~ {fmt(maxValue)}
                                             </p>
-                                            <p className="text-[10px] text-muted-foreground mt-1">
-                                                {perfStats?.count
-                                                    ? `실제 ${perfStats.count}건 협업의 평균 CPE ⋅ 참여율 기반`
-                                                    : '캔페인 데이터가 쌓일수록 더 정확해집니다'}
+                                            <p className="text-[11px] text-emerald-600 mt-1.5 font-medium">
+                                                평균 {fmt(Math.round((minValue + maxValue) / 2))}
                                             </p>
+                                        </div>
+
+                                        {/* 계산 근거 */}
+                                        <div className="text-[10px] text-muted-foreground space-y-1 bg-slate-50 rounded-lg px-3 py-2.5 border">
+                                            <p className="font-semibold text-slate-600 mb-1">📐 계산 근거</p>
+                                            <p>팔로워 {totalFollowers.toLocaleString()} × ER {(er * 100).toFixed(1)}% × 실효CPE ₩{effectiveCpe.toLocaleString()}</p>
+                                            <p className="text-slate-400">
+                                                {primaryTag ? `카테고리(${primaryTag}) 기준 CPE ₩${baseCpe.toLocaleString()}` : '카테고리 미설정 (기본 CPE 적용)'} · ER 보정 ×{erPremium}
+                                            </p>
+                                            {!primaryTag && (
+                                                <p className="text-amber-500 font-medium">💡 카테고리 태그를 설정하면 더 정확한 단가가 계산됩니다</p>
+                                            )}
+                                            <p className="text-slate-400">{perfStats?.count ? `실적 ${perfStats.count}건 데이터 반영` : '※ 실제 협업 데이터가 쌓일수록 정확도 향상'}</p>
                                         </div>
                                     </div>
                                 )
