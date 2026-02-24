@@ -61,7 +61,7 @@ export default function EventDetailPage() {
     const [proposalMessage, setProposalMessage] = useState("")
     const [videoGuide, setVideoGuide] = useState("brand_provided")
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [isLoadingEvent, setIsLoadingEvent] = useState(false)
+    const [isLoadingEvent, setIsLoadingEvent] = useState(true)
 
     // [NEW] Auto-fill message logic
     useEffect(() => {
@@ -170,6 +170,7 @@ export default function EventDetailPage() {
             if (targetEvent) {
                 setEvent(targetEvent)
             }
+            setIsLoadingEvent(false)
         }
 
         loadEvent()
