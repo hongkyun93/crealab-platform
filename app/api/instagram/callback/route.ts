@@ -4,12 +4,12 @@ import { NextResponse } from 'next/server'
 // GET /api/instagram/callback?code=...&state={userId}
 // Facebook OAuth 콜백 → 토큰 교환 → IG 계정 정보 저장
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url)
+    const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get('code')
     const userId = searchParams.get('state')
     const error = searchParams.get('error')
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin
     const settingsUrl = `${appUrl}/creator?tab=settings`
 
     if (error || !code || !userId) {
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     try {
         const appId = process.env.INSTAGRAM_APP_ID!
         const appSecret = process.env.INSTAGRAM_APP_SECRET!
-        const redirectUri = `${appUrl}/api/instagram/callback`
+        const redirectUri = `${origin}/api/instagram/callback`
 
         // 1. 단기 토큰 교환
         const tokenRes = await fetch(
