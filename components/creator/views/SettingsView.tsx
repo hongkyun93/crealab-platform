@@ -761,44 +761,42 @@ export function SettingsView() {
                                             : erRatio >= 1.0 ? 'text-blue-600 bg-blue-50 border-blue-200'
                                                 : 'text-orange-500 bg-orange-50 border-orange-200'
 
+                                // ── 실효 CPE 구성 요소 (UI 표시 + 계산 동시에 사용) ──
+                                const baseCpeWithEr = Math.round(baseCpe * erPremium)
+
+                                const femaleCategories = ['\ud83d\udc84 \ub274\ud2f0', '\ud83d\udc57 \ud328\uc158', '\ud83d\udc76 \uc721\uc544', '\ud83d\udc8d \uc6e8\ub529/\uacb0\ud63c']
+
+                                const reachAdj: number | null = igStats?.reachRate != null
+                                    ? (igStats.reachRate >= 40 ? 1.15 : igStats.reachRate >= 25 ? 1.05 : igStats.reachRate >= 15 ? 1.0 : igStats.reachRate >= 8 ? 0.85 : 0.7)
+                                    : null
+                                const reachAdjLabel = reachAdj == null ? null
+                                    : reachAdj >= 1.1 ? `\ub3c4\ub2ec${igStats!.reachRate}% \uc9c4\uc131 +${Math.round((reachAdj - 1) * 100)}%`
+                                        : reachAdj < 1.0 ? `\ub3c4\ub2ec${igStats!.reachRate}% \uc720\ub839\ud314\ub85c\uc6cc ${Math.round((reachAdj - 1) * 100)}%`
+                                            : null
+
+                                const saveAdj: number | null = igStats?.saveRate != null
+                                    ? (igStats.saveRate >= 5 ? 1.25 : igStats.saveRate >= 3 ? 1.15 : igStats.saveRate >= 1.5 ? 1.05 : null)
+                                    : null
+                                const saveAdjLabel = saveAdj != null ? `\uc800\uc7a5\ub960${igStats!.saveRate}% \uad6c\ub9e4\uc758\ud5a5 +${Math.round((saveAdj - 1) * 100)}%` : null
+
+                                const femaleAdj: number | null = (igStats?.audienceFemaleRatio != null && femaleCategories.includes(primaryTag))
+                                    ? (igStats.audienceFemaleRatio >= 70 ? 1.20 : igStats.audienceFemaleRatio >= 60 ? 1.10 : null)
+                                    : null
+                                const femaleAdjLabel = femaleAdj != null ? `\uc5ec\uc131${igStats!.audienceFemaleRatio}%+\uce74\ud14c\uace0\ub9ac \ub9e4\uce6d +${Math.round((femaleAdj - 1) * 100)}%` : null
+
+                                const ageAdj: number | null = (igStats?.audienceAge2534Ratio != null && igStats.audienceAge2534Ratio >= 30) ? 1.10 : null
+                                const ageAdjLabel = ageAdj != null ? `25~34\uc138 ${igStats!.audienceAge2534Ratio}% \uc18c\ube44\ub825\ub300 +10%` : null
+
+                                const domesticAdj: number | null = (igStats?.audienceDomesticRatio != null && igStats.audienceDomesticRatio >= 75) ? 1.08 : null
+                                const domesticAdjLabel = domesticAdj != null ? `\uad6d\ub0b4 ${igStats!.audienceDomesticRatio}% \ud55c\uad6d\ube0c\ub79c\ub4dc\ucd5c\uc801 +8%` : null
+
                                 const effectiveCpe = perfStats?.avgCpe ?? (() => {
-                                    let cpe = Math.round(baseCpe * erPremium)
-
-                                    // ── 도달률 보정: 유령 팔로워 페널티 / 진성 팔로워 보너스 ──
-                                    // reach rate = 평균도달 / 팔로워 (정상: 20~40%, 낮으면 유령 팔로워)
-                                    if (igStats?.reachRate != null) {
-                                        const rr = igStats.reachRate
-                                        const reachAdj = rr >= 40 ? 1.15 : rr >= 25 ? 1.05 : rr >= 15 ? 1.0 : rr >= 8 ? 0.85 : 0.7
-                                        cpe = Math.round(cpe * reachAdj)
-                                    }
-
-                                    // ── 저장률 보정: 구매 의향 지표 ──
-                                    // save rate = 저장 / 도달 (2%+ = 높음, 5%+ = 매우 높음)
-                                    if (igStats?.saveRate != null) {
-                                        const sr = igStats.saveRate
-                                        const saveAdj = sr >= 5 ? 1.25 : sr >= 3 ? 1.15 : sr >= 1.5 ? 1.05 : 1.0
-                                        cpe = Math.round(cpe * saveAdj)
-                                    }
-
-                                    // ── 오디언스 보정: 성별/연령/지역 ──
-                                    if (igStats?.audienceFemaleRatio != null) {
-                                        // 뷰티/패션/육아 카테고리는 여성 비율 높을수록 프리미엄
-                                        const femaleCategories = ['💄 뷰티', '👗 패션', '👶 육아', '💍 웨딩/결혼']
-                                        if (femaleCategories.includes(primaryTag) && igStats.audienceFemaleRatio >= 70) {
-                                            cpe = Math.round(cpe * 1.20) // 여성 70%+ + 여성 카테고리
-                                        } else if (femaleCategories.includes(primaryTag) && igStats.audienceFemaleRatio >= 60) {
-                                            cpe = Math.round(cpe * 1.10)
-                                        }
-                                    }
-                                    if (igStats?.audienceAge2534Ratio != null && igStats.audienceAge2534Ratio >= 30) {
-                                        // 25~34세 30%+ = 소비력 최고 연령대 → 프리미엄
-                                        cpe = Math.round(cpe * 1.10)
-                                    }
-                                    if (igStats?.audienceDomesticRatio != null && igStats.audienceDomesticRatio >= 75) {
-                                        // 국내 팔로워 75%+ = 한국 브랜드엔 최적
-                                        cpe = Math.round(cpe * 1.08)
-                                    }
-
+                                    let cpe = baseCpeWithEr
+                                    if (reachAdj != null) cpe = Math.round(cpe * reachAdj)
+                                    if (saveAdj != null) cpe = Math.round(cpe * saveAdj)
+                                    if (femaleAdj != null) cpe = Math.round(cpe * femaleAdj)
+                                    if (ageAdj != null) cpe = Math.round(cpe * ageAdj)
+                                    if (domesticAdj != null) cpe = Math.round(cpe * domesticAdj)
                                     return cpe
                                 })()
 
@@ -989,21 +987,37 @@ export function SettingsView() {
                                             </p>
                                         </div>
 
-                                        {/* 계산 근거 */}
-                                        <div className="text-[10px] text-muted-foreground space-y-1 bg-slate-50 rounded-lg px-3 py-2.5 border">
-                                            <p className="font-semibold text-slate-600 mb-1">📐 계산 근거</p>
-                                            <p>팔로워 {totalFollowers.toLocaleString()} × ER {(er * 100).toFixed(1)}% × 실효CPE ₩{effectiveCpe.toLocaleString()}</p>
-                                            <p>× 콘텐츠({contentMult}) × 부가조건({totalAddMult.toFixed(2)}) = ₩{estimatedValue.toLocaleString()}</p>
-                                            <p className="text-slate-400">
-                                                {primaryTag ? `카테고리(${primaryTag}) CPE ₩${baseCpe.toLocaleString()}` : '카테고리 미설정'} · ER보정 ×{erPremium}
-                                                {calcUsageRights ? ' · 2차활용+35%' : ''}
-                                                {calcExclusivity ? ' · 독점+50%' : ''}
-                                                {calcHighProduction ? ' · 고제작+30%' : ''}
-                                                {calcSeason ? ' · 시의성+15%' : ''}
-                                            </p>
-                                            {!primaryTag && (
-                                                <p className="text-amber-500 font-medium">💡 카테고리 태그를 설정하면 더 정확합니다</p>
-                                            )}
+                                        {/* 계산 근거 - 단계별 시각화 */}
+                                        <div className="space-y-2 bg-slate-50 rounded-lg px-3 py-2.5 border">
+                                            <p className="text-[10px] font-semibold text-slate-600">📐 실효 CPE 계산 과정</p>
+                                            <div className="space-y-1">
+                                                {[
+                                                    { label: `카테고리 기준 CPE`, value: `₩${baseCpe.toLocaleString()}`, note: primaryTag || '미설정', color: 'text-slate-600' },
+                                                    { label: `ER 보정 (×${erPremium})`, value: `₩${baseCpeWithEr.toLocaleString()}`, note: erLabel, color: erRatio >= 1.5 ? 'text-emerald-600' : erRatio >= 1.0 ? 'text-blue-600' : 'text-orange-500' },
+                                                    ...(reachAdj != null && reachAdj !== 1.0 ? [{ label: '도달률 보정', value: `₩${Math.round(baseCpeWithEr * reachAdj).toLocaleString()}`, note: reachAdjLabel!, color: reachAdj >= 1.0 ? 'text-emerald-600' : 'text-red-500' }] : []),
+                                                    ...(saveAdj != null ? [{ label: '저장률 보정', value: '', note: saveAdjLabel!, color: 'text-emerald-600' }] : []),
+                                                    ...(femaleAdj != null ? [{ label: '여성 오디언스 보정', value: '', note: femaleAdjLabel!, color: 'text-pink-600' }] : []),
+                                                    ...(ageAdj != null ? [{ label: '25~34세 보정', value: '', note: ageAdjLabel!, color: 'text-purple-600' }] : []),
+                                                    ...(domesticAdj != null ? [{ label: '국내 팔로워 보정', value: '', note: domesticAdjLabel!, color: 'text-blue-600' }] : []),
+                                                    { label: '최종 실효 CPE', value: `₩${effectiveCpe.toLocaleString()}`, note: perfStats?.avgCpe ? '실제 캠페인 데이터' : '계산값', color: 'text-indigo-600 font-bold' },
+                                                ].map((step, i) => (
+                                                    <div key={i} className="flex items-center justify-between text-[10px]">
+                                                        <span className="text-slate-500">{step.label}</span>
+                                                        <span className={`${step.color} text-right`}>
+                                                            {step.value && <span className="font-semibold mr-1">{step.value}</span>}
+                                                            <span className="opacity-70">{step.note}</span>
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="pt-1.5 border-t text-[10px] text-slate-400">
+                                                <p>최종: {totalFollowers.toLocaleString()} × {(er * 100).toFixed(1)}% × ₩{effectiveCpe.toLocaleString()} × 콘텐츠{contentMult} × 부가{totalAddMult.toFixed(2)} = ₩{estimatedValue.toLocaleString()}</p>
+                                                {calcUsageRights && <span className="mr-2">· 2차활용+35%</span>}
+                                                {calcExclusivity && <span className="mr-2">· 독점+50%</span>}
+                                                {calcHighProduction && <span className="mr-2">· 고제작+30%</span>}
+                                                {calcSeason && <span>· 시의성+15%</span>}
+                                                {!primaryTag && <p className="text-amber-500 font-medium mt-0.5">💡 카테고리 태그를 설정하면 더 정확합니다</p>}
+                                            </div>
                                         </div>
                                     </div>
                                 )
