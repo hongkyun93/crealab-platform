@@ -9,8 +9,10 @@ export async function GET(request: Request) {
     const userId = searchParams.get('state')
     const error = searchParams.get('error')
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin
-    const settingsUrl = `${appUrl}/creator?tab=settings`
+    // 항상 메인 도메인(세션 쿠키가 있는 곳)으로 리다이렉트
+    // www.creadypick.co.kr과 www.creadypick.com은 다른 도메인이라 쿠키 공유 안 됨
+    const canonicalUrl = process.env.NEXT_PUBLIC_APP_URL || origin
+    const settingsUrl = `${canonicalUrl}/creator?tab=settings`
 
     if (error || !code || !userId) {
         return NextResponse.redirect(`${settingsUrl}&ig_error=cancelled`)
@@ -204,6 +206,7 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${settingsUrl}&ig_connected=true`)
     } catch (err: any) {
         console.error('[Instagram OAuth] callback error:', err)
-        return NextResponse.redirect(`${settingsUrl}&ig_error=failed`)
+        const msg = encodeURIComponent(err?.message || String(err) || 'unknown')
+        return NextResponse.redirect(`${settingsUrl}&ig_error=${msg}`)
     }
 }
