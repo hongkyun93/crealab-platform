@@ -214,7 +214,7 @@ export function SettingsView() {
     const [creatorBusinessNumber, setCreatorBusinessNumber] = useState("")
 
     // 광고 가치 계산기 옵션
-    const [calcContentType, setCalcContentType] = useState<'reels' | 'feed' | 'story' | 'youtube'>('reels')
+    const [calcContentType, setCalcContentType] = useState<'reels' | 'feed' | 'story'>('reels')
     const [calcUsageRights, setCalcUsageRights] = useState(false)
     const [calcExclusivity, setCalcExclusivity] = useState(false)
     const [calcHighProduction, setCalcHighProduction] = useState(false)
@@ -803,10 +803,10 @@ export function SettingsView() {
 
                                 // ── 4. 콘텐츠 유형 배율 ──
                                 const CONTENT_MULT: Record<string, number> = {
-                                    reels: 1.5, feed: 1.0, story: 0.5, youtube: 3.0
+                                    reels: 1.5, feed: 1.0, story: 0.5
                                 }
                                 const CONTENT_LABEL: Record<string, string> = {
-                                    reels: '릴스/쇼츠 ×1.5', feed: '피드(사진) ×1.0', story: '스토리 ×0.5', youtube: '유튜브 ×3.0'
+                                    reels: '릴스/쇼츠 ×1.5', feed: '피드(사진) ×1.0', story: '스토리 ×0.5'
                                 }
                                 const contentMult = CONTENT_MULT[calcContentType] ?? 1.0
 
@@ -927,8 +927,8 @@ export function SettingsView() {
 
                                         <div className="space-y-2">
                                             <p className="text-xs font-semibold text-slate-600">📹 콘텐츠 유형</p>
-                                            <div className="grid grid-cols-4 gap-1.5">
-                                                {(['reels', 'feed', 'story', 'youtube'] as const).map((ct) => (
+                                            <div className="grid grid-cols-3 gap-1.5">
+                                                {(['reels', 'feed', 'story'] as const).map((ct) => (
                                                     <button
                                                         key={ct}
                                                         onClick={() => setCalcContentType(ct)}
@@ -937,9 +937,9 @@ export function SettingsView() {
                                                             : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
                                                             }`}
                                                     >
-                                                        {ct === 'reels' ? '🎬 릴스' : ct === 'feed' ? '🖼️ 피드' : ct === 'story' ? '⏱️ 스토리' : '▶️ 유튜브'}
+                                                        {ct === 'reels' ? '🎦 릴스' : ct === 'feed' ? '🖼️ 피드' : '⏱️ 스토리'}
                                                         <span className="block text-[9px] opacity-60 mt-0.5">
-                                                            {ct === 'reels' ? '×1.5' : ct === 'feed' ? '×1.0' : ct === 'story' ? '×0.5' : '×3.0'}
+                                                            {ct === 'reels' ? '×1.5' : ct === 'feed' ? '×1.0' : '×0.5'}
                                                         </span>
                                                     </button>
                                                 ))}
