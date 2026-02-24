@@ -128,7 +128,7 @@ export const MomentsView = React.memo(function MomentsView({
                                 </div>
                             )}
                             <div className="flex items-center justify-center gap-1.5 mb-1">
-                                <span className="font-bold text-xl">{user?.handle || user?.name}</span>
+                                <span className="font-bold text-xl">{user?.name || user?.handle}</span>
                                 {user?.verified && <BadgeCheck className="h-5 w-5 text-blue-500" />}
                             </div>
                             <p className="text-sm text-muted-foreground">{fmt(user?.followers || 0)} 팔로워</p>

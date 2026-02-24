@@ -306,7 +306,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                 className={cn('gap-1.5', sortOrder !== 'verified' && 'bg-primary/10 text-primary font-medium')}
                             >
                                 전체
-                                {sortOrder !== 'verified' && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
+                                {sortOrder !== 'verified' && <Check className="h-3.5 w-3.5" />}
                             </Button>
                             <Button
                                 variant="ghost"
@@ -316,7 +316,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                             >
                                 <Instagram className="h-3.5 w-3.5 text-pink-500" />
                                 API 인증됨
-                                {sortOrder === 'verified' && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
+                                {sortOrder === 'verified' && <Check className="h-3.5 w-3.5" />}
                             </Button>
                         </div>
                     </div>

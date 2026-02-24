@@ -448,11 +448,11 @@ ${u.name}의 담당자입니다.
                                         <img src={event.avatar} alt="" className="h-24 w-24 rounded-full object-cover border-3 border-primary/20 mx-auto mb-3 shadow-lg" />
                                     ) : (
                                         <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary to-violet-600 flex items-center justify-center font-bold text-white text-3xl mx-auto mb-3 shadow-lg">
-                                            {event.handle?.[1]?.toUpperCase() || event.influencer?.[0] || 'C'}
+                                            {event.influencer?.[0]?.toUpperCase() || 'C'}
                                         </div>
                                     )}
                                     <div className="flex items-center justify-center gap-1.5 mb-1">
-                                        <span className="font-bold text-xl">{event.handle || event.influencer}</span>
+                                        <span className="font-bold text-xl">{event.influencer}</span>
                                         {event.verified && <BadgeCheck className="h-5 w-5 text-blue-500" />}
                                     </div>
                                 </div>

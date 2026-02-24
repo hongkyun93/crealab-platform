@@ -61,8 +61,8 @@ export function CreatorSummaryCard({ creator, status, onViewDashboard }: Creator
     return (
         <Card
             className={`hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden border ${status === 'urgent' ? 'border-red-300 ring-1 ring-red-200' :
-                    status === 'idle' ? 'border-border/40 opacity-75 hover:opacity-100' :
-                        'border-border/60'
+                status === 'idle' ? 'border-border/40 opacity-75 hover:opacity-100' :
+                    'border-border/60'
                 }`}
             onClick={onViewDashboard}
         >
@@ -96,12 +96,6 @@ export function CreatorSummaryCard({ creator, status, onViewDashboard }: Creator
                         </div>
 
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                            {creator.instagram_handle && (
-                                <span className="flex items-center gap-1">
-                                    <Instagram className="h-3 w-3" />
-                                    @{creator.instagram_handle}
-                                </span>
-                            )}
                             <span>{formatFollowers(creator.followers_count)} 팔로워</span>
                         </div>
 

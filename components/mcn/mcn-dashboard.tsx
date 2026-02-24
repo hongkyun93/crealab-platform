@@ -603,11 +603,7 @@ export function McnDashboard() {
                                                             </Avatar>
                                                             <div>
                                                                 <p className="font-semibold text-sm leading-tight">{creator.display_name}</p>
-                                                                {creator.instagram_handle && (
-                                                                    <p className="text-[11px] text-muted-foreground flex items-center gap-0.5">
-                                                                        <Instagram className="h-2.5 w-2.5" />@{creator.instagram_handle}
-                                                                    </p>
-                                                                )}
+
                                                             </div>
                                                         </div>
                                                     </td>

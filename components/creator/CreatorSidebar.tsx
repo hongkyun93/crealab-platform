@@ -46,7 +46,7 @@ export function CreatorSidebar({ className, user }: CreatorSidebarProps) {
                     <div className="min-w-0 flex flex-col justify-center">
                         <div className="font-bold text-base leading-none mb-1 text-gray-900">{displayUser.name}</div>
                         <div className="text-sm text-gray-500 font-normal leading-none">
-                            {displayUser.handle || displayUser.email}
+                            {displayUser.email}
                         </div>
                     </div>
                 </div>

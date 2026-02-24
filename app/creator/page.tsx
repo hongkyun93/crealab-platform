@@ -2100,7 +2100,6 @@ function InfluencerDashboardContent() {
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                         <h2 className="text-2xl font-bold">{displayUser?.name}</h2>
-                                        {displayUser?.handle && <span className="text-primary font-medium">{displayUser.handle}</span>}
                                     </div>
                                     <p className="text-muted-foreground">{(displayUser as any)?.bio || "아직 소개글이 없습니다."}</p>
                                 </div>
@@ -2245,7 +2244,7 @@ function InfluencerDashboardContent() {
                                                 <div className="flex items-center justify-between">
                                                     <h4 className="font-bold truncate text-sm">{item.influencer}</h4>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground truncate">{item.handle}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{item.category}</p>
                                                 <span className="text-[10px] font-medium bg-secondary/50 px-2 py-0.5 rounded-full mt-1 inline-block">
                                                     {(item.followers || 0).toLocaleString()} 팔로워
                                                 </span>
