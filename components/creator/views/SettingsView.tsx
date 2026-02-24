@@ -164,6 +164,13 @@ export function SettingsView() {
 
     // 내 광고 가치 계산기 성과 데이터
     const [perfStats, setPerfStats] = useState<{ avgEngagementRate: number | null, avgCpe: number | null, count: number } | null>(null)
+    // Instagram API 실제 인사이트
+    const [igStats, setIgStats] = useState<{
+        er: number | null, avgReach: number | null, avgLikes: number | null,
+        avgSaves: number | null, saveRate: number | null, reachRate: number | null,
+        postCount: number, source: string
+    } | null>(null)
+    const [igStatsLoading, setIgStatsLoading] = useState(false)
     const { channels, fetchChannels, createChannel, deleteChannel, setPrimaryChannel, updateChannel } = useSocialChannels()
 
     // Form State
@@ -308,6 +315,21 @@ export function SettingsView() {
                 }
             })
     }, [effectiveUserId])
+
+    // Instagram API 실제 ER 조회
+    useEffect(() => {
+        if (!effectiveUserId) return
+        const igChannel = channels.find(ch => ch.platform === 'instagram')
+        if (!igChannel) return
+        setIgStatsLoading(true)
+        fetch(`/api/instagram/profile-stats?userId=${effectiveUserId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.error) setIgStats(data)
+            })
+            .catch(() => { })
+            .finally(() => setIgStatsLoading(false))
+    }, [effectiveUserId, channels])
 
     const toggleTag = (tag: string) => {
         if (selectedTags.includes(tag)) {
@@ -681,9 +703,14 @@ export function SettingsView() {
                                     return <p className="text-sm text-muted-foreground">소셜 채널을 연결하면 예상 단가를 확인할 수 있습니다.</p>
                                 }
 
-                                // ── 1. 참여율 ──
-                                const er: number = perfStats?.avgEngagementRate ??
-                                    (totalFollowers >= 1000000 ? 0.012 : totalFollowers >= 100000 ? 0.025 : totalFollowers >= 10000 ? 0.04 : 0.06)
+                                // ── 1. 참여율 (우선순위: Instagram API실측 > 캠페인실적 > 팔로워티어추정)
+                                const igErRaw = igStats?.er != null ? igStats.er / 100 : null
+                                const er: number = igErRaw
+                                    ?? (perfStats?.avgEngagementRate != null ? perfStats.avgEngagementRate / 100 : null)
+                                    ?? (totalFollowers >= 1000000 ? 0.012 : totalFollowers >= 100000 ? 0.025 : totalFollowers >= 10000 ? 0.04 : 0.06)
+                                const erSource = igErRaw != null ? 'instagram_api' : perfStats?.avgEngagementRate != null ? 'campaign' : 'estimate'
+                                const erSourceLabel = erSource === 'instagram_api' ? '📸 Instagram 실측' : erSource === 'campaign' ? '📊 캠페인 실적' : '📐 추정값'
+                                const erSourceColor = erSource === 'instagram_api' ? 'text-pink-600 bg-pink-50 border-pink-200' : erSource === 'campaign' ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-slate-500 bg-slate-50 border-slate-200'
 
                                 // ── 2. 카테고리 CPE ──
                                 const primaryTag = selectedTags[0] || ''
@@ -749,7 +776,7 @@ export function SettingsView() {
                                             <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
                                                 <p className="text-[10px] text-muted-foreground">참여율</p>
                                                 <p className="text-sm font-bold text-emerald-600">{(er * 100).toFixed(1)}%</p>
-                                                <span className={`inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${erColor}`}>{erLabel}</span>
+                                                <span className={`inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${erSourceColor}`}>{erSourceLabel}</span>
                                             </div>
                                             <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
                                                 <p className="text-[10px] text-muted-foreground">카테고리 CPE</p>
@@ -763,7 +790,47 @@ export function SettingsView() {
                                             </div>
                                         </div>
 
-                                        {/* 콘텐츠 유형 */}
+                                        {/* Instagram 실측 인사이트 패널 */}
+                                        {igStatsLoading ? (
+                                            <div className="px-3 py-2.5 rounded-lg bg-pink-50 border border-pink-200 text-[10px] text-pink-500 animate-pulse">
+                                                📸 Instagram 실측 데이터 불러오는 중...
+                                            </div>
+                                        ) : igStats && igStats.source === 'instagram_api' ? (
+                                            <div className="px-3 py-2.5 rounded-lg bg-pink-50 border border-pink-200 space-y-1.5">
+                                                <p className="text-[10px] font-semibold text-pink-700 flex items-center gap-1">
+                                                    📸 Instagram 실측 인사이트
+                                                    <span className="text-[9px] font-normal text-pink-400">최근 {igStats.postCount}개 게시물 기준</span>
+                                                </p>
+                                                <div className="grid grid-cols-4 gap-2 text-center">
+                                                    <div>
+                                                        <p className="text-[9px] text-pink-400">평균 도달</p>
+                                                        <p className="text-[11px] font-bold text-pink-700">
+                                                            {igStats.avgReach != null ? igStats.avgReach.toLocaleString() : '-'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] text-pink-400">도달률</p>
+                                                        <p className="text-[11px] font-bold text-pink-700">
+                                                            {igStats.reachRate != null ? `${igStats.reachRate}%` : '-'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] text-pink-400">평균 저장</p>
+                                                        <p className="text-[11px] font-bold text-pink-700">
+                                                            {igStats.avgSaves != null ? igStats.avgSaves.toLocaleString() : '-'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] text-pink-400">저장률</p>
+                                                        <p className="text-[11px] font-bold text-pink-700">
+                                                            {igStats.saveRate != null ? `${igStats.saveRate}%` : '-'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : null}
+
+
                                         <div className="space-y-2">
                                             <p className="text-xs font-semibold text-slate-600">📹 콘텐츠 유형</p>
                                             <div className="grid grid-cols-4 gap-1.5">
