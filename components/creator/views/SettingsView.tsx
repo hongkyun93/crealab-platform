@@ -762,7 +762,8 @@ export function SettingsView() {
                                                 : 'text-orange-500 bg-orange-50 border-orange-200'
 
                                 // ── 실효 CPE 구성 요소 (UI 표시 + 계산 동시에 사용) ──
-                                const baseCpeWithEr = Math.round(baseCpe * erPremium)
+                                // erPremium 제거 - ER은 팔로워×ER에서 이미 반영됨 (이중 계산 방지)
+                                const baseCpeWithEr = baseCpe
 
                                 const femaleCategories = ['\ud83d\udc84 \ub274\ud2f0', '\ud83d\udc57 \ud328\uc158', '\ud83d\udc76 \uc721\uc544', '\ud83d\udc8d \uc6e8\ub529/\uacb0\ud63c']
 
@@ -854,7 +855,7 @@ export function SettingsView() {
                                             <div className="p-2.5 rounded-lg bg-white border space-y-0.5">
                                                 <p className="text-[10px] text-muted-foreground">실효 CPE</p>
                                                 <p className="text-sm font-bold text-indigo-600">₩{effectiveCpe.toLocaleString()}</p>
-                                                <p className="text-[9px] text-muted-foreground">×{erPremium} 보정</p>
+                                                <p className="text-[9px] text-muted-foreground">{erLabel}</p>
                                             </div>
                                         </div>
 
@@ -993,8 +994,7 @@ export function SettingsView() {
                                             <div className="space-y-1">
                                                 {[
                                                     { label: `카테고리 기준 CPE`, value: `₩${baseCpe.toLocaleString()}`, note: primaryTag || '미설정', color: 'text-slate-600' },
-                                                    { label: `ER 보정 (×${erPremium})`, value: `₩${baseCpeWithEr.toLocaleString()}`, note: erLabel, color: erRatio >= 1.5 ? 'text-emerald-600' : erRatio >= 1.0 ? 'text-blue-600' : 'text-orange-500' },
-                                                    ...(reachAdj != null && reachAdj !== 1.0 ? [{ label: '도달률 보정', value: `₩${Math.round(baseCpeWithEr * reachAdj).toLocaleString()}`, note: reachAdjLabel!, color: reachAdj >= 1.0 ? 'text-emerald-600' : 'text-red-500' }] : []),
+                                                    ...(reachAdj != null && reachAdj !== 1.0 ? [{ label: '도달률 보정', value: `₩${Math.round(baseCpe * reachAdj).toLocaleString()}`, note: reachAdjLabel!, color: reachAdj >= 1.0 ? 'text-emerald-600' : 'text-red-500' }] : []),
                                                     ...(saveAdj != null ? [{ label: '저장률 보정', value: '', note: saveAdjLabel!, color: 'text-emerald-600' }] : []),
                                                     ...(femaleAdj != null ? [{ label: '여성 오디언스 보정', value: '', note: femaleAdjLabel!, color: 'text-pink-600' }] : []),
                                                     ...(ageAdj != null ? [{ label: '25~34세 보정', value: '', note: ageAdjLabel!, color: 'text-purple-600' }] : []),
