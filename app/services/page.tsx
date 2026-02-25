@@ -46,14 +46,14 @@ type TabId = typeof TABS[number]["id"]
 
 // ───── Feature Data (preserved from original) ─────
 const CREATOR_FEATURES = [
-    { icon: Banknote, title: "레이트 카드 설정", desc: "AI가 내 인스타그램을 자동 분석해서 팔로워 수·참여율 기반 적정 단가를 추천합니다. 콘텐츠 유형별로 설정하고 브랜드에게 투명하게 공개하세요.", highlight: "내 가치를 AI가 찾아드립니다" },
-    { icon: Calendar, title: "라이프 모먼트 등록", desc: "이사, 결혼, 출산, 여행 등 인생의 중요한 순간을 등록하면 관련 브랜드가 먼저 협업을 제안합니다.", highlight: "내가 영업하지 않아도 브랜드가 먼저 찾아옵니다" },
-    { icon: Layers, title: "협업 워크스페이스", desc: "브랜드와의 협업 진행 상황을 한눈에 확인합니다. 제안→계약→배송→콘텐츠 제출→완료까지 전체 라이프사이클을 관리하세요.", highlight: "제안부터 정산까지 원스톱" },
+    { icon: Calendar, title: "라이프 모먼트 등록", desc: "이사, 결혼, 출산, 여행 등 인생의 중요한 순간을 등록하면 관련 브랜드가 먼저 협업을 제안합니다.", highlight: "일상을 등록하면 그에 맞는 광고가 먼저 찾아옵니다" },
+    { icon: Banknote, title: "AI 광고 단가 계산", desc: "AI가 내 인스타그램을 자동 분석해서 팔로워 수·참여율 기반 적정 단가를 추천합니다. 감에 의존하지말고,데이터와 통계로 적정 단가를 알아보세요.", highlight: "내 진짜 가치를 AI가 찾아드립니다" },
+    { icon: Layers, title: "CreadyPick 워크스페이스", desc: "브랜드와의 협업 진행 상황을 한눈에 확인합니다. 제안→계약→배송→콘텐츠 제출→피드백→정산까지 전체 라이프사이클을 관리하세요.", highlight: "제안부터 정산까지 원스톱" },
     { icon: BarChart3, title: "AI 인사이트 분석", desc: "인스타그램 스크린샷을 올리면 AI가 참여율·도달 수·CPE를 자동 분석합니다. 단가를 올릴 수 있는 방법도 함께 추천해드려요.", highlight: "단가 올리는 방법, AI가 추천해드려요" },
     { icon: Sparkles, title: "AI 콘텐츠 플랜", desc: "캠페인 가이드를 기반으로 AI가 콘텐츠 기획안을 자동 생성합니다. 아이디어가 막힐 때 활용하세요.", highlight: "AI가 기획안을 대신 작성" },
     { icon: Globe, title: "소셜 채널 통합", desc: "인스타그램, 유튜브, 틱톡, 블로그 등 다양한 채널 정보를 한 곳에서 관리하고 브랜드에게 보여주세요.", highlight: "모든 채널을 한눈에" },
     { icon: Calendar, title: "캘린더 뷰", desc: "일정 기반으로 모먼트와 협업 스케줄을 확인하세요. 중복 일정을 방지하고 효율적으로 관리합니다.", highlight: "스케줄을 놓치지 않도록" },
-    { icon: Lock, title: "프라이버시 보호", desc: "내 일정이 외부에 유출되지 않도록 다층 보안을 적용합니다. DB 레벨 RLS, 모먼트별 공개·비공개 설정, 엄선된 브랜드에게만 조회 허용으로 내 정보를 철저히 지킵니다.", highlight: "내 일정은 내가 허락한 사람만 볼 수 있어요" },
+    { icon: Lock, title: "프라이버시 보호", desc: "내 일정이 외부에 유출되지 않도록 다층 보안을 적용합니다. DB 레벨 RLS, 숨겨진 워터마크, 엄선된 브랜드에게만 일정 조회 허용으로 내 정보를 철저히 지킵니다.", highlight: "내 일정은 내가 허락한 사람만 볼 수 있어요" },
     { icon: Sparkles, title: "and more...", desc: "크리에이터, 브랜드, MCN이 더 편하게 일할 수 있도록! 크레디픽은 끊임없이 연구합니다!", highlight: "더 나은 협업 환경을 위해" },
 ]
 
@@ -70,13 +70,13 @@ const MCN_FEATURES = [
 ]
 const BRAND_FEATURES = [
     { icon: Search, title: "모먼트 디스커버리", desc: "전국 크리에이터들의 라이프 모먼트를 탐색합니다. 카테고리, 팔로워 수, 지역, 가격대 등 정밀 필터로 최적의 크리에이터를 찾으세요.", highlight: "제품이 필요한 사람을 정확히 찾습니다" },
-    { icon: Target, title: "타이밍 매칭", desc: "이사 예정인 크리에이터에게 가전 제품을, 결혼 예정인 크리에이터에게 웨딩 서비스를 제안합니다.", highlight: "\"필요해서 쓰는 제품\"이 최고의 광고" },
-    { icon: MessageSquare, title: "실시간 메시징", desc: "크리에이터와 직접 메시지를 주고받으며 협업 조건을 조율합니다.", highlight: "중간 브로커 없이 직접 소통" },
-    { icon: Package, title: "제품 관리", desc: "제공할 제품의 상세 정보를 등록하고 제안서에 자동으로 연동합니다.", highlight: "제품 정보를 한 번만 등록하세요" },
-    { icon: Megaphone, title: "캠페인 운영", desc: "다수의 크리에이터에게 동시에 제안하는 캠페인을 만들 수 있습니다.", highlight: "대규모 협업도 손쉽게" },
-    { icon: FileText, title: "AI 계약서 & 서명", desc: "제안 수락 후 AI가 협업 전자 계약서를 자동 생성합니다.", highlight: "계약서 작성 시간 zero" },
+    { icon: Target, title: "광고같지 않은 광고", desc: "이사 예정인 크리에이터에게 가전 제품을, 결혼 예정인 크리에이터에게 웨딩 서비스를 제안합니다.", highlight: "\"필요해서 쓰는 제품\"이 최고의 광고" },
+    { icon: Layers, title: "CreadyPick 워크스페이스", desc: "수락→계약→배송→콘텐츠 검수→완료까지 전체 과정을 프로그레스 바로 시각화합니다.", highlight: "파편화된 업무를 하나로 통합" },
     { icon: Star, title: "AI 적정 가격 계산기", desc: "크리에이터의 팔로워 수, 채널, 콘텐츠 유형에 기반한 적정 협업 단가를 AI가 추천합니다.", highlight: "\"이 크리에이터, 얼마가 적절할까?\"" },
-    { icon: Layers, title: "협업 워크스페이스", desc: "수락→계약→배송→콘텐츠 검수→완료까지 전체 과정을 프로그레스 바로 시각화합니다.", highlight: "파편화된 업무를 하나로 통합" },
+    { icon: Megaphone, title: "캠페인 운영", desc: "다수의 크리에이터에게 동시에 제안하는 캠페인을 만들 수 있습니다.", highlight: "대규모 협업도 손쉽게" },
+    { icon: Package, title: "제품 관리", desc: "제공할 제품의 상세 정보를 등록하고 제안서에 자동으로 연동합니다.", highlight: "제품 정보를 한 번만 등록하세요" },
+    { icon: MessageSquare, title: "실시간 메시징", desc: "크리에이터와 직접 메시지를 주고받으며 협업 조건을 조율합니다.", highlight: "중간 브로커 없이 직접 소통" },
+    { icon: FileText, title: "AI 계약서 & 서명", desc: "제안 수락 후 AI가 협업 전자 계약서를 자동 생성합니다.", highlight: "계약서 작성 시간 zero" },
     { icon: Sparkles, title: "and more...", desc: "크리에이터, 브랜드, MCN이 더 편하게 일할 수 있도록! 크레디픽은 끊임없이 연구합니다!", highlight: "더 나은 협업 환경을 위해" },
 ]
 
