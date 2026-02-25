@@ -56,12 +56,15 @@ const CREATOR_FEATURES = [
     { icon: Calendar, title: "캘린더 뷰", desc: "일정 기반으로 모먼트와 협업 스케줄을 확인하세요. 중복 일정을 방지하고 효율적으로 관리합니다.", highlight: "스케줄을 놓치지 않도록" },
 ]
 const MCN_FEATURES = [
-    { icon: Users, title: "팀 멤버 관리", desc: "소속 크리에이터 목록을 한 곳에서 확인하고 관리합니다. 각 크리에이터의 채널, 팔로워, 협업 현황을 한눈에 파악하세요.", highlight: "전체 크리에이터 현황을 실시간으로" },
-    { icon: Eye, title: "프록시 모드", desc: "소속 크리에이터를 대리하여 모먼트 등록, 브랜드 제안 관리, 계약 처리를 모두 수행할 수 있습니다.", highlight: "크리에이터 대신 모든 업무를 처리" },
-    { icon: UserPlus, title: "초대 링크", desc: "고유 초대 링크를 생성하여 새로운 크리에이터를 팀에 간편하게 합류시킬 수 있습니다.", highlight: "클릭 한 번으로 크리에이터 영입" },
-    { icon: BarChart3, title: "팀 통계", desc: "팀 전체의 협업 수, 제안 수, 활성 모먼트 등 핵심 지표를 대시보드에서 실시간으로 확인합니다.", highlight: "데이터 기반 의사결정" },
-    { icon: Briefcase, title: "크리에이터별 대시보드", desc: "팀 스위처를 통해 각 크리에이터의 개별 대시보드로 자유롭게 전환합니다.", highlight: "크리에이터별 맞춤 관리" },
-    { icon: Shield, title: "브랜드 제안 일괄 관리", desc: "모든 소속 크리에이터에게 온 브랜드 제안을 한 곳에서 확인하고, 수락/거절/협상을 대리합니다.", highlight: "흩어진 제안을 한 곳에서" },
+    { icon: Banknote, title: "정산 자동화", desc: "협업 완료 후 크리에이터별 수익 배분율을 자동 계산하고, 지급명세서 발행과 CSV 내보내기까지 원클릭으로 처리합니다.", highlight: "커미션 계산 실수 제로" },
+    { icon: BarChart3, title: "광고 성과 리포트", desc: "크리에이터별 CPE·참여율·완료 협업 수를 자동 집계합니다. 브랜드 재계약 협상 시 데이터로 바로 제출하세요.", highlight: "PPT 대신 데이터로 어필" },
+    { icon: Users, title: "크리에이터 현황판", desc: "미응답 제안(긴급)·협업 중·비활성 상태를 자동 분류합니다. 팔로워·단가·태그 필터로 원하는 크리에이터를 즉시 찾으세요.", highlight: "10명이든 100명이든 한눈에" },
+    { icon: Shield, title: "제안 통합 관리", desc: "소속 크리에이터 전체에게 온 브랜드 제안·모먼트·캠페인 지원서를 한 테이블에서 확인하고 수락·거절을 대리합니다.", highlight: "묻히는 제안이 사라집니다" },
+    { icon: Eye, title: "프록시 모드", desc: "소속 크리에이터를 대리하여 모먼트 등록, 계약 서명, 배송 확인까지 직접 처리합니다. 크리에이터 연락을 기다릴 필요가 없습니다.", highlight: "크리에이터 연락 기다릴 필요 없음" },
+    { icon: Calendar, title: "팀 캘린더", desc: "소속 크리에이터 전체의 협업 일정을 통합 캘린더로 확인합니다. 중복 일정과 마감 누락을 방지하세요.", highlight: "누가 언제 뭐 하는지 한눈에" },
+    { icon: Briefcase, title: "크리에이터별 대시보드", desc: "팀 스위처로 각 크리에이터 화면에 즉시 전환합니다. 워크스페이스·계약·정산을 크리에이터 입장에서 직접 조작하세요.", highlight: "크리에이터처럼 들어가서 직접 처리" },
+    { icon: UserPlus, title: "팀 합류 링크", desc: "이미 계약된 소속 크리에이터에게 고유 링크를 보내면 가입 즉시 팀에 자동 합류됩니다. 별도 설정이 필요 없습니다.", highlight: "계약된 크리에이터를 플랫폼에 즉시 등록" },
+    { icon: Building2, title: "사업자 정보 관리", desc: "사업자등록번호·대표자명·직인을 등록하면 지급명세서에 자동 반영됩니다. 세무·회계 처리가 한결 간편해집니다.", highlight: "지급명세서 자동 발행" },
 ]
 const BRAND_FEATURES = [
     { icon: Search, title: "모먼트 디스커버리", desc: "전국 크리에이터들의 라이프 모먼트를 탐색합니다. 카테고리, 팔로워 수, 지역, 가격대 등 정밀 필터로 최적의 크리에이터를 찾으세요.", highlight: "제품이 필요한 사람을 정확히 찾습니다" },
@@ -267,8 +270,8 @@ export default function ServicesDesignPage() {
                         <div className={`p-6 sm:p-8 md:p-10 rounded-3xl bg-gradient-to-br ${currentTab.color} text-white`}>
                             <div className="max-w-2xl">
                                 <p className="text-sm font-medium uppercase tracking-widest opacity-80 mb-3">{activeTab === "creator" ? "Creator Benefit" : activeTab === "mcn" ? "MCN / Agency Benefit" : "Brand Benefit"}</p>
-                                <h3 className="text-2xl md:text-3xl font-black mb-4">{activeTab === "creator" ? "\"내 일상이 곧 수익이 됩니다\"" : activeTab === "mcn" ? "\"소속 크리에이터 관리를 하나로\"" : "\"본업에만 집중하세요\""}</h3>
-                                <p className="text-white/80 leading-relaxed">{activeTab === "creator" ? "영업·계약·정산은 CreadyPick이 처리합니다. 라이프 모먼트에 필요한 제품을 광고하세요. 광고주는 CreadyPick이 찾아드립니다." : activeTab === "mcn" ? "흩어진 크리에이터 관리, 브랜드 제안, 계약을 하나의 대시보드에서 해결합니다." : "인플루언서 서치·컨택·계약은 CreadyPick에 맡기고, 본업에만 집중하세요."}</p>
+                                <h3 className="text-2xl md:text-3xl font-black mb-4">{activeTab === "creator" ? "\"내 일상이 곧 수익이 됩니다\"" : activeTab === "mcn" ? "\"관리부터 정산까지, 원 대시보드에서\"" : "\"본업에만 집중하세요\""}</h3>
+                                <p className="text-white/80 leading-relaxed">{activeTab === "creator" ? "영업·계약·정산은 CreadyPick이 처리합니다. 라이프 모먼트에 필요한 제품을 광고하세요. 광고주는 CreadyPick이 찾아드립니다." : activeTab === "mcn" ? "크리에이터가 10명이든 100명이든 — 현황 파악, 제안 관리, 계약, 정산을 하나로." : "인플루언서 서치·컨택·계약은 CreadyPick에 맡기고, 본업에만 집중하세요."}</p>
                             </div>
                         </div>
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -277,8 +280,8 @@ export default function ServicesDesignPage() {
                             ))}
                         </div>
                         <div className="flex flex-col items-center text-center p-10 rounded-3xl border border-dashed bg-muted/20 hover:bg-muted/30 transition-colors">
-                            <h3 className="text-2xl font-bold mb-2">{activeTab === "creator" ? "지금 첫 모먼트를 등록하세요" : activeTab === "mcn" ? "팀을 만들고 크리에이터를 초대하세요" : "제품이 필요한 크리에이터를 찾아보세요"}</h3>
-                            <p className="text-muted-foreground mb-8">{activeTab === "creator" ? "무료 가입, 수수료 0%. 당신의 일상을 기회로 바꿔보세요." : activeTab === "mcn" ? "소속 크리에이터 수에 관계없이 무료로 시작하세요." : "타이밍이 맞는 크리에이터가 기다리고 있습니다."}</p>
+                            <h3 className="text-2xl font-bold mb-2">{activeTab === "creator" ? "지금 첫 모먼트를 등록하세요" : activeTab === "mcn" ? "지금 팀을 만들고 시작하세요" : "제품이 필요한 크리에이터를 찾아보세요"}</h3>
+                            <p className="text-muted-foreground mb-8">{activeTab === "creator" ? "무료 가입, 수수료 0%. 당신의 일상을 기회로 바꿔보세요." : activeTab === "mcn" ? "소속 크리에이터 수·팀 규모에 관계없이 모든 기능 무료." : "타이밍이 맞는 크리에이터가 기다리고 있습니다."}</p>
                             <Button size="lg" className={`bg-gradient-to-r ${currentTab.color} text-white border-0 px-8 py-6 text-lg shadow-lg hover:shadow-xl`} asChild>
                                 <Link href="/signup">무료로 시작하기 <ArrowRight className="ml-2 h-5 w-5" /></Link>
                             </Button>
