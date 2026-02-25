@@ -54,6 +54,7 @@ const CREATOR_FEATURES = [
     { icon: Sparkles, title: "AI 콘텐츠 플랜", desc: "캠페인 가이드를 기반으로 AI가 콘텐츠 기획안을 자동 생성합니다. 아이디어가 막힐 때 활용하세요.", highlight: "AI가 기획안을 대신 작성" },
     { icon: Layers, title: "협업 워크스페이스", desc: "브랜드와의 협업 진행 상황을 한눈에 확인합니다. 제안→계약→배송→콘텐츠 제출→완료까지 전체 라이프사이클을 관리하세요.", highlight: "제안부터 정산까지 원스톱" },
     { icon: Calendar, title: "캘린더 뷰", desc: "일정 기반으로 모먼트와 협업 스케줄을 확인하세요. 중복 일정을 방지하고 효율적으로 관리합니다.", highlight: "스케줄을 놓치지 않도록" },
+    { icon: Sparkles, title: "and more...", desc: "크리에이터, 브랜드, MCN이 더 편하게 일할 수 있도록! 크레디픽은 끊임없이 연구합니다!", highlight: "더 나은 협업 환경을 위해" },
 ]
 const MCN_FEATURES = [
     { icon: Banknote, title: "정산 자동화", desc: "협업 완료 후 크리에이터별 수익 배분율을 자동 계산하고, 지급명세서 발행과 CSV 내보내기까지 원클릭으로 처리합니다.", highlight: "커미션 계산 실수 제로" },
@@ -64,7 +65,7 @@ const MCN_FEATURES = [
     { icon: Calendar, title: "팀 캘린더", desc: "소속 크리에이터 전체의 협업 일정을 통합 캘린더로 확인합니다. 중복 일정과 마감 누락을 방지하세요.", highlight: "누가 언제 뭐 하는지 한눈에" },
     { icon: Briefcase, title: "크리에이터별 대시보드", desc: "팀 스위처로 각 크리에이터 화면에 즉시 전환합니다. 워크스페이스·계약·정산을 크리에이터 입장에서 직접 조작하세요.", highlight: "크리에이터처럼 들어가서 직접 처리" },
     { icon: UserPlus, title: "팀 합류 링크", desc: "이미 계약된 소속 크리에이터에게 고유 링크를 보내면 가입 즉시 팀에 자동 합류됩니다. 별도 설정이 필요 없습니다.", highlight: "계약된 크리에이터를 플랫폼에 즉시 등록" },
-    { icon: Building2, title: "사업자 정보 관리", desc: "사업자등록번호·대표자명·직인을 등록하면 지급명세서에 자동 반영됩니다. 세무·회계 처리가 한결 간편해집니다.", highlight: "지급명세서 자동 발행" },
+    { icon: Sparkles, title: "and more...", desc: "크리에이터, 브랜드, MCN이 더 편하게 일할 수 있도록! 크레디픽은 끊임없이 연구합니다!", highlight: "더 나은 협업 환경을 위해" },
 ]
 const BRAND_FEATURES = [
     { icon: Search, title: "모먼트 디스커버리", desc: "전국 크리에이터들의 라이프 모먼트를 탐색합니다. 카테고리, 팔로워 수, 지역, 가격대 등 정밀 필터로 최적의 크리에이터를 찾으세요.", highlight: "제품이 필요한 사람을 정확히 찾습니다" },
@@ -75,6 +76,7 @@ const BRAND_FEATURES = [
     { icon: FileText, title: "AI 계약서 & 서명", desc: "제안 수락 후 AI가 협업 전자 계약서를 자동 생성합니다.", highlight: "계약서 작성 시간 zero" },
     { icon: Star, title: "AI 적정 가격 계산기", desc: "크리에이터의 팔로워 수, 채널, 콘텐츠 유형에 기반한 적정 협업 단가를 AI가 추천합니다.", highlight: "\"이 크리에이터, 얼마가 적절할까?\"" },
     { icon: Layers, title: "협업 워크스페이스", desc: "수락→계약→배송→콘텐츠 검수→완료까지 전체 과정을 프로그레스 바로 시각화합니다.", highlight: "파편화된 업무를 하나로 통합" },
+    { icon: Sparkles, title: "and more...", desc: "크리에이터, 브랜드, MCN이 더 편하게 일할 수 있도록! 크레디픽은 끊임없이 연구합니다!", highlight: "더 나은 협업 환경을 위해" },
 ]
 
 // ───── Moment Examples (all 19 preserved) ─────
@@ -270,8 +272,8 @@ export default function ServicesDesignPage() {
                         <div className={`p-6 sm:p-8 md:p-10 rounded-3xl bg-gradient-to-br ${currentTab.color} text-white`}>
                             <div className="max-w-2xl">
                                 <p className="text-sm font-medium uppercase tracking-widest opacity-80 mb-3">{activeTab === "creator" ? "Creator Benefit" : activeTab === "mcn" ? "MCN / Agency Benefit" : "Brand Benefit"}</p>
-                                <h3 className="text-2xl md:text-3xl font-black mb-4">{activeTab === "creator" ? "\"내 일상이 곧 수익이 됩니다\"" : activeTab === "mcn" ? "\"관리부터 정산까지, 원 대시보드에서\"" : "\"본업에만 집중하세요\""}</h3>
-                                <p className="text-white/80 leading-relaxed">{activeTab === "creator" ? "영업·계약·정산은 CreadyPick이 처리합니다. 라이프 모먼트에 필요한 제품을 광고하세요. 광고주는 CreadyPick이 찾아드립니다." : activeTab === "mcn" ? "크리에이터가 10명이든 100명이든 — 현황 파악, 제안 관리, 계약, 정산을 하나로." : "인플루언서 서치·컨택·계약은 CreadyPick에 맡기고, 본업에만 집중하세요."}</p>
+                                <h3 className="text-2xl md:text-3xl font-black mb-4">{activeTab === "creator" ? "\"내 일상이 곧 수익이 됩니다!\"" : activeTab === "mcn" ? "\"관리부터 정산까지, 하나의 대시보드에서 한번에!\"" : "\"광고주님 너무 바쁘시죠? 이젠 본업에만 집중하세요!\""}</h3>
+                                <p className="text-white/80 leading-relaxed">{activeTab === "creator" ? "나에게 딱 필요한 광고 영업·계약·정산은 CreadyPick이 처리합니다. 일정을 등록하고, 라이프 모먼트에 필요한 제품을 광고하세요. 광고주님은 CreadyPick이 찾아드립니다!" : activeTab === "mcn" ? "크리에이터가 10명이든 100명이든 — 현황 파악, 일정 관리, 제안 관리, 계약, 정산을 한곳에서 한번에!" : "광고에 딱 맞는 인플루언서 서치·컨택·계약·정산까지 CreadyPick에 맡기고, 본업에만 집중하세요!"}</p>
                             </div>
                         </div>
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
