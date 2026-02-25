@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    url: "https://www.creadypick.com",
+    url: "https://www.creadypick.co.kr",
     title: "CreadyPick | 광고는 타이밍이다 🎯",
     description: "제품이 필요한 바로 그 순간에 연결합니다. 라이프 모먼트 기반 크리에이터 매칭 플랫폼 — 가입비 무료, 수수료 0%.",
     siteName: "CreadyPick",
