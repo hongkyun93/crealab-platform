@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
     const { ig_user_id, ig_access_token, followers_count } = channel
 
     // 2. 최근 12개 게시물 목록 + 오디언스 데모그래픽 병렬 조회
-    const [mediaRes, audienceRes] = await Promise.all([
+    // follower_demographics: 성별/나이/국가 분포 (신규 API, audience_gender_age 대체)
+    const [mediaRes, audienceGenderAgeRes, audienceCountryRes] = await Promise.all([
         fetch(
             `https://graph.facebook.com/v19.0/${ig_user_id}/media` +
             `?fields=id,media_type,like_count,comments_count,timestamp` +
@@ -41,15 +42,26 @@ export async function GET(req: NextRequest) {
         ),
         fetch(
             `https://graph.facebook.com/v19.0/${ig_user_id}/insights` +
-            `?metric=audience_gender_age,audience_country,audience_city` +
+            `?metric=follower_demographics` +
+            `&metric_type=total_value` +
             `&period=lifetime` +
+            `&breakdown=age,gender` +
+            `&access_token=${ig_access_token}`
+        ),
+        fetch(
+            `https://graph.facebook.com/v19.0/${ig_user_id}/insights` +
+            `?metric=follower_demographics` +
+            `&metric_type=total_value` +
+            `&period=lifetime` +
+            `&breakdown=country` +
             `&access_token=${ig_access_token}`
         )
     ])
 
-    const [mediaData, audienceData] = await Promise.all([
+    const [mediaData, audienceGenderAgeData, audienceCountryData] = await Promise.all([
         mediaRes.json(),
-        audienceRes.json()
+        audienceGenderAgeRes.json(),
+        audienceCountryRes.json()
     ])
 
     if (mediaData.error) {
@@ -59,37 +71,53 @@ export async function GET(req: NextRequest) {
 
     const posts: any[] = mediaData.data || []
 
-    // 3. 오디언스 데이터 파싱
+    // 3. 오디언스 데이터 파싱 (신규 follower_demographics API)
+    // 응답 구조: { data: [{ name, total_value: { breakdowns: [{ dimension_keys, results: [{ dimension_values, value }] }] } }] }
     let audienceFemaleRatio: number | null = null
     let audienceAge2534Ratio: number | null = null
     let audienceDomesticRatio: number | null = null
 
-    if (!audienceData.error && audienceData.data) {
-        for (const metric of audienceData.data) {
-            if (metric.name === 'audience_gender_age' && metric.values?.[0]?.value) {
-                const genderAge: Record<string, number> = metric.values[0].value
-                const total = Object.values(genderAge).reduce((s: number, v: unknown) => s + (typeof v === 'number' ? v : 0), 0)
-                if (total > 0) {
-                    // 여성 비율
-                    const femaleTotal = Object.entries(genderAge)
-                        .filter(([k]) => k.startsWith('F.'))
-                        .reduce((s, [, v]) => s + (v as number), 0)
+    // 성별/나이 파싱
+    if (!audienceGenderAgeData.error && audienceGenderAgeData.data) {
+        const metric = audienceGenderAgeData.data[0]
+        const breakdown = metric?.total_value?.breakdowns?.[0]
+        if (breakdown) {
+            const dimKeys: string[] = breakdown.dimension_keys || []
+            const results: Array<{ dimension_values: string[]; value: number }> = breakdown.results || []
+            const genderIdx = dimKeys.indexOf('gender')
+            const ageIdx = dimKeys.indexOf('age')
+            const total = results.reduce((s: number, r) => s + r.value, 0)
+            if (total > 0) {
+                if (genderIdx !== -1) {
+                    const femaleTotal = results.filter(r => r.dimension_values[genderIdx] === 'F').reduce((s, r) => s + r.value, 0)
                     audienceFemaleRatio = parseFloat(((femaleTotal / total) * 100).toFixed(1))
-
-                    // 25~34세 비율 (F.25-34 + M.25-34)
-                    const age2534 = (genderAge['F.25-34'] || 0) + (genderAge['M.25-34'] || 0)
-                    audienceAge2534Ratio = parseFloat(((age2534 / total) * 100).toFixed(1))
                 }
-            }
-            if (metric.name === 'audience_country' && metric.values?.[0]?.value) {
-                const countries: Record<string, number> = metric.values[0].value
-                const total = Object.values(countries).reduce((s: number, v: unknown) => s + (typeof v === 'number' ? v : 0), 0)
-                if (total > 0) {
-                    const kr = countries['KR'] || 0
-                    audienceDomesticRatio = parseFloat(((kr / total) * 100).toFixed(1))
+                if (ageIdx !== -1) {
+                    const age2534Total = results.filter(r => r.dimension_values[ageIdx] === '25-34').reduce((s, r) => s + r.value, 0)
+                    audienceAge2534Ratio = parseFloat(((age2534Total / total) * 100).toFixed(1))
                 }
             }
         }
+    } else if (audienceGenderAgeData.error) {
+        console.warn('[profile-stats] gender/age error:', audienceGenderAgeData.error.message)
+    }
+
+    // 국가 파싱
+    if (!audienceCountryData.error && audienceCountryData.data) {
+        const metric = audienceCountryData.data[0]
+        const breakdown = metric?.total_value?.breakdowns?.[0]
+        if (breakdown) {
+            const dimKeys: string[] = breakdown.dimension_keys || []
+            const results: Array<{ dimension_values: string[]; value: number }> = breakdown.results || []
+            const countryIdx = dimKeys.indexOf('country')
+            const total = results.reduce((s: number, r) => s + r.value, 0)
+            if (total > 0 && countryIdx !== -1) {
+                const krTotal = results.filter(r => r.dimension_values[countryIdx] === 'KR').reduce((s, r) => s + r.value, 0)
+                audienceDomesticRatio = parseFloat(((krTotal / total) * 100).toFixed(1))
+            }
+        }
+    } else if (audienceCountryData.error) {
+        console.warn('[profile-stats] country error:', audienceCountryData.error.message)
     }
 
     // 4. 각 게시물 인사이트 병렬 조회 (reach, saved)
@@ -103,20 +131,42 @@ export async function GET(req: NextRequest) {
     const insightResults = await Promise.allSettled(
         posts.map(async (post) => {
             const mediaType: string = post.media_type || 'IMAGE'
-            const baseMetrics = 'reach,saved'
-            const extraMetric = (mediaType === 'VIDEO' || mediaType === 'REELS') ? ',video_views' : ''
-            const metricsParam = `${baseMetrics}${extraMetric}`
+            // Instagram API는 릴스를 VIDEO 또는 REELS로 반환함
+            const isReel = mediaType === 'REELS'
+            const isVideo = mediaType === 'VIDEO'
 
-            const res = await fetch(
+            // saves, reach, video_views 모두 insights API로 통합 요청
+            // video_views는 REELS 전용
+            const metricParam = isReel ? 'reach,saved,video_views' : 'reach,saved'
+
+            const insightRes = await fetch(
                 `https://graph.facebook.com/v19.0/${post.id}/insights` +
-                `?metric=${metricsParam}` +
+                `?metric=${metricParam}` +
                 `&access_token=${ig_access_token}`
             )
-            const data = await res.json()
+            const insightData = await insightRes.json()
 
             const metricsMap: Record<string, number> = {}
-            if (!data.error) {
-                for (const m of (data.data || [])) {
+
+            if (insightData.error) {
+                console.warn(`[profile-stats] insight error for ${post.id} (${mediaType}):`, insightData.error.message)
+                // 에러 시 reach만 재시도 (saved, video_views 제외)
+                try {
+                    const retryRes = await fetch(
+                        `https://graph.facebook.com/v19.0/${post.id}/insights` +
+                        `?metric=reach` +
+                        `&access_token=${ig_access_token}`
+                    )
+                    const retryData = await retryRes.json()
+                    if (!retryData.error) {
+                        for (const m of (retryData.data || [])) {
+                            const val = Array.isArray(m.values) ? (m.values[0]?.value ?? 0) : (m.value ?? 0)
+                            if (typeof val === 'number') metricsMap[m.name] = val
+                        }
+                    }
+                } catch { /* 무시 */ }
+            } else {
+                for (const m of (insightData.data || [])) {
                     const val = Array.isArray(m.values)
                         ? (m.values[0]?.value ?? 0)
                         : (m.value ?? 0)
@@ -159,9 +209,13 @@ export async function GET(req: NextRequest) {
     const avgSaves = Math.round(validPosts.reduce((s, p) => s + p.saves, 0) / validPosts.length)
     const avgViews = Math.round(validPosts.reduce((s, p) => s + p.views, 0) / validPosts.length)
 
-    // ER = (좋아요 + 댓글 + 저장) / reach × 100
     const avgEngagement = avgLikes + avgComments + avgSaves
-    const er = avgReach > 0 ? parseFloat(((avgEngagement / avgReach) * 100).toFixed(2)) : null
+    // ER by Reach: (좋아요+댓글+저장) / 도달수 × 100 (광고 효율 지표)
+    const erByReach = avgReach > 0 ? parseFloat(((avgEngagement / avgReach) * 100).toFixed(2)) : null
+    // ER by Followers: (좋아요+댓글+저장) / 팔로워수 × 100 (업계 표준)
+    const erByFollowers = (followers_count || 0) > 0 ? parseFloat(((avgEngagement / followers_count) * 100).toFixed(2)) : null
+    // 단가 계산에는 팔로워 기준 ER 사용 (업계 표준)
+    const er = erByFollowers
 
     // 저장률 = saves / reach (구매 의향 지표)
     const saveRate = avgReach > 0 ? parseFloat(((avgSaves / avgReach) * 100).toFixed(2)) : null
@@ -173,6 +227,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
         er,
+        erByReach,
+        erByFollowers,
         avgReach,
         avgLikes,
         avgComments,

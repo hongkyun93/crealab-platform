@@ -1,6 +1,5 @@
 "use client"
 
-import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { Camera, Loader2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -14,7 +13,6 @@ interface AvatarUploadProps {
 }
 
 export function AvatarUpload({ uid, url, onUpload, size = 150, className }: AvatarUploadProps) {
-    const supabase = createClient()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [uploading, setUploading] = useState(false)
     const [avatarUrl, setAvatarUrl] = useState<string | null>(url || null)
@@ -29,42 +27,35 @@ export function AvatarUpload({ uid, url, onUpload, size = 150, className }: Avat
             setUploading(true)
 
             if (!event.target.files || event.target.files.length === 0) {
-                throw new Error('You must select an image to upload.')
+                throw new Error('이미지를 선택해주세요.')
             }
 
             const file = event.target.files[0]
-            const fileExt = file.name.split('.').pop()
-            const fileName = `${uid}-${Math.random()}.${fileExt}`
-            const filePath = `${fileName}`
 
-            // 1. Upload to 'avatars' bucket
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, file, {
-                    upsert: true
-                })
+            // 서버 API를 통해 업로드 (Storage RLS 우회)
+            const formData = new FormData()
+            formData.append('file', file)
 
-            if (uploadError) {
-                throw uploadError
+            const res = await fetch('/api/upload/avatar', {
+                method: 'POST',
+                body: formData,
+            })
+
+            const result = await res.json()
+
+            if (!res.ok) {
+                throw new Error(result.error || '업로드 실패')
             }
 
-            // 2. Get Public URL
-            const { data } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(filePath)
-
-            if (data) {
-                const freshUrl = `${data.publicUrl}?t=${Date.now()}`
-                setAvatarUrl(freshUrl)
-                onUpload(freshUrl)
-            }
+            const freshUrl = result.url
+            setAvatarUrl(freshUrl)
+            onUpload(freshUrl)
 
         } catch (error: any) {
             console.error("Avatar upload error:", error)
             alert('이미지 업로드 실패: ' + (error.message || "알 수 없는 오류"))
         } finally {
             setUploading(false)
-            // Reset input so the same file can be selected again if needed
             if (fileInputRef.current) {
                 fileInputRef.current.value = ''
             }

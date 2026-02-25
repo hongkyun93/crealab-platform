@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { createClient } from "@/lib/supabase/client"
+import { uploadFileViaAPI } from "@/lib/upload"
 import { ArrowLeft, Check, Loader2, Package, Plus, Save, Send, Upload, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -154,21 +154,7 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
 
         setIsUploading(true)
         try {
-            const supabase = createClient()
-            const fileExt = file.name.split('.').pop()
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-            const filePath = `campaign-images/${fileName}`
-
-            const { error: uploadError } = await supabase.storage
-                .from('campaigns')
-                .upload(filePath, file)
-
-            if (uploadError) throw uploadError
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('campaigns')
-                .getPublicUrl(filePath)
-
+            const publicUrl = await uploadFileViaAPI(file, 'campaigns', 'campaign-images')
             setImage(publicUrl)
             toast.success("이미지가 업로드되었습니다!")
         } catch (error: any) {

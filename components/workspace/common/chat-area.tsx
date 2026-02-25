@@ -5,6 +5,7 @@ import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { uploadFileViaAPI } from '@/lib/upload';
 import { FileText, Loader2, Paperclip, Send, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -143,26 +144,8 @@ export function ChatArea({ className }: ChatAreaProps) {
         if (pendingFile) {
             setIsUploading(true);
             try {
-                // Supabase Storage: workspace-files 버킷
                 const folder = workspaceId || proposalIdStr || 'unknown';
-                // 파일명에서 공백/특수문자 제거 (Storage key 안전하게)
-                const safeFileName = `${Date.now()}_${pendingFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
-                const path = `${folder}/${safeFileName}`;
-
-                const { data, error } = await supabase.storage
-                    .from('workspace-files')
-                    .upload(path, pendingFile, { upsert: false });
-
-                if (error) {
-                    toast.error('파일 업로드에 실패했습니다.');
-                    console.error('[ChatArea] Upload error:', error);
-                    setChatMessage(msgContent); // 메시지 복원
-                    return;
-                }
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('workspace-files')
-                    .getPublicUrl(path);
+                const publicUrl = await uploadFileViaAPI(pendingFile, 'workspace-files', folder);
 
                 uploadedFile = {
                     url: publicUrl,

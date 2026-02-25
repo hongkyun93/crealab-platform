@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/components/providers/auth-provider';
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
+import { uploadFileViaAPI } from '@/lib/upload';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -108,22 +109,7 @@ export function FileSharePanel() {
         setIsUploading(true)
         try {
             const folder = workspaceId || proposalId
-            const safeFileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`
-            const path = `${folder}/${safeFileName}`
-
-            const { error: uploadError } = await supabase.storage
-                .from('workspace-files')
-                .upload(path, file, { upsert: false })
-
-            if (uploadError) {
-                toast.error('파일 업로드에 실패했습니다.')
-                console.error('[FileSharePanel] Upload error:', uploadError)
-                return
-            }
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('workspace-files')
-                .getPublicUrl(path)
+            const publicUrl = await uploadFileViaAPI(file, 'workspace-files', folder)
 
             // workspace_files 테이블에 기록
             const insertData: any = {

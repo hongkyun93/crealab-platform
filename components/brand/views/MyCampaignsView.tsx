@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { uploadFileViaAPI } from "@/lib/upload"
 import { formatDateToMonth } from "@/lib/utils"
 import { ArrowRight, Bell, Link as LinkIcon, Package, Pencil, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
@@ -39,7 +40,6 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
     const [confirmAcceptId, setConfirmAcceptId] = React.useState<string | null>(null)
     const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null)
     const supabase = createClient()
-
     // Reset optimistic image when selection changes
     React.useEffect(() => {
         setOptimisticImage(null)
@@ -55,19 +55,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
 
         setIsImageUploading(true)
         try {
-            const fileExt = file.name.split('.').pop()
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-            const filePath = `campaign-images/${fileName}`
-
-            const { error: uploadError } = await supabase.storage
-                .from('campaigns')
-                .upload(filePath, file)
-
-            if (uploadError) throw uploadError
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('campaigns')
-                .getPublicUrl(filePath)
+            const publicUrl = await uploadFileViaAPI(file, 'campaigns', 'campaign-images')
 
             // Optimistic Update
             setOptimisticImage(publicUrl)
@@ -84,7 +72,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
             if (refreshData) await refreshData()
             else router.refresh()
 
-            toast.success("캠페인 이미지가 변경되었습니다.")
+            toast.success("캔페인 이미지가 변경되었습니다.")
         } catch (error: any) {
             console.error("Image upload error:", error)
             toast.error(`이미지 업로드 실패: ${error.message || "알 수 없는 오류"}`)
@@ -277,8 +265,8 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                 key={n}
                                 onClick={() => setPageSize(n)}
                                 className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${pageSize === n
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'text-muted-foreground hover:text-foreground'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
                                 {n}

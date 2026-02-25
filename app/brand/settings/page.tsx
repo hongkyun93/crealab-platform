@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { createClient } from "@/lib/supabase/client"
+import { uploadFileViaAPI } from "@/lib/upload"
 import { ArrowLeft, Camera } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -19,7 +19,6 @@ export default function BrandSettingsPage() {
     const { user, updateUser } = useUnifiedProvider()
     const router = useRouter()
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const supabase = createClient()
 
     const [name, setName] = useState("")
     const [website, setWebsite] = useState("")
@@ -41,14 +40,7 @@ export default function BrandSettingsPage() {
         if (!file || !user?.id) return
         setIsUploadingAvatar(true)
         try {
-            const ext = file.name.split('.').pop()
-            const path = `avatars/${user.id}/brand-avatar.${ext}`
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(path, file, { upsert: true })
-            if (uploadError) throw uploadError
-            const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-            const url = data.publicUrl
+            const url = await uploadFileViaAPI(file, 'avatars', user.id)
             setAvatarUrl(url)
             await updateUser({ avatar: url })
             toast.success("프로필 이미지가 업데이트되었습니다.")

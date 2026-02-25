@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { createClient } from "@/lib/supabase/client"
+import { uploadFileViaAPI } from "@/lib/upload"
 import { Loader2, Upload, X } from "lucide-react"
 import Image from "next/image"
 import { useRef, useState } from "react"
@@ -29,7 +29,6 @@ export function ImageUploader({
 }: ImageUploaderProps) {
     const [isUploading, setIsUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const supabase = createClient()
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -42,20 +41,7 @@ export function ImageUploader({
 
         setIsUploading(true)
         try {
-            const fileExt = file.name.split('.').pop()
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-            const filePath = `${folder}/${fileName}`
-
-            const { error: uploadError } = await supabase.storage
-                .from(bucket)
-                .upload(filePath, file)
-
-            if (uploadError) throw uploadError
-
-            const { data: { publicUrl } } = supabase.storage
-                .from(bucket)
-                .getPublicUrl(filePath)
-
+            const publicUrl = await uploadFileViaAPI(file, bucket, folder)
             onChange(publicUrl)
             toast.success("이미지가 업로드되었습니다.")
         } catch (error: any) {

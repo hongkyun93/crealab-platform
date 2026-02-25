@@ -28,7 +28,7 @@ const REGIONS = [
     " 전북", "전남", "경북", "경남", "제주"
 ]
 
-function SocialChannelCard({ channel, userId }: { channel: any, userId: string }) {
+export function SocialChannelCard({ channel, userId }: { channel: any, userId: string }) {
     const { updateChannel, deleteChannel, setPrimaryChannel } = useSocialChannels()
     const [followersInput, setFollowersInput] = useState(channel.followersCount?.toLocaleString() || "0")
     const [handleInput, setHandleInput] = useState(channel.handle || "")
@@ -56,7 +56,7 @@ function SocialChannelCard({ channel, userId }: { channel: any, userId: string }
     let icon = <div className="h-10 w-10 mb-4 text-2xl">🌐</div>
 
     if (channel.platform === 'instagram') {
-        gradientClass = "from-purple-600 via-pink-600 to-orange-600"
+        gradientClass = "from-indigo-700 to-purple-900"
         icon = <Instagram className="h-10 w-10 mb-4" />
     } else if (channel.platform === 'youtube') {
         gradientClass = "from-red-600 to-red-700"
@@ -686,143 +686,143 @@ export function SettingsView() {
                         </CardContent>
                     </Card>
 
-                    {/* 활동 정보 & 정산 정보 */ }
-    <Card>
-        <CardHeader>
-            <CardTitle>활동 정보 &amp; 정산 정보</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8">
+                    {/* 활동 정보 & 정산 정보 */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>활동 정보 &amp; 정산 정보</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-8">
 
-            {/* Rate Card - Extended Version (5 fields) */}
-            <div className="space-y-4">
-                <h3 className="text-base font-semibold">예상 단가표 (Rate Card)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>숏폼 영상 (Reels/Shorts)</Label>
-                        <div className="relative">
-                            <Input
-                                type="number"
-                                value={priceVideo}
-                                onChange={(e) => setPriceVideo(e.target.value)}
-                                className="pr-8"
-                                placeholder="0"
-                            />
-                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>피드 게시물 (Photo/Carousel)</Label>
-                        <div className="relative">
-                            <Input
-                                type="number"
-                                value={priceFeed}
-                                onChange={(e) => setPriceFeed(e.target.value)}
-                                className="pr-8"
-                                placeholder="0"
-                            />
-                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>스토리 (Story)</Label>
-                        <div className="relative">
-                            <Input
-                                type="number"
-                                value={priceStory}
-                                onChange={(e) => setPriceStory(e.target.value)}
-                                className="pr-8"
-                                placeholder="0"
-                            />
-                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>2차 활용권</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="relative">
-                                <Input
-                                    type="number"
-                                    value={usageRightsMonth}
-                                    onChange={(e) => setUsageRightsMonth(e.target.value)}
-                                    className="pr-8"
-                                    placeholder="기간"
-                                />
-                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
+                            {/* Rate Card - Extended Version (5 fields) */}
+                            <div className="space-y-4">
+                                <h3 className="text-base font-semibold">예상 단가표 (Rate Card)</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>숏폼 영상 (Reels/Shorts)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                type="number"
+                                                value={priceVideo}
+                                                onChange={(e) => setPriceVideo(e.target.value)}
+                                                className="pr-8"
+                                                placeholder="0"
+                                            />
+                                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>피드 게시물 (Photo/Carousel)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                type="number"
+                                                value={priceFeed}
+                                                onChange={(e) => setPriceFeed(e.target.value)}
+                                                className="pr-8"
+                                                placeholder="0"
+                                            />
+                                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>스토리 (Story)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                type="number"
+                                                value={priceStory}
+                                                onChange={(e) => setPriceStory(e.target.value)}
+                                                className="pr-8"
+                                                placeholder="0"
+                                            />
+                                            <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>2차 활용권</Label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    value={usageRightsMonth}
+                                                    onChange={(e) => setUsageRightsMonth(e.target.value)}
+                                                    className="pr-8"
+                                                    placeholder="기간"
+                                                />
+                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
+                                            </div>
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    value={usageRightsPrice}
+                                                    onChange={(e) => setUsageRightsPrice(e.target.value)}
+                                                    className="pr-8"
+                                                    placeholder="비용"
+                                                />
+                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>자동 DM 발송</Label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    value={autoDmMonth}
+                                                    onChange={(e) => setAutoDmMonth(e.target.value)}
+                                                    className="pr-8"
+                                                    placeholder="기간"
+                                                />
+                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
+                                            </div>
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    value={autoDmPrice}
+                                                    onChange={(e) => setAutoDmPrice(e.target.value)}
+                                                    className="pr-8"
+                                                    placeholder="비용"
+                                                />
+                                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="relative">
-                                <Input
-                                    type="number"
-                                    value={usageRightsPrice}
-                                    onChange={(e) => setUsageRightsPrice(e.target.value)}
-                                    className="pr-8"
-                                    placeholder="비용"
-                                />
-                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>자동 DM 발송</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="relative">
-                                <Input
-                                    type="number"
-                                    value={autoDmMonth}
-                                    onChange={(e) => setAutoDmMonth(e.target.value)}
-                                    className="pr-8"
-                                    placeholder="기간"
-                                />
-                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">개월</span>
-                            </div>
-                            <div className="relative">
-                                <Input
-                                    type="number"
-                                    value={autoDmPrice}
-                                    onChange={(e) => setAutoDmPrice(e.target.value)}
-                                    className="pr-8"
-                                    placeholder="비용"
-                                />
-                                <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">원</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Bank Info */}
-            <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-base font-semibold">정산 계좌 정보</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                        <Label>은행명</Label>
-                        <Input
-                            value={bankName}
-                            onChange={(e) => setBankName(e.target.value)}
-                            placeholder="예: 카카오뱅크"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>계좌번호</Label>
-                        <Input
-                            value={accountNumber}
-                            onChange={(e) => setAccountNumber(e.target.value)}
-                            placeholder="하이픈(-) 포함"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>예금주</Label>
-                        <Input
-                            value={accountHolder}
-                            onChange={(e) => setAccountHolder(e.target.value)}
-                            placeholder="실명 입력"
-                        />
-                    </div>
-                </div>
-            </div>
-        </CardContent>
-    </Card>
+                            {/* Bank Info */}
+                            <div className="space-y-4 pt-4 border-t">
+                                <h3 className="text-base font-semibold">정산 계좌 정보</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>은행명</Label>
+                                        <Input
+                                            value={bankName}
+                                            onChange={(e) => setBankName(e.target.value)}
+                                            placeholder="예: 카카오뱅크"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>계좌번호</Label>
+                                        <Input
+                                            value={accountNumber}
+                                            onChange={(e) => setAccountNumber(e.target.value)}
+                                            placeholder="하이픈(-) 포함"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>예금주</Label>
+                                        <Input
+                                            value={accountHolder}
+                                            onChange={(e) => setAccountHolder(e.target.value)}
+                                            placeholder="실명 입력"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-    {/* Creator Legal/Tax Info */ }
+                    {/* Creator Legal/Tax Info */}
                     <Card>
                         <CardHeader>
                             <CardTitle>계약서 · 세무 정보</CardTitle>
@@ -918,24 +918,24 @@ export function SettingsView() {
                     </Card>
                 </>
             )
-}
+            }
 
-{/* 위험 구역 - 프록시 모드에서는 숨김 */ }
-{
-    !isProxyMode && (
-        <Card className="border-destructive/30">
-            <CardHeader>
-                <CardTitle className="text-destructive text-base">위험 구역</CardTitle>
-                <CardDescription>
-                    계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <AccountDeleteDialog />
-            </CardContent>
-        </Card>
-    )
-}
+            {/* 위험 구역 - 프록시 모드에서는 숨김 */}
+            {
+                !isProxyMode && (
+                    <Card className="border-destructive/30">
+                        <CardHeader>
+                            <CardTitle className="text-destructive text-base">위험 구역</CardTitle>
+                            <CardDescription>
+                                계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AccountDeleteDialog />
+                        </CardContent>
+                    </Card>
+                )
+            }
         </div >
     )
 }
