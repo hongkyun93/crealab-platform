@@ -104,7 +104,7 @@ export default function TermsPage() {
                     <p><strong>통신판매업신고번호:</strong> 제2025-서울마포-1566호</p>
                     <p><strong>주소:</strong> 03911 서울 마포구 매봉산로 18 마포창업복지관 502호</p>
                     <p><strong>전화:</strong> 0507-1329-2537</p>
-                    <p><strong>고객센터:</strong> ivsb0525@gmail.com</p>
+                    <p><strong>고객센터:</strong> support@creadypick.com</p>
                 </div>
             </div>
         </div>

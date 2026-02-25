@@ -142,7 +142,7 @@ export default function PrivacyPage() {
                             <li><strong>성명:</strong> 김수민</li>
                             <li><strong>직책:</strong> 개인정보보호책임자</li>
                             <li><strong>전화:</strong> 0507-1329-2537</li>
-                            <li><strong>이메일:</strong> ivsb0525@gmail.com</li>
+                            <li><strong>이메일:</strong> support@creadypick.com</li>
                         </ul>
                         <p className="text-xs mt-3 text-muted-foreground">
                             개인정보 침해에 대한 신고나 상담은 다음 기관에 문의하실 수 있습니다.<br />
@@ -214,7 +214,7 @@ export default function PrivacyPage() {
                             </tbody>
                         </table>
                     </div>
-                    <p className="mt-2 text-sm">이전에 동의하지 않을 권리가 있으나, 동의 거부 시 서비스 이용이 제한될 수 있습니다. 문의: ivsb0525@gmail.com</p>
+                    <p className="mt-2 text-sm">이전에 동의하지 않을 권리가 있으나, 동의 거부 시 서비스 이용이 제한될 수 있습니다. 문의: support@creadypick.com</p>
                 </section>
 
                 <section>
