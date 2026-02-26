@@ -91,18 +91,18 @@ export function MyProductsView({
                                     </div>
                                 </div>
                             </CardContent>
-                            <CardFooter className="border-t pt-4 bg-muted/10 flex flex-wrap gap-2">
+                            <CardFooter className="border-t pt-4 bg-muted/10 flex flex-nowrap overflow-x-auto gap-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                 {onViewDetail && (
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="flex-1 h-8 text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                                        className="shrink-0 whitespace-nowrap h-8 text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10"
                                         onClick={() => onViewDetail(String(p.id))}
                                     >
                                         <ExternalLink className="h-3 w-3" /> 상세보기
                                     </Button>
                                 )}
-                                <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs gap-1" asChild>
+                                <Button variant="ghost" size="sm" className="shrink-0 whitespace-nowrap h-8 text-xs gap-1" asChild>
                                     <a href={p.link} target="_blank" rel="noopener noreferrer">
                                         <ExternalLink className="h-3 w-3" /> 웹사이트
                                     </a>
@@ -110,7 +110,7 @@ export function MyProductsView({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 px-2 text-xs gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                    className="shrink-0 whitespace-nowrap h-8 px-2 text-xs gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                                     onClick={() => handleViewGuide(p)}
                                 >
                                     <FileText className="h-3 w-3" /> 가이드
@@ -118,7 +118,7 @@ export function MyProductsView({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    className="shrink-0 whitespace-nowrap h-8 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                     onClick={() => handleEditProduct(p)}
                                 >
                                     <Pencil className="h-3 w-3" /> 수정
@@ -126,7 +126,7 @@ export function MyProductsView({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 px-2 text-xs gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                    className="shrink-0 whitespace-nowrap h-8 px-2 text-xs gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
                                     onClick={() => setConfirmDeleteId(p.id)}
                                 >
                                     <Trash2 className="h-4 w-4" />

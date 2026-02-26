@@ -1360,7 +1360,7 @@ function BrandDashboardContent() {
         const brandCount = filterByType(items, 'brand').length
 
         return (
-            <div className="flex gap-2 mb-4 flex-wrap">
+            <div className="flex gap-2 mb-4 flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <button
                     onClick={() => setWorkspaceSubTab('all')}
                     className={`min-w-[90px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
@@ -2349,14 +2349,14 @@ function BrandDashboardContent() {
                                     <h4 className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1">
                                         <AtSign className="h-3 w-3" /> 태그 및 계정
                                     </h4>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-nowrap overflow-x-auto gap-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                         {newProductAccountTag && (
-                                            <span className="px-2 py-1 bg-background border border-border rounded-md text-xs font-bold text-foreground/90 shadow-sm">
+                                            <span className="px-2 py-1 bg-background border border-border rounded-md text-xs font-bold text-foreground/90 shadow-sm whitespace-nowrap">
                                                 {newProductAccountTag}
                                             </span>
                                         )}
                                         {newProductHashtags.split(/[\s,]+/).filter(t => t).map((tag, i) => (
-                                            <span key={i} className="px-2 py-1 bg-muted border border-border rounded-md text-xs text-muted-foreground">
+                                            <span key={i} className="px-2 py-1 bg-muted border border-border rounded-md text-xs text-muted-foreground whitespace-nowrap">
                                                 {tag.startsWith('#') ? tag : `#${tag}`}
                                             </span>
                                         ))}

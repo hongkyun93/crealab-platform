@@ -394,9 +394,9 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                     <div className="text-xs text-muted-foreground mb-1">{c.product}</div>
                                                 )}
                                                 {c.hashtags && c.hashtags.length > 0 && (
-                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                    <div className="flex flex-nowrap overflow-x-auto gap-1 mt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                                         {c.hashtags.slice(0, 4).map((tag: string, i: number) => (
-                                                            <span key={i} className="text-[10px] text-muted-foreground/80">#{tag}</span>
+                                                            <span key={i} className="text-[10px] text-muted-foreground/80 whitespace-nowrap">#{tag}</span>
                                                         ))}
                                                     </div>
                                                 )}

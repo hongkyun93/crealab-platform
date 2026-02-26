@@ -189,7 +189,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                 <CardContent className="p-4 space-y-1">
                     <div className="flex flex-col md:flex-row gap-2 md:items-center">
                         <span className="text-sm font-semibold w-24">팔로워 규모</span>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-nowrap overflow-x-auto gap-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             {[
                                 { k: "all", l: "전체" },
                                 { k: "starter", l: "스타터 (0~1천)" },
@@ -205,7 +205,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handlePresetClick(opt.k)}
-                                    className={cn('gap-1.5', followerFilter.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}
+                                    className={cn('gap-1.5 whitespace-nowrap', followerFilter.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}
                                 >
                                     {opt.l}
                                     {followerFilter.includes(opt.k) && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
@@ -215,12 +215,12 @@ export const DiscoverView = React.memo(function DiscoverView({
                     </div>
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold w-24 pt-1">모먼트 상태</span>
-                        <div className="flex flex-wrap gap-2 flex-1">
+                        <div className="flex flex-nowrap overflow-x-auto gap-2 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setStatusFilter("all")}
-                                className={cn('gap-1.5', statusFilter === "all" && 'bg-primary/10 text-primary font-medium')}
+                                className={cn('gap-1.5 whitespace-nowrap', statusFilter === "all" && 'bg-primary/10 text-primary font-medium')}
                             >
                                 전체보기
                                 {statusFilter === "all" && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
@@ -229,7 +229,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setStatusFilter("upcoming")}
-                                className={cn('gap-1.5', statusFilter === "upcoming" && 'bg-primary/10 text-primary font-medium')}
+                                className={cn('gap-1.5 whitespace-nowrap', statusFilter === "upcoming" && 'bg-primary/10 text-primary font-medium')}
                             >
                                 모집중인 모먼트
                                 {statusFilter === "upcoming" && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
@@ -238,7 +238,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setStatusFilter("past")}
-                                className={cn('gap-1.5', statusFilter === "past" && 'bg-primary/10 text-primary font-medium')}
+                                className={cn('gap-1.5 whitespace-nowrap', statusFilter === "past" && 'bg-primary/10 text-primary font-medium')}
                             >
                                 완료된 모먼트
                                 {statusFilter === "past" && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
@@ -247,7 +247,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setStatusFilter("favorites")}
-                                className={cn("gap-1.5", statusFilter === "favorites" && 'bg-primary/10 text-primary font-medium')}
+                                className={cn("gap-1.5 whitespace-nowrap", statusFilter === "favorites" && 'bg-primary/10 text-primary font-medium')}
                             >
                                 <Star className="h-3.5 w-3.5 text-yellow-500" fill={statusFilter === "favorites" ? "currentColor" : "none"} />
                                 즐겨찾기만 보기
@@ -256,7 +256,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                     </div>
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold w-24 pt-1">영상 단가</span>
-                        <div className="flex flex-wrap gap-2 flex-1">
+                        <div className="flex flex-nowrap overflow-x-auto gap-2 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             {PRICE_FILTER_RANGES.map(range => (
                                 <Button
                                     key={range.k}
@@ -273,7 +273,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                     </div>
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold w-24 pt-1">희망 채널</span>
-                        <div className="flex flex-wrap gap-2 flex-1">
+                        <div className="flex flex-nowrap overflow-x-auto gap-2 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             {[
                                 { k: 'all', l: '전체', icon: null },
                                 { k: 'instagram', l: 'Instagram', icon: <Instagram className="h-3.5 w-3.5" /> },
@@ -298,7 +298,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                     {/* Instagram 인증 필터 */}
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold w-24 pt-1">Instagram</span>
-                        <div className="flex flex-wrap gap-2 flex-1">
+                        <div className="flex flex-nowrap overflow-x-auto gap-2 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -322,7 +322,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                     </div>
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold w-24 pt-1">전문 분야</span>
-                        <div className="flex flex-wrap gap-2 flex-1">
+                        <div className="flex flex-nowrap overflow-x-auto gap-2 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             <Button
                                 variant="ghost"
                                 size="sm"
