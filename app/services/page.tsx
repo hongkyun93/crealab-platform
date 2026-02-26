@@ -219,7 +219,7 @@ export default function ServicesDesignPage() {
                 {/* ─── Before vs After (Story) ─── */}
                 <section className="container mx-auto px-6 md:px-8 max-w-5xl py-16">
                     <Reveal className="text-center space-y-3 mb-10">
-                        <h2 className="text-2xl md:text-3xl font-black">기존 방식 vs <BrandName /></h2>
+                        <h2 className="text-2xl md:text-3xl font-black flex items-center justify-center flex-wrap gap-x-2">기존 방식 vs <BrandName className="text-3xl md:text-5xl" /></h2>
                         <p className="text-muted-foreground">같은 예산, 완전히 다른 결과</p>
                     </Reveal>
                     <Reveal delay={100}>
