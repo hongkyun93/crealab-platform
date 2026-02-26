@@ -218,7 +218,17 @@ export default function PrivacyPage() {
                 </section>
 
                 <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-3">12. 개인정보처리방침의 변경</h2>
+                    <h2 className="text-xl font-semibold text-foreground mb-3">12. Instagram 데이터 연동 해제 및 삭제 안내</h2>
+                    <p className="mb-2"><strong>[데이터 삭제 방법]</strong></p>
+                    <ul className="list-disc pl-5 space-y-1">
+                        <li>이용자는 언제든지 CreadyPick 서비스 내 &quot;설정 &gt; 소셜 연동&quot; 메뉴에서 Instagram 계정 연동을 해제하고 저장된 데이터를 삭제할 수 있습니다.</li>
+                        <li>또한, Instagram 앱 내 [설정 및 활동] &gt; [앱 및 웹사이트] 메뉴에서도 CreadyPick의 접근 권한을 직접 취소하여 데이터 제공을 중단할 수 있습니다.</li>
+                        <li>권한 취소 시 당사 서버에 저장된 해당 SNS 통계 데이터는 지체 없이 자동 파기됩니다.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 className="text-xl font-semibold text-foreground mb-3">13. 개인정보처리방침의 변경</h2>
                     <p>이 개인정보처리방침은 시행일로부터 적용되며, 법령 및 방침에 따른 변경 내용의 추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 서비스 내 공지사항을 통하여 고지합니다.</p>
                 </section>
 
