@@ -226,7 +226,7 @@ export default function ServicesDesignPage() {
                         <div className="grid md:grid-cols-2 gap-4">
                             <Card className="bg-muted/30 border-muted"><CardContent className="p-8 space-y-4">
                                 <span className="inline-block text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted px-3 py-1 rounded-full">기존 방식</span>
-                                <h3 className="text-xl font-bold text-muted-foreground">&quot;누구(Who)에게만 집중&quot;</h3>
+                                <h3 className="text-xl md:text-[22px] font-bold text-muted-foreground leading-snug">제품이 필요한지 상관없이,<br />오직 &quot;누구&quot;에게 맡길지만 고민합니다.</h3>
                                 <div className="space-y-2 text-sm text-muted-foreground">
                                     {["DM 100개 보내면 답장 3개", "그 중 진행 가능 1명", "제품에 관심 없어서 억지 광고", "시청자도 \"광고구나\" 하고 스킵"].map((t, i) => (
                                         <div key={i} className="flex gap-2 items-start"><span className="text-red-400 mt-0.5">✕</span>{t}</div>
@@ -236,7 +236,7 @@ export default function ServicesDesignPage() {
                             </CardContent></Card>
                             <Card className="bg-gradient-to-br from-primary/5 to-violet-500/5 border-primary/20 shadow-lg shadow-primary/5"><CardContent className="p-8 space-y-4">
                                 <span className="inline-block text-xs font-bold uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full"><BrandName /> 방식</span>
-                                <h3 className="text-xl font-bold text-primary">&quot;누구(Who) + 언제(When) 둘 다&quot;</h3>
+                                <h3 className="text-xl md:text-[22px] font-bold text-primary leading-snug">제품이 필요한 바로 그 순간에 연결합니다.<br /><strong><BrandName /></strong>은 &quot;누구&quot;에게는 물론,<br />&quot;언제&quot; 맡길지에 집중합니다.</h3>
                                 <div className="space-y-2 text-sm">
                                     {["모먼트 검색으로 최적 크리에이터 발견", "수락 확률 ↑↑", "\"필요해서 쓰는 제품\" → 진정성 극대화", "시청자도 공감하며 구매 전환"].map((t, i) => (
                                         <div key={i} className="flex gap-2 items-start"><span className="text-green-500">✓</span>{t}</div>
@@ -326,7 +326,7 @@ export default function ServicesDesignPage() {
                         </Reveal>
                         <Reveal delay={100}>
                             <div className="relative rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-violet-500/5 p-8 sm:p-10 pt-10 sm:pt-12 text-center space-y-6 shadow-xl shadow-primary/5">
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-bold shadow-lg">
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-bold shadow-lg">
                                     <Gift className="h-4 w-4" /> 런칭 프로모션
                                 </div>
                                 <div className="grid md:grid-cols-3 gap-8 pt-4">
@@ -365,13 +365,13 @@ export default function ServicesDesignPage() {
 
                 {/* ─── Global CTA ─── */}
                 <section className="relative py-24 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-700 pointer-events-none" />
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
                     <Reveal className="relative container mx-auto px-6 md:px-8 max-w-3xl text-center space-y-8 text-white">
                         <h2 className="text-3xl md:text-4xl font-black">지금 시작하세요</h2>
                         <p className="text-lg text-white/70">크리에이터, MCN, 브랜드 — 누구든 무료로 가입하고 바로 시작할 수 있습니다.</p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button size="lg" asChild className="h-14 px-10 text-lg bg-white text-indigo-700 hover:bg-white/90 border-0 shadow-xl"><Link href="/signup">무료 가입하기 <ArrowRight className="ml-2 h-5 w-5" /></Link></Button>
+                            <Button size="lg" asChild className="h-14 px-10 text-lg bg-white text-indigo-500 hover:bg-white/90 border-0 shadow-xl"><Link href="/signup">무료 가입하기 <ArrowRight className="ml-2 h-5 w-5" /></Link></Button>
                             <Button size="lg" variant="outline" asChild className="h-14 px-10 text-lg border-white/30 text-white hover:bg-white/10"><Link href="/login">이미 계정이 있으신가요?</Link></Button>
                         </div>
                     </Reveal>
