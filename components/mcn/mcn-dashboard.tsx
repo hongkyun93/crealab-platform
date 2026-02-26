@@ -26,6 +26,8 @@ import { SettlementTab } from "./settlement-tab"
 import { TeamCalendar } from "./team-calendar"
 import { TeamProposalsTable } from "./team-proposals-table"
 import { TeamStatistics } from "./team-statistics"
+import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 // ─── Status 판단 유틸 ─────────────────────────────────────────
 function getCreatorStatus(c: CreatorSummary): CreatorStatus {
@@ -63,6 +65,7 @@ export function McnDashboard() {
     const { user, supabase } = useAuth()
     const { currentTeam, teamMembers, switchToMember, isLoading: isTeamLoading } = useTeam()
     const router = useRouter()
+    const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useMobileSidebar()
     const [activeTab, setActiveTab] = useState("dashboard")
     const [summaryData, setSummaryData] = useState<CreatorSummary[]>([])
     const [isLoadingSummary, setIsLoadingSummary] = useState(true)
@@ -362,7 +365,59 @@ export function McnDashboard() {
                             {currentTeam?.name || 'My Team'} · 소속 크리에이터 {aggregateStats.totalMembers}명
                         </p>
                     </div>
-                    <TabsList className="grid grid-cols-5 h-auto">
+
+                    {/* Mobile Sidebar (controlled by SiteHeader's Hamburger) */}
+                    <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+                        <SheetContent side="left" className="w-[300px] p-0 flex flex-col h-full overflow-hidden">
+                            <SheetHeader className="p-4 border-b bg-background z-10 sticky top-0">
+                                <SheetTitle className="text-left font-bold text-lg">MCN 메뉴</SheetTitle>
+                            </SheetHeader>
+                            <div className="flex-1 overflow-y-auto w-full p-4">
+                                <nav className="space-y-2">
+                                    <Button
+                                        variant={activeTab === "dashboard" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => { setActiveTab("dashboard"); setIsMobileSidebarOpen(false); }}
+                                    >
+                                        <BarChart3 className="mr-2 h-4 w-4" />대시보드
+                                    </Button>
+                                    <Button
+                                        variant={activeTab === "proposals" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => { setActiveTab("proposals"); setIsMobileSidebarOpen(false); }}
+                                    >
+                                        <FileText className="mr-2 h-4 w-4" />제안서
+                                        {aggregateStats.pendingProposals > 0 && (
+                                            <Badge variant="destructive" className="ml-auto min-w-5 h-5 text-[10px] px-1.5">{aggregateStats.pendingProposals}</Badge>
+                                        )}
+                                    </Button>
+                                    <Button
+                                        variant={activeTab === "calendar" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => { setActiveTab("calendar"); setIsMobileSidebarOpen(false); }}
+                                    >
+                                        <Calendar className="mr-2 h-4 w-4" />캘린더
+                                    </Button>
+                                    <Button
+                                        variant={activeTab === "settlement" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => { setActiveTab("settlement"); setIsMobileSidebarOpen(false); }}
+                                    >
+                                        <Wallet className="mr-2 h-4 w-4" />정산
+                                    </Button>
+                                    <Button
+                                        variant={activeTab === "settings" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => { setActiveTab("settings"); setIsMobileSidebarOpen(false); }}
+                                    >
+                                        <Users className="mr-2 h-4 w-4" />팀 관리
+                                    </Button>
+                                </nav>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+
+                    <TabsList className="hidden md:grid grid-cols-5 h-auto">
                         <TabsTrigger value="dashboard" className="gap-2 px-4">
                             <BarChart3 className="h-4 w-4" />대시보드
                         </TabsTrigger>

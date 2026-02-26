@@ -502,7 +502,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         const brandCount = filterByType(items, 'brand').length
 
         return (
-            <div className="flex gap-2 mb-4 flex-wrap">
+            <div className="flex gap-2 mb-4 flex-nowrap overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <button
                     onClick={() => setWorkspaceSubTab('all')}
                     className={`min-w-[90px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
@@ -919,7 +919,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
             </div>
 
             <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="w-full">
-                <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
+                <TabsList className="flex flex-nowrap h-auto w-full justify-start gap-2 bg-transparent p-0 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <TabsTrigger value="all" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
                         전체 보기 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
                     </TabsTrigger>
