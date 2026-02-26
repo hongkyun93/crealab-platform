@@ -433,7 +433,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                             </div>
                                         </div>
 
-                                        <div className="flex gap-1 md:flex-col md:w-full" onClick={e => e.stopPropagation()}>
+                                        <div className="flex flex-wrap gap-1 w-full md:flex-col md:w-full" onClick={e => e.stopPropagation()}>
                                             <Button variant="outline" size="sm" className="h-8 md:w-full text-xs" asChild>
                                                 <Link href={`/brand/edit/${c.id}`}>수정</Link>
                                             </Button>

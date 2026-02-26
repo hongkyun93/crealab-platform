@@ -94,8 +94,11 @@ export async function middleware(request: NextRequest) {
             role = profile?.role
         }
 
-        // role이 없으면(온보딩 미완) → 온보딩으로
-        if (!role) {
+        const VALID_ROLES = ['admin', 'brand', 'agency', 'creator', 'mcn']
+
+        // role이 없거나 유효하지 않으면(온보딩 미완 또는 오류 데이터) → 온보딩으로
+        if (!role || !VALID_ROLES.includes(role)) {
+            // [FIX] 알 수 없는 role 값으로 인한 /brand <-> /creator 무한 리다이렉트 방지
             return NextResponse.redirect(new URL('/onboarding', request.url))
         }
 

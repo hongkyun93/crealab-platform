@@ -23,6 +23,12 @@ import {
     DialogContent, DialogDescription, DialogFooter, DialogHeader,
     DialogTitle
 } from "@/components/ui/dialog"
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -36,6 +42,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { BrandWorkspaceLayout } from "@/components/workspace/brand/layout"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
+import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
 import {
     ArrowRight, AtSign, BadgeCheck, Bell, Briefcase, Calculator, Camera, CheckCircle2, ChevronRight, FileText, Info, Loader2, Package, Pencil,
     Search, Send, Settings, ShoppingBag, Upload, Wallet, X
@@ -82,6 +89,7 @@ function BrandDashboardContent() {
         allEvents, fetchAllEvents, isAuthLoading, deleteMomentProposal, enablePublicEvents // New: Public events & Moment deletion
     } = useUnifiedProvider()
 
+    const { isOpen: isMobileSidebarOpen, setIsOpen: setIsMobileSidebarOpen } = useMobileSidebar()
 
     // AI Calculator State
     const [showCalculator, setShowCalculator] = useState(false)
@@ -229,7 +237,7 @@ function BrandDashboardContent() {
         if (proposalId && !chatProposal) {
 
             // Search in brandProposals (Direct Offers)
-            let target = brandProposals.find((p: any) => p.id === proposalId)
+            let target = brandProposals.find((p: any) => (p.id === proposalId || p.id?.toString() === proposalId))
 
             // Search in campaigns (Applications)
             if (!target) {
@@ -237,7 +245,7 @@ function BrandDashboardContent() {
                 for (const campaign of campaigns) {
                     const anyCampaign = campaign as any
                     if (anyCampaign.proposals) {
-                        const found = anyCampaign.proposals.find((p: any) => p.id === proposalId)
+                        const found = anyCampaign.proposals.find((p: any) => (p.id === proposalId || p.id?.toString() === proposalId))
                         if (found) {
                             target = found
                             break
@@ -247,11 +255,12 @@ function BrandDashboardContent() {
             }
 
             if (target) {
-                setChatProposal(target)
+                // To prevent infinite loop/race condition, we ONLY set if the ID actually changed
+                setChatProposal((prev: any) => prev?.id?.toString() === target.id.toString() ? prev : target)
                 setIsChatOpen(true)
             }
         }
-    }, [searchParams, brandProposals, campaigns, isAuthLoading, chatProposal])
+    }, [searchParams, brandProposals, campaigns, isAuthLoading]) // Removed chatProposal from deps to prevent loop
 
     // [URL Sync] dialog 열릴 때 URL에 proposalId 기록, 닫힐 때 제거
     // → 새로고침해도 위 auto-open 로직이 proposalId를 읽어 dialog 복원
@@ -1704,155 +1713,182 @@ function BrandDashboardContent() {
         }
     };
 
+    const renderSidebarNav = (isMobile = false) => {
+        const handleNavClick = (view: string) => {
+            setCurrentView(view)
+            if (isMobile) setIsMobileSidebarOpen(false)
+        }
+
+        const handleTabClick = (tab: string) => {
+            setWorkspaceTab(tab)
+            if (isMobile) setIsMobileSidebarOpen(false)
+        }
+
+        return (
+            <aside className={isMobile ? "flex flex-col gap-4 p-4" : "hidden lg:flex flex-col gap-4"}>
+                <div className="flex items-center gap-3 px-2 py-4 border-b">
+                    <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl overflow-hidden shrink-0">
+                        {user?.avatar ? (
+                            <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                        ) : (
+                            user?.name?.[0] || "B"
+                        )}
+                    </div>
+                    <div className="min-w-0">
+                        <h2 className="font-bold truncate">{user?.name || "브랜드"}</h2>
+                        <p className="text-xs text-muted-foreground truncate">{user?.role === 'brand' ? '브랜드 계정' : user?.role}</p>
+                    </div>
+                </div>
+                <nav className="space-y-1">
+                    <Button
+                        variant={currentView === "discover" ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => handleNavClick("discover")}
+                    >
+                        <Search className="mr-2 h-4 w-4" /> 모먼트 검색
+                    </Button>
+                    <Button
+                        variant={currentView === "proposals" ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => handleNavClick("proposals")}
+                    >
+                        <Briefcase className="mr-2 h-4 w-4" /> 워크스페이스 아카이브
+                    </Button>
+                    {currentView === "proposals" && (
+                        <div className="ml-9 space-y-1 mt-1 border-l pl-2">
+                            {/* 진행중 */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'active' ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-muted-foreground'}`}
+                                onClick={() => handleTabClick("active")}
+                            >
+                                <span className="flex-1 text-left">진행중</span>
+                                {workspaceTabBadges.active && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                            </Button>
+                            {/* 받은 제안 */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'inbound' ? 'bg-blue-100 text-blue-700 font-bold' : 'text-muted-foreground'}`}
+                                onClick={() => handleTabClick("inbound")}
+                            >
+                                <span className="flex-1 text-left">받은 제안</span>
+                                {workspaceTabBadges.inbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                            </Button>
+                            {/* 보낸 제안 */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'outbound' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-muted-foreground'}`}
+                                onClick={() => handleTabClick("outbound")}
+                            >
+                                <span className="flex-1 text-left">보낸 제안</span>
+                                {workspaceTabBadges.outbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                            </Button>
+                            {/* 거절됨 */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'rejected' ? 'bg-red-50 text-red-600 font-medium' : 'text-muted-foreground'}`}
+                                onClick={() => handleTabClick("rejected")}
+                            >
+                                <span className="flex-1 text-left">거절됨</span>
+                                {workspaceTabBadges.rejected && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                            </Button>
+                            {/* 완료됨 */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`w-full justify-start text-xs h-8 ${workspaceTab === 'completed' ? 'bg-muted text-foreground/90 font-medium' : 'text-muted-foreground'}`}
+                                onClick={() => handleTabClick("completed")}
+                            >
+                                <span className="flex-1 text-left">완료됨</span>
+                                {workspaceTabBadges.completed && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+                            </Button>
+                        </div>
+                    )}
+                    <Button
+                        variant={currentView === "my-campaigns" ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => handleNavClick("my-campaigns")}
+                    >
+                        <Package className="mr-2 h-4 w-4" /> 내 캠페인 관리
+                    </Button>
+                    <Button
+                        variant={currentView === "my-products" ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => handleNavClick("my-products")}
+                    >
+                        <ShoppingBag className="mr-2 h-4 w-4" /> 내 브랜드 제품 관리
+                    </Button>
+                    <Button
+                        variant={currentView === "discover-products" ? "secondary" : "ghost"}
+                        className="w-full justify-start text-primary font-medium"
+                        onClick={() => handleNavClick("discover-products")}
+                    >
+                        <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
+                    </Button>
+                    <Button
+                        variant={currentView === "notifications" ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => handleNavClick("notifications")}
+                    >
+                        <Bell className={`mr-2 h-4 w-4 ${notifications.some(n => !n.is_read) ? 'text-blue-500 animate-bounce' : ''}`} /> 알림 센터
+                        {notifications.filter(n => !n.is_read).length > 0 && (
+                            <Badge className="ml-auto bg-blue-500 text-[10px] h-4 px-1">{notifications.filter(n => !n.is_read).length}</Badge>
+                        )}
+                    </Button>
+
+                    <div className="my-2 border-t" />
+                    <Button
+                        variant={currentView === "deposit" ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => handleNavClick("deposit")}
+                    >
+                        <Wallet className="mr-2 h-4 w-4" /> 예치금 관리
+                    </Button>
+                    <Button
+                        variant={currentView === "settings" ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => handleNavClick("settings")}
+                    >
+                        <Settings className="mr-2 h-4 w-4" /> 브랜드 설정
+                    </Button>
+                </nav>
+
+                {/* Quick Action */}
+                <div className="mt-auto p-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <h4 className="text-xs font-bold text-primary mb-2 flex items-center gap-1">
+                        <Info className="h-3 w-3" /> 빠른 등록
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground mb-3">새로운 캠페인을 등록하고 최고의 크리에이터를 만나보세요.</p>
+                    <Button size="sm" className="w-full text-xs h-8" asChild>
+                        <Link href="/brand/new">공고 올리기</Link>
+                    </Button>
+                </div>
+            </aside>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-muted/30">
             <SiteHeader />
             <main className="container py-8 max-w-[1920px] px-6 md:px-8">
                 <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-                    {/* Sidebar */}
-                    <aside className="hidden lg:flex flex-col gap-4">
-                        <div className="flex items-center gap-3 px-2 py-4 border-b">
-                            <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl overflow-hidden">
-                                {user?.avatar ? (
-                                    <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
-                                ) : (
-                                    user?.name?.[0] || "B"
-                                )}
+                    <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+                        <SheetContent side="left" className="w-[300px] p-0 flex flex-col h-full overflow-hidden">
+                            <SheetHeader className="p-4 border-b bg-background z-10 sticky top-0">
+                                <SheetTitle className="text-left font-bold text-lg">브랜드 메뉴</SheetTitle>
+                            </SheetHeader>
+                            <div className="flex-1 overflow-y-auto">
+                                {renderSidebarNav(true)}
                             </div>
-                            <div className="min-w-0">
-                                <h2 className="font-bold truncate">{user?.name || "브랜드"}</h2>
-                                <p className="text-xs text-muted-foreground truncate">{user?.role === 'brand' ? '브랜드 계정' : user?.role}</p>
-                            </div>
-                        </div>
-                        <nav className="space-y-1">
-                            <Button
-                                variant={currentView === "discover" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("discover")}
-                            >
-                                <Search className="mr-2 h-4 w-4" /> 모먼트 검색
-                            </Button>
-                            <Button
-                                variant={currentView === "proposals" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("proposals")}
-                            >
-                                <Briefcase className="mr-2 h-4 w-4" /> 워크스페이스 아카이브
-                            </Button>
-                            {currentView === "proposals" && (
-                                <div className="ml-9 space-y-1 mt-1 border-l pl-2">
-                                    {/* 진행중 */}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'active' ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-muted-foreground'}`}
-                                        onClick={() => setWorkspaceTab("active")}
-                                    >
-                                        <span className="flex-1 text-left">진행중</span>
-                                        {workspaceTabBadges.active && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
-                                    </Button>
-                                    {/* 받은 제안 */}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'inbound' ? 'bg-blue-100 text-blue-700 font-bold' : 'text-muted-foreground'}`}
-                                        onClick={() => setWorkspaceTab("inbound")}
-                                    >
-                                        <span className="flex-1 text-left">받은 제안</span>
-                                        {workspaceTabBadges.inbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
-                                    </Button>
-                                    {/* 보낸 제안 */}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'outbound' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-muted-foreground'}`}
-                                        onClick={() => setWorkspaceTab("outbound")}
-                                    >
-                                        <span className="flex-1 text-left">보낸 제안</span>
-                                        {workspaceTabBadges.outbound && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
-                                    </Button>
-                                    {/* 거절됨 */}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'rejected' ? 'bg-red-50 text-red-600 font-medium' : 'text-muted-foreground'}`}
-                                        onClick={() => setWorkspaceTab("rejected")}
-                                    >
-                                        <span className="flex-1 text-left">거절됨</span>
-                                        {workspaceTabBadges.rejected && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
-                                    </Button>
-                                    {/* 완료됨 */}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={`w-full justify-start text-xs h-8 ${workspaceTab === 'completed' ? 'bg-muted text-foreground/90 font-medium' : 'text-muted-foreground'}`}
-                                        onClick={() => setWorkspaceTab("completed")}
-                                    >
-                                        <span className="flex-1 text-left">완료됨</span>
-                                        {workspaceTabBadges.completed && <span className="ml-1 h-2 w-2 rounded-full bg-red-500 shrink-0" />}
-                                    </Button>
-                                </div>
-                            )}
-                            <Button
-                                variant={currentView === "my-campaigns" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("my-campaigns")}
-                            >
-                                <Package className="mr-2 h-4 w-4" /> 내 캠페인 관리
-                            </Button>
-                            <Button
-                                variant={currentView === "my-products" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("my-products")}
-                            >
-                                <ShoppingBag className="mr-2 h-4 w-4" /> 내 브랜드 제품 관리
-                            </Button>
-                            <Button
-                                variant={currentView === "discover-products" ? "secondary" : "ghost"}
-                                className="w-full justify-start text-primary font-medium"
-                                onClick={() => setCurrentView("discover-products")}
-                            >
-                                <ShoppingBag className="mr-2 h-4 w-4" /> 브랜드 제품 둘러보기
-                            </Button>
-                            <Button
-                                variant={currentView === "notifications" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("notifications")}
-                            >
-                                <Bell className={`mr-2 h-4 w-4 ${notifications.some(n => !n.is_read) ? 'text-blue-500 animate-bounce' : ''}`} /> 알림 센터
-                                {notifications.filter(n => !n.is_read).length > 0 && (
-                                    <Badge className="ml-auto bg-blue-500 text-[10px] h-4 px-1">{notifications.filter(n => !n.is_read).length}</Badge>
-                                )}
-                            </Button>
+                        </SheetContent>
+                    </Sheet>
 
-                            <div className="my-2 border-t" />
-                            <Button
-                                variant={currentView === "deposit" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("deposit")}
-                            >
-                                <Wallet className="mr-2 h-4 w-4" /> 예치금 관리
-                            </Button>
-                            <Button
-                                variant={currentView === "settings" ? "secondary" : "ghost"}
-                                className="w-full justify-start"
-                                onClick={() => setCurrentView("settings")}
-                            >
-                                <Settings className="mr-2 h-4 w-4" /> 브랜드 설정
-                            </Button>
-                        </nav>
-
-                        {/* Quick Action */}
-                        <div className="mt-auto p-4 bg-primary/5 rounded-xl border border-primary/10">
-                            <h4 className="text-xs font-bold text-primary mb-2 flex items-center gap-1">
-                                <Info className="h-3 w-3" /> 빠른 등록
-                            </h4>
-                            <p className="text-[10px] text-muted-foreground mb-3">새로운 캠페인을 등록하고 최고의 크리에이터를 만나보세요.</p>
-                            <Button size="sm" className="w-full text-xs h-8" asChild>
-                                <Link href="/brand/new">공고 올리기</Link>
-                            </Button>
-                        </div>
-                    </aside>
+                    {/* Desktop Sidebar */}
+                    {renderSidebarNav(false)}
 
                     {/* Content Area */}
                     <div className="flex-1 min-w-0">

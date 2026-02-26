@@ -15,10 +15,24 @@ export async function uploadFileViaAPI(
     formData.append('bucket', bucket)
     if (folder) formData.append('folder', folder)
 
-    const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-    })
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
+
+    let res;
+    try {
+        res = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+        });
+    } catch (err: any) {
+        if (err.name === 'AbortError') {
+            throw new Error('업로드 시간 초과. 네트워크 상태를 확인해주세요.');
+        }
+        throw new Error(err.message || '업로드 중 오류가 발생했습니다.');
+    } finally {
+        clearTimeout(timeoutId);
+    }
 
     const result = await res.json()
 

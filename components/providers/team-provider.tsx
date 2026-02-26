@@ -192,6 +192,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
                         followers_count,
                         tags,
                         phone,
+                        shipping_name,
+                        shipping_phone,
                         shipping_address,
                         primary_region,
                         bank_name,

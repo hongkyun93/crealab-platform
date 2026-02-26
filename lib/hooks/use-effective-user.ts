@@ -20,7 +20,10 @@ export function useEffectiveUser() {
             role: 'creator' as const,
             bio: (selectedMember.profile as any)?.description,
             primaryRegion: (selectedMember.profile as any)?.primary_region,
-            address: (selectedMember.profile as any)?.shipping_address,
+            address: (selectedMember.profile as any)?.shipping_address, // Legacy alias
+            shippingName: (selectedMember.profile as any)?.shipping_name,
+            shippingPhone: (selectedMember.profile as any)?.shipping_phone,
+            shippingAddress: (selectedMember.profile as any)?.shipping_address,
             // Map DB fields to User interface fields
             handle: selectedMember.profile?.instagram_handle,
             followers: selectedMember.profile?.followers_count,
@@ -46,14 +49,16 @@ export function useEffectiveUser() {
         }
     }, [selectedMember])
 
-    // If in proxy mode, use selected member, otherwise use current user
-    const effectiveUserId = isProxyMode ? selectedMember?.user_id : user?.id
-    const effectiveUser = isProxyMode ? proxyUser : user
+    // If in proxy mode AND a member is actually found, use it. Otherwise safely fallback to current user.
+    // [FIX] Prevents `undefined` user ID when `selectedMemberId` is set but `teamMembers` hasn't loaded.
+    const activelyProxying = isProxyMode && !!selectedMember
+    const effectiveUserId = activelyProxying ? selectedMember.user_id : user?.id
+    const effectiveUser = activelyProxying ? proxyUser : user
 
     return {
         effectiveUserId,
         effectiveUser,
-        isProxyMode,
+        isProxyMode: activelyProxying, // Override to only report proxy mode when truly proxying
         actualUser: user, // Original logged-in user (MCN)
     }
 }

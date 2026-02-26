@@ -561,8 +561,8 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         // TABLE VIEW
         if (viewMode === 'table') {
             return (
-                <div className="border rounded-lg overflow-hidden">
-                    <Table>
+                <div className="border rounded-lg overflow-x-auto">
+                    <Table className="min-w-[600px]">
                         <TableHeader>
                             <TableRow className="bg-muted/50">
                                 <TableHead className="w-[200px]">크리에이터</TableHead>
@@ -724,9 +724,9 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                 <div className="flex-1">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                            <h3 className="font-bold text-base md:text-lg flex flex-wrap items-center gap-2">
                                                 {item.influencerName || item.influencer_name}
-                                                <Badge variant="outline" className={`text-xs font-medium border-2 rounded-full px-3 py-0.5 transition-all bg-background
+                                                <Badge variant="outline" className={`text-[10px] md:text-xs font-medium border-2 rounded-full px-2 py-0.5 transition-all bg-background
                                                         ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
                                                         item.status === 'settlement' || item.status === 'final_complete' ? 'text-amber-600 dark:text-amber-400 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]' :
                                                             item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :

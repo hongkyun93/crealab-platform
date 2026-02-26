@@ -10,6 +10,7 @@ import {
 import { createClient } from "@/lib/supabase/client"
 import { Send } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 
 interface CampaignDetailDialogProps {
     open: boolean
@@ -27,6 +28,12 @@ export function CampaignDetailDialog({
     const [applicantCount, setApplicantCount] = useState<number | undefined>(undefined)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
+    const { user } = useUnifiedProvider()
+
+    // MCN can be mapped if needed, but primarily blocking creators is the goal
+    // We allow if it's the brand owner, an admin, or an agency with the right context.
+    // At minimum, `role !== 'influencer'` is a good safety net, but let's be strict:
+    const canEdit = user && (user.id === campaign?.brand_id || user.teamId === campaign?.team_id || user.role === 'admin')
 
     // Fetch applicant count when dialog opens
     useEffect(() => {
@@ -118,7 +125,7 @@ export function CampaignDetailDialog({
 
                     <CampaignDetailContent
                         campaign={campaign}
-                        onImageUpload={async (file) => {
+                        onImageUpload={canEdit ? async (file) => {
                             // Create a fake event to reuse the existing handler logic or just call upload logic directly
                             // We will extract the upload logic to be cleaner or just wrap it here.
                             // Ideally we should refactor handleImageUpload to take a File, but the existing one takes an Event.
@@ -134,7 +141,7 @@ export function CampaignDetailDialog({
                             } as unknown as React.ChangeEvent<HTMLInputElement>;
 
                             await handleImageUpload(event);
-                        }}
+                        } : undefined}
                         renderAction={() => (
                             <Button
                                 onClick={() => {

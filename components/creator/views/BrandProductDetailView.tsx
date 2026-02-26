@@ -149,6 +149,9 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
                 channel_name: formData.channelName,
                 channel_url: formData.channelUrl,
                 insightScreenshot: insightUrl || undefined,
+                receiver_name: formData.shippingName,
+                shipping_phone: formData.shippingPhone,
+                shipping_address: formData.shippingAddress,
             })
 
             setIsOpen(false)

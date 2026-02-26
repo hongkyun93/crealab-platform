@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { uploadFileViaAPI } from "@/lib/upload"
+import { AddressSearchDialog } from "@/components/ui/address-search-dialog"
 import { ArrowLeft, Camera } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -23,6 +24,9 @@ export default function BrandSettingsPage() {
     const [name, setName] = useState("")
     const [website, setWebsite] = useState("")
     const [bio, setBio] = useState("")
+    const [legalAddress, setLegalAddress] = useState("")
+    const [legalDetailAddress, setLegalDetailAddress] = useState("")
+    const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false)
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
@@ -32,6 +36,18 @@ export default function BrandSettingsPage() {
             setWebsite(user.website || "")
             setBio(user.bio || "")
             setAvatarUrl(user.avatar)
+            const fullAddress = user.legalAddress || ""
+            if (fullAddress.includes(']')) {
+                const match = fullAddress.match(/(\[[0-9]+\]\s[^ ]+\s[^ ]+\s[^ ]+)(.*)/)
+                if (match) {
+                    setLegalAddress(match[1].trim())
+                    setLegalDetailAddress(match[2].trim())
+                } else {
+                    setLegalAddress(fullAddress)
+                }
+            } else {
+                setLegalAddress(fullAddress)
+            }
         }
     }, [user])
 
@@ -57,7 +73,8 @@ export default function BrandSettingsPage() {
             await updateUser({
                 name,
                 website,
-                bio
+                bio,
+                legalAddress: legalDetailAddress ? `${legalAddress} ${legalDetailAddress}`.trim() : legalAddress
             })
             toast.success("브랜드 정보가 저장되었습니다.")
             router.push("/brand")
@@ -162,6 +179,36 @@ export default function BrandSettingsPage() {
                                 className="min-h-[120px]"
                             />
                         </div>
+
+                        <div className="space-y-2 pt-2">
+                            <Label>법적 소재지 (사업장 주소)</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    value={legalAddress}
+                                    readOnly
+                                    placeholder="주소 검색을 클릭하여 사업장 주소를 입력하세요"
+                                    className="bg-muted text-foreground"
+                                />
+                                <Button type="button" variant="outline" onClick={() => setIsAddressSearchOpen(true)} className="shrink-0 gap-2">
+                                    주소 검색
+                                </Button>
+                            </div>
+                            <Input
+                                value={legalDetailAddress}
+                                onChange={(e) => setLegalDetailAddress(e.target.value)}
+                                placeholder="상세 주소 입력"
+                                className="mt-2"
+                            />
+                        </div>
+
+                        <AddressSearchDialog
+                            open={isAddressSearchOpen}
+                            onOpenChange={setIsAddressSearchOpen}
+                            onComplete={(data) => {
+                                setLegalAddress(`[${data.zonecode}] ${data.address}`)
+                                setLegalDetailAddress('')
+                            }}
+                        />
 
                         <div className="pt-4 border-t">
                             <h3 className="text-sm font-medium mb-4 text-muted-foreground">계정 정보</h3>

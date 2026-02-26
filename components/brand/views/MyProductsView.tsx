@@ -91,7 +91,7 @@ export function MyProductsView({
                                     </div>
                                 </div>
                             </CardContent>
-                            <CardFooter className="border-t pt-4 bg-muted/10 flex gap-2">
+                            <CardFooter className="border-t pt-4 bg-muted/10 flex flex-wrap gap-2">
                                 {onViewDetail && (
                                     <Button
                                         variant="ghost"

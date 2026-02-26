@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { AddressSearchDialog } from "@/components/ui/address-search-dialog"
 import { createClient } from "@/lib/supabase/client"
 import { Loader2, Send, Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -50,6 +51,13 @@ export function CampaignApplicationDialog({
     const [desiredCost, setDesiredCost] = useState("")
     const [additionalMessage, setAdditionalMessage] = useState("")
 
+    // 배송 정보
+    const [shippingName, setShippingName] = useState("")
+    const [shippingPhone, setShippingPhone] = useState("")
+    const [shippingAddress, setShippingAddress] = useState("")
+    const [shippingDetailAddress, setShippingDetailAddress] = useState("")
+    const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false)
+
     // AI State
     const [isAIPlanning, setIsAIPlanning] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -58,12 +66,14 @@ export function CampaignApplicationDialog({
     const [targetCreatorId, setTargetCreatorId] = useState<string>("")
     const [teamMembers, setTeamMembers] = useState<any[]>([])
 
-    // Pre-fill handle from user profile
     useEffect(() => {
-        if (user?.handle) {
-            setChannelUrl(user.handle)
+        if (user && open) {
+            setChannelUrl(user.handle || "")
+            setShippingName(user.shippingName || user.name || "")
+            setShippingPhone(user.shippingPhone || user.phone || "")
+            setShippingAddress(user.shippingAddress || "")
         }
-    }, [user])
+    }, [user, open])
 
     // Fetch team members for MCN/Agency
     useEffect(() => {
@@ -225,6 +235,9 @@ ${additionalMessage || '없음'}
                 channel_url: channelUrl,
                 channel_subtype: channelSubtype || undefined, // [NEW]
                 insightScreenshot: insightUrl || undefined,
+                receiver_name: shippingName,
+                shipping_phone: shippingPhone,
+                shipping_address: shippingDetailAddress ? `${shippingAddress} ${shippingDetailAddress}`.trim() : shippingAddress,
             })
 
             toast.success("캠페인 지원서가 성공적으로 전송되었습니다!")
@@ -240,7 +253,10 @@ ${additionalMessage || '없음'}
             setInsightFile(null)
             setDesiredCost("")
             setAdditionalMessage("")
-
+            setShippingName("")
+            setShippingPhone("")
+            setShippingAddress("")
+            setShippingDetailAddress("")
         } catch (error) {
             console.error("Application Error:", error)
             toast.error("지원서 전송 중 오류가 발생했습니다.")
@@ -489,6 +505,59 @@ ${additionalMessage || '없음'}
                             placeholder="기타 브랜드에게 하고 싶은 말이 있다면 적어주세요."
                         />
                     </div>
+
+                    {/* 배송 정보 (캠페인 등 제품 수령용) */}
+                    <div className="space-y-4 pt-4 border-t mt-2">
+                        <Label className="text-base text-foreground">배송 정보 <span className="text-muted-foreground text-xs font-normal">(제품 수령용)</span></Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs">수령인 이름</Label>
+                                <Input
+                                    value={shippingName}
+                                    onChange={(e) => setShippingName(e.target.value)}
+                                    placeholder="본명 또는 닉네임"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs">수령인 연락처</Label>
+                                <Input
+                                    value={shippingPhone}
+                                    onChange={(e) => setShippingPhone(e.target.value)}
+                                    placeholder="010-0000-0000"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs">배송지 주소</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    value={shippingAddress}
+                                    readOnly
+                                    placeholder="주소 검색을 클릭하여 기본 주소를 입력하세요"
+                                    className="bg-muted text-foreground"
+                                />
+                                <Button type="button" variant="outline" onClick={() => setIsAddressSearchOpen(true)} className="shrink-0 gap-2">
+                                    주소 검색
+                                </Button>
+                            </div>
+                            <Input
+                                value={shippingDetailAddress}
+                                onChange={(e) => setShippingDetailAddress(e.target.value)}
+                                placeholder="상세 주소 입력"
+                                className="mt-2"
+                            />
+                        </div>
+                    </div>
+
+                    <AddressSearchDialog
+                        open={isAddressSearchOpen}
+                        onOpenChange={setIsAddressSearchOpen}
+                        onComplete={(data) => {
+                            setShippingAddress(`[${data.zonecode}] ${data.address}`)
+                            setShippingDetailAddress('')
+                        }}
+                    />
                 </div>
 
                 <DialogFooter>

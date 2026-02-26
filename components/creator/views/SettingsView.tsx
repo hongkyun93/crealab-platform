@@ -21,6 +21,7 @@ import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 
 import { POPULAR_TAGS as PROFILE_CATEGORIES } from "@/lib/constants/categories"
+import { AddressSearchDialog } from "@/components/ui/address-search-dialog"
 
 const REGIONS = [
     "전국", "서울", "경기", "인천", "부산", "대구", "대전",
@@ -187,9 +188,16 @@ export function SettingsView() {
     const [accountNumber, setAccountNumber] = useState("")
     const [accountHolder, setAccountHolder] = useState("")
 
-    // Contact Info
+    // Contact Info (Legacy / General)
     const [phone, setPhone] = useState("")
     const [address, setAddress] = useState("")
+
+    // Shipping Info (New)
+    const [shippingName, setShippingName] = useState("")
+    const [shippingPhone, setShippingPhone] = useState("")
+    const [shippingAddress, setShippingAddress] = useState("")
+    const [shippingDetailAddress, setShippingDetailAddress] = useState("")
+    const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false)
 
     // Rate Card (Extended - 5 fields)
     const [priceVideo, setPriceVideo] = useState("")
@@ -210,6 +218,8 @@ export function SettingsView() {
     const [legalName, setLegalName] = useState("")
     const [birthDate, setBirthDate] = useState("")
     const [legalAddress, setLegalAddress] = useState("")
+    const [legalDetailAddress, setLegalDetailAddress] = useState("")
+    const [isLegalAddressSearchOpen, setIsLegalAddressSearchOpen] = useState(false)
     const [isBusinessRegistered, setIsBusinessRegistered] = useState(false)
     const [creatorBusinessNumber, setCreatorBusinessNumber] = useState("")
 
@@ -237,6 +247,24 @@ export function SettingsView() {
             setPhone(effectiveUser.phone || "")
             setAddress(effectiveUser.address || "")
 
+            // Shipping Info
+            setShippingName(effectiveUser.shippingName || "")
+            setShippingPhone(effectiveUser.shippingPhone || "")
+
+            // Split address if it contains a comma or space for detail address
+            const fullShippingAddress = effectiveUser.shippingAddress || ""
+            if (fullShippingAddress.includes(']')) {
+                const match = fullShippingAddress.match(/(\[[0-9]+\]\s[^ ]+\s[^ ]+\s[^ ]+)(.*)/)
+                if (match) {
+                    setShippingAddress(match[1].trim())
+                    setShippingDetailAddress(match[2].trim())
+                } else {
+                    setShippingAddress(fullShippingAddress)
+                }
+            } else {
+                setShippingAddress(fullShippingAddress)
+            }
+
             // Extended Rate Card (5 fields)
             setPriceVideo(effectiveUser.priceVideo?.toString() || "")
             setPriceFeed(effectiveUser.priceFeed?.toString() || "")
@@ -249,7 +277,17 @@ export function SettingsView() {
             // Creator Legal/Tax Fields
             setLegalName(effectiveUser.legalName || "")
             setBirthDate(effectiveUser.birthDate || "")
-            setLegalAddress(effectiveUser.legalAddress || "")
+            if (effectiveUser.legalAddress && effectiveUser.legalAddress.includes(']')) {
+                const match = effectiveUser.legalAddress.match(/(\[[0-9]+\]\s[^ ]+\s[^ ]+\s[^ ]+)(.*)/)
+                if (match) {
+                    setLegalAddress(match[1].trim())
+                    setLegalDetailAddress(match[2].trim())
+                } else {
+                    setLegalAddress(effectiveUser.legalAddress)
+                }
+            } else {
+                setLegalAddress(effectiveUser.legalAddress || "")
+            }
             setIsBusinessRegistered(effectiveUser.isBusinessRegistered || false)
             setCreatorBusinessNumber(effectiveUser.creatorBusinessNumber || "")
         }
@@ -388,6 +426,12 @@ export function SettingsView() {
                 accountHolder,
                 phone,
                 address,
+
+                // Shipping Info
+                shippingName,
+                shippingPhone,
+                shippingAddress: shippingDetailAddress ? `${shippingAddress} ${shippingDetailAddress}`.trim() : shippingAddress,
+
                 // Extended Rate Card (5 fields)
                 priceVideo: priceVideo ? parseInt(priceVideo) : 0,
                 priceFeed: priceFeed ? parseInt(priceFeed) : 0,
@@ -399,7 +443,7 @@ export function SettingsView() {
                 // Creator Legal/Tax Fields
                 legalName,
                 birthDate,
-                legalAddress,
+                legalAddress: legalDetailAddress ? `${legalAddress} ${legalDetailAddress}`.trim() : legalAddress,
                 isBusinessRegistered,
                 creatorBusinessNumber,
             }, effectiveUserId) // Pass effectiveUserId to update the correct profile
@@ -852,13 +896,35 @@ export function SettingsView() {
                             </div>
                             <div className="space-y-2">
                                 <Label>법적 주소 (계약서용)</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        value={legalAddress}
+                                        readOnly
+                                        placeholder="주소 검색을 클릭하여 법적 소재지를 입력하세요"
+                                        className="bg-muted text-foreground"
+                                    />
+                                    <Button type="button" variant="outline" onClick={() => setIsLegalAddressSearchOpen(true)} className="shrink-0 gap-2">
+                                        주소 검색
+                                    </Button>
+                                </div>
                                 <Input
-                                    value={legalAddress}
-                                    onChange={(e) => setLegalAddress(e.target.value)}
-                                    placeholder="서울시 강남구..."
+                                    value={legalDetailAddress}
+                                    onChange={(e) => setLegalDetailAddress(e.target.value)}
+                                    placeholder="상세 주소 (동, 호수 등) 입력"
+                                    className="mt-2"
                                 />
-                                <p className="text-[11px] text-muted-foreground">배송 주소와 다를 수 있습니다</p>
+                                <p className="text-[11px] text-muted-foreground mt-1">배송 주소와 다를 수 있습니다</p>
                             </div>
+
+                            <AddressSearchDialog
+                                open={isLegalAddressSearchOpen}
+                                onOpenChange={setIsLegalAddressSearchOpen}
+                                onComplete={(data) => {
+                                    setLegalAddress(`[${data.zonecode}] ${data.address}`)
+                                    setLegalDetailAddress('')
+                                }}
+                            />
+
                             <div className="space-y-4 pt-2 border-t">
                                 <div className="flex items-center gap-3">
                                     <input
@@ -890,25 +956,60 @@ export function SettingsView() {
                     <Card>
                         <CardHeader>
                             <CardTitle>연락처 & 배송 정보</CardTitle>
+                            <CardDescription>캠페인 진행 시 제품 수령을 위해 사용되는 정보입니다.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>연락처 (휴대폰)</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>수령인 이름 <span className="text-red-500">*</span></Label>
+                                    <Input
+                                        value={shippingName}
+                                        onChange={(e) => setShippingName(e.target.value)}
+                                        placeholder="본명 또는 닉네임"
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">택배 라벨에 인쇄될 이름입니다.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>수령인 연락처 <span className="text-red-500">*</span></Label>
+                                    <Input
+                                        value={shippingPhone}
+                                        onChange={(e) => setShippingPhone(e.target.value)}
+                                        placeholder="010-0000-0000"
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">택배 기사님이 연락할 번호입니다.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                                <Label>제품 배송지 주소 <span className="text-red-500">*</span></Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        value={shippingAddress}
+                                        readOnly
+                                        placeholder="주소 검색을 클릭하여 기본 주소를 입력하세요"
+                                        className="bg-muted text-foreground"
+                                    />
+                                    <Button type="button" variant="outline" onClick={() => setIsAddressSearchOpen(true)} className="shrink-0 gap-2">
+                                        주소 검색
+                                    </Button>
+                                </div>
                                 <Input
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    placeholder="010-0000-0000"
-                                    className="max-w-md"
+                                    value={shippingDetailAddress}
+                                    onChange={(e) => setShippingDetailAddress(e.target.value)}
+                                    placeholder="상세 주소 (동, 호수 등) 입력"
+                                    className="mt-2"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label>제품 배송지 주소</Label>
-                                <Input
-                                    value={address}
-                                    onChange={(e) => setAddress(e.target.value)}
-                                    placeholder="도로명 주소 입력"
-                                />
-                            </div>
+
+                            <AddressSearchDialog
+                                open={isAddressSearchOpen}
+                                onOpenChange={setIsAddressSearchOpen}
+                                onComplete={(data) => {
+                                    setShippingAddress(`[${data.zonecode}] ${data.address}`)
+                                    // 상세 주소 입력칸으로 포커스를 옮기기 위해 값을 비워줄 수 있음
+                                    setShippingDetailAddress('')
+                                }}
+                            />
                         </CardContent>
                         <CardFooter className="flex justify-end pt-6">
                             <Button onClick={handleSave} className="w-full md:w-auto gap-2" size="lg">

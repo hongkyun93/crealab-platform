@@ -31,8 +31,8 @@ export const BrandProductDiscoveryView = React.memo(function BrandProductDiscove
                             key={n}
                             onClick={() => setPageSize(n)}
                             className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${pageSize === n
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'text-muted-foreground hover:text-foreground'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             {n}
@@ -96,7 +96,7 @@ export const BrandProductDiscoveryView = React.memo(function BrandProductDiscove
                                     </div>
                                 </div>
                             </CardContent>
-                            <CardFooter className="border-t pt-4 bg-muted/10 flex gap-2 mt-auto">
+                            <CardFooter className="border-t pt-4 bg-muted/10 flex flex-wrap gap-2 mt-auto">
                                 {p.link && (
                                     <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs gap-1" asChild onClick={(e) => e.stopPropagation()}>
                                         <a href={p.link} target="_blank" rel="noopener noreferrer">

@@ -1,7 +1,7 @@
 "use client"
 
 import InsightAnalyzer from "@/components/creator/InsightAnalyzer"
-import { type Campaign, type InfluencerEvent } from "@/components/providers/legacy-platform-hook"
+import { type Campaign, type InfluencerEvent } from "@/lib/types"
 import { useTeam } from "@/components/providers/team-provider"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
@@ -39,6 +39,7 @@ import {
     SheetContent,
     SheetHeader, SheetTrigger
 } from "@/components/ui/sheet"
+import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
 
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -165,7 +166,7 @@ function InfluencerDashboardContent() {
     const [isAddEventOpen, setIsAddEventOpen] = useState(false)
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
     const [favoritesOnly, setFavoritesOnly] = useState(false)
-    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+    const { isOpen: isMobileSidebarOpen, setIsOpen: setIsMobileSidebarOpen } = useMobileSidebar()
 
     // Design Option State
     const [designOption, setDesignOption] = useState<'A' | 'B' | 'C' | 'D' | 'E'>('C')
@@ -297,10 +298,10 @@ function InfluencerDashboardContent() {
         ]
         const target = allProposals.find((p: any) => p.id === proposalId || p.id?.toString() === proposalId)
         if (target) {
-            setChatProposal(target)
+            setChatProposal((prev: any) => prev?.id?.toString() === target.id.toString() ? prev : target)
             setCurrentView('workspace')
         }
-    }, [searchParams, brandProposals, campaignProposals, momentProposals, isAuthLoading, chatProposal])
+    }, [searchParams, brandProposals, campaignProposals, momentProposals, isAuthLoading]) // Removed chatProposal from deps to prevent loop
 
     useEffect(() => {
         const fetchTeamMembers = async () => {
@@ -576,10 +577,10 @@ function InfluencerDashboardContent() {
         if (proposalId && !chatProposal && brandProposals && brandProposals.length > 0) {
             const targetProposal = brandProposals.find((p: any) => p.id === proposalId)
             if (targetProposal) {
-                setChatProposal(targetProposal)
+                setChatProposal((prev: any) => prev?.id === targetProposal.id ? prev : targetProposal)
             }
         }
-    }, [searchParams, brandProposals, chatProposal])
+    }, [searchParams, brandProposals])
 
     // [SYNC] Sync chatProposal when brandProposals/campaignProposals/momentProposals updates
     // (e.g., when brand updates conditions, creator workspace reflects changes in real-time)
@@ -1794,7 +1795,7 @@ function InfluencerDashboardContent() {
             const inbound = brandProposals.find(p => p.id === proposalId)
             if (inbound) {
                 setCurrentView('inbound_list')
-                setChatProposal(inbound)
+                setChatProposal((prev: any) => prev?.id === inbound.id ? prev : inbound)
                 setIsChatOpen(true)
                 return
             }
@@ -1878,7 +1879,7 @@ function InfluencerDashboardContent() {
                 || campaignProposals.find((p: any) => p.id?.toString() === targetId)
 
             if (found) {
-                setChatProposal(found)
+                setChatProposal((prev: any) => prev?.id === found.id ? prev : found)
                 setIsChatOpen(true)
             }
         }

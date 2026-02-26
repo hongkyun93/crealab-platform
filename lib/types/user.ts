@@ -22,6 +22,11 @@ export interface User {
     // NEW: Primary Region
     primaryRegion?: string // 주요 활동 지역 (서울, 부산, 전국, etc.)
 
+    // Shipping Info (NEW)
+    shippingName?: string
+    shippingPhone?: string
+    shippingAddress?: string
+
     // Rate Card Fields (for influencers) - EXTENDED
     priceVideo?: number // 숏폼 영상 (Reels/Shorts)
     priceFeed?: number // 피드 게시물 (Photo/Carousel)

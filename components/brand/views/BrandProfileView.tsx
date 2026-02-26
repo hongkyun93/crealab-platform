@@ -131,7 +131,7 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                     <CardDescription>계약서 생성 및 세금계산서 발행에 사용됩니다.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="b-rep">대표자명</Label>
                             <Input id="b-rep" value={editRepresentativeName} onChange={(e) => setEditRepresentativeName(e.target.value)} placeholder="홍길동" />
@@ -141,7 +141,7 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                             <Input id="b-biz-num" value={editBusinessNumber} onChange={(e) => setEditBusinessNumber(e.target.value)} placeholder="000-00-00000" />
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="b-biz-type">사업자 유형</Label>
                             <Input id="b-biz-type" value={editBusinessType} onChange={(e) => setEditBusinessType(e.target.value)} placeholder="법인 / 개인사업자" />
@@ -169,7 +169,7 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                     <CardDescription>실무 담당자 연락처 및 세금계산서/정산 정보입니다.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="b-contact-name">담당자명</Label>
                             <Input id="b-contact-name" value={editContactPersonName} onChange={(e) => setEditContactPersonName(e.target.value)} placeholder="김담당" />
@@ -187,7 +187,7 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                         <Label htmlFor="b-tax-email">세금계산서 발행 이메일</Label>
                         <Input id="b-tax-email" value={editTaxEmail} onChange={(e) => setEditTaxEmail(e.target.value)} placeholder="tax@brand.com" />
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="b-bank-name">은행명</Label>
                             <select

@@ -4,6 +4,7 @@ import { useTeam } from "@/components/providers/team-provider"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { TeamSwitcher } from "@/components/team-switcher"
 import { Button } from "@/components/ui/button"
+import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -28,6 +29,12 @@ export function SiteHeader() {
     const { isProxyMode, selectedMember } = useTeam() // Added useTeam hook
     const router = useRouter()
     const pathname = usePathname()
+    const { toggle: toggleMobileSidebar } = useMobileSidebar()
+
+    // Check if current route is a dashboard route that has a sidebar
+    const isDashboardRoute = pathname?.startsWith('/brand') ||
+        pathname?.startsWith('/creator') ||
+        pathname?.startsWith('/mcn')
 
     const unreadNotifications = notifications?.filter(n => !n.is_read) || []
 
@@ -95,7 +102,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-3 sm:mr-6 flex items-center space-x-2">
                         <Image src="/logo.png" alt="CreadyPick" width={238} height={48} className="h-12 w-auto" priority />
-                        <span className="hidden md:inline-block text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V4.5.1</span>
+                        <span className="hidden md:inline-block text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V4.6</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link
@@ -170,7 +177,7 @@ export function SiteHeader() {
                         </DropdownMenu>
                     </div>
                 </div>
-                <div className="ml-auto flex items-center space-x-4">
+                <div className="ml-auto flex items-center space-x-2 sm:space-x-4">
                     <ModeToggle />
                     {user ? (
                         <div className="flex items-center gap-4">
@@ -273,8 +280,8 @@ export function SiteHeader() {
                             {/* MCN Team Switcher */}
                             {user.role === 'mcn' && <TeamSwitcher />}
 
-                            <span className="text-sm text-muted-foreground hidden md:inline-block">
-                                환영합니다, <span className="text-primary font-bold mr-1">{displayUserType()}</span> <span className="font-semibold text-foreground">{user.name}</span>님
+                            <span className="text-sm text-muted-foreground hidden md:flex items-center">
+                                환영합니다, <span className="text-primary font-bold mr-1 mx-1">{displayUserType()}</span> <span className="font-semibold text-foreground truncate max-w-[100px] lg:max-w-[200px]">{user.name}</span>님
                             </span>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

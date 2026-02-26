@@ -111,7 +111,7 @@ export async function updateCampaign(id: string, formData: FormData) {
             product_type: (formData.get('productType') as string) || 'gift'
         })
         .eq('id', id)
-        .eq('brand_id', user.id) // Ensure ownership
+    // Removed `.eq('brand_id', user.id)` to allow team memebers via RLS polices
 
     if (error) {
         console.error('Campaign Update Error FULL OBJECT:', JSON.stringify(error, null, 2))
@@ -142,7 +142,7 @@ export async function deleteCampaign(id: string) {
         .from('campaigns')
         .delete()
         .eq('id', id)
-        .eq('brand_id', user.id)
+    // Removed `.eq('brand_id', user.id)` to allow team members via RLS polices
 
     if (error) {
         return { error: `삭제 실패: ${error.message}` }
@@ -161,7 +161,7 @@ export async function updateCampaignStatus(id: string, status: 'active' | 'close
         .from('campaigns')
         .update({ status: status })
         .eq('id', id)
-        .eq('brand_id', user.id)
+    // Removed `.eq('brand_id', user.id)` to allow team members via RLS polices
 
     if (error) {
         return { error: `상태 변경 실패: ${error.message}` }
