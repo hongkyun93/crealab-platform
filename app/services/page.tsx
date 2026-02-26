@@ -210,7 +210,7 @@ export default function ServicesDesignPage() {
                             제품이 필요한{" "}<span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">바로 그 순간</span>에 연결합니다
                         </h1>
                         <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                            <BrandName />은 <strong className="text-white">&quot;누구&quot;</strong>에게는 물론,<br /><strong className="text-white">&quot;언제&quot;</strong> 맡길지에 집중합니다.
+                            <strong><BrandName /></strong>은 <strong className="text-white">&quot;누구&quot;</strong>에게는 물론,<br /><strong className="text-white">&quot;언제&quot;</strong> 맡길지에 집중합니다.
                         </p>
                     </div>
                     <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none" />
