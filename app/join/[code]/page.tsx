@@ -7,6 +7,16 @@ import { Loader2, Users, XCircle } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function JoinTeamPage() {
     const params = useParams()
@@ -21,6 +31,8 @@ export default function JoinTeamPage() {
     const [teamInfo, setTeamInfo] = useState<any>(null)
     const [error, setError] = useState<string | null>(null)
     const [isJoining, setIsJoining] = useState(false)
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+    const [existingTeam, setExistingTeam] = useState<any>(null)
 
     // Check invitation validity
     useEffect(() => {
@@ -82,15 +94,42 @@ export default function JoinTeamPage() {
         }
 
         if (user.role !== 'creator') {
-            // Optional: Allow only creators? Or anyone?
-            // MCN joining another MCN? Probably not.
-            if (user.role === 'mcn' || user.role === 'brand') {
-                toast.error("크리에이터 계정만 팀에 합류할 수 있습니다.")
-                return
-            }
+            toast.error("크리에이터 계정만 팀에 합류할 수 있습니다.")
+            setError("이 링크는 크리에이터(인플루언서) 전용 가입 링크입니다.")
+            return
         }
 
+        // Check if user is already in a team
+        try {
+            const { data: teamMemberData, error: teamCheckError } = await supabase
+                .from('team_members')
+                .select('teams(id, name)')
+                .eq('user_id', user.id)
+                .single()
+
+            if (teamMemberData && teamMemberData.teams) {
+                // Determine if they are joining the SAME team or a NEW team
+                const currentTeamId = (teamMemberData.teams as any).id
+                if (currentTeamId === teamInfo.id) {
+                    toast.info("이미 이 팀의 멤버입니다.")
+                    router.push('/creator')
+                    return
+                } else {
+                    setExistingTeam(teamMemberData.teams)
+                    setShowConfirmDialog(true)
+                    return
+                }
+            }
+        } catch (err) {
+            console.error("Failed to check existing team:", err)
+        }
+
+        executeJoin()
+    }
+
+    const executeJoin = async () => {
         setIsJoining(true)
+        setShowConfirmDialog(false)
         try {
             // 1. Check if already a member is handled by RPC or we can keep it for UI feedback speed.
             // RPC handles it, but let's keep the UI check if we want immediate feedback before calling RPC?
@@ -172,8 +211,26 @@ export default function JoinTeamPage() {
                             </div>
 
                             {!user && (
-                                <div className="text-center text-sm text-orange-600 bg-orange-50 p-3 rounded-md">
-                                    팀에 합류하려면 먼저 로그인이 필요합니다.
+                                <div className="space-y-3 mt-6">
+                                    <div className="text-center text-sm text-orange-600 bg-orange-50 p-3 rounded-md mb-4">
+                                        팀에 합류하려면 먼저 로그인(또는 회원가입)이 필요합니다.
+                                    </div>
+                                    <Button
+                                        className="w-full bg-primary/10 text-primary hover:bg-primary/20"
+                                        onClick={() => router.push(`/login?next=/join/${code}`)}
+                                    >
+                                        기존 계정으로 로그인 (3초 소요)
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full"
+                                        onClick={() => router.push(`/signup?role=creator&next=/join/${code}`)}
+                                    >
+                                        새 크리에이터로 1초 간편가입
+                                    </Button>
+                                    <p className="text-xs text-center text-muted-foreground pt-2">
+                                        가입이 완료되면 자동으로 이 팀에 합류합니다.
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -193,11 +250,7 @@ export default function JoinTeamPage() {
                                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                     처리 중...
                                 </>
-                            ) : user ? (
-                                "팀 합류하기"
-                            ) : (
-                                "로그인하고 합류하기"
-                            )}
+                            ) : "초대 수락 및 팀 합류하기"}
                         </Button>
                     )}
                     {(error || !isValid) && (
@@ -211,6 +264,25 @@ export default function JoinTeamPage() {
                     )}
                 </CardFooter>
             </Card>
+
+            <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>소속사 이전 안내</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            현재 <strong>{existingTeam?.name}</strong> 팀에 소속되어 있습니다.
+                            새로운 <strong>{teamInfo?.name}</strong> 팀에 합류하시면 기존 팀에서는 자동 탈퇴 처리됩니다.
+                            정말 이동하시겠습니까? (이전 협업 내역은 보존됩니다)
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>취소</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeJoin} className="bg-primary">
+                            확인 및 소속사 이동
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

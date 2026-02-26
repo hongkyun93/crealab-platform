@@ -1,6 +1,7 @@
 "use client"
 
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
+import { useAuth } from "@/components/providers/auth-provider"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -13,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { PerformanceDialog } from "@/components/workspace/brand/performance-dialog"
-import { BarChart3, Ban, ChevronRight, FileText, LayoutGrid, List, Pencil, Table2 } from "lucide-react"
+import { BarChart3, Ban, ChevronRight, FileText, LayoutGrid, List, Pencil, Table2, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import React, { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -47,6 +48,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     handleStatusUpdate,
     onViewProposal
 }: WorkspaceViewProps) {
+    const { user } = useAuth()
     const { supabase, refreshData } = useUnifiedProvider()
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'table'>('list')
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
@@ -839,6 +841,28 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+            {/* Missing Info Callout for Contracts */}
+            {user?.role === 'brand' && (!(user as any)?.profile?.business_number || !(user as any)?.profile?.legal_name || !(user as any)?.profile?.representative_name) && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-400"></div>
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                        <div className="flex-1">
+                            <h4 className="text-sm font-bold text-amber-900 dark:text-amber-300">정확한 전자계약을 위해 회사 정보를 입력해주세요.</h4>
+                            <p className="text-sm text-amber-800/80 dark:text-amber-400/80 mt-1">
+                                사업자등록번호, 법인명(상호), 대표자명 등 필수 정보가 누락되어 있습니다. 크리에이터와의 원활한 협업과 정산을 위해 채워주세요.
+                            </p>
+                        </div>
+                    </div>
+                    <Button variant="default" size="sm" className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white w-full sm:w-auto" asChild>
+                        <Link href="/brand?view=settings">
+                            내 프로필 설정
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                        </Link>
+                    </Button>
+                </div>
+            )}
+
             {/* Title and View Mode Selector */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                 <div className="flex flex-col gap-2">

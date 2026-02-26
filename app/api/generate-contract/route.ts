@@ -48,9 +48,6 @@ export async function POST(req: Request) {
         const dateUpload = proposal?.condition_upload_date || "미정";
         const secondaryUsagePeriod = proposal?.condition_secondary_usage_period || "미정";
 
-        const dateUpload = proposal?.condition_upload_date || "미정";
-        const secondaryUsagePeriod = proposal?.condition_secondary_usage_period || "미정";
-
         // MCN 커스텀 계약서 여부 확인
         const creatorId = creatorProfile?.id || proposal?.influencer_id || proposal?.influencerId;
         let customContractTemplate: string | null = null;
@@ -83,7 +80,7 @@ export async function POST(req: Request) {
 
 [MCN 전용 표준 계약서 양식]
 ${customContractTemplate}
-
+` : `
 [계약 당사자]
 - 갑(광고주): ${brandName}
   - 대표자명: ${brandProfile?.representative_name || '미입력'}

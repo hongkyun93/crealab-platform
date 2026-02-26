@@ -40,8 +40,12 @@ function SignupContent() {
         setError("")
         try {
             const supabase = createClient()
-            const redirectUrl = `${window.location.origin}/auth/callback?role_type=${role}`
+            let redirectUrl = `${window.location.origin}/auth/callback?role_type=${role}`
 
+            const nextUrl = searchParams.get('next')
+            if (nextUrl) {
+                redirectUrl += `&next=${encodeURIComponent(nextUrl)}`
+            }
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
@@ -121,7 +125,11 @@ function SignupContent() {
                             <div className="bg-green-50 text-green-700 p-4 rounded-md text-center">
                                 {successMessage}
                                 <div className="mt-4">
-                                    <Button variant="outline" onClick={() => router.push('/login')} className="w-full">
+                                    <Button variant="outline" onClick={() => {
+                                        const nextUrl = searchParams.get('next')
+                                        const loginUrl = nextUrl ? `/login?next=${encodeURIComponent(nextUrl)}` : '/login'
+                                        router.push(loginUrl)
+                                    }} className="w-full">
                                         로그인 페이지로 이동
                                     </Button>
                                 </div>

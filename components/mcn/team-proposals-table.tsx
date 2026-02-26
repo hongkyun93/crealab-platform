@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowUpDown, Calendar, Check, ChevronRight, FileText, Filter, Loader2, Megaphone, Package, Sparkles, X } from "lucide-react"
 import React, { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { MagicLinkGeneratorModal } from "./magic-link-generator-modal"
 
 interface TeamProposal {
     id: string
@@ -214,39 +215,44 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
 
     return (
         <div className="space-y-4">
-            {/* Type Tabs */}
-            <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full">
-                <TabsList className="inline-flex w-auto h-auto">
-                    <TabsTrigger value="all" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        전체
-                        <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
-                            {typeCounts.all}
-                        </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="moment_proposal" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
-                        <Calendar className="h-3.5 w-3.5" />
-                        모먼트
-                        <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
-                            {typeCounts.moment_proposal}
-                        </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="product_application" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
-                        <Package className="h-3.5 w-3.5" />
-                        브랜드
-                        <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
-                            {typeCounts.product_application}
-                        </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="campaign_application" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
-                        <Megaphone className="h-3.5 w-3.5" />
-                        캠페인
-                        <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
-                            {typeCounts.campaign_application}
-                        </Badge>
-                    </TabsTrigger>
-                </TabsList>
-            </Tabs>
+            {/* Type Tabs & Action */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full sm:w-auto">
+                    <TabsList className="inline-flex w-full sm:w-auto h-auto flex-wrap">
+                        <TabsTrigger value="all" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            전체
+                            <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
+                                {typeCounts.all}
+                            </Badge>
+                        </TabsTrigger>
+                        <TabsTrigger value="moment_proposal" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
+                            <Calendar className="h-3.5 w-3.5" />
+                            모먼트
+                            <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
+                                {typeCounts.moment_proposal}
+                            </Badge>
+                        </TabsTrigger>
+                        <TabsTrigger value="product_application" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
+                            <Package className="h-3.5 w-3.5" />
+                            브랜드
+                            <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
+                                {typeCounts.product_application}
+                            </Badge>
+                        </TabsTrigger>
+                        <TabsTrigger value="campaign_application" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap px-4">
+                            <Megaphone className="h-3.5 w-3.5" />
+                            캠페인
+                            <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-[10px] px-1">
+                                {typeCounts.campaign_application}
+                            </Badge>
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+                <div className="flex-shrink-0">
+                    <MagicLinkGeneratorModal />
+                </div>
+            </div>
 
             {/* Filters */}
             <div className="flex items-center gap-3 flex-wrap">

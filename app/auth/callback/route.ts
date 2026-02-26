@@ -39,17 +39,27 @@ export async function GET(request: Request) {
                     await supabase.auth.updateUser({ data: { role: userRole } })
                 }
 
+                let defaultNext = '/'
                 if (userRole === 'brand') {
-                    next = isNewUser ? '/brand/settings' : '/brand'
+                    defaultNext = isNewUser ? '/brand/settings' : '/brand'
                 } else if (userRole === 'creator') {
-                    next = isNewUser ? '/creator?view=settings' : '/creator'
+                    defaultNext = isNewUser ? '/creator?view=settings' : '/creator'
                 } else if (userRole === 'mcn') {
-                    next = '/mcn'
+                    defaultNext = '/mcn'
                 } else if (userRole === 'admin') {
-                    next = '/admin'
+                    defaultNext = '/admin'
                 } else {
                     // role 없는 신규 유저 → 온보딩에서 역할 선택
-                    next = '/onboarding'
+                    defaultNext = '/onboarding'
+                }
+
+                // If explicit 'next' parameter is provided (e.g. magic link), respect it
+                const nextParam = searchParams.get('next')
+                // Prevent Open Redirect: Ensure 'next' is a valid local path starting with '/'
+                if (nextParam && nextParam !== '/' && nextParam.startsWith('/')) {
+                    next = nextParam
+                } else {
+                    next = defaultNext
                 }
             } catch (e) {
                 console.error('Profile fetch error', e)

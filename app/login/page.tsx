@@ -93,8 +93,12 @@ function LoginPageContent() {
         setError("")
         try {
             const supabase = createClient()
-            const redirectUrl = `${window.location.origin}/auth/callback?role_type=${role}`
+            let redirectUrl = `${window.location.origin}/auth/callback?role_type=${role}`
 
+            // If there's a next URL (e.g., an invitation link), pass it along
+            if (nextUrl) {
+                redirectUrl += `&next=${encodeURIComponent(nextUrl)}`
+            }
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
@@ -311,7 +315,10 @@ function LoginPageContent() {
                     <CardFooter className="flex flex-col space-y-4 border-t pt-6">
                         <div className="text-center text-sm text-muted-foreground">
                             계정이 없으신가요?{" "}
-                            <Button variant="link" className="p-0 h-auto font-semibold text-primary" onClick={() => router.push('/signup')}>
+                            <Button variant="link" className="p-0 h-auto font-semibold text-primary" onClick={() => {
+                                const signupUrl = nextUrl ? `/signup?next=${encodeURIComponent(nextUrl)}` : '/signup'
+                                router.push(signupUrl)
+                            }}>
                                 회원가입하기
                                 <ArrowRight className="ml-1 h-3 w-3" />
                             </Button>
