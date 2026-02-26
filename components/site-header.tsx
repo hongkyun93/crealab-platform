@@ -144,37 +144,44 @@ export function SiteHeader() {
 
                     {/* Mobile Menu */}
                     <div className="md:hidden flex items-center">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="-ml-2">
-                                    <Menu className="h-5 w-5" />
-                                    <span className="sr-only">메뉴 열기</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-[200px]">
-                                <DropdownMenuItem asChild>
-                                    <Link href="/services" className="w-full">서비스 소개</Link>
-                                </DropdownMenuItem>
-                                {(!user || user.role === 'brand' || user.role === 'admin') && (
+                        {isDashboardRoute ? (
+                            <Button variant="ghost" size="icon" className="-ml-2" onClick={toggleMobileSidebar}>
+                                <Menu className="h-5 w-5" />
+                                <span className="sr-only">사이드바 열기</span>
+                            </Button>
+                        ) : (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="-ml-2">
+                                        <Menu className="h-5 w-5" />
+                                        <span className="sr-only">메뉴 열기</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-[200px]">
                                     <DropdownMenuItem asChild>
-                                        <Link href="/brand" className="w-full">브랜드</Link>
+                                        <Link href="/services" className="w-full">서비스 소개</Link>
                                     </DropdownMenuItem>
-                                )}
-                                {(!user || user.role === 'creator' || user.role === 'mcn' || user.role === 'agency' || user.role === 'admin') && (
+                                    {(!user || user.role === 'brand' || user.role === 'admin') && (
+                                        <DropdownMenuItem asChild>
+                                            <Link href="/brand" className="w-full">브랜드</Link>
+                                        </DropdownMenuItem>
+                                    )}
+                                    {(!user || user.role === 'creator' || user.role === 'mcn' || user.role === 'agency' || user.role === 'admin') && (
+                                        <DropdownMenuItem asChild>
+                                            <Link href={(user?.role === 'mcn' || user?.role === 'agency') ? '/mcn' : '/creator'} className="w-full">{(user?.role === 'mcn' || user?.role === 'agency') ? 'MCN 관리' : '크리에이터'}</Link>
+                                        </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem asChild>
-                                        <Link href={(user?.role === 'mcn' || user?.role === 'agency') ? '/mcn' : '/creator'} className="w-full">{(user?.role === 'mcn' || user?.role === 'agency') ? 'MCN 관리' : '크리에이터'}</Link>
+                                        <Link href="/message" className="w-full flex justify-between">
+                                            메시지
+                                            {user && messages.filter(m => m.receiverId === user.id && !m.read).length > 0 && (
+                                                <span className="h-2 w-2 bg-red-500 rounded-full"></span>
+                                            )}
+                                        </Link>
                                     </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem asChild>
-                                    <Link href="/message" className="w-full flex justify-between">
-                                        메시지
-                                        {user && messages.filter(m => m.receiverId === user.id && !m.read).length > 0 && (
-                                            <span className="h-2 w-2 bg-red-500 rounded-full"></span>
-                                        )}
-                                    </Link>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                     </div>
                 </div>
                 <div className="ml-auto flex items-center space-x-2 sm:space-x-4">
