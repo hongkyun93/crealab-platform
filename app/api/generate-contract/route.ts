@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
         // Extract all condition fields from proposal
         const productName = proposal?.product_name || proposal?.productName || "협업 제품";
-        const productType = proposal?.product_type === 'gift' ? '제품 협찬(무상 제공)' : proposal?.product_type === 'rental' ? '제품 대여' : '광고 협업';
+        const productType = proposal?.product_type === 'gift' ? '제품 협찬(무상 제공)' : proposal?.product_type === 'loan' ? '제품 대여' : '광고 협업';
         const priceOffer = proposal?.price_offer || proposal?.compensation_amount || "미정";
         const channelInfo = proposal?.channel_name || "미정";
         const specialTerms = proposal?.special_terms || "없음";
@@ -48,9 +48,41 @@ export async function POST(req: Request) {
         const dateUpload = proposal?.condition_upload_date || "미정";
         const secondaryUsagePeriod = proposal?.condition_secondary_usage_period || "미정";
 
-        const systemPrompt = `
-당신은 대한민국 법률에 정통한 법률 전문가이자 인플루언서 마케팅 계약 전문가입니다.
-브랜드와 크리에이터 사이의 대화 내용과 합의된 조건을 바탕으로 '표준 광고 협업 계약서'를 작성해주세요.
+        const dateUpload = proposal?.condition_upload_date || "미정";
+        const secondaryUsagePeriod = proposal?.condition_secondary_usage_period || "미정";
+
+        // MCN 커스텀 계약서 여부 확인
+        const creatorId = creatorProfile?.id || proposal?.influencer_id || proposal?.influencerId;
+        let customContractTemplate: string | null = null;
+
+        if (creatorId) {
+            const { data: memberData } = await supabase
+                .from('team_members')
+                .select('team_id')
+                .eq('user_id', creatorId)
+                .single();
+
+            if (memberData?.team_id) {
+                const { data: teamData } = await supabase
+                    .from('teams')
+                    .select('custom_contract_terms, use_custom_contract')
+                    .eq('id', memberData.team_id)
+                    .single();
+
+                if (teamData?.use_custom_contract && teamData.custom_contract_terms) {
+                    customContractTemplate = teamData.custom_contract_terms;
+                }
+            }
+        }
+
+        const systemPrompt = customContractTemplate ? `
+당신은 대한민국 법률에 정통한 인플루언서 마케팅 계약 전문가입니다.
+해당 크리에이터 소속 MCN의 **[전용 표준 전자계약서 양식]**이 제공되었습니다. 
+이 양식의 기본 조항이나 문구는 절대로 훼손하거나 마음대로 삭제하지 말고, 주어진 양식을 기반으로 빈칸이나 [조건 및 대상] 부분만 아래 합의된 정보를 바탕으로 채워넣어 완성된 마크다운을 반환하세요.
+(만약 부가적인 특약사항이 있다면 가장 밑에 추가 조항으로 붙여주세요.)
+
+[MCN 전용 표준 계약서 양식]
+${customContractTemplate}
 
 [계약 당사자]
 - 갑(광고주): ${brandName}
@@ -92,12 +124,12 @@ ${historyText || "(대화 내용 없음)"}
 [지침]
 1. 위 합의된 조건을 계약서에 정확히 반영하세요. 특히 원고료, 콘텐츠 유형, 일정, 특약사항을 빠뜨리지 마세요.
 2. 합의되지 않은 조건(미정)은 "양쪽 합의에 따라 정한다"로 표기하세요.
-3. 대한민국 법률에 의거하여 전문적인 어조(예: ~한다, ~해야 한다)로 작성하세요.
+3. ${customContractTemplate ? "주어진 MCN 양식을 우선적으로 따르되," : "대한민국 법률에 의거하여"} 전문적인 어조(예: ~한다, ~해야 한다)로 작성하세요.
 4. 출력 형식은 깔끔한 Markdown 형식으로 조항별로 구분하여 작성하세요.
-5. 반드시 포함할 조목: 목적, 콘텐츠 제작 및 게시, 원고료 지급, 일정, 저작권 및 초상권, 2차 활용, 비밀유지, 계약 해지, 분쟁 해결.
+5. ${customContractTemplate ? "서명란을 포함하여 양식을 그대로 유지하세요." : "반드시 포함할 조목: 목적, 콘텐츠 제작 및 게시, 원고료 지급, 일정, 저작권 및 초상권, 2차 활용, 비밀유지, 계약 해지, 분쟁 해결."}
 6. 인센티브가 있는 경우 별도 조항으로 명시하세요.
 7. 특약사항이 있으면 별도 조항으로 반영하세요.
-8. 계약서 마지막에 서명란(당사자명, 날짜)이 포함되도록 하세요.
+8. ${customContractTemplate ? "MCN 양식 텍스트를 최우선 존중하세요." : "계약서 마지막에 서명란(당사자명, 날짜)이 포함되도록 하세요."}
 
 최종 계약서 초안을 작성해주세요.
 `;

@@ -176,7 +176,7 @@ export default function HomeLandingPage() {
                                 </h1>
 
                                 <p className="text-lg md:text-xl text-slate-400 leading-relaxed max-w-lg">
-                                    크리에이터의 <strong className="text-white">라이프 모먼트</strong>에 맞춰 브랜드와 연결합니다.<br />필요한 순간, 진정성 있는 파트너십.
+                                    크리에이터의 <strong className="text-white">라이프 모먼트✨</strong>에 맞춰 브랜드와 연결합니다.<br />필요해서 쓰는 제품이 광고가 될때, <br />광고는 더이상 광고가 아닌 콘텐츠 그 자체가 됩니다.
                                 </p>
 
                                 {/* 3 Buttons: Creator / MCN / Brand */}
@@ -308,7 +308,7 @@ export default function HomeLandingPage() {
                                     </div>
                                     <div className="border-t pt-4 space-y-1.5">
                                         <p className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-sm"><Sparkles className="h-3.5 w-3.5" /> CreadyPick으로 해결!</p>
-                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">소속사 크리에이터의 모든 일정, 광고, 계약, 소통을 한곳에서 관리하세요!</strong> 크레디픽의 MCN 전용 크리에이터 매니징 툴과 워크스테이션으로 메시징·제안·계약·일정을 하나의 대시보드에서 통합 관리하세요!</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed"><strong className="text-foreground">소속사 크리에이터의 모든 일정, 계약, 정산, 콘텐츠 검수, 소통을 한곳에서 관리하세요!</strong> 크레디픽의 MCN 전용 크리에이터 매니징 툴과 워크스테이션으로 메시징·제안·계약·일정을 하나의 대시보드에서 통합 관리하세요!</p>
                                     </div>
                                 </div>
                             </RevealSection>
@@ -321,7 +321,7 @@ export default function HomeLandingPage() {
                                         <div><h3 className="font-bold text-lg">브랜드 담당자님</h3><p className="text-xs text-muted-foreground">인플루언서 마케팅이 어려우신가요?</p></div>
                                     </div>
                                     <div className="space-y-2">
-                                        {["DM 보내도 개인 메시지에 묻혀서 읽씹...", "제품에 관심 없는 크리에이터만 만나요", "광고비 대비 성과 측정이 안 돼요", "계약·정산·검수... 관리가 너무 복잡해요"].map((pain, i) => (
+                                        {["DM 보내도 개인 메시지에 묻혀서 읽씹...", "광고비는 많이 드는데.. 너무 광고 티나고, 진정성이 없어요", "광고이후 정확한 광고 성과 측정이 안 돼요", "계약·정산·콘텐츠 검수·세금... 관리가 너무 복잡해요"].map((pain, i) => (
                                             <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white/60 dark:bg-slate-900/40 border border-blue-100 dark:border-blue-900/20">
                                                 <span className="text-blue-400 mt-0.5 text-xs">😤</span>
                                                 <p className="text-xs text-muted-foreground">{pain}</p>
@@ -386,9 +386,9 @@ export default function HomeLandingPage() {
                         </RevealSection>
                         <div className="grid md:grid-cols-3 gap-8">
                             {[
-                                { step: "01", title: "프로필 등록", desc: "제품 정보 또는 라이프 모먼트를 등록하세요.", icon: Users, color: "from-blue-500 to-indigo-600", bg: "from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/10" },
+                                { step: "01", title: "프로필 등록", desc: "크리에이터는 라이프 모먼트, 브랜드는 제품정보/캠페인을 등록하세요.", icon: Users, color: "from-blue-500 to-indigo-600", bg: "from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/10" },
                                 { step: "02", title: "타이밍 매칭", desc: "제품이 필요한 순간의 크리에이터와 자동 연결됩니다.", icon: Target, color: "from-violet-500 to-purple-600", bg: "from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/10" },
-                                { step: "03", title: "협업 시작", desc: "제안→계약→배송→콘텐츠→정산 모두를 '워크스테이션' 한 곳에서 관리합니다.", icon: TrendingUp, color: "from-emerald-500 to-green-600", bg: "from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/10" },
+                                { step: "03", title: "협업 시작", desc: "제안→계약→콘텐츠 제출/검수→정산 모두를 '워크스테이션' 한 곳에서 관리합니다.", icon: TrendingUp, color: "from-emerald-500 to-green-600", bg: "from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/10" },
                             ].map((item, i) => (
                                 <RevealSection key={i} delay={i * 150}>
                                     <div className={`rounded-2xl border bg-gradient-to-br ${item.bg} p-8 text-center space-y-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full`}>

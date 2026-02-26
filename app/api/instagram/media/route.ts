@@ -28,18 +28,31 @@ export async function GET(req: NextRequest) {
         )
     }
 
-    // 최근 게시물 목록 조회 (thumbnail_url은 VIDEO 타입에서만 존재)
-    const mediaRes = await fetch(
-        `https://graph.facebook.com/v19.0/${channel.ig_user_id}/media` +
-        `?fields=id,caption,media_type,thumbnail_url,media_url,permalink,timestamp,like_count,comments_count` +
-        `&limit=12` +
-        `&access_token=${channel.ig_access_token}`
-    )
-    const mediaData = await mediaRes.json()
+    const baseFields = `id,caption,media_type,thumbnail_url,media_url,permalink,timestamp,like_count,comments_count`
+    const token = channel.ig_access_token
+    const igUserId = channel.ig_user_id
 
-    if (mediaData.error) {
+    // 게시물 + 릴스 병렬 조회
+    const [mediaRes, reelsRes] = await Promise.all([
+        fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?fields=${baseFields}&limit=12&access_token=${token}`),
+        fetch(`https://graph.facebook.com/v19.0/${igUserId}/reels?fields=${baseFields}&limit=12&access_token=${token}`),
+    ])
+
+    const [mediaData, reelsData] = await Promise.all([
+        mediaRes.json(),
+        reelsRes.json(),
+    ])
+
+    if (mediaData.error && reelsData.error) {
         return NextResponse.json({ error: mediaData.error.message }, { status: 400 })
     }
 
-    return NextResponse.json(mediaData)
+    // 합치고 중복 제거 후 시간 내림차순 정렬
+    const posts = (mediaData.data || []).map((p: any) => ({ ...p, media_source: 'post' }))
+    const reels = (reelsData.data || []).map((r: any) => ({ ...r, media_source: 'reel' }))
+    const combined = [...posts, ...reels]
+    const deduped = Array.from(new Map(combined.map((m: any) => [m.id, m])).values())
+    deduped.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+    return NextResponse.json({ data: deduped })
 }

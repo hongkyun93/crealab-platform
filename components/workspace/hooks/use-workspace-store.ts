@@ -1,24 +1,27 @@
 
 // This is the core store for managing the workspace state
-import { Proposal } from '@/lib/types'; // Assuming Proposal type is here
+import { Proposal } from '@/lib/types';
+import { WorkspaceStage } from '@/lib/compute-workspace-stage';
 import { create } from 'zustand';
 
 interface WorkspaceState {
     // Data
     proposal: Proposal | null;
-    currentStage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete';
+    currentStage: WorkspaceStage;
+    stageMap: Record<string, WorkspaceStage>; // proposalId → stage (카드 목록 공유)
 
     // UI State
     isChatOpen: boolean;
     activeMobileTab: 'chat' | 'info' | 'contract';
-    expandedSections: string[]; // e.g., ['conditions']
-    contractViewOpen: boolean; // When true, contract panel replaces chat+files area
-    videoReviewOpen: boolean;  // When true, video review panel replaces chat+files area
+    expandedSections: string[];
+    contractViewOpen: boolean;
+    videoReviewOpen: boolean;
 
     // Actions
     setProposal: (proposal: any) => void;
     updateProposal: (fields: Partial<Proposal>) => void;
-    setCurrentStage: (stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete') => void;
+    setCurrentStage: (stage: WorkspaceStage) => void;
+    setStageMap: (map: Record<string, WorkspaceStage>) => void;
     setIsChatOpen: (isOpen: boolean) => void;
     toggleSection: (sectionId: string) => void;
     setMobileTab: (tab: WorkspaceState['activeMobileTab']) => void;
@@ -31,6 +34,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     // Initial State
     proposal: null,
     currentStage: 'negotiation',
+    stageMap: {},
     isChatOpen: false,
     activeMobileTab: 'chat',
     expandedSections: ['current_stage'],
@@ -44,6 +48,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             proposal: state.proposal ? { ...state.proposal, ...fields } : null,
         })),
     setCurrentStage: (stage) => set({ currentStage: stage }),
+    setStageMap: (map) => set((state) => ({ stageMap: { ...state.stageMap, ...map } })),
     setIsChatOpen: (isOpen) => set({ isChatOpen: isOpen }),
     toggleSection: (sectionId) =>
         set((state) => {

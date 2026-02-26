@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Building2, Printer, Stamp, X } from "lucide-react"
+import { Building2, Download, Printer, Stamp, X } from "lucide-react"
 import { useRef } from "react"
 
 interface Settlement {
@@ -30,6 +30,74 @@ const PROPOSAL_TYPE_LABELS: Record<string, string> = {
     product_application: '제품 지원',
     moment_proposal: '모먼트 제안',
     campaign_application: '캠페인 지원',
+}
+
+// ─── CSV Export Helper ────────────────────────────────────────────────────────
+function exportIndividualStatementToCSV(
+    mcnInfo: McnBusinessInfo,
+    creatorName: string,
+    settlementMonth: string,
+    statementNumber: string,
+    items: Settlement[]
+) {
+    const totalGross = items.reduce((s, r) => s + r.gross_amount, 0)
+    const totalCreator = items.reduce((s, r) => s + r.creator_amount, 0)
+    const totalWithhold = items.reduce((s, r) => s + (r.withholding_amount ?? Math.round(r.creator_amount * 0.033)), 0)
+    const totalNet = items.reduce((s, r) => s + (r.net_creator_amount ?? (r.creator_amount - Math.round(r.creator_amount * 0.033))), 0)
+
+    const [year, month] = settlementMonth.split('-')
+    const displayMonth = `${year}년 ${Number(month)}월`
+
+    // 세무사용 헤더
+    const header = ['순번', '협업 내용', '총 협업 금액', `크리에이터 몫 (${Math.round((items[0]?.split_ratio ?? 0.7) * 100)}%)`, '원천징수상당액 (3.3%)', '실수령액', '지급 상태', '지급일자']
+
+    const rows = items.map((item, idx) => {
+        const wh = item.withholding_amount ?? Math.round(item.creator_amount * 0.033)
+        const net = item.net_creator_amount ?? (item.creator_amount - wh)
+        const typeLabel = PROPOSAL_TYPE_LABELS[item.proposal_type] || item.proposal_type
+        const title = `${item.brand_name || '브랜드'} 협업 (${typeLabel})`
+
+        return [
+            idx + 1,
+            title,
+            item.gross_amount,
+            item.creator_amount,
+            wh,
+            net,
+            item.status === 'paid' ? '지급완료' : '지급대기',
+            item.paid_at ? new Date(item.paid_at).toLocaleDateString('ko-KR') : ''
+        ]
+    })
+
+    // 요약(합계) 열 추가
+    rows.push(['-', '합계', totalGross, totalCreator, totalWithhold, totalNet, '-', '-'])
+
+    // 최상단 정보 구성
+    const metaData = [
+        ['지급명세서', '', '', '', '', '', '', ''],
+        ['문서번호', statementNumber, '', '', '', '', '', ''],
+        ['정산월', displayMonth, '', '', '', '', '', ''],
+        ['수령인(크리에이터)', creatorName, '', '', '', '', '', ''],
+        ['발행처(MCN)', mcnInfo.name, '', '', '', '', '', ''],
+        ['사업자등록번호', mcnInfo.business_registration_number || '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', ''] // 빈 줄
+    ]
+
+    const csvData = [...metaData, header, ...rows]
+    const csvString = csvData
+        .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+        .join('\n')
+
+    const bom = '\uFEFF' // UTF-8 BOM
+    const blob = new Blob([bom + csvString], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `지급명세서_${creatorName}_${settlementMonth}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
 }
 
 // MCN 사업자 정보 인터페이스
@@ -86,6 +154,10 @@ export function PaymentStatementModal({
         window.print()
     }
 
+    const handleDownloadCSV = () => {
+        exportIndividualStatementToCSV(mcnInfo, creatorName, settlementMonth, statementNumber, items)
+    }
+
     // 사업자등록번호 포맷팅 (123-45-67890)
     const formatBizNumber = (num: string | null | undefined) => {
         if (!num) return null
@@ -129,11 +201,15 @@ export function PaymentStatementModal({
                             <p className="text-xs text-muted-foreground mt-0.5">문서번호: {statementNumber}</p>
                         </div>
                         <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={handleDownloadCSV} className="gap-1.5 h-8">
+                                <Download className="h-3.5 w-3.5" />
+                                CSV 다운로드
+                            </Button>
                             <Button size="sm" onClick={handlePrint} className="gap-1.5 h-8">
                                 <Printer className="h-3.5 w-3.5" />
                                 인쇄 / PDF 저장
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={onClose} className="h-8 w-8 p-0">
+                            <Button size="sm" variant="ghost" onClick={onClose} className="h-8 w-8 p-0 ml-2">
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>

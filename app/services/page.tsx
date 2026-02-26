@@ -274,7 +274,7 @@ export default function ServicesDesignPage() {
                             <div className="max-w-none">
                                 <p className="text-sm font-medium uppercase tracking-widest opacity-80 mb-3">{activeTab === "creator" ? "Creator Benefit" : activeTab === "mcn" ? "MCN / Agency Benefit" : "Brand Benefit"}</p>
                                 <h3 className="text-2xl md:text-3xl font-black mb-4">{activeTab === "creator" ? "\"내 일상이 곧 수익이 됩니다!\"" : activeTab === "mcn" ? "\"관리부터 정산까지, 하나의 대시보드에서 한번에!\"" : "\"광고같지 않은 광고, CreadyPick이 만들어드려요!\""}</h3>
-                                <p className="text-white/80 leading-relaxed">{activeTab === "creator" ? "일정을 등록하고, 라이프 모먼트에 필요한 제품을 광고하세요. 내 인스타 Vibe ✨ 와 딱 맞는 광고주님 찾기, 복잡한 영업·계약·정산은 CreadyPick이 처리합니다!" : activeTab === "mcn" ? "크리에이터가 10명이든 100명이든 — 현황 파악, 일정 관리, 제안 관리, 성과 분석, 컨택, 계약, 정산을 한곳에서 한번에!" : "광고주님 너무 바쁘시죠? 광고에 딱 맞는 인플루언서 서치·컨택·계약·정산까지 CreadyPick에 맡기고, 본업에만 집중하세요!"}</p>
+                                <p className="text-white/80 leading-relaxed">{activeTab === "creator" ? "일정을 등록하고, 진짜 필요한 제품을 광고하세요. 내 Vibe ✨ 와 딱 맞는 광고주님 찾기, 복잡한 영업·계약·정산은 CreadyPick이 처리합니다!" : activeTab === "mcn" ? "크리에이터가 10명이든 100명이든 — 현황 파악, 일정 관리, 제안 관리, 성과 분석, 컨택, 계약, 정산을 한곳에서 한번에!" : "광고주님 너무 바쁘시죠? 광고에 딱 맞는 인플루언서 서치·컨택·계약·정산까지 CreadyPick에 맡기고, 본업에만 집중하세요!"}</p>
                             </div>
                         </div>
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

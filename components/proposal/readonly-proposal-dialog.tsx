@@ -160,7 +160,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                                     <p className="text-sm font-bold leading-snug">{data.product_name}</p>
                                     <div className="flex items-center gap-2">
                                         <Badge variant="secondary" className="text-[11px] gap-1 font-medium">
-                                            <Gift className="h-3.5 w-3.5" />{data.product_type === 'gift' ? '증정' : data.product_type === 'rental' ? '대여' : '제공'}
+                                            <Gift className="h-3.5 w-3.5" />{data.product_type === 'gift' ? '증정' : data.product_type === 'loan' ? '대여' : '제공'}
                                         </Badge>
                                         {data.product_url && (
                                             <a href={data.product_url} target="_blank" rel="noreferrer" className="text-[11px] text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-0.5 transition-colors">

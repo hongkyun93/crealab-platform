@@ -308,6 +308,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                 content_submission_url: draftUrl.trim(),
                 content_submission_status: 'submitted',
                 content_submission_date: new Date().toISOString(),
+                content_submission_version: 1,
             }
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
@@ -364,8 +365,10 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
         try {
             const updates: any = {
                 content_submission_url: revisionUrl.trim(),
-                content_revision_requested_at: null,  // 수정본 업로드 후 게이트 닫기
+                content_submission_file_url: null,          // 기존 파일 지우고 링크 표시
+                content_revision_requested_at: null,
                 content_submission_status: 'submitted',
+                content_submission_version: ((proposal as any)?.content_submission_version || 1) + 1,
             }
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
@@ -424,6 +427,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                 content_submission_url: null,
                 content_revision_requested_at: null,
                 content_submission_status: 'submitted',
+                content_submission_version: ((proposal as any)?.content_submission_version || 1) + 1,
             }
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
@@ -966,7 +970,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                     )}
                 >
                     <Video className="h-3 w-3" />
-                    초안 {draftUrlData ? '' : '(대기)'}
+                    수정본 {draftUrlData ? '' : '(대기)'}
                 </button>
                 <button
                     onClick={() => setVideoTab('final')}
@@ -1081,8 +1085,8 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
 
                 return (
                     <div className="shrink-0 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3 bg-emerald-50 dark:bg-emerald-950/20 flex items-center gap-3 text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-                        <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                        최종 승인됨 · 크리에이터의 최종본/클린본 제출을 기다립니다
+                        <CheckCircle2 className="h-5 w-5 shrink-0" />
+                        최종 승인 완료 · 크리에이터의 최종본/클린본 제출 대기 중
                     </div>
                 )
             }
@@ -1208,7 +1212,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                     피드백을 충분히 반영한 후 제출해주세요.
                                 </p>
 
-                                {/* 파일 / 링크 모드 전환 */}
+                                {/* 파일 / 링크 모드 전환 — 링크 입력 비활성화 (주석처리)
                                 <div className="flex gap-1 p-0.5 bg-muted rounded-lg">
                                     <button
                                         type="button"
@@ -1235,9 +1239,10 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                         🔗 링크 입력
                                     </button>
                                 </div>
+                                */}
 
                                 {/* 파일 업로드 모드 */}
-                                {revisionUploadMode === 'file' && (
+                                {(revisionUploadMode === 'file' || revisionUploadMode === 'link') && (
                                     <div className="space-y-2">
                                         <input
                                             ref={revisionFileInputRef}
@@ -1280,7 +1285,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                     </div>
                                 )}
 
-                                {/* 링크 입력 모드 */}
+                                {/* 링크 입력 모드 — 비활성화 (주석처리)
                                 {revisionUploadMode === 'link' && (
                                     <div className="space-y-2">
                                         <Input
@@ -1300,6 +1305,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                         </Button>
                                     </div>
                                 )}
+                                */}
                             </div>
                         )}
                     </div>
@@ -1455,11 +1461,9 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                     <h3 className="font-bold text-sm flex items-center gap-2">
                         <FileVideo className="h-4 w-4 text-primary" />
                         콘텐츠 리뷰
-                        {(proposal as any)?.content_submission_version && (
-                            <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
-                                v{(proposal as any).content_submission_version}
-                            </span>
-                        )}
+                        <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+                            version {(proposal as any)?.content_submission_version || 1}
+                        </span>
                     </h3>
                     <div className={cn(
                         "text-xs font-bold px-2 py-1 rounded-full",

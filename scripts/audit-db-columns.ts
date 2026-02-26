@@ -14,7 +14,7 @@ import path from 'path'
 import { execSync } from 'child_process'
 
 const ROOT = path.resolve(__dirname, '..')
-const SCHEMA_PATH = path.join(ROOT, 'supabase/migrations/00_master_schema_v4.sql')
+const SCHEMA_PATH = path.join(ROOT, 'supabase/migrations/00_master_schema_v6.sql')
 
 // ─── 1. Parse Master Schema ─────────────────────────────────────────
 interface TableSchema {
@@ -26,7 +26,7 @@ function parseSchema(sqlPath: string): TableSchema {
     const schema: TableSchema = {}
 
     // Match CREATE TABLE blocks
-    const tableRegex = /CREATE TABLE IF NOT EXISTS public\.(\w+)\s*\(([\s\S]*?)\);/g
+    const tableRegex = /CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?(\w+)\s*\(([\s\S]*?)\);/g
     let match: RegExpExecArray | null
 
     while ((match = tableRegex.exec(sql)) !== null) {

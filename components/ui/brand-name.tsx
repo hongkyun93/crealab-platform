@@ -5,7 +5,7 @@
 export function BrandName({ className }: { className?: string }) {
     return (
         <span className={className}>
-            <span className="text-[#008080]">Cready</span>
+            <span className="text-[#2FA599]">Cready</span>
             <span className="text-[#B342AF]">Pick</span>
         </span>
     )

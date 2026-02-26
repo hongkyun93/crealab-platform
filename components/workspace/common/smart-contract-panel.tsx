@@ -197,6 +197,8 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     const [depositBalance, setDepositBalance] = useState<number | null>(null);
     const [isPayingDeposit, setIsPayingDeposit] = useState(false);
     const [payTab, setPayTab] = useState<'transfer' | 'deposit'>('transfer');
+    const [isNotifyingTransfer, setIsNotifyingTransfer] = useState(false);
+    const [transferNotified, setTransferNotified] = useState(false);
 
     // ── 프로필 추가 파싱 ──
     const [brandProfile, setBrandProfile] = useState<any>(null);
@@ -281,6 +283,24 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [brandId, isFullySigned, userType]);
 
+    // ── 새로고침 후 입금 알림 상태 복원 ──
+    useEffect(() => {
+        if (!isFullySigned || userType !== 'brand' || !brandId) return;
+        const checkNotified = async () => {
+            const { data } = await supabase
+                .from('brand_deposits')
+                .select('id')
+                .eq('brand_id', brandId)
+                .eq('type', 'charge')
+                .eq('status', 'pending')
+                .like('note', `계좌이체 입금 알림:${proposal.id}%`)
+                .maybeSingle();
+            if (data) setTransferNotified(true);
+        };
+        checkNotified();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [brandId, isFullySigned, userType]);
+
     const handlePayFromDeposit = async () => {
         const cost: number = (proposal as any).price_offer ?? 0;
         const totalWithVat = Math.round(cost * 1.1);
@@ -336,6 +356,46 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             console.error('[SmartContractPanel] deposit payment failed:', err);
         } finally {
             setIsPayingDeposit(false);
+        }
+    };
+
+    // ── 계좌이체 입금 완료 알리기 ──
+    const handleNotifyTransfer = async () => {
+        if (transferNotified || isNotifyingTransfer) return;
+        setIsNotifyingTransfer(true);
+        try {
+            const cost: number = (proposal as any).price_offer ?? 0;
+            const totalWithVat = Math.round(cost * 1.1);
+            const proposalType = (proposal as any).moment_id
+                ? 'moment_proposal'
+                : (proposal as any).campaign_id
+                    ? 'campaign_application'
+                    : 'product_application';
+
+            // brand_deposits에 pending charge 레코드 삽입 → 관리자 "입금 확인" 탭에 노출
+            const { error } = await supabase.from('brand_deposits').insert({
+                brand_id: brandId,
+                type: 'charge',
+                amount: totalWithVat,
+                status: 'pending',
+                balance_after: depositBalance ?? 0,  // 관리자가 확인 시 실제값으로 업데이트
+                note: `계좌이체 입금 알림:${proposal.id}`,
+            });
+            if (error) throw error;
+
+            // 관리자 알림
+            await supabase.from('notifications').insert({
+                recipient_id: brandId, // 관리자 알림은 별도 channel이 없으므로 brand 측에 확인 안내
+                type: 'payment_pending',
+                content: `입금 완료 알림이 접수되었습니다. 관리자가 확인 후 다음 단계가 활성화됩니다. (금액: ${totalWithVat.toLocaleString()}원)`,
+                reference_id: proposal.id as string,
+            });
+
+            setTransferNotified(true);
+        } catch (err) {
+            console.error('[SmartContractPanel] notify transfer failed:', err);
+        } finally {
+            setIsNotifyingTransfer(false);
         }
     };
 
@@ -830,8 +890,33 @@ body { background: #fff !important; color: #111 !important; }
                                         )}
                                     </div>
                                     <p className="text-[10px] text-orange-600/60 dark:text-orange-400/40">
-                                        ※ 입금자명: <span className="font-mono font-semibold">[회사명]_{(proposal as any)?.id?.toString().slice(0, 8)}</span> 형식으로 입력해 주세요.
+                                        ※ 입금자명: <span className="font-mono font-semibold text-orange-700 dark:text-orange-300 text-xs bg-orange-100 dark:bg-orange-900/40 px-1.5 py-0.5 rounded">
+                                            {(() => {
+                                                const code = String(parseInt((proposal as any)?.id?.replace(/-/g, '').slice(-4) || '0', 16) % 100).padStart(2, '0');
+                                                const name = brandProfile?.display_name || brandProfile?.representative_name || '회사명';
+                                                return `${name}${code}`;
+                                            })()}
+                                        </span> 으로 입력해 주세요.
                                     </p>
+                                    {/* 입금 완료 알리기 버튼 */}
+                                    {transferNotified ? (
+                                        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-700 px-3 py-2.5 flex items-center gap-2">
+                                            <span className="text-emerald-600 dark:text-emerald-400 text-sm">✅</span>
+                                            <div>
+                                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">입금 알림 접수 완료</p>
+                                                <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/60">관리자가 확인 후 배송 단계가 활성화됩니다.</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={handleNotifyTransfer}
+                                            disabled={isNotifyingTransfer}
+                                            className="w-full py-2.5 rounded-lg text-xs font-bold transition-all bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-orange-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                            {isNotifyingTransfer ? '처리 중...' : '✅ 입금 완료 알리기'}
+                                        </button>
+                                    )}
                                 </>
                             ) : (
                                 /* 예치금 차감 탭 */
@@ -888,6 +973,31 @@ body { background: #fff !important; color: #111 !important; }
                             )}
                         </div>
 
+                    )
+                )}
+
+                {/* ── 크리에이터 결제 상태 배너: 양측 서명 완료 후 ── */}
+                {isFullySigned && userType === 'creator' && (
+                    (proposal as any).payment_confirmed_at ? (
+                        <div className="mx-4 mb-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/25 px-4 py-3 flex items-center gap-3">
+                            <BadgeCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <div>
+                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">광고비 입금 확인 완료</p>
+                                <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/60 mt-0.5">
+                                    브랜드의 광고비 입금이 확인되었습니다. 제품 배송이 곧 시작됩니다.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="mx-4 mb-3 rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30 px-4 py-3 flex items-center gap-3">
+                            <Clock className="h-5 w-5 text-blue-500 dark:text-blue-400 shrink-0 animate-pulse" />
+                            <div>
+                                <p className="text-xs font-bold text-blue-700 dark:text-blue-300">광고비 입금 대기 중</p>
+                                <p className="text-[10px] text-blue-600/70 dark:text-blue-400/60 mt-0.5">
+                                    브랜드의 광고비 입금을 기다리고 있습니다. 입금 확인 후 배송 단계가 시작됩니다.
+                                </p>
+                            </div>
+                        </div>
                     )
                 )}
 

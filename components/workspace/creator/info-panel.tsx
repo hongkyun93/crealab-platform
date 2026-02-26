@@ -157,19 +157,9 @@ export function CreatorInfoPanel() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || '성과 제출 실패');
             setPerfSubmitted(data.data);
-            // 제출 완료 → proposal status 'completed' + 최종완료 단계로 이동
-            const completionUpdates: any = { status: 'completed', completed_at: new Date().toISOString() };
-            if ((proposal as any).moment_id || (proposal as any).event_id) {
-                await updateMomentProposal(proposal.id, completionUpdates);
-            } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
-                await updateProposal(proposal.id, completionUpdates);
-            } else {
-                await updateBrandProposal(proposal.id, completionUpdates);
-            }
-            useWorkspaceStore.getState().updateProposal(completionUpdates);
-            useWorkspaceStore.getState().setCurrentStage('final_complete');
-            refreshData();
-            if (brandId) sendNotification(brandId, '크리에이터가 성과를 제출했습니다! 확인해주세요.', 'performance_submitted', proposal.id?.toString());
+            // 성과 제출 완료 → status는 settlement 유지, 브랜드에게 알림만 발송
+            // (브랜드가 PerformanceDialog에서 최종완료 버튼을 눌러야 completed로 변경됨)
+            if (brandId) sendNotification(brandId, '크리에이터가 성과를 제출했습니다! 확인 후 최종완료 처리해주세요.', 'performance_submitted', proposal.id?.toString());
             toast.success('Instagram 인사이트 기반 성과 제출 완료! 🎉');
         } catch (err: any) {
             toast.error(err.message);
@@ -270,21 +260,11 @@ export function CreatorInfoPanel() {
 
             if (error) throw error;
             setPerfSubmitted(data);
-            // 제출 완료 → proposal status 'completed' + 최종완료 단계로 이동
-            const completionUpdates: any = { status: 'completed', completed_at: new Date().toISOString() };
-            if ((proposal as any).moment_id || (proposal as any).event_id) {
-                await updateMomentProposal(proposal.id, completionUpdates);
-            } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
-                await updateProposal(proposal.id, completionUpdates);
-            } else {
-                await updateBrandProposal(proposal.id, completionUpdates);
-            }
-            useWorkspaceStore.getState().updateProposal(completionUpdates);
-            useWorkspaceStore.getState().setCurrentStage('final_complete');
-            refreshData();
+            // 성과 제출 완료 → status는 settlement 유지, 브랜드에게 알림만 발송
+            // (브랜드가 PerformanceDialog에서 최종완료 버튼을 눌러야 completed로 변경됨)
             const brandId2 = (proposal as any).brand_id || (proposal as any).brandId;
-            if (brandId2) sendNotification(brandId2, '크리에이터가 성과를 제출했습니다! 확인해주세요.', 'performance_submitted', proposal.id?.toString());
-            toast.success('성과 데이터가 제출되었습니다! 🎉');
+            if (brandId2) sendNotification(brandId2, '크리에이터가 성과를 제출했습니다! 확인 후 최종완료 처리해주세요.', 'performance_submitted', proposal.id?.toString());
+            toast.success('성과 데이터가 제출되었습니다! 브랜드 확인 후 최종 완료됩니다. 🎉');
         } catch (err: any) {
             toast.error(err.message || '제출 중 오류가 발생했습니다.');
         } finally {

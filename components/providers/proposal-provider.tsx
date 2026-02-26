@@ -164,7 +164,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         instagramHandle: p.instagram_handle,
                         insightScreenshot: p.insight_screenshot,
                         channel_name: p.channel_name,         // [FIX] 누락됐던 채널명
-                        channel_url: p.channel_url,           // [FIX] 누락됐던 채널URL
                         channel_subtype: p.channel_subtype,   // [NEW] 서브타입 (instagram_reels 등)
                         contract_content: p.contract_content,
                         contract_status: p.contract_status,
@@ -282,7 +281,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 instagram_handle: p.instagram_handle,
                 insight_screenshot: p.insight_screenshot,
                 channel_name: p.channel_name,         // [FIX] 채널명
-                channel_url: p.channel_url,           // [FIX] 채널URL
                 channel_subtype: p.channel_subtype,   // [NEW] 서브타입
                 created_at: p.created_at,
                 updated_at: p.updated_at,
@@ -684,7 +682,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         content_plan: proposal.content_plan,
                         portfolio_links: proposal.portfolioLinks,
                         channel_name: proposal.channel_name,
-                        channel_url: proposal.channel_url,
                         channel_subtype: (proposal as any).channel_subtype,
                         instagram_handle: proposal.instagramHandle || (proposal.channel_name === 'instagram' ? proposal.channel_url : undefined),
                         insight_screenshot: proposal.insightScreenshot
@@ -840,7 +837,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         status: 'applied',
                         instagram_handle: proposal.instagramHandle || (proposal.channel_name === 'instagram' ? proposal.channel_url : undefined),
                         channel_name: proposal.channel_name,
-                        channel_url: proposal.channel_url,
                         insight_screenshot: proposal.insightScreenshot,
                         product_type: 'ad',
                         price_offer: proposal.cost ?? 0,
@@ -1106,13 +1102,16 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if ((updates as any).content_final_approved_at !== undefined) dbUpdates.content_final_approved_at = (updates as any).content_final_approved_at
             if ((updates as any).content_revision_requested_at !== undefined) dbUpdates.content_revision_requested_at = (updates as any).content_revision_requested_at
 
-            const { error } = await supabase
-                .from('moment_proposals')
-                .update(dbUpdates)
-                .eq('id', id)
+            // 클라이언트 RLS 우회: 서버 API로 업데이트
+            const res = await fetch('/api/moment-proposals/update', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, updates: dbUpdates }),
+            })
+            const json = await res.json()
 
-            if (error) {
-                console.error('[ProposalProvider] Update Moment error:', error)
+            if (!res.ok || json.error) {
+                console.error('[Moment] API update error:', json.error)
                 return false
             }
 

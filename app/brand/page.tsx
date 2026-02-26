@@ -838,55 +838,38 @@ function BrandDashboardContent() {
         const file = e.target.files?.[0]
         if (!file) return
 
-        // 300MB limit check
-        if (file.size > 300 * 1024 * 1024) {
-            toast.error("파일 크기는 300MB 이하여야 합니다.")
+        // 10MB limit (서버 라우트 제한)
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error("이미지 파일 크기는 10MB 이하여야 합니다.")
             return
         }
 
         setIsImageUploading(true)
 
         try {
-            const fileExt = file.name.split('.').pop()
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-            const filePath = `products/${fileName}`
+            // /api/upload 서버 라우트로 전환 (admin 클라이언트 → RLS 우회, 타임아웃 없음)
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('bucket', 'product-images')
+            formData.append('folder', 'products')
 
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            })
 
-            // Create a timeout promise
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Upload timed out (15s)')), 15000)
-            )
-
-            // Race the upload against the timeout
-            const { data, error } = await Promise.race([
-                supabase.storage
-                    .from('product-images')
-                    .upload(filePath, file, {
-                        cacheControl: '3600',
-                        upsert: false
-                    }),
-                timeoutPromise
-            ]) as any
-
-            if (error) {
-                console.error('[handleImageUpload] Supabase Storage Error:', error)
-                throw error
+            if (!res.ok) {
+                const err = await res.json()
+                throw new Error(err.error || '업로드 실패')
             }
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('product-images')
-                .getPublicUrl(filePath)
-
-            setNewProductImage(publicUrl)
+            const { url } = await res.json()
+            setNewProductImage(url)
         } catch (error: any) {
             console.error('[handleImageUpload] Exception:', error)
-            // Detailed error message for the user
-            const errorMessage = error?.message || "알 수 없는 오류"
-            const errorCode = error?.code || error?.error || "UNKNOWN"
-            toast.error(`이미지 업로드 실패\n오류 코드: ${errorCode}\n내용: ${errorMessage}\n(잠시 후 다시 시도해보세요)`)
+            toast.error(`이미지 업로드 실패: ${error?.message || '알 수 없는 오류'}`)
         } finally {
             setIsImageUploading(false)
-            // Reset file input
             e.target.value = ''
         }
     }

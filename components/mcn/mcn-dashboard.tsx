@@ -11,8 +11,10 @@ import { Label } from "@/components/ui/label"
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertTriangle, ArrowUpDown, BarChart3, Building2, Calendar, ChevronRight, FileText, Instagram, LayoutGrid, Loader2, Save, Search, Table as TableIcon, Users, Wallet } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { AlertTriangle, ArrowUpDown, BarChart3, Building2, Calendar, ChevronRight, FileSignature, FileText, Instagram, LayoutGrid, Loader2, Save, Search, Table as TableIcon, Users, Wallet } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import {
@@ -122,14 +124,19 @@ export function McnDashboard() {
         business_address: '',
         stamp_url: '',
     })
+    const [contractSettings, setContractSettings] = useState({
+        custom_contract_terms: '',
+        use_custom_contract: false,
+    })
     const [isSavingBiz, setIsSavingBiz] = useState(false)
+    const [isSavingContract, setIsSavingContract] = useState(false)
 
     // Fetch team business info when settings tab is shown
     useEffect(() => {
         if (!currentTeam?.id || activeTab !== 'settings') return
         supabase
             .from('teams')
-            .select('business_registration_number, representative_name, business_address, stamp_url')
+            .select('business_registration_number, representative_name, business_address, stamp_url, custom_contract_terms, use_custom_contract')
             .eq('id', currentTeam.id)
             .single()
             .then(({ data }) => {
@@ -139,6 +146,10 @@ export function McnDashboard() {
                         representative_name: data.representative_name || '',
                         business_address: data.business_address || '',
                         stamp_url: data.stamp_url || '',
+                    })
+                    setContractSettings({
+                        custom_contract_terms: data.custom_contract_terms || '',
+                        use_custom_contract: data.use_custom_contract || false,
                     })
                 }
             })
@@ -160,8 +171,28 @@ export function McnDashboard() {
         if (error) {
             console.error('[McnDashboard] save biz info error:', error)
         } else {
-            // Light feedback via title flash — avoid importing toast to keep bundle small
+            // Light feedback via title flash
             const el = document.getElementById('biz-save-btn')
+            if (el) el.textContent = '저장됨 ✓'
+            setTimeout(() => { if (el) el.textContent = '저장하기' }, 2000)
+        }
+    }
+
+    const handleSaveContractSettings = async () => {
+        if (!currentTeam?.id) return
+        setIsSavingContract(true)
+        const { error } = await supabase
+            .from('teams')
+            .update({
+                custom_contract_terms: contractSettings.custom_contract_terms || null,
+                use_custom_contract: contractSettings.use_custom_contract,
+            })
+            .eq('id', currentTeam.id)
+        setIsSavingContract(false)
+        if (error) {
+            console.error('[McnDashboard] save contract error:', error)
+        } else {
+            const el = document.getElementById('contract-save-btn')
             if (el) el.textContent = '저장됨 ✓'
             setTimeout(() => { if (el) el.textContent = '저장하기' }, 2000)
         }
@@ -852,6 +883,55 @@ export function McnDashboard() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* 자체 전자계약서 연동 패널 */}
+                    <Card className="border-emerald-100 dark:border-emerald-900/40 shadow-sm">
+                        <CardHeader className="pb-3 border-b bg-emerald-50/50 dark:bg-emerald-900/10">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                    <FileSignature className="h-4 w-4 text-emerald-600" />
+                                    우리 회사 전용 전자계약서 양식 연동
+                                </CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="use-custom" className="text-sm font-medium cursor-pointer">
+                                        기본 양식 대신 사용하기
+                                    </Label>
+                                    <Switch
+                                        id="use-custom"
+                                        checked={contractSettings.use_custom_contract}
+                                        onCheckedChange={c => setContractSettings(p => ({ ...p, use_custom_contract: c }))}
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                크레디픽 기본 계약서 대신, 소속 크리에이터가 브랜드와 계약할 때 적용될 MCN 자체 표준 계약서 조항을 입력하세요.
+                            </p>
+                        </CardHeader>
+                        <CardContent className="pt-4 space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold text-muted-foreground">계약서 조항 본문 (표준안)</Label>
+                                <Textarea
+                                    placeholder={`제1조 (목적)\n본 계약은 아티스트와 MCN 간의 수익 배분 및 계약 조건을 명시합니다...\n\n제2조 (비용 정산)\n브랜드 캠페인 수익은 제세공과금을 제하고 배분율에 따라 정산됩니다...`}
+                                    className="min-h-[250px] font-mono text-sm leading-relaxed"
+                                    value={contractSettings.custom_contract_terms}
+                                    onChange={e => setContractSettings(p => ({ ...p, custom_contract_terms: e.target.value }))}
+                                />
+                            </div>
+                            <div className="flex justify-end">
+                                <Button
+                                    id="contract-save-btn"
+                                    size="sm"
+                                    onClick={handleSaveContractSettings}
+                                    disabled={isSavingContract}
+                                    className="gap-1.5 w-[120px] bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                    {isSavingContract ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    저장하기
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                 </TabsContent>
             </Tabs>
 

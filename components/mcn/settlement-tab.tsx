@@ -6,11 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import { Building2, CheckCircle2, ChevronDown, ChevronRight, Clock, DollarSign, Download, FileText, Loader2, Receipt, Settings2, Users, Wallet } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { Building2, CheckCircle2, ChevronDown, ChevronRight, Clock, DollarSign, Download, FileText, Loader2, Receipt, Search, Settings2, Users, Wallet } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { BankConfirmModal } from "./bank-confirm-modal"
 import { PaymentStatementModal, type McnBusinessInfo } from "./payment-statement-modal"
@@ -136,6 +137,11 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
     const [splitEditorOpen, setSplitEditorOpen] = useState(false)
     const [editingCreator, setEditingCreator] = useState<{ id: string; name: string; avatar: string | null; currentRatio: number } | null>(null)
 
+    // Filters state
+    const [searchQuery, setSearchQuery] = useState("")
+    const [creatorFilter, setCreatorFilter] = useState("all")
+    const [statusFilter, setStatusFilter] = useState("all")
+
     // Bank confirm modal state
     const [bankConfirm, setBankConfirm] = useState<{
         settlementId: string
@@ -173,115 +179,6 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
         )
     }
 
-    const fetchSettlements = useCallback(async (month: string) => {
-        setIsLoading(true)
-        try {
-            // Try RPC first, fall back to direct table query
-            const { data: rpcData, error: rpcErr } = await supabase.rpc('get_team_settlements', {
-                target_team_id: teamId,
-                target_month: month,
-            })
-            if (!rpcErr && rpcData) {
-                setSettlements((rpcData as Settlement[]) || [])
-            } else {
-                // Direct table fallback
-                const { data, error } = await supabase
-                    .from('settlements')
-                    .select(`
-                        id, creator_id, brand_id,
-                        proposal_type, proposal_id,
-                        gross_amount, split_ratio, creator_amount, mcn_amount,
-                        withholding_rate, withholding_amount, net_creator_amount,
-                        status, paid_at, settlement_month, note, created_at,
-                        creator:creator_id (display_name, avatar_url),
-                        brand:brand_id (display_name)
-                    `)
-                    .eq('team_id', teamId)
-                    .eq('settlement_month', month)
-                    .order('created_at', { ascending: false })
-                if (error) {
-                    console.warn('[Settlement] fetch error:', error.message)
-                    setSettlements([])
-                } else {
-                    const mapped = (data || []).map((r: any) => ({
-                        ...r,
-                        creator_name: r.creator?.display_name || '크리에이터',
-                        creator_avatar: r.creator?.avatar_url || null,
-                        brand_name: r.brand?.display_name || null,
-                    }))
-                    setSettlements(mapped)
-                }
-            }
-        } catch (err) {
-            console.error('[Settlement] fetch error:', err)
-            setSettlements([])
-        } finally {
-            setIsLoading(false)
-        }
-    }, [supabase, teamId])
-
-    const fetchRevenueSplits = useCallback(async () => {
-        try {
-            const { data } = await supabase
-                .from('mcn_revenue_splits')
-                .select('creator_id, split_ratio')
-                .eq('team_id', teamId)
-            if (data) {
-                const map: Record<string, number> = {}
-                data.forEach((r: RevenueSplit) => { map[r.creator_id] = r.split_ratio })
-                setRevenueSplits(map)
-            }
-        } catch (err) {
-            console.error('[Settlement] fetch splits error:', err)
-        }
-    }, [supabase, teamId])
-
-    // Fetch bank info for all team creators
-    const fetchBankInfo = useCallback(async () => {
-        try {
-            const { data: members } = await supabase
-                .from('team_members')
-                .select('user_id, profile:profiles(bank_name, account_number, account_holder)')
-                .eq('team_id', teamId)
-            if (members) {
-                const map: Record<string, CreatorBankInfo> = {}
-                for (const m of members as any[]) {
-                    map[m.user_id] = {
-                        bank_name: m.profile?.bank_name || null,
-                        account_number: m.profile?.account_number || null,
-                        account_holder: m.profile?.account_holder || null,
-                    }
-                }
-                setBankInfoMap(map)
-            }
-        } catch (err) {
-            console.error('[Settlement] fetch bank info error:', err)
-        }
-    }, [supabase, teamId])
-
-    // Fetch MCN team business info
-    const fetchMcnBusinessInfo = useCallback(async () => {
-        if (!teamId) return
-        try {
-            const { data } = await supabase
-                .from('teams')
-                .select('name, business_registration_number, representative_name, business_address, stamp_url')
-                .eq('id', teamId)
-                .single()
-            if (data) {
-                setMcnBusinessInfo({
-                    name: data.name || mcnName,
-                    business_registration_number: data.business_registration_number,
-                    representative_name: data.representative_name,
-                    business_address: data.business_address,
-                    stamp_url: data.stamp_url,
-                })
-            }
-        } catch (err) {
-            console.warn('[Settlement] fetch MCN business info error:', err)
-        }
-    }, [supabase, teamId, mcnName])
-
     // Generate sequential statement number: YYYYMM-XXXXX
     const generateStatementNumber = useCallback((month: string, existingItems: Settlement[]) => {
         const monthKey = month.replace('-', '')
@@ -293,23 +190,145 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
 
     useEffect(() => {
         if (!teamId) return
-        fetchSettlements(selectedMonth)
-        fetchRevenueSplits()
-        fetchBankInfo()
-        fetchMcnBusinessInfo()
-    }, [teamId, selectedMonth, fetchSettlements, fetchRevenueSplits, fetchBankInfo, fetchMcnBusinessInfo])
+
+        let mounted = true
+        setIsLoading(true)
+
+        const loadAll = async () => {
+            try {
+                // 1. Settlements
+                const p1 = (async () => {
+                    const { data: rpcData, error: rpcErr } = await supabase.rpc('get_team_settlements', {
+                        target_team_id: teamId,
+                        target_month: selectedMonth,
+                    })
+                    if (!rpcErr && rpcData) {
+                        if (mounted) setSettlements((rpcData as Settlement[]) || [])
+                    } else {
+                        const { data, error } = await supabase
+                            .from('settlements')
+                            .select(`
+                                id, creator_id, brand_id,
+                                proposal_type, proposal_id,
+                                gross_amount, split_ratio, creator_amount, mcn_amount,
+                                withholding_rate, withholding_amount, net_creator_amount,
+                                status, paid_at, settlement_month, note, created_at,
+                                creator:creator_id (display_name, avatar_url),
+                                brand:brand_id (display_name)
+                            `)
+                            .eq('team_id', teamId)
+                            .eq('settlement_month', selectedMonth)
+                            .order('created_at', { ascending: false })
+                        if (error) {
+                            if (mounted) setSettlements([])
+                        } else {
+                            const mapped = (data || []).map((r: any) => ({
+                                ...r,
+                                creator_name: r.creator?.display_name || '크리에이터',
+                                creator_avatar: r.creator?.avatar_url || null,
+                                brand_name: r.brand?.display_name || null,
+                            }))
+                            if (mounted) setSettlements(mapped)
+                        }
+                    }
+                })()
+
+                // 2. Revenue Splits
+                const p2 = (async () => {
+                    const { data } = await supabase
+                        .from('mcn_revenue_splits')
+                        .select('creator_id, split_ratio')
+                        .eq('team_id', teamId)
+                    if (data && mounted) {
+                        const map: Record<string, number> = {}
+                        data.forEach((r: RevenueSplit) => { map[r.creator_id] = r.split_ratio })
+                        setRevenueSplits(map)
+                    }
+                })()
+
+                // 3. Bank Info
+                const p3 = (async () => {
+                    const { data: members } = await supabase
+                        .from('team_members')
+                        .select('user_id, profile:profiles(bank_name, account_number, account_holder)')
+                        .eq('team_id', teamId)
+                    if (members && mounted) {
+                        const map: Record<string, CreatorBankInfo> = {}
+                        for (const m of members as any[]) {
+                            map[m.user_id] = {
+                                bank_name: m.profile?.bank_name || null,
+                                account_number: m.profile?.account_number || null,
+                                account_holder: m.profile?.account_holder || null,
+                            }
+                        }
+                        setBankInfoMap(map)
+                    }
+                })()
+
+                // 4. MCN Business Info
+                const p4 = (async () => {
+                    const { data } = await supabase
+                        .from('teams')
+                        .select('name, business_registration_number, representative_name, business_address, stamp_url')
+                        .eq('id', teamId)
+                        .single()
+                    if (data && mounted) {
+                        setMcnBusinessInfo({
+                            name: data.name || mcnName,
+                            business_registration_number: data.business_registration_number,
+                            representative_name: data.representative_name,
+                            business_address: data.business_address,
+                            stamp_url: data.stamp_url,
+                        })
+                    }
+                })()
+
+                await Promise.all([p1, p2, p3, p4])
+            } catch (err) {
+                console.error('[Settlement] loadAll error:', err)
+            } finally {
+                if (mounted) setIsLoading(false)
+            }
+        }
+
+        loadAll()
+
+        return () => { mounted = false }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [teamId, selectedMonth, mcnName])
+
+    // Unique creators for filter
+    const uniqueCreators = useMemo(() => Array.from(
+        new Map(settlements.map(s => [s.creator_id, { id: s.creator_id, name: s.creator_name }])).values()
+    ), [settlements])
+
+    // Apply filters
+    const filteredSettlements = useMemo(() => {
+        return settlements.filter(s => {
+            if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+            if (creatorFilter !== 'all' && s.creator_id !== creatorFilter) return false;
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase();
+                const typeLabel = PROPOSAL_TYPE_LABELS[s.proposal_type] || s.proposal_type;
+                if (!s.brand_name?.toLowerCase().includes(q) && !typeLabel.toLowerCase().includes(q)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }, [settlements, statusFilter, creatorFilter, searchQuery]);
 
     // ─── Aggregates ────────────────────────────────────
-    const totalGross = settlements.reduce((s, r) => s + r.gross_amount, 0)
-    const totalCreator = settlements.reduce((s, r) => s + r.creator_amount, 0)
-    const totalMcn = settlements.reduce((s, r) => s + r.mcn_amount, 0)
-    const totalWithholding = settlements.reduce((s, r) => s + (r.withholding_amount || Math.round(r.creator_amount * 0.033)), 0)
-    const totalNet = settlements.reduce((s, r) => s + (r.net_creator_amount || (r.creator_amount - Math.round(r.creator_amount * 0.033))), 0)
-    const pendingCount = settlements.filter(r => r.status === 'pending').length
-    const paidCount = settlements.filter(r => r.status === 'paid').length
+    const totalGross = filteredSettlements.reduce((s, r) => s + r.gross_amount, 0)
+    const totalCreator = filteredSettlements.reduce((s, r) => s + r.creator_amount, 0)
+    const totalMcn = filteredSettlements.reduce((s, r) => s + r.mcn_amount, 0)
+    const totalWithholding = filteredSettlements.reduce((s, r) => s + (r.withholding_amount || Math.round(r.creator_amount * 0.033)), 0)
+    const totalNet = filteredSettlements.reduce((s, r) => s + (r.net_creator_amount || (r.creator_amount - Math.round(r.creator_amount * 0.033))), 0)
+    const pendingCount = filteredSettlements.filter(r => r.status === 'pending').length
+    const paidCount = filteredSettlements.filter(r => r.status === 'paid').length
 
     // Group by creator
-    const byCreator = settlements.reduce<Record<string, { name: string; avatar: string | null; total: number; items: Settlement[] }>>(
+    const byCreator = filteredSettlements.reduce<Record<string, { name: string; avatar: string | null; total: number; items: Settlement[] }>>(
         (acc, s) => {
             if (!acc[s.creator_id]) {
                 acc[s.creator_id] = { name: s.creator_name, avatar: s.creator_avatar, total: 0, items: [] }
@@ -405,13 +424,18 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
                         variant="outline"
                         size="sm"
                         className="gap-1.5 h-9"
-                        onClick={() => exportSettlementsToCSV(settlements, selectedMonth)}
-                        disabled={settlements.length === 0}
+                        onClick={() => exportSettlementsToCSV(filteredSettlements, selectedMonth)}
+                        disabled={filteredSettlements.length === 0}
                     >
                         <Download className="h-3.5 w-3.5" />
-                        CSV 내보내기
+                        CSV 내보내기 (표시된 내역)
                     </Button>
-                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <Select value={selectedMonth} onValueChange={(v) => {
+                        setSelectedMonth(v)
+                        setSearchQuery("")
+                        setCreatorFilter("all")
+                        setStatusFilter("all")
+                    }}>
                         <SelectTrigger className="w-[160px] h-9">
                             <SelectValue />
                         </SelectTrigger>
@@ -422,6 +446,55 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
                         </SelectContent>
                     </Select>
                 </div>
+            </div>
+
+            {/* Filters Row */}
+            <div className="flex items-center gap-3 flex-wrap bg-muted/40 p-2.5 rounded-lg border border-border/50">
+                <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="브랜드명, 협업유형 검색..."
+                        className="pl-9 h-9 bg-background"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <Select value={creatorFilter} onValueChange={setCreatorFilter}>
+                    <SelectTrigger className="w-[150px] h-9 bg-background">
+                        <SelectValue placeholder="크리에이터 필터" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">전체 크리에이터</SelectItem>
+                        {uniqueCreators.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[140px] h-9 bg-background">
+                        <SelectValue placeholder="상태 필터" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">전체 상태</SelectItem>
+                        <SelectItem value="pending">지급 대기</SelectItem>
+                        <SelectItem value="processing">처리 중</SelectItem>
+                        <SelectItem value="paid">지급 완료</SelectItem>
+                    </SelectContent>
+                </Select>
+                {(searchQuery || creatorFilter !== 'all' || statusFilter !== 'all') && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 px-3 text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                            setSearchQuery("")
+                            setCreatorFilter("all")
+                            setStatusFilter("all")
+                        }}
+                    >
+                        초기화
+                    </Button>
+                )}
             </div>
 
             {/* Summary cards — 5개 */}

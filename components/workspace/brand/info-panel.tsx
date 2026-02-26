@@ -648,26 +648,59 @@ export function InfoPanel() {
                                                 size="sm"
                                                 onClick={async () => {
                                                     if (!proposal?.id) return;
+
+                                                    // 1. 제안 상태 settlement로 변경
                                                     const updates: any = { status: 'settlement', content_submission_status: 'completed' };
                                                     let success = false;
-                                                    if ((proposal as any).moment_id) success = await updateMomentProposal(proposal.id, updates);
-                                                    else if ((proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                    const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+                                                        ? 'moment_proposal'
+                                                        : (proposal as any).campaignId || (proposal as any).campaign_id
+                                                            ? 'campaign_application'
+                                                            : 'product_application';
+
+                                                    if ((proposal as any).moment_id || (proposal as any).event_id) success = await updateMomentProposal(proposal.id, updates);
+                                                    else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
                                                     else success = await updateBrandProposal(proposal.id, updates);
-                                                    if (success) {
-                                                        useWorkspaceStore.getState().updateProposal(updates);
-                                                        useWorkspaceStore.getState().setCurrentStage('settlement');
-                                                        refreshData();
-                                                        toast.success('협업 완료 및 정산 승인되었습니다. 크리에이터가 성과를 제출합니다. 🎉');
+
+                                                    if (!success) return;
+
+                                                    // 2. settlements 레코드 생성 (SECURITY DEFINER RPC — MCN/일반 자동 분기)
+                                                    try {
                                                         const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
-                                                        if (creatorId) sendNotification(creatorId, '협업이 완료되었습니다! 인사이트 성과를 제출해주세요.', 'collaboration_complete', proposal.id?.toString());
+                                                        const brandId = (proposal as any).brand_id;
+                                                        const priceOffer = (proposal as any).price_offer || 0;
+
+                                                        if (creatorId && priceOffer > 0) {
+                                                            const { error: settleErr } = await supabase.rpc('create_settlement_on_approval', {
+                                                                p_proposal_id: proposal.id.toString(),
+                                                                p_proposal_type: proposalType,
+                                                                p_brand_id: brandId || null,
+                                                                p_creator_id: creatorId,
+                                                                p_gross_amount: priceOffer,
+                                                            });
+                                                            if (settleErr) {
+                                                                console.error('[Settlement] create error:', settleErr);
+                                                                // settlements 생성 실패해도 워크플로우는 계속 진행
+                                                            }
+                                                        }
+                                                    } catch (e) {
+                                                        console.error('[Settlement] unexpected error:', e);
                                                     }
+
+                                                    // 3. UI 업데이트 및 알림
+                                                    useWorkspaceStore.getState().updateProposal(updates);
+                                                    useWorkspaceStore.getState().setCurrentStage('settlement');
+                                                    refreshData();
+                                                    toast.success('협업 완료 및 정산 승인되었습니다! 🎉');
+                                                    const creatorId2 = (proposal as any).influencer_id || (proposal as any).creator_id;
+                                                    if (creatorId2) sendNotification(creatorId2, '협업이 완료되었습니다! 3~7일 내 인사이트 성과를 제출해주세요.', 'collaboration_complete', proposal.id?.toString());
                                                 }}
                                             >
                                                 <CheckCircle2 className="h-4 w-4 mr-1.5" /> 협업 완료 및 정산 승인
                                             </Button>
                                             <p className="text-[10px] text-emerald-600/70 text-center leading-relaxed">
-                                                완료 버튼을 누르면 크리에이터에게 비용 지급이 승인되며 수정이 불가능합니다.<br />
-                                                (크리에이터가 성과 데이터를 제출하면 최종 완료됩니다)
+                                                완료 버튼을 누르면 정산이 자동 생성되며 수정이 불가능합니다.<br />
+                                                크리에이터가 성과를 제출하면 워크스페이스 카드에서 확인 가능합니다.
                                             </p>
                                         </div>
                                     )}

@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
-import { Ban, ChevronRight, FileText, LayoutGrid, List, Pencil, Table2 } from "lucide-react"
+import { PerformanceDialog } from "@/components/workspace/brand/performance-dialog"
+import { BarChart3, Ban, ChevronRight, FileText, LayoutGrid, List, Pencil, Table2 } from "lucide-react"
 import Link from "next/link"
 import React, { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -51,6 +52,10 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
     const [pageSize, setPageSize] = useState<20 | 50 | 100>(50)
     const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false, title: '', description: '', onConfirm: () => { } })
+
+    // Performance dialog state
+    const [perfDialogProposal, setPerfDialogProposal] = useState<any>(null)
+    const [perfDialogOpen, setPerfDialogOpen] = useState(false)
 
     // G2: Edit proposal state
     const [editingProposal, setEditingProposal] = useState<any>(null)
@@ -190,7 +195,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 .from('moment_proposals')
                 .update({
                     message: editMessage,
-                    compensation: editCompensation,
+                    compensation_amount: editCompensation,
                 })
                 .eq('id', editingProposal.id)
             if (error) throw error
@@ -394,14 +399,15 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         [brandProposals]
     )
 
-    // 3. Active (In Progress)
+    // 3. Active (In Progress) — settlement/final_complete도 진행중으로 분류
+    const ACTIVE_STATUSES = ['accepted', 'signed', 'confirmed', 'settlement', 'final_complete']
     const activeInbound = useMemo(
-        () => campaignProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') || [],
+        () => campaignProposals?.filter((p: any) => ACTIVE_STATUSES.includes(p.status)) || [],
         [campaignProposals]
     )
 
     const activeOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'confirmed') || [],
+        () => brandProposals?.filter((p: any) => ACTIVE_STATUSES.includes(p.status)) || [],
         [brandProposals]
     )
 
@@ -590,7 +596,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                                     item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
                                                         'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
                                         `}>
-                                            {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
+                                            {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'settlement' ? '성과 대기' : item.status === 'final_complete' ? '완료 대기' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
@@ -648,7 +654,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                             item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
                                                 'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
                                 `}>
-                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
+                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'settlement' ? '성과 대기' : item.status === 'final_complete' ? '완료 대기' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
                                 </Badge>
                             </CardHeader>
                             <CardContent className="pb-3 text-xs space-y-2">
@@ -719,15 +725,18 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                             <h3 className="font-bold text-lg flex items-center gap-2">
                                                 {item.influencerName || item.influencer_name}
                                                 <Badge variant="outline" className={`text-xs font-medium border-2 rounded-full px-3 py-0.5 transition-all bg-background
-                                                    ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
-                                                        item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
-                                                            item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
-                                                                'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.3)]'}
-                                                `}>
+                                                        ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
+                                                        item.status === 'settlement' || item.status === 'final_complete' ? 'text-amber-600 dark:text-amber-400 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]' :
+                                                            item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
+                                                                item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
+                                                                    'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.3)]'}
+                                                    `}>
                                                     {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' :
-                                                        item.status === 'completed' ? '완료됨' :
-                                                            item.status === 'rejected' ? '거절됨' :
-                                                                '수락 대기중'}
+                                                        item.status === 'settlement' ? '성과 대기' :
+                                                            item.status === 'final_complete' ? '완료 대기' :
+                                                                item.status === 'completed' ? '완료됨' :
+                                                                    item.status === 'rejected' ? '거절됨' :
+                                                                        '수락 대기중'}
                                                 </Badge>
                                             </h3>
                                             <p className="text-sm text-muted-foreground mt-1">{item.product_name || item.productName || "제품 협찬"}</p>
@@ -742,13 +751,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                     <div className="mt-4 flex items-center gap-4">
                                         <div className="flex-1">
                                             <WorkspaceProgressBar
-                                                status={item.status}
-                                                contract_status={item.contract_status}
-                                                delivery_status={item.delivery_status}
-                                                content_submission_status={item.content_submission_status}
-                                                payment_confirmed_at={(item as any).payment_confirmed_at}
-                                                brand_signature={(item as any).brand_signature}
-                                                influencer_signature={(item as any).influencer_signature}
+                                                proposal={item}
                                             />
                                         </div>
 
@@ -782,6 +785,24 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                                     onClick={(e) => { e.stopPropagation(); onViewProposal(item); }}
                                                 >
                                                     <FileText className="mr-1 h-3 w-3" /> 제안서 보기
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {/* 🆕 성과 및 최종 완료 버튼 — settlement 단계 전용 */}
+                                        {item.status === 'settlement' && (
+                                            <div className="shrink-0">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 font-semibold gap-1.5"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setPerfDialogProposal(item)
+                                                        setPerfDialogOpen(true)
+                                                    }}
+                                                >
+                                                    <BarChart3 className="h-3.5 w-3.5" /> 성과 및 최종 완료
                                                 </Button>
                                             </div>
                                         )}
@@ -947,6 +968,26 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 description={confirmDialog.description}
                 variant={confirmDialog.variant}
             />
+
+            {/* Performance Dialog (성과 확인 · 최종 완료) */}
+            {perfDialogProposal && (
+                <PerformanceDialog
+                    open={perfDialogOpen}
+                    onClose={() => { setPerfDialogOpen(false); setPerfDialogProposal(null) }}
+                    proposal={perfDialogProposal}
+                    proposalType={
+                        perfDialogProposal.moment_id || perfDialogProposal.event_id
+                            ? 'moment_proposal'
+                            : perfDialogProposal.campaign_id || perfDialogProposal.campaignId
+                                ? 'campaign_application'
+                                : 'product_application'
+                    }
+                    onCompleted={async () => {
+                        // 완료됨으로 탭 이동 & 데이터 갱신
+                        await refreshData()
+                    }}
+                />
+            )}
 
             {/* G2: Edit Proposal Dialog */}
             <Dialog open={!!editingProposal} onOpenChange={(open) => !open && setEditingProposal(null)}>

@@ -28,7 +28,7 @@ import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
-import { ArrowRight, BadgeCheck, Banknote, Bell, Briefcase, Building2, Calendar, ChevronRight, ExternalLink, FileText, Filter, Gift, Image as ImageIcon, LayoutGrid, List, Megaphone, Menu, Package, Pencil, Plus, Rocket, Search, Send, Settings, Shield, ShoppingBag, Sparkles, Star, Table as TableIcon, X } from "lucide-react"
+import { ArrowRight, BadgeCheck, Banknote, Bell, Briefcase, Building2, Calendar, ChevronRight, DollarSign, ExternalLink, FileText, Filter, Gift, Image as ImageIcon, LayoutGrid, List, Megaphone, Menu, Package, Pencil, Plus, Rocket, Search, Send, Settings, Shield, ShoppingBag, Sparkles, Star, Table as TableIcon, X } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 
@@ -80,6 +80,7 @@ import { BrandProductListView } from "@/components/creator/views/BrandProductLis
 import { CampaignCardD } from "@/components/creator/campaign-cards/CampaignCardD"
 import { CampaignCardE } from "@/components/creator/campaign-cards/CampaignCardE"
 import { SettingsView } from "@/components/creator/views/SettingsView"
+import { EarningsView } from "@/components/creator/views/EarningsView"
 import { InviteLinkGenerator } from "@/components/mcn/invite-link-generator"
 import { TeamMembersCard } from "@/components/mcn/team-members-card"
 import { TeamStatistics } from "@/components/mcn/team-statistics"
@@ -90,6 +91,7 @@ import { POPULAR_TAGS } from "@/lib/constants/categories"
 
 import { DemoBanner } from "@/components/demo-banner"
 import { Suspense } from "react"
+import { PerformanceSubmitDialog } from "@/components/workspace/creator/performance-submit-dialog"
 const INITIAL_CAMPAIGNS: Campaign[] = []
 
 // Dialog components imported from @/components/dialogs/
@@ -153,6 +155,9 @@ function InfluencerDashboardContent() {
     const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
     const [chatProposal, setChatProposal] = useState<any>(null)
     const [isChatOpen, setIsChatOpen] = useState(false)
+    // Performance Submit Dialog (settlement 단계 성과 제출)
+    const [perfSubmitProposal, setPerfSubmitProposal] = useState<any>(null)
+    const [perfSubmitOpen, setPerfSubmitOpen] = useState(false)
     const [chatMessage, setChatMessage] = useState("")
     // ... (rest of state definitions)
     const [generatedContract, setGeneratedContract] = useState("")
@@ -228,7 +233,8 @@ function InfluencerDashboardContent() {
             proposals.some(p => p.workspace_id && unreadWorkspaceIds.has(p.workspace_id))
 
         const activeProposals = allProposals.filter(p =>
-            p.status === 'accepted' || p.status === 'active' || p.status === 'in_progress'
+            p.status === 'accepted' || p.status === 'active' || p.status === 'in_progress' ||
+            p.status === 'signed' || p.status === 'confirmed' || p.status === 'settlement' || p.status === 'final_complete'
         )
         const inboundProposals = allProposals.filter(p => p.status === 'applied')
         const outboundProposals = allProposals.filter(p => p.status === 'offered' || p.status === 'pending')
@@ -818,8 +824,9 @@ function InfluencerDashboardContent() {
     ].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
 
     // 3. Active (In Progress) - Both sources (deduplicated)
-    const activeInbound = allInboundProposals.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'confirmed') || []
-    const activeOutbound = campaignProposals?.filter((p: any) => p.status === 'accepted' || p.status === 'signed' || p.status === 'started' || p.status === 'confirmed') || []
+    const CREATOR_ACTIVE_STATUSES = ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete']
+    const activeInbound = allInboundProposals.filter((p: any) => CREATOR_ACTIVE_STATUSES.includes(p.status)) || []
+    const activeOutbound = campaignProposals?.filter((p: any) => CREATOR_ACTIVE_STATUSES.includes(p.status)) || []
     const allActive = deduplicateById([...activeInbound, ...activeOutbound]).sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
 
     // Inbound (Waiting for Action): pure brand offers without motivation (brand→creator)
@@ -975,8 +982,10 @@ function InfluencerDashboardContent() {
                                                         'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/30'}
                                         `}>
                                             {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' :
-                                                item.status === 'completed' ? '완료됨' :
-                                                    item.status === 'rejected' ? '거절됨' : '대기중'}
+                                                item.status === 'settlement' ? '성과 대기' :
+                                                    item.status === 'final_complete' ? '완료 대기' :
+                                                        item.status === 'completed' ? '완료됨' :
+                                                            item.status === 'rejected' ? '거절됨' : '대기중'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="font-medium">
@@ -998,7 +1007,7 @@ function InfluencerDashboardContent() {
                                                     item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
                                                         'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
                                         `}>
-                                            {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
+                                            {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'settlement' ? '성과 대기' : item.status === 'final_complete' ? '완료 대기' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
@@ -1068,7 +1077,7 @@ function InfluencerDashboardContent() {
                                             item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
                                                 'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
                                 `}>
-                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
+                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'settlement' ? '성과 대기' : item.status === 'final_complete' ? '완료 대기' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
                                 </Badge>
                             </CardHeader>
                             <CardContent className="pb-3 text-xs space-y-2">
@@ -1157,10 +1166,12 @@ function InfluencerDashboardContent() {
                                                         proposal.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
                                                             'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.3)]'}
                                             `}>
-                                                {proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' ? '진행중' :
-                                                    proposal.status === 'completed' ? '완료됨' :
-                                                        proposal.status === 'rejected' ? '거절됨' :
-                                                            '수락 대기중'}
+                                                {proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed' ? '진행중' :
+                                                    proposal.status === 'settlement' ? '성과 대기' :
+                                                        proposal.status === 'final_complete' ? '완료 대기' :
+                                                            proposal.status === 'completed' ? '완료됨' :
+                                                                proposal.status === 'rejected' ? '거절됨' :
+                                                                    '수락 대기중'}
                                             </Badge>
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
@@ -1198,19 +1209,28 @@ function InfluencerDashboardContent() {
                                                 가이드 보기
                                             </Button>
                                         )}
+                                        {/* 🆕 성과 제출 버튼 — settlement 단계 전용 */}
+                                        {proposal.status === 'settlement' && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 font-semibold gap-1.5 hidden md:flex"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setPerfSubmitProposal(proposal)
+                                                    setPerfSubmitOpen(true)
+                                                }}
+                                            >
+                                                📊 성과 제출
+                                            </Button>
+                                        )}
                                         <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
                                     </div>
                                 </div>
                                 <div className="mt-4 flex items-center gap-4">
                                     <div className="flex-1">
                                         <WorkspaceProgressBar
-                                            status={proposal.status}
-                                            contract_status={proposal.contract_status}
-                                            delivery_status={proposal.delivery_status}
-                                            content_submission_status={proposal.content_submission_status}
-                                            payment_confirmed_at={(proposal as any).payment_confirmed_at}
-                                            brand_signature={(proposal as any).brand_signature}
-                                            influencer_signature={(proposal as any).influencer_signature}
+                                            proposal={proposal}
                                         />
                                     </div>
 
@@ -2545,7 +2565,7 @@ function InfluencerDashboardContent() {
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                                 {/* 검색창 */}
-                                <div className="relative min-w-[200px] flex-1">
+                                <div className="relative min-w-[280px] max-w-sm flex-1">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="브랜드명, 제품명, 캠페인 검색"
@@ -2750,6 +2770,8 @@ function InfluencerDashboardContent() {
                 return <InsightAnalyzer />
             case "settings":
                 return <SettingsView />
+            case "earnings":
+                return <EarningsView />
             case "discover-products":
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -3394,6 +3416,16 @@ function InfluencerDashboardContent() {
                                                 >
                                                     <Bell className="mr-2 h-4 w-4" /> 알림
                                                 </Button>
+                                                <Button
+                                                    variant={currentView === "earnings" ? "secondary" : "ghost"}
+                                                    className="w-full justify-start text-emerald-600 dark:text-emerald-400 font-medium"
+                                                    onClick={() => {
+                                                        setCurrentView("earnings")
+                                                        setIsMobileSidebarOpen(false)
+                                                    }}
+                                                >
+                                                    <DollarSign className="mr-2 h-4 w-4" /> 수익 관리
+                                                </Button>
                                                 <div className="my-2 border-t" />
                                                 <Button
                                                     variant={currentView === "insight-analyzer" ? "secondary" : "ghost"}
@@ -3546,6 +3578,13 @@ function InfluencerDashboardContent() {
                                         onClick={() => setCurrentView("notifications")}
                                     >
                                         <Bell className="mr-2 h-4 w-4" /> 알림
+                                    </Button>
+                                    <Button
+                                        variant={currentView === "earnings" ? "secondary" : "ghost"}
+                                        className="w-full justify-start text-emerald-600 dark:text-emerald-400 font-medium"
+                                        onClick={() => setCurrentView("earnings")}
+                                    >
+                                        <DollarSign className="mr-2 h-4 w-4" /> 수익 관리
                                     </Button>
                                     <div className="my-2 border-t" />
                                     <Button
@@ -4094,6 +4133,16 @@ function InfluencerDashboardContent() {
                             />
                         )
                     }
+
+                    {/* 성과 제출 다이얼로그 (settlement 단계) */}
+                    {perfSubmitProposal && (
+                        <PerformanceSubmitDialog
+                            open={perfSubmitOpen}
+                            onClose={() => { setPerfSubmitOpen(false); setPerfSubmitProposal(null) }}
+                            proposal={perfSubmitProposal}
+                            onSubmitted={async () => { await refreshData() }}
+                        />
+                    )}
                 </>
             )}
         </div>

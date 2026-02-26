@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, ArrowRight, Briefcase } from "lucide-react"
+import { AlertCircle, ArrowRight, Briefcase, Eye, EyeOff } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useState } from "react"
 
@@ -86,6 +86,7 @@ function LoginPageContent() {
     // We can use same state for both forms since they replace each other
     const [id, setId] = useState("")
     const [password, setPassword] = useState("")
+    const [showPassword, setShowPassword] = useState(false)
 
     const handleSocialLogin = async (provider: 'google' | 'kakao', role: 'brand' | 'creator') => {
         setIsLoading(true)
@@ -184,13 +185,28 @@ function LoginPageContent() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="password">비밀번호</Label>
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
+                                <div className="relative">
+                                    <Input
+                                        id="password"
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                        <span className="sr-only">비밀번호 {showPassword ? '숨기기' : '표시'}</span>
+                                    </button>
+                                </div>
                             </div>
                             {error && (
                                 <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-md flex items-center gap-2">

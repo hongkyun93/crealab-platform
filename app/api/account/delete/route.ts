@@ -45,7 +45,7 @@ export async function POST(request: Request) {
         // 4. Clean up user data
         // Anonymize profile
         await adminClient.from('profiles').update({
-            name: '탈퇴한 사용자',
+            display_name: '탈퇴한 사용자',
             avatar_url: null,
             email: null,
         }).eq('id', userId)

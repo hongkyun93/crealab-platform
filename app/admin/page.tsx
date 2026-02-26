@@ -211,6 +211,18 @@ export default function AdminPage() {
                 ...(ca ?? []).map((r: any) => ({ ...r, type: 'campaign_application' as const })),
             ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
+            // profiles 배치 조회 → 브랜드 이름 매핑
+            const allIds = [...new Set(merged.map(r => r.brand_id).filter(Boolean))]
+            if (allIds.length > 0) {
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('id, display_name')
+                    .in('id', allIds)
+                const profileMap: Record<string, string> = {}
+                profiles?.forEach((p: any) => { profileMap[p.id] = p.display_name })
+                merged.forEach((r: any) => { r.brand_name = profileMap[r.brand_id] || r.brand_id?.slice(0, 8) })
+            }
+
             setPendingPayments(merged)
         } catch (e) { console.error('[Admin] fetchPendingPayments error:', e) }
         finally { setLoadingPayments(false) }
@@ -537,7 +549,13 @@ export default function AdminPage() {
                                                     {typeLabel[p.type] ?? p.type}
                                                 </span>
                                             </div>
-                                            <p className="text-sm font-bold">{p.brand_id?.slice(0, 8) ?? '브랜드'} → {p.influencer_id?.slice(0, 8) ?? '크리에이터'}</p>
+                                            <p className="text-sm font-bold">
+                                                {(() => {
+                                                    const code = String(parseInt((p.id || '').replace(/-/g, '').slice(-4) || '0', 16) % 100).padStart(2, '0')
+                                                    const name = (p as any).brand_name || p.brand_id?.slice(0, 8) || '브랜드'
+                                                    return `입금자명: ${name}${code}`
+                                                })()}
+                                            </p>
                                             <p className="text-xs text-muted-foreground">
                                                 금액: <span className="font-mono font-bold text-foreground">{(p.price_offer ?? 0).toLocaleString()}원</span>
                                                 {' '}(+VAT {Math.round((p.price_offer ?? 0) * 0.1).toLocaleString()}원)

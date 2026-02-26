@@ -842,9 +842,10 @@ export function SettingsView() {
                                 <div className="space-y-2">
                                     <Label>생년월일</Label>
                                     <Input
+                                        type="date"
                                         value={birthDate}
                                         onChange={(e) => setBirthDate(e.target.value)}
-                                        placeholder="1990-01-01"
+                                        max={new Date().toISOString().split('T')[0]}
                                     />
                                     <p className="text-[11px] text-muted-foreground">원천징수(3.3%) 신고에 필요합니다</p>
                                 </div>
