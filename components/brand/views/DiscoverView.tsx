@@ -120,16 +120,15 @@ export const DiscoverView = React.memo(function DiscoverView({
                         <div className="flex md:hidden items-center gap-1.5 shrink-0">
                             <div className="flex items-center gap-0.5 bg-muted p-0.5 rounded-lg">
                                 {([
-                                    { v: 'all', l: '전체' },
                                     { v: 'upcoming', l: '모집중' },
                                     { v: 'past', l: '완료' },
                                 ] as { v: string; l: string }[]).map(({ v, l }) => (
                                     <button
                                         key={v}
-                                        onClick={() => setStatusFilter(v as 'all' | 'upcoming' | 'past')}
+                                        onClick={() => setStatusFilter(statusFilter === v ? 'all' : v as 'all' | 'upcoming' | 'past')}
                                         className={`px-2 h-7 rounded-md text-xs font-medium transition-colors ${statusFilter === v
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'text-muted-foreground hover:text-foreground'
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'text-muted-foreground hover:text-foreground'
                                             }`}
                                     >{l}</button>
                                 ))}
