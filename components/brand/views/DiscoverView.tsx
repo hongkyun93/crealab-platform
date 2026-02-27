@@ -116,14 +116,32 @@ export const DiscoverView = React.memo(function DiscoverView({
                 <div className="shrink-0">
                     <div className="flex items-center justify-between gap-2 md:block">
                         <h1 className="text-3xl font-bold tracking-tight">모먼트 검색</h1>
-                        {/* 모바일 전용 뷰토글 */}
-                        <div className="flex md:hidden items-center gap-1 bg-muted p-1 rounded-lg shrink-0">
-                            <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('table')} title="테이블형">
-                                <TableIcon className="h-4 w-4" />
-                            </Button>
-                            <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('grid')} title="그리드형">
-                                <LayoutGrid className="h-4 w-4" />
-                            </Button>
+                        {/* 모바일 전용: 상태 토글 + 빷트그룹 */}
+                        <div className="flex md:hidden items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-0.5 bg-muted p-0.5 rounded-lg">
+                                {([
+                                    { v: 'all', l: '전체' },
+                                    { v: 'upcoming', l: '모집중' },
+                                    { v: 'past', l: '완료' },
+                                ] as { v: string; l: string }[]).map(({ v, l }) => (
+                                    <button
+                                        key={v}
+                                        onClick={() => setStatusFilter(v as 'all' | 'upcoming' | 'past')}
+                                        className={`px-2 h-7 rounded-md text-xs font-medium transition-colors ${statusFilter === v
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                    >{l}</button>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                                <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('table')} title="테이블형">
+                                    <TableIcon className="h-4 w-4" />
+                                </Button>
+                                <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('grid')} title="그리드형">
+                                    <LayoutGrid className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     </div>
                     <p className="text-muted-foreground mt-1 text-sm">우리 브랜드와 딱 맞는 모먼트를 가진 크리에이터를 찾아보세요.</p>
@@ -143,12 +161,13 @@ export const DiscoverView = React.memo(function DiscoverView({
                     {/* 인스타 API 인증 필터 */}
                     <Button
                         variant={sortOrder === 'verified' ? "secondary" : "outline"}
-                        size="icon"
+                        size="sm"
                         onClick={() => setSortOrder(sortOrder === 'verified' ? 'latest' : 'verified')}
-                        className={sortOrder === 'verified' ? "bg-pink-100 text-pink-600 border-pink-200 hover:bg-pink-200 shrink-0" : "text-muted-foreground shrink-0"}
+                        className={sortOrder === 'verified' ? "bg-pink-100 text-pink-600 border-pink-200 hover:bg-pink-200 shrink-0 gap-1.5" : "text-muted-foreground shrink-0 gap-1.5"}
                         title="Instagram API 인증됨만 보기"
                     >
                         <Instagram className="h-4 w-4" />
+                        <span className="text-xs font-medium">연결</span>
                     </Button>
                     {/* 검색 */}
                     <div className="relative flex-1">
@@ -302,7 +321,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                             ].map(opt => (
                                 <Button key={opt.k} variant="ghost" size="sm"
                                     onClick={() => setChannelFilter && toggleMulti(setChannelFilter as any, opt.k, ['instagram', 'youtube', 'tiktok', 'blog'])}
-                                    className={cn("gap-1 w-full md:w-auto justify-start text-[10px] md:text-xs px-1.5 md:px-2", channelFilter?.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}>
+                                    className={cn("gap-1.5 w-full md:w-auto justify-start", channelFilter?.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}>
                                     {opt.icon}
                                     <span className="md:hidden">{opt.s}</span>
                                     <span className="hidden md:inline">{opt.l}</span>
@@ -311,8 +330,8 @@ export const DiscoverView = React.memo(function DiscoverView({
                             ))}
                         </div>
                     </div>
-                    {/* Instagram 인증 필터 */}
-                    <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
+                    {/* Instagram 인증 필터 — 데스크탑만 */}
+                    <div className="hidden md:flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold md:w-24 pt-1">Instagram</span>
                         <div className="flex flex-wrap gap-2 flex-1">
                             <Button variant="ghost" size="sm" onClick={() => setSortOrder('latest')}
