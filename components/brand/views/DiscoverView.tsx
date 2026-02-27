@@ -127,8 +127,8 @@ export const DiscoverView = React.memo(function DiscoverView({
                                         key={v}
                                         onClick={() => setStatusFilter(statusFilter === v ? 'all' : v as 'all' | 'upcoming' | 'past')}
                                         className={`px-2 h-7 rounded-md text-xs font-medium transition-colors ${statusFilter === v
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'text-muted-foreground hover:text-foreground'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
                                             }`}
                                     >{l}</button>
                                 ))}
@@ -314,8 +314,8 @@ export const DiscoverView = React.memo(function DiscoverView({
                             {[
                                 { k: 'all', l: '전체', s: '전체', icon: null },
                                 { k: 'instagram', l: 'Instagram', s: 'Insta', icon: <Instagram className="h-3 w-3" /> },
-                                { k: 'youtube', l: 'YouTube', s: 'YT', icon: <Youtube className="h-3 w-3" /> },
-                                { k: 'tiktok', l: 'TikTok', s: 'Tok', icon: <Music className="h-3 w-3" /> },
+                                { k: 'youtube', l: 'YouTube', s: 'Youtube', icon: <Youtube className="h-3 w-3" /> },
+                                { k: 'tiktok', l: 'TikTok', s: 'Tiktok', icon: <Music className="h-3 w-3" /> },
                                 { k: 'blog', l: 'Blog', s: 'Blog', icon: <FileText className="h-3 w-3" /> },
                             ].map(opt => (
                                 <Button key={opt.k} variant="ghost" size="sm"
@@ -367,7 +367,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                         <Button
                                             variant="ghost" size="sm"
                                             onClick={() => setSelectedTags([])}
-                                            className={cn('gap-1 w-full md:w-auto justify-start text-[10px] md:text-xs px-1.5 md:px-2', selectedTags.length === 0 && 'bg-primary/10 text-primary font-medium')}
+                                            className={cn('gap-1.5 w-full md:w-auto justify-start', selectedTags.length === 0 && 'bg-primary/10 text-primary font-medium')}
                                         >
                                             전체
                                             {selectedTags.length === 0 && <Check className="h-3 w-3 text-red-500" strokeWidth={3} />}
@@ -382,7 +382,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                                         return [...prev, tag]
                                                     })
                                                 }}
-                                                className={cn('gap-1 w-full md:w-auto justify-start text-[10px] md:text-xs px-1.5 md:px-2', selectedTags.includes(tag) && 'bg-primary/10 text-primary font-medium')}
+                                                className={cn('gap-1.5 w-full md:w-auto justify-start', selectedTags.includes(tag) && 'bg-primary/10 text-primary font-medium')}
                                             >
                                                 <span className="md:hidden">{SHORT[tag] ?? tag}</span>
                                                 <span className="hidden md:inline">{tag}</span>
