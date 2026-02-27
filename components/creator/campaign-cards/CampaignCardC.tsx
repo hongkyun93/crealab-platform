@@ -1,6 +1,9 @@
+"use client"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { FavoriteButton } from "@/components/ui/favorite-button"
 import { Send } from "lucide-react"
 
 import { Campaign } from "@/lib/types/campaign"
@@ -24,13 +27,16 @@ export function CampaignCardC({ campaign: c, onClick, onApply }: CampaignCardCPr
                     <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-0 shrink-0">
                         {c.category?.split(',')[0] || '카테고리 없음'}
                     </Badge>
-                    {c.recruitment_deadline ? (
-                        <Badge variant="outline" className="border-red-200 text-red-600 bg-red-50 shrink-0">
-                            D-{Math.ceil((new Date(c.recruitment_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
-                        </Badge>
-                    ) : (
-                        <span className="text-xs text-muted-foreground shrink-0">상시 모집</span>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <FavoriteButton targetId={String(c.id)} targetType="campaign" />
+                        {c.recruitment_deadline ? (
+                            <Badge variant="outline" className="border-red-200 text-red-600 bg-red-50">
+                                D-{Math.ceil((new Date(c.recruitment_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+                            </Badge>
+                        ) : (
+                            <span className="text-xs text-muted-foreground">상시 모집</span>
+                        )}
+                    </div>
                 </div>
                 <CardTitle className="text-lg font-bold line-clamp-1 break-all">{c.title || c.product}</CardTitle>
                 <div className="flex flex-col gap-1 mt-1">

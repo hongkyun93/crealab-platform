@@ -65,7 +65,7 @@ export function McnDashboard() {
     const { user, supabase } = useAuth()
     const { currentTeam, teamMembers, switchToMember, isLoading: isTeamLoading } = useTeam()
     const router = useRouter()
-    const { isOpen: isMobileSidebarOpen, setIsOpen: setIsMobileSidebarOpen } = useMobileSidebar()
+    const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useMobileSidebar()
     const [activeTab, setActiveTab] = useState("dashboard")
     const [summaryData, setSummaryData] = useState<CreatorSummary[]>([])
     const [isLoadingSummary, setIsLoadingSummary] = useState(true)

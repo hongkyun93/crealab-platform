@@ -133,7 +133,10 @@ export function EarningsView() {
         : settlements.filter(s => s.settlement_month === selectedMonth)
 
     // 요약 수치 계산
-    const totalGross = settlements.reduce((s, r) => s + r.gross_amount, 0)
+    const totalGross = settlements.reduce((s, r) => {
+        const wh = r.withholding_amount ?? Math.round((r.creator_amount ?? 0) * 0.033)
+        return s + (r.net_creator_amount ?? ((r.creator_amount ?? 0) - wh))
+    }, 0)
     const totalPending = settlements
         .filter(s => s.status === 'pending' || s.status === 'processing')
         .reduce((s, r) => s + (r.net_creator_amount ?? r.creator_amount), 0)

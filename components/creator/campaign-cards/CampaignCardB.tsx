@@ -1,7 +1,10 @@
+"use client"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Heart, Send } from "lucide-react"
+import { FavoriteButton } from "@/components/ui/favorite-button"
+import { Send } from "lucide-react"
 
 import { Campaign } from "@/lib/types/campaign"
 
@@ -78,9 +81,7 @@ export function CampaignCardB({ campaign: c, onClick, onApply }: CampaignCardBPr
                     >
                         <Send className="h-4 w-4 mr-2" /> 바로 지원
                     </Button>
-                    <Button size="icon" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-md">
-                        <Heart className="h-5 w-5" />
-                    </Button>
+                    <FavoriteButton targetId={String(c.id)} targetType="campaign" overlay size="md" />
                 </div>
             </div>
         </Card>

@@ -124,15 +124,15 @@ export function MomentTableView({
             <Table>
                 <TableHeader>
                     <TableRow>
-                        {hasFavorites && <TableHead className="w-[44px]">찜</TableHead>}
+                        {hasFavorites && <TableHead className="w-[44px] text-center">찜</TableHead>}
                         <TableHead className="min-w-[130px]">크리에이터</TableHead>
                         <TableHead className="min-w-[220px]">모먼트 제목</TableHead>
                         <TableHead className="min-w-[160px]">희망 제품</TableHead>
-                        <TableHead className="w-[90px]">예상 단가</TableHead>
-                        <TableHead className="w-[70px]">채널</TableHead>
-                        <TableHead className="w-[80px]">팔로워</TableHead>
-                        <TableHead className="w-[110px]">일정</TableHead>
-                        {hasOfferCount && <TableHead className="w-[50px]">제안</TableHead>}
+                        <TableHead className="w-[90px] text-center">예상 단가</TableHead>
+                        <TableHead className="w-[70px] text-center">채널</TableHead>
+                        <TableHead className="w-[80px] text-center">팔로워</TableHead>
+                        <TableHead className="w-[110px] text-center">일정</TableHead>
+                        {hasOfferCount && <TableHead className="w-[50px] text-center">제안</TableHead>}
                         {(onDelete || onEdit) && <TableHead className="w-[80px]"></TableHead>}
                     </TableRow>
                 </TableHeader>
@@ -215,7 +215,7 @@ export function MomentTableView({
                                     <TableCell className="py-2">
                                         <span className="truncate max-w-[180px] text-sm block">{item.targetProduct || "-"}</span>
                                     </TableCell>
-                                    <TableCell className="py-2 text-right pr-4">
+                                    <TableCell className="py-2 text-center">
                                         <span className="text-sm font-medium whitespace-nowrap">
                                             {formatPriceRange(item.priceVideo)}
                                         </span>
@@ -232,12 +232,12 @@ export function MomentTableView({
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="py-2 text-right pr-3">
+                                    <TableCell className="py-2 text-center">
                                         <Badge variant="secondary" className="font-normal text-xs bg-muted">
                                             {(creator.followers || 0).toLocaleString()}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="py-2">
+                                    <TableCell className="py-2 text-center">
                                         <div className="text-xs text-muted-foreground leading-relaxed">
                                             <div>{formatDateToMonth(item.eventDate)} (이벤트)</div>
                                             <div>{item.dateFlexible ? '협의가능' : formatDateToMonth(item.postingDate)} (업로드)</div>

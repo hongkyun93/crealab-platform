@@ -182,6 +182,7 @@ export function SettingsView() {
     const [bio, setBio] = useState("")
     const [selectedTags, setSelectedTags] = useState<string[]>([])
     const [primaryRegion, setPrimaryRegion] = useState("")
+    const [manualFollowers, setManualFollowers] = useState<string>("")
 
     // Bank Info
     const [bankName, setBankName] = useState("")
@@ -239,6 +240,8 @@ export function SettingsView() {
             setBio(effectiveUser.bio || "")
             setSelectedTags(effectiveUser.tags || [])
             setPrimaryRegion(effectiveUser.primaryRegion || "")
+            // Initialize manual followers from profile (fallback value)
+            if (effectiveUser.followers) setManualFollowers(effectiveUser.followers.toString())
 
             setBankName(effectiveUser.bankName || "")
             setAccountNumber(effectiveUser.accountNumber || "")
@@ -446,6 +449,8 @@ export function SettingsView() {
                 legalAddress: legalDetailAddress ? `${legalAddress} ${legalDetailAddress}`.trim() : legalAddress,
                 isBusinessRegistered,
                 creatorBusinessNumber,
+                // Followers manual override (used as fallback when no social channels)
+                ...(manualFollowers ? { followers: parseInt(manualFollowers) } : {}),
             }, effectiveUserId) // Pass effectiveUserId to update the correct profile
 
             toast.success("✓ 프로필이 저장되었습니다", { description: "변경 내용이 즉시 반영됩니다." })
@@ -524,16 +529,19 @@ export function SettingsView() {
 
                     <div className="space-y-2">
                         <Label>활동 카테고리 / 태그 (최대 5개)</Label>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-4 gap-1.5 md:flex md:flex-wrap md:gap-2">
                             {/* Standardizing Tags: Use PROFILE_CATEGORIES */}
                             {PROFILE_CATEGORIES.map(tag => (
                                 <Badge
                                     key={tag}
                                     variant={selectedTags.includes(tag) ? "default" : "outline"}
-                                    className="cursor-pointer px-3 py-1.5 text-sm hover:bg-primary/90"
+                                    className="w-full md:w-auto cursor-pointer px-1 md:px-3 py-1.5 text-xs md:text-sm text-center justify-center hover:bg-primary/90"
                                     onClick={() => toggleTag(tag)}
                                 >
-                                    {tag}
+                                    <span className="md:hidden">
+                                        {tag === '🏡 리빙/인테리어' ? '🏡 인테리어' : tag === '📚 도서/자기계발' ? '📚 자기계발' : tag}
+                                    </span>
+                                    <span className="hidden md:inline">{tag}</span>
                                 </Badge>
                             ))}
                         </div>
@@ -564,7 +572,7 @@ export function SettingsView() {
                             }
                             const desc = TAG_DESCRIPTIONS[selectedTags[0]]
                             return desc ? (
-                                <p className="text-xs text-blue-600 mt-1.5 bg-blue-50 rounded-md px-3 py-2 border border-blue-100">
+                                <p className="text-xs text-muted-foreground mt-1.5 bg-muted rounded-md px-3 py-2 border border-border">
                                     🏷 <strong>대표 태그: {selectedTags[0]}</strong> — {desc}
                                 </p>
                             ) : null
@@ -592,7 +600,7 @@ export function SettingsView() {
                     {/* Social Channels - Option A Style */}
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                 <div>
                                     <CardTitle className="flex items-center gap-2">
                                         📱 소셜 채널
@@ -601,7 +609,7 @@ export function SettingsView() {
                                     <CardDescription>연결된 채널을 통해 브랜드에게 더 많은 정보를 제공하세요</CardDescription>
                                 </div>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 shrink-0">
                                     {/* Instagram OAuth 연결 버튼 */}
                                     {effectiveUserId && (
                                         <DropdownMenu>
@@ -727,6 +735,45 @@ export function SettingsView() {
                                     ))}
                                 </div>
                             )}
+
+                            {/* 팔로워 수 - Fallback Chain */}
+                            <div className="mt-4 pt-4 border-t border-border space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium">📊 총 팔로워 수</span>
+                                    {(() => {
+                                        const primary = channels.find(ch => ch.isPrimary) ?? channels[0]
+                                        return primary?.followersCount ? (
+                                            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                                소셜 채널 자동 적용 중
+                                            </span>
+                                        ) : null
+                                    })()}
+                                </div>
+                                {(() => {
+                                    const primary = channels.find(ch => ch.isPrimary) ?? channels[0]
+                                    if (primary?.followersCount) {
+                                        return (
+                                            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg border border-border">
+                                                <span className="text-sm font-semibold">
+                                                    {primary.followersCount.toLocaleString()}명
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">({primary.platform} 기준 자동 사용)</span>
+                                            </div>
+                                        )
+                                    }
+                                    return (
+                                        <div className="space-y-1">
+                                            <Input
+                                                type="number"
+                                                value={manualFollowers}
+                                                onChange={(e) => setManualFollowers(e.target.value)}
+                                                placeholder="팔로워 수 직접 입력"
+                                            />
+                                            <p className="text-xs text-muted-foreground">소셜 채널 미연결 시 이 값이 사용됩니다.</p>
+                                        </div>
+                                    )
+                                })()}
+                            </div>
                         </CardContent>
                     </Card>
 

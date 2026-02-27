@@ -3,14 +3,12 @@
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useState } from "react"
 
 export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMoments = [], onSelectEvent }: { activeMoments?: any[], upcomingMoments?: any[], pastMoments?: any[], onSelectEvent?: (event: any) => void }) {
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list')
-    const [filterCategory, setFilterCategory] = useState<string>("all")
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'upcoming' | 'completed'>('all')
 
     // Combine all relevant moments for the calendar
@@ -25,14 +23,7 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
 
     // Filter Logic
     const filteredEvents = allEvents.filter(event => {
-        if (filterCategory !== "all" && event.category !== filterCategory) return false
         if (statusFilter !== 'all' && event.type !== statusFilter) return false
-
-        if (viewMode === 'calendar' && date) {
-            // Simple month filtering for calendar view (client-side logic enhancement needed for real app)
-            // For now, list shows all, calendar highlights selected date
-            return true
-        }
         return true
     })
 
@@ -72,11 +63,11 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
 
             {/* Right: Schedule List / Table */}
             <div className="flex-1 min-w-0 bg-card rounded-xl border border-border overflow-hidden flex flex-col">
-                {/* Header - Mobile responsive */}
+                {/* Header: date + status filters in one row on desktop */}
                 <div className="p-3 lg:p-4 border-b border-border bg-muted/30 space-y-3">
-                    {/* Title and Date - Stacked on mobile */}
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                        <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        {/* Date title */}
+                        <div className="flex items-center gap-2 shrink-0">
                             <h3 className="font-bold text-sm lg:text-base">
                                 {date ? date.toLocaleDateString() : "전체 일정"}
                             </h3>
@@ -85,46 +76,33 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                             </Badge>
                         </div>
 
-                        {/* Category Filter - Right on desktop, below on mobile */}
-                        <Select value={filterCategory} onValueChange={setFilterCategory}>
-                            <SelectTrigger className="w-full sm:w-[120px] h-8 text-xs border-border">
-                                <SelectValue placeholder="카테고리" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">전체</SelectItem>
-                                <SelectItem value="뷰티">뷰티</SelectItem>
-                                <SelectItem value="패션">패션</SelectItem>
-                                <SelectItem value="맛집">맛집</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Status Filters - Scrollable on mobile */}
-                    <div className="flex items-center gap-1 overflow-x-auto pb-1">
-                        <button
-                            onClick={() => setStatusFilter('all')}
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap ${statusFilter === 'all' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
-                        >
-                            전체보기
-                        </button>
-                        <button
-                            onClick={() => setStatusFilter('active')}
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap ${statusFilter === 'active' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
-                        >
-                            진행중
-                        </button>
-                        <button
-                            onClick={() => setStatusFilter('upcoming')}
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap ${statusFilter === 'upcoming' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
-                        >
-                            모집중
-                        </button>
-                        <button
-                            onClick={() => setStatusFilter('completed')}
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap ${statusFilter === 'completed' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
-                        >
-                            완료된
-                        </button>
+                        {/* Status Filters — inline on desktop */}
+                        <div className="grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-1">
+                            <button
+                                onClick={() => setStatusFilter('all')}
+                                className={`w-full sm:w-auto text-center px-1 lg:px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'all' ? 'border-2 border-border text-foreground bg-transparent' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
+                            >
+                                전체보기
+                            </button>
+                            <button
+                                onClick={() => setStatusFilter('active')}
+                                className={`w-full sm:w-auto text-center px-1 lg:px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'active' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
+                            >
+                                진행중
+                            </button>
+                            <button
+                                onClick={() => setStatusFilter('upcoming')}
+                                className={`w-full sm:w-auto text-center px-1 lg:px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'upcoming' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
+                            >
+                                모집중
+                            </button>
+                            <button
+                                onClick={() => setStatusFilter('completed')}
+                                className={`w-full sm:w-auto text-center px-1 lg:px-3 py-1 text-xs font-medium rounded-md transition-all ${statusFilter === 'completed' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground bg-muted'}`}
+                            >
+                                완료된
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -158,7 +136,7 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <span className="font-medium truncate">{event.product_name || event.productName || event.title || event.event || "제목 없음"}</span>
-                                                    {event.type === 'upcoming' && <span className="text-[10px] text-muted-foreground">내 모먼트</span>}
+
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center">

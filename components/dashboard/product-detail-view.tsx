@@ -15,9 +15,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import { CHANNELS } from "@/components/shared/ChannelSelector"
 import { ArrowLeft, AtSign, CheckCircle2, Copy, ExternalLink, FileText, Hash, ImageIcon, Package, Percent, Send } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
+
+const CHANNEL_STYLE: Record<string, string> = {
+    instagram: 'bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500',
+    youtube: 'bg-gradient-to-br from-red-600 to-red-700',
+    tiktok: 'bg-gradient-to-br from-black via-slate-900 to-slate-800',
+    blog: 'bg-gradient-to-br from-green-500 to-green-600',
+    other: 'bg-gradient-to-br from-slate-600 to-slate-700',
+}
+
+function ChannelIcon({ channelId }: { channelId: string }) {
+    const baseId = channelId.split('_')[0]
+    const channel = CHANNELS.find(c => c.id === baseId)
+    if (!channel) return null
+    const Icon = channel.Icon
+    return (
+        <div
+            className={`h-7 w-7 rounded-full ${CHANNEL_STYLE[baseId] ?? CHANNEL_STYLE.other} flex items-center justify-center shrink-0`}
+            title={channel.label}
+        >
+            <Icon className="h-3.5 w-3.5 text-white" />
+        </div>
+    )
+}
 
 interface ProductDetailViewProps {
     productId: string | null
@@ -106,13 +130,28 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
                 <div className="space-y-8">
                     <div>
                         <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold text-primary uppercase tracking-widest">{product.brandName}</span>
-                            <Badge variant="secondary" className="px-2 py-0.5 rounded-full font-medium">{product.category}</Badge>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-primary uppercase tracking-widest">{product.brandName}</span>
+                                <Badge variant="secondary" className="px-2 py-0.5 rounded-full font-medium">{product.category}</Badge>
+                            </div>
+                            {product.channels && product.channels.length > 0 && (
+                                <div className="flex gap-1.5">
+                                    {product.channels.map((ch: string) => (
+                                        <ChannelIcon key={ch} channelId={ch} />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight mb-3 leading-tight text-foreground">{product.name}</h1>
-                        <p className="text-3xl font-black text-foreground mb-6">
+                        <p className="text-3xl font-black text-foreground mb-4">
                             {product.price > 0 ? `${product.price.toLocaleString()}원` : "가격 미정"}
                         </p>
+
+                        {product.description && (
+                            <div className="text-sm text-muted-foreground leading-relaxed mb-6 bg-muted/30 rounded-xl p-4 border border-border/50">
+                                {product.description}
+                            </div>
+                        )}
 
                         <div className="flex flex-col sm:flex-row gap-3">
                             <Button size="lg" className="flex-1 text-lg h-14 shadow-lg shadow-primary/20 font-bold" onClick={() => setIsProposalOpen(true)}>

@@ -7,6 +7,7 @@ import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
 import { ArrowLeft, BadgeCheck, Calendar, ChevronRight, Clock, Info, LayoutGrid, MessageCircle, Package, Sparkles, Table as TableIcon, Tv } from "lucide-react"
 import { useRouter } from "next/navigation"
 import React from "react"
+import { useSocialChannels } from "@/components/providers/social-channels-provider"
 
 const CHANNEL_LABELS: Record<string, string> = {
     instagram_reels: '🎞️ 릴스', instagram_feed: '📷 피드', instagram_story: '⭕ 스토리',
@@ -56,13 +57,18 @@ export const MomentsView = React.memo(function MomentsView({
     const router = useRouter()
     const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid')
     const [selectedMoment, setSelectedMoment] = React.useState<any | null>(null)
+    const { channels } = useSocialChannels()
+
+    // Fallback chain: primary social channel → manual followers (user.followers)
+    const primaryChannel = channels.find(ch => ch.isPrimary) ?? channels[0]
+    const effectiveFollowers = primaryChannel?.followersCount || user?.followers || 0
 
     // Build creator profile from user for the shared card component
     const creatorProfile = {
         id: user?.id,
         name: user?.name || '크리에이터',
         avatar: user?.avatar,
-        followers: user?.followers,
+        followers: effectiveFollowers,
         primaryChannel: user?.primaryChannel,
         socialChannels: user?.socialChannels,
     }
@@ -321,7 +327,7 @@ export const MomentsView = React.memo(function MomentsView({
                         <TabsTrigger value="past">완료된 모먼트 ({pastMoments.length})</TabsTrigger>
                     </TabsList>
 
-                    <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                    <div className="hidden md:flex items-center gap-1 bg-muted p-1 rounded-lg">
                         <Button
                             variant={viewMode === 'table' ? 'default' : 'ghost'}
                             size="icon"

@@ -1,6 +1,9 @@
+"use client"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { FavoriteButton } from "@/components/ui/favorite-button"
 import { formatDateToMonth } from "@/lib/utils"
 import { Send } from "lucide-react"
 
@@ -122,6 +125,7 @@ export function CampaignCardD({ campaign: c, onClick, onApply }: CampaignCardDPr
 
                 {/* Right Action Area */}
                 <div className="border-t md:border-t-0 md:border-l p-4 md:w-32 bg-muted/10 flex flex-col items-center justify-center gap-2 shrink-0">
+                    <FavoriteButton targetId={String(c.id)} targetType="campaign" size="md" />
                     <Button
                         size="sm"
                         className="w-full gap-2 text-xs"

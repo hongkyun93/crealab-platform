@@ -74,6 +74,8 @@ import { ReadonlyProposalDialog } from "@/components/proposal/readonly-proposal-
 
 import { DemoBanner } from "@/components/demo-banner"
 import { POPULAR_TAGS } from "@/lib/constants/categories"
+import { CampaignBrowseView } from "@/components/shared/CampaignBrowseView"
+import { ProductBrowseView } from "@/components/shared/ProductBrowseView"
 
 function BrandDashboardContent() {
 
@@ -198,6 +200,36 @@ function BrandDashboardContent() {
     // Refs for auto-scrolling
     const workspaceChatRef = useRef<HTMLDivElement>(null)
     const workFeedbackChatRef = useRef<HTMLDivElement>(null)
+
+    // 전체 캠페인 더보기 (browse-campaigns)
+    const [allCampaigns, setAllCampaigns] = useState<any[]>([])
+    const [brandApplicantCounts, setBrandApplicantCounts] = useState<Record<string, number>>({})
+
+    useEffect(() => {
+        if (currentView !== 'browse-campaigns' || !supabase) return
+        const fetchAllCampaigns = async () => {
+            const { data } = await supabase
+                .from('campaigns')
+                .select('*')
+                .order('created_at', { ascending: false })
+            if (data && data.length > 0) {
+                setAllCampaigns(data)
+                const ids = data.map((c: any) => c.id)
+                const { data: apps } = await supabase
+                    .from('campaign_applications')
+                    .select('campaign_id')
+                    .in('campaign_id', ids)
+                if (apps) {
+                    const counts: Record<string, number> = {}
+                    apps.forEach((a: any) => {
+                        counts[a.campaign_id] = (counts[a.campaign_id] || 0) + 1
+                    })
+                    setBrandApplicantCounts(counts)
+                }
+            }
+        }
+        fetchAllCampaigns()
+    }, [currentView, supabase])
 
     // Auto-scroll for Main Workspace Chat
     useEffect(() => {
@@ -824,13 +856,13 @@ function BrandDashboardContent() {
     const [channelFilter, setChannelFilter] = useState<string[]>(["all"])
 
     const PRICE_FILTER_RANGES = [
-        { k: 'all', l: '전체', min: 0, max: Infinity },
-        { k: 'under_10', l: '10만원 이하', min: 0, max: 100000 },
-        { k: '10_30', l: '10만원 ~ 30만원', min: 100000, max: 300000 },
-        { k: '30_50', l: '30만원 ~ 50만원', min: 300000, max: 500000 },
-        { k: '50_100', l: '50만원 ~ 100만원', min: 500000, max: 1000000 },
-        { k: '100_300', l: '100만원 ~ 300만원', min: 1000000, max: 3000000 },
-        { k: 'over_300', l: '300만원 이상', min: 3000000, max: Infinity },
+        { k: 'all', l: '전체', s: '전체', min: 0, max: Infinity },
+        { k: 'under_10', l: '10만원 이하', s: '10만이하', min: 0, max: 100000 },
+        { k: '10_30', l: '10만원 ~ 30만원', s: '10~30만', min: 100000, max: 300000 },
+        { k: '30_50', l: '30만원 ~ 50만원', s: '30~50만', min: 300000, max: 500000 },
+        { k: '50_100', l: '50만원 ~ 100만원', s: '50~100만', min: 500000, max: 1000000 },
+        { k: '100_300', l: '100만원 ~ 300만원', s: '100~300만', min: 1000000, max: 3000000 },
+        { k: 'over_300', l: '300만원 이상', s: '300만+', min: 3000000, max: Infinity },
     ]
 
     const filteredProducts = products?.filter(p => {
@@ -1360,7 +1392,7 @@ function BrandDashboardContent() {
         const brandCount = filterByType(items, 'brand').length
 
         return (
-            <div className="flex gap-2 mb-4 flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="flex gap-2 mb-4 flex-wrap">
                 <button
                     onClick={() => setWorkspaceSubTab('all')}
                     className={`min-w-[90px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
@@ -1444,6 +1476,18 @@ function BrandDashboardContent() {
                     />
                 )
 
+            case "browse-campaigns":
+                return (
+                    <CampaignBrowseView
+                        campaigns={allCampaigns}
+                        applicantCounts={brandApplicantCounts}
+                        favorites={favorites}
+                        onCampaignClick={() => { }}
+                        title="캠페인 둘러보기"
+                        description="크리에이터들이 보는 실제 캐페인 목록을 확인하세요."
+                    />
+                )
+
             case "proposals":
                 return (
                     <WorkspaceView
@@ -1494,74 +1538,18 @@ function BrandDashboardContent() {
                 )
             case "discover-products":
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex flex-col gap-4">
-                            <div>
-                                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">브랜드 제품 둘러보기</h1>
-                                <p className="text-muted-foreground mt-1 text-sm">
-                                    다른 브랜드의 제품을 둘러보고 협업 아이디어를 얻어보세요.
-                                </p>
-                            </div>
-                            <div className="flex w-full sm:max-w-sm items-center space-x-2">
-                                <div className="relative w-full">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="브랜드, 제품명 검색"
-                                        className="pl-9"
-                                        value={productSearchQuery}
-                                        onChange={(e) => setProductSearchQuery(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {filteredProducts.length === 0 ? (
-                            <Card className="p-20 text-center border-dashed bg-muted/20">
-                                <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
-                                <h3 className="text-lg font-medium text-muted-foreground">검색 결과가 없습니다.</h3>
-                            </Card>
-                        ) : (
-                            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4">
-                                {filteredProducts.map((product) => (
-                                    <div key={product.id} className="cursor-pointer" onClick={() => {
-                                        setSelectedProductId(String(product.id));
-                                        setCurrentView("product-detail");
-                                    }}>
-                                        <Card className="h-full overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 bg-background border-border/60 group">
-                                            <div className="aspect-square bg-muted flex items-center justify-center text-6xl overflow-hidden relative">
-                                                {product.image?.startsWith('http') ? (
-                                                    <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                ) : (
-                                                    <span className="transition-transform group-hover:scale-125">{product.image || "📦"}</span>
-                                                )}
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <Button variant="secondary" size="sm" className="font-bold">자세히 보기</Button>
-                                                </div>
-                                            </div>
-                                            <CardHeader className="p-4 pb-2">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <span className="text-xs font-bold text-primary uppercase tracking-tight truncate max-w-[120px]">{product.brandName || "브랜드"}</span>
-                                                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium">{product.category}</Badge>
-                                                </div>
-                                                <CardTitle className="text-sm font-bold line-clamp-2 leading-tight h-10">
-                                                    {product.name}
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-4 pt-1">
-                                                <p className="font-extrabold text-lg text-foreground">
-                                                    {product.price > 0 ? `${product.price.toLocaleString()}원` : "가격 미정"}
-                                                </p>
-                                            </CardContent>
-                                            <CardFooter className="p-4 pt-0 text-[10px] font-bold text-muted-foreground uppercase flex items-center border-t mt-2 pt-3">
-                                                <span className="text-primary group-hover:underline">상세 정보 보기</span>
-                                                <ChevronRight className="ml-auto h-3 w-3 text-primary" />
-                                            </CardFooter>
-                                        </Card>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    <ProductBrowseView
+                        products={filteredProducts}
+                        favorites={favorites}
+                        onViewDetail={(p) => {
+                            setSelectedProductId(String(p.id))
+                            setCurrentView("product-detail")
+                        }}
+                        onViewGuide={(p) => {
+                            if (p.link) window.open(p.link, "_blank")
+                        }}
+                        description="다른 브랜드의 제품을 둘러보고 협업 아이디어를 얻어보세요."
+                    />
                 )
             case "notifications":
                 const sortedNotifications = [...(notifications || [])].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -1814,6 +1802,13 @@ function BrandDashboardContent() {
                         onClick={() => handleNavClick("my-campaigns")}
                     >
                         <Package className="mr-2 h-4 w-4" /> 내 캠페인 관리
+                    </Button>
+                    <Button
+                        variant={currentView === "browse-campaigns" ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => handleNavClick("browse-campaigns")}
+                    >
+                        <Search className="mr-2 h-4 w-4" /> 캠페인 둘러보기
                     </Button>
                     <Button
                         variant={currentView === "my-products" ? "secondary" : "ghost"}
@@ -2349,14 +2344,14 @@ function BrandDashboardContent() {
                                     <h4 className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1">
                                         <AtSign className="h-3 w-3" /> 태그 및 계정
                                     </h4>
-                                    <div className="flex flex-nowrap overflow-x-auto gap-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                    <div className="flex flex-wrap gap-2">
                                         {newProductAccountTag && (
-                                            <span className="px-2 py-1 bg-background border border-border rounded-md text-xs font-bold text-foreground/90 shadow-sm whitespace-nowrap">
+                                            <span className="px-2 py-1 bg-background border border-border rounded-md text-xs font-bold text-foreground/90 shadow-sm">
                                                 {newProductAccountTag}
                                             </span>
                                         )}
                                         {newProductHashtags.split(/[\s,]+/).filter(t => t).map((tag, i) => (
-                                            <span key={i} className="px-2 py-1 bg-muted border border-border rounded-md text-xs text-muted-foreground whitespace-nowrap">
+                                            <span key={i} className="px-2 py-1 bg-muted border border-border rounded-md text-xs text-muted-foreground">
                                                 {tag.startsWith('#') ? tag : `#${tag}`}
                                             </span>
                                         ))}

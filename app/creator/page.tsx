@@ -37,7 +37,9 @@ import { Badge } from "@/components/ui/badge"
 import {
     Sheet,
     SheetContent,
-    SheetHeader, SheetTrigger
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger
 } from "@/components/ui/sheet"
 import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
 
@@ -76,6 +78,9 @@ import { CampaignCardC } from "@/components/creator/campaign-cards/CampaignCardC
 import { BrandProductDetailView } from "@/components/creator/views/BrandProductDetailView"
 import { BrandProductDiscoveryView } from "@/components/creator/views/BrandProductDiscoveryView"
 import { BrandProductListView } from "@/components/creator/views/BrandProductListView"
+import { FavoriteButton } from "@/components/ui/favorite-button"
+import { CampaignBrowseView } from "@/components/shared/CampaignBrowseView"
+import { ProductBrowseView } from "@/components/shared/ProductBrowseView"
 
 // MCN Components
 import { CampaignCardD } from "@/components/creator/campaign-cards/CampaignCardD"
@@ -169,20 +174,25 @@ function InfluencerDashboardContent() {
     const { isOpen: isMobileSidebarOpen, setIsOpen: setIsMobileSidebarOpen } = useMobileSidebar()
 
     // Design Option State
-    const [designOption, setDesignOption] = useState<'A' | 'B' | 'C' | 'D' | 'E'>('C')
+    const [designOption, setDesignOption] = useState<'A' | 'B' | 'C' | 'D' | 'E'>('A')
     const [productViewMode, setProductViewMode] = useState<'grid' | 'list'>('grid')
 
     // === G: Search / Filter / Pagination states ===
     // 브랜드 캐페인 둘러보기
     const [campaignSearchQuery, setCampaignSearchQuery] = useState('')
     const [campaignTagFilter, setCampaignTagFilter] = useState<string[]>([])
-    const [campaignPageSize, setCampaignPageSize] = useState<20 | 50 | 100>(50)
+    const [campaignPageSize, setCampaignPageSize] = useState<number>(20)
     const [campaignFavoritesOnly, setCampaignFavoritesOnly] = useState(false)
+    const [campaignViewMode, setCampaignViewMode] = useState<'grid' | 'list'>('grid')
+    const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all' | 'active' | 'closed'>('all')
     // 브랜드 제품 둘러보기
     const [productTagFilter, setProductTagFilter] = useState<string[]>([])
-    const [productPageSize, setProductPageSize] = useState<20 | 50 | 100>(50)
+    const [productPageSize, setProductPageSize] = useState<20 | 50 | 100>(20)
     // 워크스페이스 아카이브 검색
     const [workspaceSearchQuery, setWorkspaceSearchQuery] = useState('')
+    // 워크스페이스 아카이브 필터/페이지네이션
+    const [workspaceFavoritesOnly, setWorkspaceFavoritesOnly] = useState(false)
+    const [workspacePageSize, setWorkspacePageSize] = useState<20 | 50 | 100>(20)
 
     // Guide Modal State
     const [guideModalOpen, setGuideModalOpen] = useState(false)
@@ -215,7 +225,7 @@ function InfluencerDashboardContent() {
     const [detailsType, setDetailsType] = useState<'moment' | 'campaign'>('moment')
     const [relatedProposals, setRelatedProposals] = useState<any[]>([])
     const [workspaceTab, setWorkspaceTab] = useState("active")
-    const [workspaceViewMode, setWorkspaceViewMode] = useState<'list' | 'grid' | 'table'>('list')
+    const [workspaceViewMode, setWorkspaceViewMode] = useState<'list' | 'grid' | 'table'>('grid')
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
 
     // [Badge] 탭별 새 이벤트 여부 계산
@@ -273,6 +283,13 @@ function InfluencerDashboardContent() {
     // NOTE: MCN no-team check moved below all hooks (React rules: no early returns before hooks)
 
     // [URL Sync] workspace에 chatProposal 열릴 때 URL에 proposalId 기록, 닫힐 때 제거
+    // 모바일에서 캠페인 페이지 사이즈 10으로 고정
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            setCampaignPageSize(10)
+        }
+    }, [])
+
     // → 새로고침해도 아래 auto-open 로직이 proposalId를 읽어 dialog 복원
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString())
@@ -882,6 +899,17 @@ function InfluencerDashboardContent() {
     }
     const allWorkspaceItems = applyWorkspaceSearch(allWorkspaceItemsDeduped)
 
+    // Apply workspace favorites filter
+    const applyWorkspaceFavorites = (items: any[]) => {
+        if (!workspaceFavoritesOnly) return items
+        return items.filter(item =>
+            favorites?.some((f: any) =>
+                f.target_id === item.id &&
+                f.target_type === 'workspace'
+            )
+        )
+    }
+
     // Filter items by type (moment/campaign/brand)
     const filterByType = (items: any[], type: 'all' | 'moment' | 'campaign' | 'brand') => {
         if (type === 'all') return items
@@ -910,42 +938,42 @@ function InfluencerDashboardContent() {
         const brandCount = filterByType(items, 'brand').length
 
         return (
-            <div className="flex gap-2 mb-4 flex-nowrap overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="grid grid-cols-4 gap-2 mb-4 md:flex md:flex-wrap">
                 <button
                     onClick={() => setWorkspaceSubTab('all')}
-                    className={`min-w-[90px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
+                    className={`w-full md:w-auto md:min-w-[90px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
                         ? 'bg-slate-900 text-white'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
                 >
-                    전체 <span className="ml-1.5 text-xs opacity-70">{items.length}</span>
+                    전체 <span className="hidden md:inline ml-1.5 text-xs opacity-70">{items.length}</span>
                 </button>
                 <button
                     onClick={() => setWorkspaceSubTab('moment')}
-                    className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'moment'
+                    className={`w-full md:w-auto md:min-w-[100px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'moment'
                         ? 'bg-slate-900 text-white'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
                 >
-                    모먼트 <span className="ml-1.5 text-xs opacity-70">{momentCount}</span>
+                    모먼트 <span className="hidden md:inline ml-1.5 text-xs opacity-70">{momentCount}</span>
                 </button>
                 <button
                     onClick={() => setWorkspaceSubTab('campaign')}
-                    className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'campaign'
+                    className={`w-full md:w-auto md:min-w-[100px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'campaign'
                         ? 'bg-slate-900 text-white'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
                 >
-                    캠페인 <span className="ml-1.5 text-xs opacity-70">{campaignCount}</span>
+                    캠페인 <span className="hidden md:inline ml-1.5 text-xs opacity-70">{campaignCount}</span>
                 </button>
                 <button
                     onClick={() => setWorkspaceSubTab('brand')}
-                    className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'brand'
+                    className={`w-full md:w-auto md:min-w-[100px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'brand'
                         ? 'bg-slate-900 text-white'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
                 >
-                    브랜드 <span className="ml-1.5 text-xs opacity-70">{brandCount}</span>
+                    브랜드 <span className="hidden md:inline ml-1.5 text-xs opacity-70">{brandCount}</span>
                 </button>
             </div>
         )
@@ -1013,6 +1041,7 @@ function InfluencerDashboardContent() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-1">
+                                            <FavoriteButton targetId={String(item.id)} targetType="workspace" />
                                             {item.moment_id && (
                                                 <Button size="icon" variant="ghost" className="h-7 w-7" title="제안서 보기"
                                                     onClick={(e) => { e.stopPropagation(); setSelectedProposal(item); setShowReadonlyDialog(true); }}>
@@ -1100,6 +1129,7 @@ function InfluencerDashboardContent() {
                             <CardFooter className="pt-0 pb-3 text-[10px] text-muted-foreground flex justify-between items-center">
                                 <span>{new Date(item.created_at).toLocaleDateString()}</span>
                                 <div className="flex items-center gap-2">
+                                    <FavoriteButton targetId={String(item.id)} targetType="workspace" />
                                     {item.moment_id && (
                                         <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-blue-500 hover:text-blue-600 hover:bg-blue-50"
                                             onClick={(e) => { e.stopPropagation(); setSelectedProposal(item); setShowReadonlyDialog(true); }}>
@@ -1119,7 +1149,7 @@ function InfluencerDashboardContent() {
         return (
             <div className="space-y-4">
                 {items.map((proposal) => (
-                    <Card key={proposal.id} className={`p-6 border-l-4 bg-card hover:bg-accent/5 cursor-pointer hover:shadow-md transition-all
+                    <Card key={proposal.id} className={`relative p-6 border-l-4 bg-card hover:bg-accent/5 cursor-pointer hover:shadow-md transition-all overflow-hidden
                         ${type === 'all'
                             ? (proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed'
                                 ? 'border-l-emerald-500'  // Active
@@ -1150,7 +1180,11 @@ function InfluencerDashboardContent() {
                                 setShowReadonlyDialog(true);
                             }
                         }}>
-                        <div className="flex flex-col md:flex-row gap-6">
+                        {/* 모바일: 우상단 즐겨찾기 버튼 */}
+                        <div className="absolute top-3 right-3 sm:hidden">
+                            <FavoriteButton targetId={String(proposal.id)} targetType="workspace" />
+                        </div>
+                        <div className="flex flex-row items-start gap-4 md:gap-6">
                             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-muted/50 border border-border overflow-hidden">
                                 {(proposal.brandAvatar || proposal.brand_avatar)
                                     ? <img src={proposal.brandAvatar || proposal.brand_avatar} alt="Brand" className="h-full w-full object-cover" />
@@ -1159,14 +1193,14 @@ function InfluencerDashboardContent() {
                             <div className="flex-1 space-y-2">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <h3 className="font-bold text-xl flex items-center gap-2 text-foreground">
+                                        <h3 className="font-bold text-base md:text-xl flex items-center gap-2 text-foreground">
                                             {proposal.product_name || proposal.brand_name}
                                             <Badge variant="outline" className={`text-xs font-medium border-2 rounded-full px-3 py-0.5 transition-all bg-background
                                                 ${proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
                                                     proposal.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
                                                         proposal.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
                                                             'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.3)]'}
-                                            `}>
+                                            hidden md:inline-flex`}>
                                                 {proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed' ? '진행중' :
                                                     proposal.status === 'settlement' ? '성과 대기' :
                                                         proposal.status === 'final_complete' ? '완료 대기' :
@@ -1186,6 +1220,7 @@ function InfluencerDashboardContent() {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <FavoriteButton targetId={String(proposal.id)} targetType="workspace" className="hidden sm:flex" />
                                         {/* 제안서 보기 button for moment proposals */}
                                         {proposal.moment_id && (
                                             <Button size="sm" variant="outline" className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hidden md:flex" onClick={(e) => {
@@ -1228,49 +1263,50 @@ function InfluencerDashboardContent() {
                                         <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
                                     </div>
                                 </div>
-                                <div className="mt-4 flex items-center gap-4">
-                                    <div className="flex-1">
-                                        <WorkspaceProgressBar
-                                            proposal={proposal}
-                                        />
-                                    </div>
-
-                                    {/* Accept/Reject Buttons - Only show for inbound offers (brand→creator), not outbound (creator→brand) */}
-                                    {proposal.status === 'offered' && proposal.type !== 'creator_apply' && type !== 'outbound' && (
-                                        <div className="flex gap-2 shrink-0">
-                                            <Button
-                                                size="sm"
-                                                onClick={(e) => handleAcceptProposal(e, proposal.id)}
-                                                className="bg-green-600 hover:bg-green-700 text-white"
-                                            >
-                                                수락하기
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                                onClick={() => handleRejectClick(chatProposal)}
-                                            >
-                                                거절하기
-                                            </Button>
-                                        </div>
-                                    )}
-
-                                    {/* G3: 크리에이터가 보낸 지원서 수정 (outbound + pending/applied) */}
-                                    {type === 'outbound' && (proposal.status === 'applied' || proposal.status === 'pending' || !proposal.status) && (
-                                        <div className="shrink-0">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
-                                                onClick={(e) => { e.stopPropagation(); handleOpenEditApplication(proposal); }}
-                                            >
-                                                <Pencil className="mr-1 h-3 w-3" /> 수정
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
                             </div>
+                        </div>
+                        {/* Progress bar — full-width below on mobile, indented on desktop */}
+                        <div className="mt-4 md:pl-[88px] flex items-center gap-4">
+                            <div className="flex-1">
+                                <WorkspaceProgressBar
+                                    proposal={proposal}
+                                />
+                            </div>
+
+                            {/* Accept/Reject Buttons - Only show for inbound offers (brand→creator), not outbound (creator→brand) */}
+                            {proposal.status === 'offered' && proposal.type !== 'creator_apply' && type !== 'outbound' && (
+                                <div className="flex gap-2 shrink-0">
+                                    <Button
+                                        size="sm"
+                                        onClick={(e) => handleAcceptProposal(e, proposal.id)}
+                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                    >
+                                        수락하기
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                        onClick={() => handleRejectClick(chatProposal)}
+                                    >
+                                        거절하기
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* G3: 크리에이터가 보낸 지원서 수정 (outbound + pending/applied) */}
+                            {type === 'outbound' && (proposal.status === 'applied' || proposal.status === 'pending' || !proposal.status) && (
+                                <div className="shrink-0">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                                        onClick={(e) => { e.stopPropagation(); handleOpenEditApplication(proposal); }}
+                                    >
+                                        <Pencil className="mr-1 h-3 w-3" /> 수정
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </Card>
                 ))}
@@ -1478,6 +1514,27 @@ function InfluencerDashboardContent() {
     const [isCampaignDetailOpen, setIsCampaignDetailOpen] = useState(false)
     const [appealMessage, setAppealMessage] = useState("")
     const [desiredCost, setDesiredCost] = useState("")
+
+    // 쳪페인 지원자 수 (campaign_id -> count)
+    const [applicantCounts, setApplicantCounts] = useState<Record<string, number>>({})
+
+    useEffect(() => {
+        if (!campaigns || campaigns.length === 0) return
+        const ids = campaigns.map((c: any) => c.id).filter(Boolean)
+        if (ids.length === 0) return
+        supabase
+            .from('campaign_applications')
+            .select('campaign_id')
+            .in('campaign_id', ids)
+            .then(({ data }) => {
+                if (!data) return
+                const counts: Record<string, number> = {}
+                data.forEach((row: any) => {
+                    counts[row.campaign_id] = (counts[row.campaign_id] || 0) + 1
+                })
+                setApplicantCounts(counts)
+            })
+    }, [campaigns])
 
 
 
@@ -2564,19 +2621,41 @@ function InfluencerDashboardContent() {
                                 <h1 className="text-3xl font-bold tracking-tight">워크스페이스 아카이브</h1>
                                 <p className="text-muted-foreground">브랜드와 진행 중인 모든 협업을 한곳에서 관리하세요.</p>
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex w-full max-w-lg items-center gap-2">
+                                {/* 즐겨찾기 */}
+                                <Button
+                                    variant={workspaceFavoritesOnly ? "secondary" : "outline"}
+                                    size="icon"
+                                    onClick={() => setWorkspaceFavoritesOnly(!workspaceFavoritesOnly)}
+                                    className={workspaceFavoritesOnly ? "bg-yellow-100 text-yellow-600 border-yellow-200 hover:bg-yellow-200" : "text-muted-foreground"}
+                                    title="즐겨찾기만 보기"
+                                >
+                                    <Star className={`h-4 w-4 ${workspaceFavoritesOnly ? "fill-current" : ""}`} />
+                                </Button>
                                 {/* 검색창 */}
-                                <div className="relative min-w-[280px] max-w-sm flex-1">
+                                <div className="relative flex-1">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="브랜드명, 제품명, 캠페인 검색"
-                                        className="pl-9 h-9"
+                                        className="pl-9"
                                         value={workspaceSearchQuery}
                                         onChange={(e) => setWorkspaceSearchQuery(e.target.value)}
                                     />
                                 </div>
+                                {/* 20/50/100 페이지 사이즈 */}
+                                <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0">
+                                    {([20, 50, 100] as const).map(n => (
+                                        <button
+                                            key={n}
+                                            onClick={() => setWorkspacePageSize(n)}
+                                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${workspacePageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            {n}
+                                        </button>
+                                    ))}
+                                </div>
                                 {/* 뷰 모드 */}
-                                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                                <div className="hidden md:flex items-center gap-1 bg-muted p-1 rounded-lg shrink-0">
                                     <Button
                                         variant={workspaceViewMode === 'list' ? 'default' : 'ghost'}
                                         size="icon"
@@ -2610,24 +2689,24 @@ function InfluencerDashboardContent() {
 
 
                         <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="w-full">
-                            <TabsList className="flex flex-nowrap h-auto w-full justify-start gap-2 bg-transparent p-0 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                <TabsTrigger value="all" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
-                                    전체 보기 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
+                            <TabsList className="grid grid-cols-3 gap-2 h-auto w-full bg-transparent p-0 md:flex md:flex-wrap md:justify-start">
+                                <TabsTrigger value="all" className="w-full md:w-auto md:min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
+                                    전체 보기 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="active" className="min-w-[120px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(16,185,129,0.6)] bg-background text-emerald-700 dark:text-emerald-400 border-2 border-emerald-500/50 px-4 py-2 rounded-full font-medium transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.4)]">
-                                    진행중 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
+                                <TabsTrigger value="active" className="w-full md:w-auto md:min-w-[120px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(16,185,129,0.6)] bg-background text-emerald-700 dark:text-emerald-400 border-2 border-emerald-500/50 px-4 py-2 rounded-full font-medium transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+                                    진행중 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="inbound" className="min-w-[130px] data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.6)] bg-background text-blue-700 dark:text-blue-400 border-2 border-blue-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]">
-                                    받은 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{inboundProposals.length}</span>
+                                <TabsTrigger value="inbound" className="w-full md:w-auto md:min-w-[130px] data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.6)] bg-background text-blue-700 dark:text-blue-400 border-2 border-blue-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]">
+                                    받은 제안 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{inboundProposals.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="outbound" className="min-w-[130px] data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(168,85,247,0.6)] bg-background text-purple-700 dark:text-purple-400 border-2 border-purple-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">
-                                    보낸 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundApplications.length}</span>
+                                <TabsTrigger value="outbound" className="w-full md:w-auto md:min-w-[130px] data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(168,85,247,0.6)] bg-background text-purple-700 dark:text-purple-400 border-2 border-purple-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">
+                                    보낸 제안 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundApplications.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="rejected" className="min-w-[120px] data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(239,68,68,0.6)] bg-background text-red-700 dark:text-red-400 border-2 border-red-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]">
-                                    거절됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{rejectedProposals.length}</span>
+                                <TabsTrigger value="rejected" className="w-full md:w-auto md:min-w-[120px] data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(239,68,68,0.6)] bg-background text-red-700 dark:text-red-400 border-2 border-red-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+                                    거절됨 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{rejectedProposals.length}</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="completed" className="min-w-[120px] data-[state=active]:bg-slate-400 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(148,163,184,0.6)] bg-background text-slate-700 dark:text-slate-400 border-2 border-slate-400/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(148,163,184,0.4)]">
-                                    완료됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
+                                <TabsTrigger value="completed" className="w-full md:w-auto md:min-w-[120px] data-[state=active]:bg-slate-400 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(148,163,184,0.6)] bg-background text-slate-700 dark:text-slate-400 border-2 border-slate-400/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(148,163,184,0.4)]">
+                                    완료됨 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
                                 </TabsTrigger>
                             </TabsList>
 
@@ -2635,24 +2714,24 @@ function InfluencerDashboardContent() {
                             {/* Tab 0: All Items */}
                             <TabsContent value="all" className="space-y-4 mt-6">
                                 {renderSubTabs(allWorkspaceItems)}
-                                {renderWorkspaceItems(filterByType(allWorkspaceItems, workspaceSubTab), 'all')}
+                                {renderWorkspaceItems(filterByType(applyWorkspaceFavorites(allWorkspaceItems), workspaceSubTab).slice(0, workspacePageSize), 'all')}
                             </TabsContent>
 
                             {/* Tab 1: Active (In Progress) */}
                             <TabsContent value="active" className="space-y-4 mt-6">
                                 {renderSubTabs(applyWorkspaceSearch(allActive))}
-                                {renderWorkspaceItems(filterByType(applyWorkspaceSearch(allActive), workspaceSubTab), 'active')}
+                                {renderWorkspaceItems(filterByType(applyWorkspaceFavorites(applyWorkspaceSearch(allActive)), workspaceSubTab).slice(0, workspacePageSize), 'active')}
                             </TabsContent>
 
                             {/* Tab 2: Inbound Proposals (Received) - Moments only, no sub-tabs */}
                             <TabsContent value="inbound" className="space-y-4 mt-6">
-                                {renderWorkspaceItems(applyWorkspaceSearch(inboundProposals), 'inbound')}
+                                {renderWorkspaceItems(applyWorkspaceFavorites(applyWorkspaceSearch(inboundProposals)).slice(0, workspacePageSize), 'inbound')}
                             </TabsContent>
 
                             {/* Tab 3: Outbound Applications (Sent) */}
                             <TabsContent value="outbound" className="space-y-4 mt-6">
                                 {renderSubTabs(applyWorkspaceSearch(outboundApplications))}
-                                {renderWorkspaceItems(filterByType(applyWorkspaceSearch(outboundApplications), workspaceSubTab), 'outbound')}
+                                {renderWorkspaceItems(filterByType(applyWorkspaceFavorites(applyWorkspaceSearch(outboundApplications)), workspaceSubTab).slice(0, workspacePageSize), 'outbound')}
                             </TabsContent>
 
 
@@ -2660,13 +2739,13 @@ function InfluencerDashboardContent() {
                             {/* Tab 5: Completed */}
                             <TabsContent value="completed" className="space-y-4 mt-6">
                                 {renderSubTabs(applyWorkspaceSearch(allCompleted))}
-                                {renderWorkspaceItems(filterByType(applyWorkspaceSearch(allCompleted), workspaceSubTab), 'completed')}
+                                {renderWorkspaceItems(filterByType(applyWorkspaceFavorites(applyWorkspaceSearch(allCompleted)), workspaceSubTab).slice(0, workspacePageSize), 'completed')}
                             </TabsContent>
 
                             {/* Tab 4: Rejected - Added Missing Tab Content */}
                             <TabsContent value="rejected" className="space-y-4 mt-6">
                                 {renderSubTabs(applyWorkspaceSearch(rejectedProposals))}
-                                {renderWorkspaceItems(filterByType(applyWorkspaceSearch(rejectedProposals), workspaceSubTab), 'rejected')}
+                                {renderWorkspaceItems(filterByType(applyWorkspaceFavorites(applyWorkspaceSearch(rejectedProposals)), workspaceSubTab).slice(0, workspacePageSize), 'rejected')}
                             </TabsContent>
                         </Tabs>
                     </div>
@@ -2775,152 +2854,17 @@ function InfluencerDashboardContent() {
                 return <EarningsView />
             case "discover-products":
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                            <div>
-                                <h1 className="text-3xl font-bold tracking-tight">브랜드 제품 둘러보기</h1>
-                                <p className="text-muted-foreground mt-1 text-sm">
-                                    마음에 들면 광고나 공구를 먼저 제안해보세요.
-                                </p>
-                            </div>
-                            <div className="flex w-full max-w-lg items-center gap-2">
-                                <Button
-                                    variant={favoritesOnly ? "secondary" : "outline"}
-                                    size="icon"
-                                    onClick={() => setFavoritesOnly(!favoritesOnly)}
-                                    className={favoritesOnly ? "bg-yellow-100 text-yellow-600 border-yellow-200 hover:bg-yellow-200" : "text-muted-foreground"}
-                                    title="즐곯찾기만 보기"
-                                >
-                                    <Star className={`h-4 w-4 ${favoritesOnly ? "fill-current" : ""}`} />
-                                </Button>
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="브랜드, 제품명 검색"
-                                        className="pl-9"
-                                        value={productSearchQuery}
-                                        onChange={(e) => setProductSearchQuery(e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0">
-                                    {([20, 50, 100] as const).map(n => (
-                                        <button
-                                            key={n}
-                                            onClick={() => setProductPageSize(n)}
-                                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${productPageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                                                }`}
-                                        >
-                                            {n}
-                                        </button>
-                                    ))}
-                                </div>
-                                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg shrink-0">
-                                    <Button
-                                        variant={productViewMode === 'list' ? 'default' : 'ghost'}
-                                        size="icon"
-                                        className="h-9 w-9"
-                                        onClick={() => setProductViewMode('list')}
-                                        title="리스트형"
-                                    >
-                                        <List className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant={productViewMode === 'grid' ? 'default' : 'ghost'}
-                                        size="icon"
-                                        className="h-9 w-9"
-                                        onClick={() => setProductViewMode('grid')}
-                                        title="그리드형"
-                                    >
-                                        <LayoutGrid className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 카테고리 태그 필터 */}
-                        <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                            <button
-                                onClick={() => setProductTagFilter([])}
-                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${productTagFilter.length === 0
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : 'border-border text-muted-foreground hover:border-primary/50'
-                                    }`}
-                            >
-                                전체
-                            </button>
-                            {POPULAR_TAGS.map(tag => (
-                                <button
-                                    key={tag}
-                                    onClick={() => setProductTagFilter(prev =>
-                                        prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-                                    )}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${productTagFilter.includes(tag)
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'border-border text-muted-foreground hover:border-primary/50'
-                                        }`}
-                                >
-                                    {tag}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* 필터링 통계 */}
-                        <p className="text-sm text-muted-foreground">
-                            {(() => {
-                                const total = filteredProducts.length
-                                const shown = Math.min(total, productPageSize)
-                                return total > shown ? `총 ${total}개 중 ${shown}개 표시` : `총 ${total}개`
-                            })()}
-                        </p>
-
-                        {filteredProducts.filter(p =>
-                            productTagFilter.length === 0 || productTagFilter.some(tag => {
-                                const tagWord = tag.replace(/^.{1,2} /, '').toLowerCase()
-                                return (p.category || '').toLowerCase().includes(tagWord) || (p.tags || []).some((t: string) => t.toLowerCase().includes(tagWord))
-                            })
-                        ).length === 0 ? (
-                            <Card className="p-20 text-center border-dashed bg-muted/20">
-                                <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
-                                <h3 className="text-lg font-medium text-muted-foreground">검색 결과가 없습니다.</h3>
-                            </Card>
-                        ) : (
-                            <div className="space-y-6">
-                                {productViewMode === 'grid' ? (
-                                    <BrandProductDiscoveryView
-                                        products={filteredProducts.filter(p =>
-                                            productTagFilter.length === 0 || productTagFilter.some(tag => {
-                                                const tagWord = tag.replace(/^.{1,2} /, '').toLowerCase()
-                                                return (p.category || '').toLowerCase().includes(tagWord) || (p.tags || []).some((t: string) => t.toLowerCase().includes(tagWord))
-                                            })
-                                        ).slice(0, productPageSize)}
-                                        handleViewGuide={(p) => {
-                                            if (p.link) window.open(p.link, '_blank');
-                                        }}
-                                        handlePropose={(p) => {
-                                            setSelectedProductId(String(p.id));
-                                            setCurrentView("product-detail");
-                                        }}
-                                    />
-                                ) : (
-                                    <BrandProductListView
-                                        products={filteredProducts.filter(p =>
-                                            productTagFilter.length === 0 || productTagFilter.some(tag => {
-                                                const tagWord = tag.replace(/^.{1,2} /, '').toLowerCase()
-                                                return (p.category || '').toLowerCase().includes(tagWord) || (p.tags || []).some((t: string) => t.toLowerCase().includes(tagWord))
-                                            })
-                                        ).slice(0, productPageSize)}
-                                        handleViewGuide={(p) => {
-                                            if (p.link) window.open(p.link, '_blank');
-                                        }}
-                                        handlePropose={(p) => {
-                                            setSelectedProductId(String(p.id));
-                                            setCurrentView("product-detail");
-                                        }}
-                                    />
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    <ProductBrowseView
+                        products={filteredProducts}
+                        favorites={favorites}
+                        onViewDetail={(p) => {
+                            setSelectedProductId(String(p.id))
+                            setCurrentView("product-detail")
+                        }}
+                        onViewGuide={(p) => {
+                            if (p.link) window.open(p.link, "_blank")
+                        }}
+                    />
                 )
 
             case "product-detail":
@@ -2935,167 +2879,15 @@ function InfluencerDashboardContent() {
 
 
             case "discover-campaigns":
-                const filteredCampaigns = campaigns.filter(c => {
-                    if (c.status === 'closed') return false
-                    const q = campaignSearchQuery.toLowerCase()
-                    const matchesSearch = !q ||
-                        (c.title || '').toLowerCase().includes(q) ||
-                        (c.brand || '').toLowerCase().includes(q) ||
-                        (c.category || '').toLowerCase().includes(q) ||
-                        (c.description || '').toLowerCase().includes(q)
-                    const matchesTag = campaignTagFilter.length === 0 || campaignTagFilter.some(tag => {
-                        const tagWord = tag.replace(/^.{1,2} /, '').toLowerCase()
-                        return (c.category || '').toLowerCase().includes(tagWord) ||
-                            (c.tags || []).some((t: string) => t.toLowerCase().includes(tagWord))
-                    })
-                    const matchesFav = !campaignFavoritesOnly || favorites?.some((f: any) => f.target_id === c.id && f.target_type === 'campaign')
-                    return matchesSearch && matchesTag && matchesFav
-                })
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                        {/* 헤더 */}
-                        <div className="flex flex-col gap-4">
-                            <div className="flex justify-between items-start flex-wrap gap-3">
-                                <div>
-                                    <h1 className="text-3xl font-bold tracking-tight">브랜드 캠페인 둘러보기</h1>
-                                    <p className="text-muted-foreground mt-1 text-sm">
-                                        브랜드가 등록한 캠페인을 확인하고 지원해보세요.
-                                    </p>
-                                </div>
-                                {/* 디자인 옵션 (유지) */}
-                                <div className="bg-muted p-1 rounded-lg flex items-center gap-1 overflow-x-auto scrollbar-hide">
-                                    {(['A', 'D', 'B', 'C', 'E'] as const).map(opt => (
-                                        <Button
-                                            key={opt}
-                                            variant={designOption === opt ? 'default' : 'ghost'}
-                                            size="sm"
-                                            onClick={() => setDesignOption(opt)}
-                                            className="text-xs h-7 whitespace-nowrap"
-                                        >
-                                            {opt === 'A' ? 'A: 브랜드(세로)' : opt === 'D' ? 'D: 브랜드(가로)' : opt === 'B' ? 'B: 비주얼' : opt === 'C' ? 'C: 네모카드' : 'E: 리스트'}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* 검색 + 즐겨찾기 + 페이지네이션 */}
-                            <div className="flex flex-wrap gap-2 items-center">
-                                <Button
-                                    variant={campaignFavoritesOnly ? "secondary" : "outline"}
-                                    size="icon"
-                                    onClick={() => setCampaignFavoritesOnly(!campaignFavoritesOnly)}
-                                    className={campaignFavoritesOnly ? "bg-yellow-100 text-yellow-600 border-yellow-200 hover:bg-yellow-200" : "text-muted-foreground"}
-                                    title="즐겨찾기만 보기"
-                                >
-                                    <Star className={`h-4 w-4 ${campaignFavoritesOnly ? "fill-current" : ""}`} />
-                                </Button>
-                                <div className="relative flex-1 min-w-[200px]">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="캠페인명, 브랜드, 카테고리 검색"
-                                        className="pl-9"
-                                        value={campaignSearchQuery}
-                                        onChange={(e) => setCampaignSearchQuery(e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0">
-                                    {([20, 50, 100] as const).map(n => (
-                                        <button
-                                            key={n}
-                                            onClick={() => setCampaignPageSize(n)}
-                                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${campaignPageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                                                }`}
-                                        >
-                                            {n}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* 태그 필터 */}
-                            <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                <button
-                                    onClick={() => setCampaignTagFilter([])}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${campaignTagFilter.length === 0
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'border-border text-muted-foreground hover:border-primary/50'
-                                        }`}
-                                >
-                                    전체
-                                </button>
-                                {POPULAR_TAGS.map(tag => (
-                                    <button
-                                        key={tag}
-                                        onClick={() => setCampaignTagFilter(prev =>
-                                            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-                                        )}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${campaignTagFilter.includes(tag)
-                                            ? 'bg-primary text-primary-foreground border-primary'
-                                            : 'border-border text-muted-foreground hover:border-primary/50'
-                                            }`}
-                                    >
-                                        {tag}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* 통계 */}
-                        <p className="text-sm text-muted-foreground">
-                            {filteredCampaigns.length > campaignPageSize
-                                ? `총 ${filteredCampaigns.length}개 중 ${campaignPageSize}개 표시`
-                                : `총 ${filteredCampaigns.length}개`}
-                        </p>
-
-                        {filteredCampaigns.length === 0 ? (
-                            <Card className="p-20 text-center border-dashed bg-muted/20">
-                                <Megaphone className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
-                                <h3 className="text-lg font-medium text-muted-foreground">검색 결과가 없습니다.</h3>
-                            </Card>
-                        ) : (
-                            <div className={`grid gap-6 ${['D', 'E'].includes(designOption) ? 'grid-cols-1' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
-                                {filteredCampaigns.slice(0, campaignPageSize).map((camp) => (
-                                    <div key={camp.id} className={['D', 'E'].includes(designOption) ? 'w-full' : ''}>
-                                        {designOption === 'A' && (
-                                            <CampaignCardA
-                                                campaign={camp}
-                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
-                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
-                                            />
-                                        )}
-                                        {designOption === 'B' && (
-                                            <CampaignCardB
-                                                campaign={camp}
-                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
-                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
-                                            />
-                                        )}
-                                        {designOption === 'C' && (
-                                            <CampaignCardC
-                                                campaign={camp}
-                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
-                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
-                                            />
-                                        )}
-                                        {designOption === 'D' && (
-                                            <CampaignCardD
-                                                campaign={camp}
-                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
-                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
-                                            />
-                                        )}
-                                        {designOption === 'E' && (
-                                            <CampaignCardE
-                                                campaign={camp}
-                                                onClick={() => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
-                                                onApply={(e: React.MouseEvent) => { e.stopPropagation(); handleApplyClick(camp); }}
-                                            />
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    <CampaignBrowseView
+                        campaigns={campaigns}
+                        applicantCounts={applicantCounts}
+                        favorites={favorites}
+                        onCampaignClick={(camp) => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
+                        onApply={(e, camp) => { e.stopPropagation(); handleApplyClick(camp); }}
+                        description="브랜드가 등록한 쳪페인을 확인하고 지원해보세요."
+                    />
                 )
             default:
                 return null
@@ -3289,6 +3081,7 @@ function InfluencerDashboardContent() {
                                 <SheetContent side="left" className="w-[280px] p-0">
                                     <div className="flex flex-col h-full">
                                         <SheetHeader className="p-4 border-b">
+                                            <SheetTitle className="sr-only">크리에이터 메뉴</SheetTitle>
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-12 w-12">
                                                     <AvatarImage src={user?.avatar} alt={user?.name} className="object-cover" />
@@ -3644,7 +3437,9 @@ function InfluencerDashboardContent() {
                                 </div>
                             ) : (
                                 /* 일반 크리에이터 OR 프록시 모드: 정상 표시 */
-                                renderContent()
+                                <div className="overflow-x-hidden min-w-0 flex-1">
+                                    {renderContent()}
+                                </div>
                             )}
 
                             {/* Render the Dialog */}
