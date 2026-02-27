@@ -265,14 +265,9 @@ export function CampaignBrowseView({
                                     campaign={camp}
                                     applicantCount={applicantCounts[camp.id] ?? 0}
                                     onClick={() => onCampaignClick(camp)}
-                                    onApply={
-                                        onApply
-                                            ? (e: React.MouseEvent) => {
-                                                e.stopPropagation()
-                                                onApply(e, camp)
-                                            }
-                                            : undefined
-                                    }
+                                    onApply={(e: React.MouseEvent) => {
+                                        if (onApply) { e.stopPropagation(); onApply(e, camp) }
+                                    }}
                                 />
                             )}
                             {viewMode === "list" && (
@@ -280,14 +275,9 @@ export function CampaignBrowseView({
                                     campaign={camp}
                                     applicantCount={applicantCounts[camp.id] ?? 0}
                                     onClick={() => onCampaignClick(camp)}
-                                    onApply={
-                                        onApply
-                                            ? (e: React.MouseEvent) => {
-                                                e.stopPropagation()
-                                                onApply(e, camp)
-                                            }
-                                            : undefined
-                                    }
+                                    onApply={(e: React.MouseEvent) => {
+                                        if (onApply) { e.stopPropagation(); onApply(e, camp) }
+                                    }}
                                 />
                             )}
                         </div>
