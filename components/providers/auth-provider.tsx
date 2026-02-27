@@ -371,17 +371,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Logout function
     const logout = async () => {
         try {
-            console.log('[AuthProvider] Signing out (Optimistic)...')
+            console.log('[AuthProvider] Signing out via server API...')
 
-            // 1. Await server signout to ensure session is fully cleared before navigating
-            try {
-                await supabase.auth.signOut({ scope: 'global' })
-            } catch (err) {
-                console.warn('[AuthProvider] Signout error (proceeding anyway):', err)
-            }
+            // 1. 서버 API를 호출하여 안전하게 HttpOnly 쿠키(sb-*) 파기
+            await fetch('/api/auth/logout', { method: 'POST' })
 
             // 2. Clear state immediately
             setUser(null)
+            lastUserId.current = null
 
             // 3. Clear localStorage (creadypick + supabase sb-* keys)
             localStorage.removeItem("creadypick_user")
@@ -392,13 +389,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // 4. Clear sessionStorage
             sessionStorage.clear()
 
-            // 5. Clear browser cookies (sb-* auth token cookies)
+            // 5. 서버 측 쿠키 파기가 최우선이지만 혹시 모를 로컬 클리어
             document.cookie.split(';').forEach(cookie => {
                 const name = cookie.split('=')[0].trim()
                 if (name.startsWith('sb-') || name === 'supabase-auth-token') {
-                    // Expire on all possible paths and domains
                     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`
                 }
             })
 
