@@ -152,7 +152,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                         variant={favoritesOnly ? "secondary" : "outline"}
                         size="icon"
                         onClick={() => setFavoritesOnly(!favoritesOnly)}
-                        className={favoritesOnly ? "bg-yellow-100 text-yellow-600 border-yellow-200 hover:bg-yellow-200" : "text-muted-foreground"}
+                        className={favoritesOnly ? "bg-yellow-100 text-yellow-600 border-yellow-200 hover:bg-yellow-200 h-10 w-10" : "text-muted-foreground h-10 w-10"}
                         title="즐겨찾기만 보기"
                     >
                         <Star className={`h-4 w-4 ${favoritesOnly ? "fill-current" : ""}`} />
@@ -162,7 +162,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                         variant={sortOrder === 'verified' ? "secondary" : "outline"}
                         size="sm"
                         onClick={() => setSortOrder(sortOrder === 'verified' ? 'latest' : 'verified')}
-                        className={sortOrder === 'verified' ? "bg-pink-100 text-pink-600 border-pink-200 hover:bg-pink-200 shrink-0 gap-1.5" : "text-muted-foreground shrink-0 gap-1.5"}
+                        className={sortOrder === 'verified' ? "bg-pink-100 text-pink-600 border-pink-200 hover:bg-pink-200 shrink-0 gap-1.5 h-10" : "text-muted-foreground shrink-0 gap-1.5 h-10"}
                         title="Instagram API 인증됨만 보기"
                     >
                         <Instagram className="h-4 w-4" />
@@ -179,10 +179,10 @@ export const DiscoverView = React.memo(function DiscoverView({
                         />
                     </div>
                     {/* 페이지사이즈 — 데스크탑만 */}
-                    <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-9">
+                    <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-10">
                         {([20, 50, 100] as const).map(n => (
                             <button key={n} onClick={() => setPageSize(n)}
-                                className={`px-2.5 h-full rounded-md text-xs font-medium transition-colors ${pageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                className={`px-2.5 h-full rounded-md text-sm font-medium transition-colors ${pageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                             >{n}</button>
                         ))}
                     </div>
