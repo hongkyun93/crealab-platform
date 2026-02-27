@@ -64,8 +64,9 @@ export const compressVideo = async (
         await ff.deleteFile(outputName);
 
         // 결과물 반환
+        // ff.readFile은 Uint8Array<ArrayBufferLike>를 반환. TypeScript DOM 라이브러리의 BlobPart 호환성을 위해 안전하게 변환.
         return new File(
-            [data],
+            [new Uint8Array(data as any)],
             file.name.replace(/\.[^/.]+$/, "") + "_compressed.mp4",
             { type: 'video/mp4' }
         );
