@@ -1,9 +1,8 @@
-
 import { cn } from '@/lib/utils';
 import { FileText, MessageSquare, ScrollText, Video } from 'lucide-react';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
-export function MobileTabs() {
+export function BrandMobileTabs() {
     const activeMobileTab = useWorkspaceStore((state) => state.activeMobileTab);
     const setMobileTab = useWorkspaceStore((state) => state.setMobileTab);
 

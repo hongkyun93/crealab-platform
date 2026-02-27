@@ -14,7 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { PerformanceDialog } from "@/components/workspace/brand/performance-dialog"
-import { BarChart3, Ban, ChevronRight, FileText, LayoutGrid, List, Pencil, Table2, AlertTriangle } from "lucide-react"
+import { FavoriteButton } from "@/components/ui/favorite-button"
+import { BarChart3, Ban, ChevronRight, FileText, LayoutGrid, List, Pencil, Search, Star, Table2, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import React, { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -49,15 +50,48 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     onViewProposal
 }: WorkspaceViewProps) {
     const { user } = useAuth()
-    const { supabase, refreshData } = useUnifiedProvider()
+    const { supabase, refreshData, favorites } = useUnifiedProvider() as any
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'table'>('list')
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
     const [pageSize, setPageSize] = useState<20 | 50 | 100>(50)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [favoritesOnly, setFavoritesOnly] = useState(false)
     const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false, title: '', description: '', onConfirm: () => { } })
+
+    const applySearch = (items: any[]) => {
+        if (!searchQuery.trim()) return items
+        const q = searchQuery.toLowerCase()
+        return items.filter(item =>
+            (item.influencerName || item.influencer_name || '').toLowerCase().includes(q) ||
+            (item.product_name || item.productName || '').toLowerCase().includes(q)
+        )
+    }
+
+    const applyFavorites = (items: any[]) => {
+        if (!favoritesOnly || !favorites) return items
+        return items.filter(item => favorites.some((f: any) => f.target_id === String(item.id) && f.target_type === 'workspace'))
+    }
+
+    const applyFilters = (items: any[]) => applyFavorites(applySearch(items))
 
     // Performance dialog state
     const [perfDialogProposal, setPerfDialogProposal] = useState<any>(null)
     const [perfDialogOpen, setPerfDialogOpen] = useState(false)
+
+    const fmtRelTime = (d: string) => {
+        if (!d) return ''
+        const diff = Date.now() - new Date(d).getTime()
+        const m = Math.floor(diff / 60000), h = Math.floor(m / 60), day = Math.floor(h / 24)
+        return day > 0 ? `${day}일 전` : h > 0 ? `${h}시간 전` : m > 0 ? `${m}분 전` : '방금 전'
+    }
+    const getUpdaterBrand = (item: any) => {
+        if (item.content_submission_status === 'submitted') return item.influencerName || item.influencer_name || '크리에이터'
+        if (item.payment_confirmed_at) return '나'
+        if (item.delivery_status === 'shipped' || item.delivery_status === 'delivered') return '나'
+        if (item.status === 'applied') return item.influencerName || item.influencer_name || '크리에이터'
+        if (item.status === 'offered') return '나'
+        return null
+    }
 
     // G2: Edit proposal state
     const [editingProposal, setEditingProposal] = useState<any>(null)
@@ -502,10 +536,10 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         const brandCount = filterByType(items, 'brand').length
 
         return (
-            <div className="flex gap-2 mb-4 flex-wrap">
+            <div className="grid grid-cols-4 gap-1.5 mb-4 md:flex md:flex-wrap md:gap-2">
                 <button
                     onClick={() => setWorkspaceSubTab('all')}
-                    className={`min-w-[90px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
+                    className={`w-full md:w-auto md:min-w-[90px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
                         ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
@@ -514,7 +548,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </button>
                 <button
                     onClick={() => setWorkspaceSubTab('moment')}
-                    className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'moment'
+                    className={`w-full md:w-auto md:min-w-[100px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'moment'
                         ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
@@ -523,7 +557,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </button>
                 <button
                     onClick={() => setWorkspaceSubTab('campaign')}
-                    className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'campaign'
+                    className={`w-full md:w-auto md:min-w-[100px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'campaign'
                         ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
@@ -532,7 +566,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </button>
                 <button
                     onClick={() => setWorkspaceSubTab('brand')}
-                    className={`min-w-[100px] px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'brand'
+                    className={`w-full md:w-auto md:min-w-[100px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'brand'
                         ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
@@ -706,7 +740,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                     const isOutbound = tabType === 'outbound' || (tabType === 'all' && (item.moment_id || item.event_id))
 
                     return (
-                        <Card key={item.id} className={`p-6 border-l-4 bg-card hover:bg-accent/5 cursor-pointer hover:shadow-md transition-all
+                        <Card key={item.id} className={`relative px-6 pt-6 pb-3.5 border-l-4 bg-card hover:bg-accent/5 cursor-pointer hover:shadow-md transition-all overflow-hidden
                             ${tabType === 'active' ? 'border-l-emerald-500' :
                                 tabType === 'inbound' ? 'border-l-blue-500' :
                                     tabType === 'outbound' ? 'border-l-purple-500' :
@@ -717,16 +751,20 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                                         item.status === 'rejected' ? 'border-l-red-500' :
                                                             (item.campaign_id || item.campaignId) ? 'border-l-blue-500' : 'border-l-purple-500'}
                         `} onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
-                            <div className="flex gap-6">
-                                <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xl shrink-0 overflow-hidden">
+                            {/* 모바일: 우상단 즐겨찾기 버튼 */}
+                            <div className="absolute top-3 right-3 sm:hidden">
+                                <FavoriteButton targetId={String(item.id)} targetType="workspace" />
+                            </div>
+                            <div className="flex gap-4 md:gap-6">
+                                <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xl shrink-0 overflow-hidden">
                                     {item.influencerAvatar ? <img src={item.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (item.influencerName?.[0] || item.influencer_name?.[0] || "C")}
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <h3 className="font-bold text-base md:text-lg flex flex-wrap items-center gap-2">
+                                            <h3 className="font-bold text-base md:text-xl flex flex-wrap items-center gap-2">
                                                 {item.influencerName || item.influencer_name}
-                                                <Badge variant="outline" className={`text-[10px] md:text-xs font-medium border-2 rounded-full px-2 py-0.5 transition-all bg-background
+                                                <Badge variant="outline" className={`text-[10px] md:text-xs font-medium border-2 rounded-full px-2 py-0.5 transition-all bg-background hidden md:inline-flex
                                                         ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
                                                         item.status === 'settlement' || item.status === 'final_complete' ? 'text-amber-600 dark:text-amber-400 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]' :
                                                             item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
@@ -743,94 +781,103 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                             </h3>
                                             <p className="text-sm text-muted-foreground mt-1">{item.product_name || item.productName || "제품 협찬"}</p>
                                         </div>
-                                        <span className="text-xs text-muted-foreground/70">{new Date(item.created_at).toLocaleDateString()}</span>
+                                        <div className="flex items-center gap-2">
+                                            <FavoriteButton targetId={String(item.id)} targetType="workspace" className="hidden sm:flex" />
+                                        </div>
                                     </div>
                                     {item.message && (
-                                        <div className="mt-3 bg-muted/30 p-3 rounded text-sm text-foreground/80 line-clamp-2">
+                                        <div className="hidden sm:block mt-3 bg-muted/30 p-3 rounded text-sm text-foreground/80 line-clamp-2">
                                             {item.message}
                                         </div>
                                     )}
-                                    <div className="mt-4 flex items-center gap-4">
-                                        <div className="flex-1">
-                                            <WorkspaceProgressBar
-                                                proposal={item}
-                                            />
-                                        </div>
-
-                                        {/* Action Buttons - 브랜드 받은 제안: campaign_applications(applied/pending) + brand_proposals(offered) */}
-                                        {isInbound && (item.status === 'applied' || item.status === 'pending' || item.status === 'viewed' || item.status === 'offered') && (
-                                            <div className="flex gap-2 shrink-0">
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-green-600 hover:bg-green-700 text-white font-semibold"
-                                                    onClick={(e) => handleAcceptProposal(e, item.id)}
-                                                >
-                                                    수락하기
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-400 font-semibold"
-                                                    onClick={(e) => handleRejectProposal(e, item.id)}
-                                                >
-                                                    거절하기
-                                                </Button>
-                                            </div>
-                                        )}
-
-                                        {item.moment_id && onViewProposal && (
-                                            <div className="shrink-0">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                                                    onClick={(e) => { e.stopPropagation(); onViewProposal(item); }}
-                                                >
-                                                    <FileText className="mr-1 h-3 w-3" /> 제안서 보기
-                                                </Button>
-                                            </div>
-                                        )}
-
-                                        {/* 🆕 성과 및 최종 완료 버튼 — settlement 단계 전용 */}
-                                        {item.status === 'settlement' && (
-                                            <div className="shrink-0">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 font-semibold gap-1.5"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        setPerfDialogProposal(item)
-                                                        setPerfDialogOpen(true)
-                                                    }}
-                                                >
-                                                    <BarChart3 className="h-3.5 w-3.5" /> 성과 및 최종 완료
-                                                </Button>
-                                            </div>
-                                        )}
-
-                                        {isOutbound && (!item.status || item.status === 'offered' || item.status === 'negotiating') && (
-                                            <div className="flex gap-2 shrink-0">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
-                                                    onClick={(e) => handleOpenEditProposal(e, item)}
-                                                >
-                                                    <Pencil className="mr-1 h-3 w-3" /> 수정
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-gray-200 hover:bg-gray-50 text-gray-700"
-                                                    onClick={(e) => handleCancelProposal(e, item.id)}
-                                                >
-                                                    <Ban className="mr-1 h-3 w-3" /> 제안 취소
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
+                            </div>
+                            {/* Progress bar — full-width below on mobile, indented on desktop */}
+                            <div className="mt-4 md:pl-[88px] flex items-center gap-4">
+                                <div className="flex-1">
+                                    <WorkspaceProgressBar
+                                        proposal={item}
+                                    />
+                                </div>
+
+                                {/* Action Buttons */}
+                                {isInbound && (item.status === 'applied' || item.status === 'pending' || item.status === 'viewed' || item.status === 'offered') && (
+                                    <div className="hidden md:flex gap-2 shrink-0">
+                                        <Button
+                                            size="sm"
+                                            className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+                                            onClick={(e) => handleAcceptProposal(e, item.id)}
+                                        >
+                                            수락하기
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-400 font-semibold"
+                                            onClick={(e) => handleRejectProposal(e, item.id)}
+                                        >
+                                            거절하기
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {item.moment_id && onViewProposal && (
+                                    <div className="hidden md:flex shrink-0">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                            onClick={(e) => { e.stopPropagation(); onViewProposal(item); }}
+                                        >
+                                            <FileText className="mr-1 h-3 w-3" /> 제안서 보기
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {/* 성과 및 최종 완료 버튼 — settlement 단계 전용 */}
+                                {item.status === 'settlement' && (
+                                    <div className="hidden md:flex shrink-0">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 font-semibold gap-1.5"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                setPerfDialogProposal(item)
+                                                setPerfDialogOpen(true)
+                                            }}
+                                        >
+                                            <BarChart3 className="h-3.5 w-3.5" /> 성과 및 최종 완료
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {isOutbound && (!item.status || item.status === 'offered' || item.status === 'negotiating') && (
+                                    <div className="hidden md:flex gap-2 shrink-0">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                                            onClick={(e) => handleOpenEditProposal(e, item)}
+                                        >
+                                            <Pencil className="mr-1 h-3 w-3" /> 수정
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-gray-200 hover:bg-gray-50 text-gray-700"
+                                            onClick={(e) => handleCancelProposal(e, item.id)}
+                                        >
+                                            <Ban className="mr-1 h-3 w-3" /> 제안 취소
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                            {/* 최근 업데이트 */}
+                            <div className="flex justify-end mt-1.5 md:pl-[88px]">
+                                <span className="text-[10px] text-muted-foreground/50">
+                                    최근 업데이트 : {fmtRelTime(item.updated_at || item.created_at)}{getUpdaterBrand(item) ? ` (${getUpdaterBrand(item)})` : ''}
+                                </span>
                             </div>
                         </Card>
                     )
@@ -863,80 +910,70 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </div>
             )}
 
-            {/* Title and View Mode Selector */}
+            {/* Title and Controls */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 shrink-0">
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">워크스페이스 아카이브</h1>
                     <p className="text-sm sm:text-base text-muted-foreground">크리에이터와 진행 중인 모든 협업을 한곳에서 관리하세요.</p>
                 </div>
 
-                {/* View Mode Selector */}
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
+                <div className="flex w-full sm:max-w-lg items-center gap-2">
+                    {/* 즐겨찾기 */}
+                    <Button
+                        variant={favoritesOnly ? "secondary" : "outline"}
+                        size="icon"
+                        onClick={() => setFavoritesOnly(!favoritesOnly)}
+                        className={favoritesOnly ? "bg-yellow-100 text-yellow-600 border-yellow-200 hover:bg-yellow-200" : "text-muted-foreground"}
+                        title="즐겨찾기만 보기"
+                    >
+                        <Star className={`h-4 w-4 ${favoritesOnly ? "fill-current" : ""}`} />
+                    </Button>
+                    {/* 검색창 */}
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="크리에이터명, 제품명 검색"
+                            className="pl-9"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    {/* 20/50/100 — 데스크탑만 */}
+                    <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-10">
                         {([20, 50, 100] as const).map(n => (
-                            <button
-                                key={n}
-                                onClick={() => setPageSize(n)}
-                                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${pageSize === n
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'text-muted-foreground hover:text-foreground'
-                                    }`}
-                            >
-                                {n}
-                            </button>
+                            <button key={n} onClick={() => setPageSize(n)}
+                                className={`px-2.5 h-full rounded-md text-sm font-medium transition-colors ${pageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >{n}</button>
                         ))}
                     </div>
-                    <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-                        <Button
-                            variant={viewMode === 'list' ? 'default' : 'ghost'}
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setViewMode('list')}
-                            title="리스트 보기"
-                        >
-                            <List className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setViewMode('grid')}
-                            title="그리드 보기"
-                        >
-                            <LayoutGrid className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant={viewMode === 'table' ? 'default' : 'ghost'}
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setViewMode('table')}
-                            title="테이블 보기"
-                        >
-                            <Table2 className="h-4 w-4" />
-                        </Button>
+                    {/* 뷰 토글 — 데스크탑만 */}
+                    <div className="hidden md:flex items-center gap-1 bg-muted p-1 rounded-lg shrink-0">
+                        <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('list')} title="리스트 보기"><List className="h-4 w-4" /></Button>
+                        <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('grid')} title="그리드 보기"><LayoutGrid className="h-4 w-4" /></Button>
+                        <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('table')} title="테이블 보기"><Table2 className="h-4 w-4" /></Button>
                     </div>
                 </div>
             </div>
 
             <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="w-full">
-                <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
-                    <TabsTrigger value="all" className="min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
-                        전체 보기 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
+                <TabsList className="grid grid-cols-3 gap-2 h-auto w-full bg-transparent p-0 md:flex md:flex-wrap md:justify-start">
+                    <TabsTrigger value="all" className="w-full md:w-auto md:min-w-[130px] data-[state=active]:bg-slate-900 data-[state=active]:text-white border bg-background px-4 py-2 rounded-full text-foreground/90 font-medium transition-all">
+                        전체 보기 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allWorkspaceItems.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="active" className="min-w-[120px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(16,185,129,0.6)] bg-background text-emerald-700 dark:text-emerald-400 border-2 border-emerald-500/50 px-4 py-2 rounded-full font-medium transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.4)]">
-                        진행중 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
+                    <TabsTrigger value="active" className="w-full md:w-auto md:min-w-[120px] data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(16,185,129,0.6)] bg-background text-emerald-700 dark:text-emerald-400 border-2 border-emerald-500/50 px-4 py-2 rounded-full font-medium transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+                        진행중 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allActive.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="inbound" className="min-w-[130px] data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.6)] bg-background text-blue-700 dark:text-blue-400 border-2 border-blue-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]">
-                        받은 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{inboundApplications.length}</span>
+                    <TabsTrigger value="inbound" className="w-full md:w-auto md:min-w-[130px] data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.6)] bg-background text-blue-700 dark:text-blue-400 border-2 border-blue-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]">
+                        받은 제안 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{inboundApplications.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="outbound" className="min-w-[130px] data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(168,85,247,0.6)] bg-background text-purple-700 dark:text-purple-400 border-2 border-purple-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">
-                        보낸 제안 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundOffers.length}</span>
+                    <TabsTrigger value="outbound" className="w-full md:w-auto md:min-w-[130px] data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(168,85,247,0.6)] bg-background text-purple-700 dark:text-purple-400 border-2 border-purple-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">
+                        보낸 제안 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{outboundOffers.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="rejected" className="min-w-[120px] data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(239,68,68,0.6)] bg-background text-red-700 dark:text-red-400 border-2 border-red-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]">
-                        거절됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allRejected.length}</span>
+                    <TabsTrigger value="rejected" className="w-full md:w-auto md:min-w-[120px] data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(239,68,68,0.6)] bg-background text-red-700 dark:text-red-400 border-2 border-red-500/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+                        거절됨 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allRejected.length}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="completed" className="min-w-[120px] data-[state=active]:bg-slate-400 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(148,163,184,0.6)] bg-background text-slate-700 dark:text-slate-400 border-2 border-slate-400/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(148,163,184,0.4)]">
-                        완료됨 <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
+                    <TabsTrigger value="completed" className="w-full md:w-auto md:min-w-[120px] data-[state=active]:bg-slate-400 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(148,163,184,0.6)] bg-background text-slate-700 dark:text-slate-400 border-2 border-slate-400/50 px-4 py-2 rounded-full transition-all hover:shadow-[0_0_15px_rgba(148,163,184,0.4)]">
+                        완료됨 <span className="hidden md:inline ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs">{allCompleted.length}</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -951,19 +988,19 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </div>
 
                 <TabsContent value="all" className="space-y-4">
-                    {renderItems(filterByType(allWorkspaceItems, workspaceSubTab).slice(0, pageSize), 'all')}
+                    {renderItems(filterByType(applyFilters(allWorkspaceItems), workspaceSubTab).slice(0, pageSize), 'all')}
                 </TabsContent>
 
                 <TabsContent value="active" className="space-y-4">
-                    {renderItems(filterByType(allActive, workspaceSubTab).slice(0, pageSize), 'active')}
+                    {renderItems(filterByType(applyFilters(allActive), workspaceSubTab).slice(0, pageSize), 'active')}
                 </TabsContent>
 
                 <TabsContent value="inbound" className="space-y-4">
-                    {renderItems(filterByType(inboundApplications, workspaceSubTab).slice(0, pageSize), 'inbound')}
+                    {renderItems(filterByType(applyFilters(inboundApplications), workspaceSubTab).slice(0, pageSize), 'inbound')}
                 </TabsContent>
 
                 <TabsContent value="outbound" className="space-y-4">
-                    {renderItems(filterByType(outboundOffers, workspaceSubTab).slice(0, pageSize), 'outbound')}
+                    {renderItems(filterByType(applyFilters(outboundOffers), workspaceSubTab).slice(0, pageSize), 'outbound')}
                     <div className="flex justify-end mt-4">
                         <Button variant="outline" asChild>
                             <Link href="/brand?view=discover">크리에이터 찾으러 가기</Link>
@@ -972,11 +1009,11 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </TabsContent>
 
                 <TabsContent value="rejected" className="space-y-4">
-                    {renderItems(filterByType(allRejected, workspaceSubTab).slice(0, pageSize), 'rejected')}
+                    {renderItems(filterByType(applyFilters(allRejected), workspaceSubTab).slice(0, pageSize), 'rejected')}
                 </TabsContent>
 
                 <TabsContent value="completed" className="space-y-4">
-                    {renderItems(filterByType(allCompleted, workspaceSubTab).slice(0, pageSize), 'completed')}
+                    {renderItems(filterByType(applyFilters(allCompleted), workspaceSubTab).slice(0, pageSize), 'completed')}
                 </TabsContent>
             </Tabs>
 

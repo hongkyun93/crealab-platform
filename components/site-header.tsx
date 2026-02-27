@@ -97,7 +97,7 @@ export function SiteHeader() {
     const isActive = (path: string) => pathname?.startsWith(path)
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-[60] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="container flex h-14 items-center max-w-[1920px] px-3 sm:px-6 md:px-8">
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-3 sm:mr-6 flex items-center space-x-2">

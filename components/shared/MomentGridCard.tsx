@@ -49,11 +49,11 @@ const PLATFORM_ICONS: Record<string, React.ReactNode> = {
 }
 
 const CHANNEL_LABELS: Record<string, string> = {
-    instagram_reels: '🎞️ 릴스', instagram_feed: '📷 피드', instagram_story: '⭕ 스토리',
+    instagram_reels: '릴스', instagram_feed: '게시물', instagram_story: '스토리',
     youtube_longform: '▶️ 롱폼', youtube_shorts: '⚡ 숏츠',
 }
 const CHANNEL_BG: Record<string, string> = {
-    instagram: 'bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600',
+    instagram: 'bg-fuchsia-600',
     youtube: 'bg-gradient-to-r from-red-600 to-red-700',
     tiktok: 'bg-gradient-to-r from-black to-slate-800',
     blog: 'bg-gradient-to-r from-green-500 to-green-600',
@@ -262,10 +262,23 @@ export function MomentGridCard({
                         </span>
                     )}
 
-                    {/* Follower count + tag */}
+                    {/* Follower count + Instagram verified badge + tag */}
                     <span className="flex items-center gap-1.5 mt-1 text-[11px] font-medium text-muted-foreground flex-wrap">
                         {icon}
                         <span>{fmt(followers)} 팔로워</span>
+                        {item.verified && (
+                            <>
+                                <span className="text-border">·</span>
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: '#c026d3', color: 'white' }}>
+                                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none">
+                                        <rect x="2" y="2" width="20" height="20" rx="5.5" stroke="white" strokeWidth="1.5" />
+                                        <circle cx="12" cy="12" r="3.5" stroke="white" strokeWidth="1.5" />
+                                        <circle cx="17" cy="7" r="1" fill="white" />
+                                    </svg>
+                                    연결됨
+                                </span>
+                            </>
+                        )}
                         {item.tags && item.tags.length > 0 && (
                             <>
                                 <span className="text-border">·</span>
@@ -334,8 +347,22 @@ export function MomentGridCard({
                     <div className="flex flex-wrap gap-1 mt-1">
                         {item.channels.map((ch: string) => {
                             const base = ch.split('_')[0]
-                            return (
-                                <span key={ch} className={`text-[10px] font-medium text-white px-2 py-0.5 rounded-full shadow-sm ${CHANNEL_BG[base] || 'bg-slate-600'}`}>
+                            const isInsta = base === 'instagram'
+                            return isInsta ? (
+                                <span
+                                    key={ch}
+                                    className="inline-flex items-center gap-0.5 text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm"
+                                    style={{ background: '#c026d3', color: 'white' }}
+                                >
+                                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none">
+                                        <rect x="2" y="2" width="20" height="20" rx="5.5" stroke="white" strokeWidth="1.5" />
+                                        <circle cx="12" cy="12" r="3.5" stroke="white" strokeWidth="1.5" />
+                                        <circle cx="17" cy="7" r="1" fill="white" />
+                                    </svg>
+                                    {CHANNEL_LABELS[ch] || ch}
+                                </span>
+                            ) : (
+                                <span key={ch} className={`inline-flex items-center gap-0.5 text-[10px] font-medium text-white px-2 py-0.5 rounded-full shadow-sm ${CHANNEL_BG[base] || 'bg-slate-600'}`}>
                                     {CHANNEL_LABELS[ch] || ch}
                                 </span>
                             )

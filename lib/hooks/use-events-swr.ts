@@ -30,7 +30,7 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
             date: e.event_date || new Date(e.created_at).toISOString().split('T')[0],
             description: e.description || '',
             tags: e.tags || [],
-            verified: profile.role === 'creator',
+            verified: socialChannels.some((c: any) => (c.channel_type || c.platform) === 'instagram'),
             followers: primaryChannel?.followers_count ?? profile.followers_count ?? 0,
             category: e.category || '',
             targetProduct: e.target_product || '',

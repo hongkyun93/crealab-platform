@@ -12,7 +12,7 @@ interface WorkspaceState {
 
     // UI State
     isChatOpen: boolean;
-    activeMobileTab: 'chat' | 'info' | 'contract';
+    activeMobileTab: 'chat' | 'info' | 'contract' | 'content';
     expandedSections: string[];
     contractViewOpen: boolean;
     videoReviewOpen: boolean;
@@ -36,7 +36,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     currentStage: 'negotiation',
     stageMap: {},
     isChatOpen: false,
-    activeMobileTab: 'chat',
+    activeMobileTab: 'info',
     expandedSections: ['current_stage'],
     contractViewOpen: false,
     videoReviewOpen: false,
@@ -67,7 +67,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             proposal: null,
             currentStage: 'negotiation',
             isChatOpen: false,
-            activeMobileTab: 'chat',
+            activeMobileTab: 'info',
             expandedSections: ['current_stage'],
             contractViewOpen: false,
             videoReviewOpen: false,

@@ -53,43 +53,36 @@ export function MyProductsView({
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
     const ActionButtons = ({ p }: { p: any }) => (
-        <div className="flex items-center gap-0.5 sm:gap-1">
-            {onViewDetail && (
-                <Button
-                    variant="ghost" size="sm"
-                    className="h-7 px-1.5 text-[10px] gap-0.5 sm:h-8 sm:px-2 sm:text-xs sm:gap-1 text-primary hover:text-primary hover:bg-primary/10"
-                    onClick={(e) => { e.stopPropagation(); onViewDetail(String(p.id)) }}
-                >
-                    <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> 상세보기
-                </Button>
-            )}
+        <div className="flex flex-nowrap items-center justify-between gap-0.5 w-full overflow-hidden">
             {p.link && (
-                <Button variant="ghost" size="sm" className="h-7 px-1.5 text-[10px] gap-0.5 sm:h-8 sm:px-2 sm:text-xs sm:gap-1" asChild onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className="h-7 px-1 flex-1 min-w-0 text-[10px] sm:text-xs gap-1" asChild onClick={(e) => e.stopPropagation()}>
                     <a href={p.link} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> 웹사이트
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                        <span className="truncate">웹사이트</span>
                     </a>
                 </Button>
             )}
             <Button
                 variant="ghost" size="sm"
-                className="h-7 px-1.5 text-[10px] gap-0.5 sm:h-8 sm:px-2 sm:text-xs sm:gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                className="h-7 px-1 flex-1 min-w-0 text-[10px] sm:text-xs gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 onClick={(e) => { e.stopPropagation(); handleViewGuide(p) }}
             >
-                <FileText className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> 가이드
+                <FileText className="h-3 w-3 shrink-0" />
+                <span className="truncate">가이드</span>
             </Button>
             <Button
                 variant="ghost" size="sm"
-                className="h-7 px-1.5 text-[10px] gap-0.5 sm:h-8 sm:px-2 sm:text-xs sm:gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                className="h-7 w-7 p-0 shrink-0 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                 onClick={(e) => { e.stopPropagation(); handleEditProduct(p) }}
             >
-                <Pencil className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> 수정
+                <Pencil className="h-3.5 w-3.5" />
             </Button>
             <Button
                 variant="ghost" size="sm"
-                className="h-7 px-1.5 text-[10px] gap-0.5 sm:h-8 sm:px-2 sm:text-xs sm:gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
+                className="h-7 w-7 p-0 shrink-0 flex items-center justify-center text-red-500 hover:text-red-600 hover:bg-red-50"
                 onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id) }}
             >
-                <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" />
             </Button>
         </div>
     )

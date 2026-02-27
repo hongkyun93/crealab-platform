@@ -2388,7 +2388,7 @@ function BrandDashboardContent() {
 
             {/* Premium Deal Room Dialog */}
             <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-                <DialogContent className="max-w-[1500px] w-[95vw] h-[90vh] max-h-[900px] p-0 gap-0 overflow-hidden flex flex-col bg-background border-0 shadow-2xl rounded-2xl">
+                <DialogContent className="left-0 top-14 translate-x-0 translate-y-0 max-w-[100vw] w-full h-[calc(100dvh-3.5rem)] rounded-none sm:left-[50%] sm:top-[50%] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-[1500px] sm:w-[95vw] sm:h-[90vh] sm:max-h-[900px] sm:rounded-2xl p-0 gap-0 overflow-hidden flex flex-col bg-background border-0 shadow-2xl">
                     <DialogTitle className="sr-only">Brand Workspace</DialogTitle>
                     {/* Status Change Confirmation Dialog */}
                     <AlertDialog open={!!confirmStatusData} onOpenChange={(open) => !open && setConfirmStatusData(null)}>

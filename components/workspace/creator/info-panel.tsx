@@ -447,8 +447,8 @@ export function CreatorInfoPanel() {
 
     return (
         <div className="flex flex-col h-full">
-            {/* 1. Workspace Header */}
-            <div className="p-6 pb-2">
+            {/* 1. Workspace Header (Desktop Only, Mobile uses Layout Header) */}
+            <div className="p-6 pb-2 hidden md:block">
                 <div className="flex items-center gap-3 mb-4">
                     {/* Brand Avatar Placeholder */}
                     <div className="w-12 h-12 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-lg font-bold text-indigo-700 overflow-hidden">
@@ -468,7 +468,7 @@ export function CreatorInfoPanel() {
                 <ProgressBar />
             </div>
 
-            <Separator className="my-2" />
+            <Separator className="my-2 hidden md:block" />
 
             {/* 3. Next Action Callout */}
             <div className="px-6 py-3">
@@ -536,7 +536,16 @@ export function CreatorInfoPanel() {
                             {/* Toggle button to open contract in main area */}
                             <Button
                                 className="w-full bg-indigo-600 hover:bg-indigo-700"
-                                onClick={() => useWorkspaceStore.getState().setContractViewOpen(true)}
+                                onClick={() => {
+                                    if (window.innerWidth < 768) {
+                                        toast.info("전자 계약서는 PC 환경에서만 확인 및 서명이 가능합니다.", {
+                                            duration: 4000,
+                                            icon: '💻',
+                                        });
+                                        return;
+                                    }
+                                    useWorkspaceStore.getState().setContractViewOpen(true);
+                                }}
                             >
                                 <FileText className="h-4 w-4 mr-2" /> 전자 계약서 열기
                             </Button>

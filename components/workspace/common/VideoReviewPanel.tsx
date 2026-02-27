@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useWorkspaceStore } from '../hooks/use-workspace-store'
 import { ChatArea } from './chat-area'
+import { compressVideo } from '@/lib/video-compressor'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -92,12 +93,17 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
     // ── revision upload (creator only) ──
     const [revisionUrl, setRevisionUrl] = useState('')
     const [isSavingRevision, setIsSavingRevision] = useState(false)
-    const [revisionUploadMode, setRevisionUploadMode] = useState<'link' | 'file'>('link')
+    const [revisionUploadMode, setRevisionUploadMode] = useState<'link' | 'file'>('file')
     const [revisionUploadProgress, setRevisionUploadProgress] = useState(0)
+    const [revisionCompressProgress, setRevisionCompressProgress] = useState(0)
     const revisionFileInputRef = useRef<HTMLInputElement>(null)
     // ── draft upload (creator only — initial submission) ──
     const [draftUrl, setDraftUrl] = useState('')
     const [isSavingDraft, setIsSavingDraft] = useState(false)
+    const [draftUploadMode, setDraftUploadMode] = useState<'link' | 'file'>('file')
+    const [draftUploadProgress, setDraftUploadProgress] = useState(0)
+    const [draftCompressProgress, setDraftCompressProgress] = useState(0)
+    const draftFileInputRef = useRef<HTMLInputElement>(null)
     // ── brand review tab ──
     const [isMarkingReview, setIsMarkingReview] = useState(false)
     // ── video error fallback (e.g. MPEG-4 NotSupportedError) ──
@@ -306,6 +312,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
         try {
             const updates: any = {
                 content_submission_url: draftUrl.trim(),
+                content_submission_file_url: null,
                 content_submission_status: 'submitted',
                 content_submission_date: new Date().toISOString(),
                 content_submission_version: 1,
@@ -318,13 +325,81 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                 useWorkspaceStore.getState().updateProposal(updates)
                 refreshData()
                 setDraftUrl('')
-                toast.success('초안이 제출되었습니다. 브랜드가 검토한 후 피드백을 줍니다.')
+                toast.success('초안 링크가 제출되었습니다. 브랜드가 검토한 후 피드백을 줍니다.')
             }
         } catch (e) {
             console.error('[VideoReviewPanel] save draft error:', e)
             toast.error('제출 중 오류가 발생했습니다.')
         } finally {
             setIsSavingDraft(false)
+        }
+    }
+
+    // ─── creator: upload initial draft file ──────────────────────────────────
+
+    const handleDraftFileUpload = async (file: File) => {
+        if (!proposalId || isSavingDraft) return
+        setIsSavingDraft(true)
+        setDraftUploadProgress(0)
+        setDraftCompressProgress(0)
+
+        try {
+            const { data: sessionData } = await supabase.auth.getSession()
+            const token = sessionData?.session?.access_token
+            if (!token) throw new Error('인증 세션이 없습니다.')
+
+            // 프론트엔드 압축 (비디오일 경우만 진행)
+            const compressedFile = await compressVideo(file, (p) => {
+                setDraftCompressProgress(Math.round(p * 100))
+            })
+
+            const ext = compressedFile.name.split('.').pop() || 'mp4'
+            const path = `content/${proposalId}/draft_${Date.now()}.${ext}`
+            const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${path}`
+            const fileUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submissions/${path}`
+
+            await new Promise<void>((resolve, reject) => {
+                const xhr = new XMLHttpRequest()
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) setDraftUploadProgress(Math.round((e.loaded / e.total) * 100))
+                })
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) resolve()
+                    else reject(new Error(`업로드 실패: ${xhr.status}`))
+                })
+                xhr.addEventListener('error', () => reject(new Error('네트워크 오류')))
+                xhr.open('POST', url)
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+                xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+                xhr.setRequestHeader('x-upsert', 'true')
+                xhr.send(compressedFile)
+            })
+
+            const updates: any = {
+                content_submission_file_url: fileUrl,
+                content_submission_url: null,
+                content_submission_status: 'submitted',
+                content_submission_date: new Date().toISOString(),
+                content_submission_version: 1,
+            }
+            let success = false
+            if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
+            else if (isCampaign) { success = await updateProposal(proposalId, updates) }
+            else { success = await updateBrandProposal(proposalId, updates) }
+
+            if (success) {
+                useWorkspaceStore.getState().updateProposal(updates)
+                refreshData()
+                toast.success('초안 파일이 제출되었습니다.')
+            }
+        } catch (e: any) {
+            console.error('[VideoReviewPanel] draft file upload error:', e)
+            toast.error(e.message || '업로드 실패')
+        } finally {
+            setIsSavingDraft(false)
+            setDraftUploadProgress(0)
+            setDraftCompressProgress(0)
+            if (draftFileInputRef.current) draftFileInputRef.current.value = ''
         }
     }
 
@@ -394,12 +469,19 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
         if (!proposalId || isSavingRevision) return
         setIsSavingRevision(true)
         setRevisionUploadProgress(0)
+        setRevisionCompressProgress(0)
+
         try {
             const { data: sessionData } = await supabase.auth.getSession()
             const token = sessionData?.session?.access_token
             if (!token) throw new Error('인증 세션이 없습니다.')
 
-            const ext = file.name.split('.').pop() || 'mp4'
+            // 프론트엔드 압축 (비디오일 경우만 진행)
+            const compressedFile = await compressVideo(file, (p) => {
+                setRevisionCompressProgress(Math.round(p * 100))
+            })
+
+            const ext = compressedFile.name.split('.').pop() || 'mp4'
             const path = `content/${proposalId}/revision_${Date.now()}.${ext}`
             const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${path}`
 
@@ -419,7 +501,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                 xhr.setRequestHeader('Authorization', `Bearer ${token}`)
                 xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
                 xhr.setRequestHeader('x-upsert', 'true')
-                xhr.send(file)
+                xhr.send(compressedFile)
             })
 
             const updates: any = {
@@ -846,23 +928,111 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                         <p className="text-xs text-muted-foreground">
                             수정 전 초안 영상을 업로드하세요. 브랜드가 엁에서 영상을 보면서 피드백을 남길 수 있습니다.
                         </p>
-                        <div className="flex gap-2">
-                            <Input
-                                placeholder="https://drive.google.com/... 또는 유튜브 비공개 URL"
-                                value={draftUrl}
-                                onChange={e => setDraftUrl(e.target.value)}
-                                className="text-sm h-9 flex-1"
-                            />
-                            <Button
-                                size="sm"
-                                className="shrink-0 gap-1.5"
-                                onClick={handleSaveDraft}
-                                disabled={isSavingDraft || !draftUrl.trim()}
+
+                        {/* 모드 전환 버튼 (파일 / 링크) */}
+                        <div className="flex gap-1 p-0.5 bg-muted rounded-lg w-full max-w-[240px]">
+                            <button
+                                type="button"
+                                onClick={() => setDraftUploadMode('file')}
+                                className={cn(
+                                    'flex-1 text-[11px] font-medium py-1 rounded-md transition-all',
+                                    draftUploadMode === 'file'
+                                        ? 'bg-background shadow-sm text-foreground'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                )}
                             >
-                                {isSavingDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                                초안 제출
-                            </Button>
+                                📁 파일 (자동 압축)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setDraftUploadMode('link')}
+                                className={cn(
+                                    'flex-1 text-[11px] font-medium py-1 rounded-md transition-all',
+                                    draftUploadMode === 'link'
+                                        ? 'bg-background shadow-sm text-foreground'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                )}
+                            >
+                                🔗 외부 링크
+                            </button>
                         </div>
+
+                        {draftUploadMode === 'link' ? (
+                            <div className="flex gap-2">
+                                <Input
+                                    placeholder="https://drive.google.com/... 또는 유튜브 비공개 URL"
+                                    value={draftUrl}
+                                    onChange={e => setDraftUrl(e.target.value)}
+                                    className="text-sm h-9 flex-1"
+                                />
+                                <Button
+                                    size="sm"
+                                    className="shrink-0 gap-1.5"
+                                    onClick={handleSaveDraft}
+                                    disabled={isSavingDraft || !draftUrl.trim()}
+                                >
+                                    {isSavingDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                                    링크 제출
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <input
+                                    ref={draftFileInputRef}
+                                    type="file"
+                                    accept="video/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0]
+                                        if (file) handleDraftFileUpload(file)
+                                    }}
+                                />
+                                {isSavingDraft ? (
+                                    <div className="space-y-1 bg-muted/30 p-3 rounded-lg border border-border/50">
+                                        {/* 압축 프로그레스 */}
+                                        {draftCompressProgress > 0 && draftCompressProgress < 100 && (
+                                            <div className="space-y-1 mb-3">
+                                                <div className="flex justify-between text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                                                    <span>영상을 확인용 품질로 최적화 중...</span>
+                                                    <span>{draftCompressProgress}%</span>
+                                                </div>
+                                                <div className="w-full bg-indigo-100 dark:bg-indigo-950/50 rounded-full h-1.5">
+                                                    <div
+                                                        className="bg-indigo-500 h-1.5 rounded-full transition-all"
+                                                        style={{ width: `${draftCompressProgress}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* 업로드 프로그레스 */}
+                                        {(draftCompressProgress === 100 || draftUploadProgress > 0) && (
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-[10px] text-muted-foreground">
+                                                    <span>서버로 업로드 중...</span>
+                                                    <span>{draftUploadProgress}%</span>
+                                                </div>
+                                                <div className="w-full bg-muted-foreground/20 rounded-full h-1.5">
+                                                    <div
+                                                        className="bg-green-500 h-1.5 rounded-full transition-all"
+                                                        style={{ width: `${draftUploadProgress}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <Button
+                                        className="w-full gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800 dark:hover:bg-indigo-900/60"
+                                        size="sm"
+                                        onClick={() => draftFileInputRef.current?.click()}
+                                        disabled={isSavingDraft}
+                                    >
+                                        <FileVideo className="h-4 w-4" />
+                                        직접 파일 선택 (자동으로 압축되어 올라갑니다)
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )
             }
@@ -1254,18 +1424,38 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                                 if (file) handleRevisionFileUpload(file)
                                             }}
                                         />
-                                        {isSavingRevision && revisionUploadProgress > 0 ? (
-                                            <div className="space-y-1">
-                                                <div className="flex justify-between text-[10px] text-muted-foreground">
-                                                    <span>업로드 중...</span>
-                                                    <span>{revisionUploadProgress}%</span>
-                                                </div>
-                                                <div className="w-full bg-muted rounded-full h-1.5">
-                                                    <div
-                                                        className="bg-orange-500 h-1.5 rounded-full transition-all"
-                                                        style={{ width: `${revisionUploadProgress}%` }}
-                                                    />
-                                                </div>
+                                        {isSavingRevision ? (
+                                            <div className="space-y-1 bg-muted/30 p-3 rounded-lg border border-border/50">
+                                                {/* 압축 프로그레스 */}
+                                                {revisionCompressProgress > 0 && revisionCompressProgress < 100 && (
+                                                    <div className="space-y-1 mb-3">
+                                                        <div className="flex justify-between text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                                                            <span>영상을 확인용 품질로 최적화 중...</span>
+                                                            <span>{revisionCompressProgress}%</span>
+                                                        </div>
+                                                        <div className="w-full bg-indigo-100 dark:bg-indigo-950/50 rounded-full h-1.5">
+                                                            <div
+                                                                className="bg-indigo-500 h-1.5 rounded-full transition-all"
+                                                                style={{ width: `${revisionCompressProgress}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {/* 업로드 프로그레스 */}
+                                                {(revisionCompressProgress === 100 || revisionUploadProgress > 0) && (
+                                                    <div className="space-y-1">
+                                                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                                                            <span>서버로 업로드 중...</span>
+                                                            <span>{revisionUploadProgress}%</span>
+                                                        </div>
+                                                        <div className="w-full bg-muted-foreground/20 rounded-full h-1.5">
+                                                            <div
+                                                                className="bg-orange-500 h-1.5 rounded-full transition-all"
+                                                                style={{ width: `${revisionUploadProgress}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (
                                             <Button
@@ -1451,10 +1641,10 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
 
     // ─── main render ──────────────────────────────────────────────────────────
     return (
-        <div className="flex h-full w-full bg-background overflow-hidden">
+        <div className="flex flex-col lg:flex-row h-full w-full bg-background overflow-hidden">
 
             {/* ── LEFT/CENTER: video + feedback area + action ── */}
-            <div className="flex-1 flex flex-col gap-3 p-4 min-w-0 overflow-y-auto border-r border-border/50">
+            <div className="flex-1 flex flex-col gap-3 p-4 min-w-0 overflow-y-auto lg:border-r border-border/50">
 
                 {/* Header */}
                 <div className="flex items-center justify-between shrink-0">
@@ -1478,15 +1668,19 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                 {/* Video player */}
                 {renderVideoArea()}
 
-                {/* ── 빨간박스 영역: 피드백 입력 ── */}
-                {renderFeedbackArea()}
+                {/* Bottom Sticky Area (Feedback & Actions) */}
+                <div className="mt-auto flex flex-col gap-3 pt-4">
+                    {/* ── 피드백 입력 ── */}
+                    {renderFeedbackArea()}
 
-                {/* Brand approve / Creator final submit */}
-                {renderActionArea()}
+                    {/* Brand approve / Creator final submit */}
+                    {renderActionArea()}
+                </div>
             </div>
 
-            {/* ── RIGHT: existing workspace ChatArea ── */}
-            <div className="w-[300px] shrink-0 flex flex-col border-l border-border/50">
+            {/* ── RIGHT: existing workspace ChatArea (Desktop Only) ── */}
+            {/* 모바일에서는 하단 '대화' 탭을 통해 보장되므로 비디오 뷰 내장 채팅은 숨김 처리하여 스와이프나 레이아웃 깨짐 방지 */}
+            <div className="hidden lg:flex w-[300px] shrink-0 flex-col border-l border-border/50">
                 {/* Chat header label */}
                 <div className="p-3 border-b border-border/50 flex items-center gap-2 shrink-0">
                     <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />

@@ -111,19 +111,19 @@ export function ProductBrowseView({
                         <Input placeholder="브랜드, 제품명 검색" className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
                     {/* 페이지사이즈 — 데스크탑만 */}
-                    <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-9">
+                    <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-10">
                         {([20, 50, 100] as const).map((n) => (
                             <button key={n} onClick={() => setPageSize(n)}
-                                className={`px-2.5 h-full rounded-md text-xs font-medium transition-colors ${pageSize === n ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                                className={`px-2.5 h-full rounded-md text-sm font-medium transition-colors ${pageSize === n ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                             >{n}</button>
                         ))}
                     </div>
                     {/* 뷰 토글 — 데스크탑만 */}
                     <div className="hidden md:flex items-center gap-1 bg-muted p-1 rounded-lg shrink-0">
-                        <Button variant={viewMode === "list" ? "default" : "ghost"} size="icon" className="h-9 w-9" onClick={() => setViewMode("list")} title="리스트형">
+                        <Button variant={viewMode === "list" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setViewMode("list")} title="리스트형">
                             <List className="h-4 w-4" />
                         </Button>
-                        <Button variant={viewMode === "grid" ? "default" : "ghost"} size="icon" className="h-9 w-9" onClick={() => setViewMode("grid")} title="그리드형">
+                        <Button variant={viewMode === "grid" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setViewMode("grid")} title="그리드형">
                             <LayoutGrid className="h-4 w-4" />
                         </Button>
                     </div>

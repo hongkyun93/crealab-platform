@@ -225,7 +225,7 @@ function InfluencerDashboardContent() {
     const [detailsType, setDetailsType] = useState<'moment' | 'campaign'>('moment')
     const [relatedProposals, setRelatedProposals] = useState<any[]>([])
     const [workspaceTab, setWorkspaceTab] = useState("active")
-    const [workspaceViewMode, setWorkspaceViewMode] = useState<'list' | 'grid' | 'table'>('grid')
+    const [workspaceViewMode, setWorkspaceViewMode] = useState<'list' | 'grid' | 'table'>('list')
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
 
     // [Badge] 탭별 새 이벤트 여부 계산
@@ -980,6 +980,20 @@ function InfluencerDashboardContent() {
     }
 
     // --- WORKSPACE RENDERING HELPER ---
+    const fmtRelTime = (d: string) => {
+        if (!d) return ''
+        const diff = Date.now() - new Date(d).getTime()
+        const m = Math.floor(diff / 60000), h = Math.floor(m / 60), day = Math.floor(h / 24)
+        return day > 0 ? `${day}일 전` : h > 0 ? `${h}시간 전` : m > 0 ? `${m}분 전` : '방금 전'
+    }
+    const getUpdaterCreator = (p: any) => {
+        if (p.content_submission_status === 'submitted') return '나'
+        if (p.payment_confirmed_at) return p.brand_name || '브랜드'
+        if (p.delivery_status === 'shipped' || p.delivery_status === 'delivered') return p.brand_name || '브랜드'
+        if (p.type === 'brand_offer' || p.status === 'offered') return p.brand_name || '브랜드'
+        if (p.type === 'creator_apply' || p.status === 'applied') return '나'
+        return null
+    }
     const renderWorkspaceItems = (items: any[], type: string) => {
         if (items.length === 0) {
             return <div className="text-center py-12 border rounded-lg border-dashed text-muted-foreground bg-muted/10">내역이 없습니다.</div>
@@ -1149,7 +1163,7 @@ function InfluencerDashboardContent() {
         return (
             <div className="space-y-4">
                 {items.map((proposal) => (
-                    <Card key={proposal.id} className={`relative p-6 border-l-4 bg-card hover:bg-accent/5 cursor-pointer hover:shadow-md transition-all overflow-hidden
+                    <Card key={proposal.id} className={`relative px-6 pt-6 pb-3.5 border-l-4 bg-card hover:bg-accent/5 cursor-pointer hover:shadow-md transition-all overflow-hidden
                         ${type === 'all'
                             ? (proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed'
                                 ? 'border-l-emerald-500'  // Active
@@ -1210,8 +1224,7 @@ function InfluencerDashboardContent() {
                                             </Badge>
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
-                                            {proposal.brand_name} • {new Date(proposal.created_at).toLocaleDateString()}
-                                            {/* Show moment title if available */}
+                                            {proposal.brand_name}
                                             {proposal.moment_id && proposal.moment_title && (
                                                 <span className="ml-2 text-purple-600 dark:text-purple-400">
                                                     → {proposal.moment_title}
@@ -1307,6 +1320,12 @@ function InfluencerDashboardContent() {
                                     </Button>
                                 </div>
                             )}
+                        </div>
+                        {/* 최근 업데이트 */}
+                        <div className="flex justify-end mt-1.5 md:pl-[88px]">
+                            <span className="text-[10px] text-muted-foreground/50">
+                                최근 업데이트 : {fmtRelTime(proposal.updated_at || proposal.created_at)}{getUpdaterCreator(proposal) ? ` (${getUpdaterCreator(proposal)})` : ''}
+                            </span>
                         </div>
                     </Card>
                 ))}
@@ -2643,12 +2662,12 @@ function InfluencerDashboardContent() {
                                     />
                                 </div>
                                 {/* 20/50/100 페이지 사이즈 */}
-                                <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0">
+                                <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-10">
                                     {([20, 50, 100] as const).map(n => (
                                         <button
                                             key={n}
                                             onClick={() => setWorkspacePageSize(n)}
-                                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${workspacePageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                            className={`px-2.5 h-full rounded-md text-sm font-medium transition-colors ${workspacePageSize === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                         >
                                             {n}
                                         </button>
@@ -3474,7 +3493,7 @@ function InfluencerDashboardContent() {
 
                             {/* Workspace Dialog (Mobile & Desktop Unified) */}
                             <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-                                <DialogContent className="max-w-[100vw] h-[100dvh] sm:max-w-[1500px] sm:w-[95vw] sm:h-[90vh] sm:max-h-[900px] p-0 gap-0 overflow-hidden flex flex-col bg-background border-0 shadow-2xl sm:rounded-2xl">
+                                <DialogContent className="left-0 top-14 translate-x-0 translate-y-0 max-w-[100vw] w-full h-[calc(100dvh-3.5rem)] rounded-none sm:left-[50%] sm:top-[50%] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-[1500px] sm:w-[95vw] sm:h-[90vh] sm:max-h-[900px] sm:rounded-2xl p-0 gap-0 overflow-hidden flex flex-col bg-background border-0 shadow-2xl">
                                     <DialogTitle className="sr-only">Creator Workspace</DialogTitle>
                                     <CreatorWorkspaceLayout />
                                 </DialogContent>

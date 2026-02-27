@@ -146,7 +146,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                     <p className="text-muted-foreground mt-1 text-sm">우리 브랜드와 딱 맞는 모먼트를 가진 크리에이터를 찾아보세요.</p>
                 </div>
                 {/* 오른쪽: 즐겨찾기 + 검색 + 20/50/100 + 뷰토글 + 정렬 */}
-                <div className="flex w-full md:max-w-xl items-center gap-2">
+                <div className="flex w-full md:max-w-2xl items-center gap-2">
                     {/* 즐겨찾기 */}
                     <Button
                         variant={favoritesOnly ? "secondary" : "outline"}
