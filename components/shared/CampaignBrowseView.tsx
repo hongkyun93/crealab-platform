@@ -98,7 +98,7 @@ export function CampaignBrowseView({
                 </div>
                 <div className="flex w-full max-w-4xl items-center gap-2">
                     {/* 상태 탭 */}
-                    <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-9">
+                    <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-10">
                         {(
                             [
                                 ["all", "전체"],
@@ -109,19 +109,12 @@ export function CampaignBrowseView({
                             <button
                                 key={val}
                                 onClick={() => setStatusFilter(val)}
-                                className={`px-2.5 h-full rounded-md text-xs font-medium transition-colors ${statusFilter === val
+                                className={`px-2.5 h-full rounded-md text-sm font-medium transition-colors ${statusFilter === val
                                     ? "bg-primary text-primary-foreground"
                                     : "text-muted-foreground hover:text-foreground"
                                     }`}
                             >
                                 {label}
-                                <span className="ml-1 opacity-60">
-                                    {val === "all"
-                                        ? campaigns.length
-                                        : campaigns.filter(
-                                            (c: any) => c.status === val
-                                        ).length}
-                                </span>
                             </button>
                         ))}
                     </div>
@@ -163,12 +156,12 @@ export function CampaignBrowseView({
                     </div>
 
                     {/* 페이지 사이즈 */}
-                    <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-9">
+                    <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5 shrink-0 h-10">
                         {([20, 50, 100] as const).map((n) => (
                             <button
                                 key={n}
                                 onClick={() => setPageSize(n)}
-                                className={`px-2.5 h-full rounded-md text-xs font-medium transition-colors ${pageSize === n
+                                className={`px-2.5 h-full rounded-md text-sm font-medium transition-colors ${pageSize === n
                                     ? "bg-primary text-primary-foreground"
                                     : "text-muted-foreground hover:text-foreground"
                                     }`}
