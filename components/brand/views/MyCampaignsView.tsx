@@ -252,14 +252,32 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
     // ── List View ──
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">캠페인 관리</h1>
-                    <p className="text-muted-foreground mt-1">등록하신 캠페인 공고를 관리하고 지원자를 확인하세요.</p>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                {/* 왼쪽: 제목 + 모바일 탭 토글 */}
+                <div className="shrink-0">
+                    <div className="flex items-center justify-between gap-2 md:block">
+                        <h1 className="text-3xl font-bold tracking-tight">캠페인 관리</h1>
+                        {/* 모바일 전용 상태 탭 토글 */}
+                        <div className="flex md:hidden items-center gap-0.5 bg-muted p-0.5 rounded-lg shrink-0">
+                            <button
+                                onClick={() => setActiveTab("active")}
+                                className={`px-3 h-7 rounded-md text-xs font-medium transition-colors ${activeTab === "active" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                                진행중
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("closed")}
+                                className={`px-3 h-7 rounded-md text-xs font-medium transition-colors ${activeTab === "closed" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                                마감
+                            </button>
+                        </div>
+                    </div>
+                    <p className="text-muted-foreground mt-1 text-sm">등록하신 캠페인 공고를 관리하고 지원자를 확인하세요.</p>
                 </div>
+                {/* 오른쪽: 페이지 사이즈 + 새 캠페인 등록 */}
                 <div className="flex items-center gap-2">
-                    {/* Page Size Selector */}
-                    <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
+                    <div className="hidden md:flex items-center gap-0.5 border border-border rounded-lg p-0.5">
                         {([20, 50, 100] as const).map(n => (
                             <button
                                 key={n}
@@ -279,8 +297,8 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                 </div>
             </div>
 
-            {/* Campaign Status Tabs */}
-            <div className="flex items-center gap-2 border-b border-border/50 pb-1">
+            {/* 캠페인 상태 탭 — 데스크탑만 */}
+            <div className="hidden md:flex items-center gap-2 border-b border-border/50 pb-1">
                 <button
                     onClick={() => setActiveTab("active")}
                     className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${activeTab === "active"
