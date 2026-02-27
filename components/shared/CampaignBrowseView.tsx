@@ -81,8 +81,19 @@ export function CampaignBrowseView({
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             {/* 헤더 */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                <div className="shrink-0">
+                    <div className="flex items-center justify-between gap-2 md:block">
+                        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                        {/* 모바일 전용 뷰 토글 */}
+                        <div className="flex md:hidden items-center gap-1 bg-muted p-1 rounded-lg shrink-0">
+                            <Button variant={viewMode === "list" ? "default" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewMode("list")} title="리스트형">
+                                <List className="h-4 w-4" />
+                            </Button>
+                            <Button variant={viewMode === "grid" ? "default" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewMode("grid")} title="그리드형">
+                                <LayoutGrid className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
                     <p className="text-muted-foreground mt-1 text-sm">{description}</p>
                 </div>
                 <div className="flex w-full max-w-4xl items-center gap-2">
@@ -99,8 +110,8 @@ export function CampaignBrowseView({
                                 key={val}
                                 onClick={() => setStatusFilter(val)}
                                 className={`px-2.5 h-full rounded-md text-xs font-medium transition-colors ${statusFilter === val
-                                        ? "bg-primary text-primary-foreground"
-                                        : "text-muted-foreground hover:text-foreground"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
                                     }`}
                             >
                                 {label}
@@ -158,8 +169,8 @@ export function CampaignBrowseView({
                                 key={n}
                                 onClick={() => setPageSize(n)}
                                 className={`px-2.5 h-full rounded-md text-xs font-medium transition-colors ${pageSize === n
-                                        ? "bg-primary text-primary-foreground"
-                                        : "text-muted-foreground hover:text-foreground"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
                                     }`}
                             >
                                 {n}
@@ -196,8 +207,8 @@ export function CampaignBrowseView({
                 <button
                     onClick={() => setTagFilter([])}
                     className={`w-full md:w-auto text-center px-1 md:px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${tagFilter.length === 0
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border text-muted-foreground hover:border-primary/50"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50"
                         }`}
                 >
                     전체
@@ -213,8 +224,8 @@ export function CampaignBrowseView({
                             )
                         }
                         className={`w-full md:w-auto text-center px-1 md:px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${tagFilter.includes(tag)
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "border-border text-muted-foreground hover:border-primary/50"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50"
                             }`}
                     >
                         <span className="md:hidden">
@@ -240,8 +251,8 @@ export function CampaignBrowseView({
             ) : (
                 <div
                     className={`grid gap-6 ${viewMode === "list"
-                            ? "grid-cols-1"
-                            : "md:grid-cols-3 xl:grid-cols-4"
+                        ? "grid-cols-1"
+                        : "md:grid-cols-3 xl:grid-cols-4"
                         }`}
                 >
                     {filteredCampaigns.slice(0, pageSize).map((camp) => (
