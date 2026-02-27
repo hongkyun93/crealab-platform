@@ -8,65 +8,112 @@ interface WorkspaceCompactRowProps {
 }
 
 export function WorkspaceCompactRow({ item, onClick }: WorkspaceCompactRowProps) {
-    const statusColors: Record<string, string> = {
-        accepted: "bg-green-100 text-green-700 border-green-200",
-        signed: "bg-blue-100 text-blue-700 border-blue-200",
-        completed: "bg-gray-100 text-gray-700 border-gray-200",
-        rejected: "bg-red-100 text-red-700 border-red-200",
-        applied: "bg-amber-100 text-amber-700 border-amber-200",
-        offered: "bg-purple-100 text-purple-700 border-purple-200",
+    // ── 타입별 값 ──────────────────────────────────────────────
+    const typeConfig: Record<string, { label: string; accent: string; avatarBg: string; avatarText: string }> = {
+        moment_offer: {
+            label: "모먼트",
+            accent: "border-l-purple-500",
+            avatarBg: "bg-purple-100",
+            avatarText: "text-purple-700",
+        },
+        brand_invite: {
+            label: "직접제안",
+            accent: "border-l-blue-500",
+            avatarBg: "bg-blue-100",
+            avatarText: "text-blue-700",
+        },
+        creator_apply: {
+            label: "캠페인",
+            accent: "border-l-orange-500",
+            avatarBg: "bg-orange-100",
+            avatarText: "text-orange-700",
+        },
     }
 
-    const statusLabels: Record<string, string> = {
-        accepted: "진행중",
-        signed: "계약완료",
-        completed: "완료됨",
-        rejected: "거절됨",
-        applied: "지원함",
-        offered: "제안함",
-        pending: "대기중"
+    const statusConfig: Record<string, { label: string; className: string }> = {
+        accepted: { label: "진행중", className: "bg-green-100 text-green-700 border-green-200" },
+        signed: { label: "계약완료", className: "bg-blue-100 text-blue-700 border-blue-200" },
+        completed: { label: "완료됨", className: "bg-gray-100 text-gray-600 border-gray-200" },
+        rejected: { label: "거절됨", className: "bg-red-100 text-red-700 border-red-200" },
+        applied: { label: "지원함", className: "bg-amber-100 text-amber-700 border-amber-200" },
+        offered: { label: "제안함", className: "bg-purple-100 text-purple-700 border-purple-200" },
+        pending: { label: "대기중", className: "bg-slate-100 text-slate-600 border-slate-200" },
     }
+
+    const tc = typeConfig[item.type] ?? {
+        label: item.type ?? "기타",
+        accent: "border-l-slate-400",
+        avatarBg: "bg-muted",
+        avatarText: "text-muted-foreground",
+    }
+    const sc = statusConfig[item.status] ?? { label: item.status ?? "-", className: "bg-secondary text-secondary-foreground" }
+    const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString("ko-KR") : "-"
+    const avatarSrc = item.influencerAvatar || item.influencer_avatar
+    const name = item.influencer_name || "크리에이터"
+    const initial = name[0] ?? "C"
 
     return (
         <div
-            className="group flex items-center gap-4 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+            className={cn(
+                "group flex items-stretch gap-0 rounded-lg border bg-card hover:shadow-md cursor-pointer transition-all border-l-4",
+                tc.accent
+            )}
             onClick={onClick}
         >
-            {/* Avatar */}
-            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold shrink-0 overflow-hidden border border-border/50">
-                {item.influencerAvatar || item.influencer_avatar ? (
-                    <img src={item.influencerAvatar || item.influencer_avatar} alt="Profile" className="h-full w-full object-cover" />
-                ) : (
-                    (item.influencer_name?.[0] || "C")
-                )}
-            </div>
-
-            {/* Main Info */}
-            <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <div className="col-span-1">
-                    <h4 className="font-semibold truncate text-sm">{item.influencer_name}</h4>
-                    <p className="text-xs text-muted-foreground truncate">{item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</p>
+            {/* 컬러 액센트 바는 border-l-4로 대체됨 */}
+            <div className="flex items-center gap-3 flex-1 min-w-0 p-3">
+                {/* Avatar */}
+                <div
+                    className={cn(
+                        "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden border border-border/50",
+                        avatarSrc ? "bg-muted" : cn(tc.avatarBg, tc.avatarText)
+                    )}
+                >
+                    {avatarSrc ? (
+                        <img src={avatarSrc} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                        initial
+                    )}
                 </div>
 
-                <div className="col-span-2">
-                    <div className="flex items-center gap-2 mb-1">
-                        {item.type === 'moment_offer' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-purple-100 text-purple-700 hover:bg-purple-100 border-0">모먼트</Badge>}
-                        {item.type === 'brand_invite' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-blue-100 text-blue-700 hover:bg-blue-100 border-0">직접제안</Badge>}
-                        {item.type === 'creator_apply' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-orange-100 text-orange-700 hover:bg-orange-100 border-0">캠페인</Badge>}
-                        <p className="text-sm font-medium truncate">{item.product_name || "제품 협찬"}</p>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                    {/* Row 1: name + badges */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-sm truncate">{name}</span>
+                        <Badge
+                            variant="secondary"
+                            className={cn(
+                                "text-[10px] px-1.5 py-0 h-4 border-0 shrink-0",
+                                tc.avatarBg, tc.avatarText
+                            )}
+                        >
+                            {tc.label}
+                        </Badge>
+                        <Badge
+                            variant="outline"
+                            className={cn("text-[10px] px-1.5 py-0 h-4 font-normal shrink-0", sc.className)}
+                        >
+                            {sc.label}
+                        </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate max-w-[300px]">{item.message}</p>
-                </div>
 
-                <div className="col-span-1 flex justify-end md:justify-start">
-                    <Badge variant="outline" className={cn("text-xs font-normal border", statusColors[item.status] || "bg-secondary text-secondary-foreground")}>
-                        {statusLabels[item.status] || item.status}
-                    </Badge>
+                    {/* Row 2: product name */}
+                    <p className="text-sm font-medium truncate mt-0.5">
+                        {item.product_name || "제품 협찬"}
+                    </p>
+
+                    {/* Row 3: date + message */}
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {dateStr} · {item.message || "메시지 없음"}
+                    </p>
                 </div>
             </div>
 
-            {/* Action */}
-            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            {/* Chevron */}
+            <div className="flex items-center pr-3 shrink-0">
+                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
+            </div>
         </div>
     )
 }

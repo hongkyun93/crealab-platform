@@ -140,6 +140,16 @@ export const DiscoverView = React.memo(function DiscoverView({
                     >
                         <Star className={`h-4 w-4 ${favoritesOnly ? "fill-current" : ""}`} />
                     </Button>
+                    {/* 인스타 API 인증 필터 */}
+                    <Button
+                        variant={sortOrder === 'verified' ? "secondary" : "outline"}
+                        size="icon"
+                        onClick={() => setSortOrder(sortOrder === 'verified' ? 'latest' : 'verified')}
+                        className={sortOrder === 'verified' ? "bg-pink-100 text-pink-600 border-pink-200 hover:bg-pink-200 shrink-0" : "text-muted-foreground shrink-0"}
+                        title="Instagram API 인증됨만 보기"
+                    >
+                        <Instagram className="h-4 w-4" />
+                    </Button>
                     {/* 검색 */}
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -220,7 +230,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                 <CardContent className="p-4 space-y-1">
                     <div className="flex flex-col md:flex-row gap-2 md:items-center">
                         <span className="text-sm font-semibold md:w-24">팔로워 규모</span>
-                        <div className="grid grid-cols-3 gap-1 md:flex md:flex-wrap md:gap-2">
+                        <div className="grid grid-cols-4 gap-1 md:flex md:flex-wrap md:gap-2">
                             {[
                                 { k: "all", l: "전체", s: "전체" },
                                 { k: "starter", l: "스타터 (0~1천)", s: "0~1천" },
@@ -245,7 +255,8 @@ export const DiscoverView = React.memo(function DiscoverView({
                             ))}
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
+                    {/* 모먼트 상태 필터 — 데스크탑만 */}
+                    <div className="hidden md:flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold md:w-24 pt-1">모먼트 상태</span>
                         <div className="flex flex-wrap gap-2 flex-1">
                             <Button variant="ghost" size="sm" onClick={() => setStatusFilter("all")}
@@ -267,7 +278,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                     </div>
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold md:w-24 pt-1">영상 단가</span>
-                        <div className="grid grid-cols-3 gap-1 md:flex md:flex-wrap md:gap-2 flex-1">
+                        <div className="grid grid-cols-4 gap-1 md:flex md:flex-wrap md:gap-2 flex-1">
                             {PRICE_FILTER_RANGES.map(range => (
                                 <Button key={range.k} variant="ghost" size="sm"
                                     onClick={() => toggleMulti(setPriceFilter as any, range.k, PRICE_FILTER_RANGES.filter(r => r.k !== 'all').map(r => r.k))}
@@ -281,19 +292,21 @@ export const DiscoverView = React.memo(function DiscoverView({
                     </div>
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold md:w-24 pt-1">희망 채널</span>
-                        <div className="grid grid-cols-3 gap-1 md:flex md:flex-wrap md:gap-2 flex-1">
+                        <div className="grid grid-cols-4 gap-1 md:flex md:flex-wrap md:gap-2 flex-1">
                             {[
-                                { k: 'all', l: '전체', icon: null },
-                                { k: 'instagram', l: 'Instagram', icon: <Instagram className="h-3.5 w-3.5" /> },
-                                { k: 'youtube', l: 'YouTube', icon: <Youtube className="h-3.5 w-3.5" /> },
-                                { k: 'tiktok', l: 'TikTok', icon: <Music className="h-3.5 w-3.5" /> },
-                                { k: 'blog', l: 'Blog', icon: <FileText className="h-3.5 w-3.5" /> },
+                                { k: 'all', l: '전체', s: '전체', icon: null },
+                                { k: 'instagram', l: 'Instagram', s: 'Insta', icon: <Instagram className="h-3 w-3" /> },
+                                { k: 'youtube', l: 'YouTube', s: 'YT', icon: <Youtube className="h-3 w-3" /> },
+                                { k: 'tiktok', l: 'TikTok', s: 'Tok', icon: <Music className="h-3 w-3" /> },
+                                { k: 'blog', l: 'Blog', s: 'Blog', icon: <FileText className="h-3 w-3" /> },
                             ].map(opt => (
                                 <Button key={opt.k} variant="ghost" size="sm"
                                     onClick={() => setChannelFilter && toggleMulti(setChannelFilter as any, opt.k, ['instagram', 'youtube', 'tiktok', 'blog'])}
-                                    className={cn("gap-1.5 w-full md:w-auto justify-start", channelFilter?.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}>
-                                    {opt.icon}{opt.l}
-                                    {channelFilter?.includes(opt.k) && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
+                                    className={cn("gap-1 w-full md:w-auto justify-start text-[10px] md:text-xs px-1.5 md:px-2", channelFilter?.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}>
+                                    {opt.icon}
+                                    <span className="md:hidden">{opt.s}</span>
+                                    <span className="hidden md:inline">{opt.l}</span>
+                                    {channelFilter?.includes(opt.k) && <Check className="h-3 w-3 text-red-500" strokeWidth={3} />}
                                 </Button>
                             ))}
                         </div>
@@ -317,34 +330,50 @@ export const DiscoverView = React.memo(function DiscoverView({
                     </div>
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
                         <span className="text-sm font-semibold md:w-24 pt-1">전문 분야</span>
-                        <div className="grid grid-cols-3 gap-1 md:flex md:flex-wrap md:gap-2 flex-1">
-                            <Button
-                                variant="ghost" size="sm"
-                                onClick={() => setSelectedTags([])}
-                                className={cn('gap-1.5 w-full md:w-auto justify-start', selectedTags.length === 0 && 'bg-primary/10 text-primary font-medium')}
-                            >
-                                전체
-                                {selectedTags.length === 0 && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
-                            </Button>
-                            {POPULAR_TAGS.map(tag => (
-                                <Button
-                                    key={tag}
-                                    variant="ghost" size="sm"
-                                    onClick={() => {
-                                        setSelectedTags((prev: string[]) => {
-                                            if (prev.includes(tag)) {
-                                                return prev.filter(t => t !== tag)
-                                            } else {
-                                                return [...prev, tag]
-                                            }
-                                        })
-                                    }}
-                                    className={cn('gap-1.5 w-full md:w-auto justify-start', selectedTags.includes(tag) && 'bg-primary/10 text-primary font-medium')}
-                                >
-                                    {tag}
-                                    {selectedTags.includes(tag) && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
-                                </Button>
-                            ))}
+                        <div className="grid grid-cols-4 gap-1 md:flex md:flex-wrap md:gap-2 flex-1">
+                            {/* 모바일 축약 레이블 매핑 */}
+                            {(() => {
+                                const SHORT: Record<string, string> = {
+                                    '🏡 리빙/인테리어': '🏡 인테리어',
+                                    '📚 도서/자기계발': '📚 자기계발',
+                                    '💉 시술/병원': '💉 시술',
+                                    '💍 웨딩/결혼': '💍 웨딩',
+                                    '🏋️ 헬스/운동': '🏋️ 헬스',
+                                    '💻 테크/IT': '💻 테크',
+                                    '🎓 교육/강의': '🎓 교육',
+                                    '🎬 영화/문화': '🎬 문화',
+                                    '🎨 취미/DIY': '🎨 취미',
+                                }
+                                return (
+                                    <>
+                                        <Button
+                                            variant="ghost" size="sm"
+                                            onClick={() => setSelectedTags([])}
+                                            className={cn('gap-1 w-full md:w-auto justify-start text-[10px] md:text-xs px-1.5 md:px-2', selectedTags.length === 0 && 'bg-primary/10 text-primary font-medium')}
+                                        >
+                                            전체
+                                            {selectedTags.length === 0 && <Check className="h-3 w-3 text-red-500" strokeWidth={3} />}
+                                        </Button>
+                                        {POPULAR_TAGS.map(tag => (
+                                            <Button
+                                                key={tag}
+                                                variant="ghost" size="sm"
+                                                onClick={() => {
+                                                    setSelectedTags((prev: string[]) => {
+                                                        if (prev.includes(tag)) return prev.filter(t => t !== tag)
+                                                        return [...prev, tag]
+                                                    })
+                                                }}
+                                                className={cn('gap-1 w-full md:w-auto justify-start text-[10px] md:text-xs px-1.5 md:px-2', selectedTags.includes(tag) && 'bg-primary/10 text-primary font-medium')}
+                                            >
+                                                <span className="md:hidden">{SHORT[tag] ?? tag}</span>
+                                                <span className="hidden md:inline">{tag}</span>
+                                                {selectedTags.includes(tag) && <Check className="h-3 w-3 text-red-500" strokeWidth={3} />}
+                                            </Button>
+                                        ))}
+                                    </>
+                                )
+                            })()}
                         </div>
                     </div>
                 </CardContent>
