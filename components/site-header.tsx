@@ -108,6 +108,18 @@ export function SiteHeader() {
             } else if (user?.role === 'creator') {
                 router.push('/creator?view=settlement')
             }
+        } else if (n.type === 'feedback_received') {
+            // Creator: 브랜드가 피드백 남김 → 크리에이터 워크스페이스
+            router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
+        } else if (n.type === 'proposal_update') {
+            // Creator: 브랜드가 조건 확정 → 크리에이터 제안 뷰
+            router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
+        } else if (n.type === 'collaboration_final_complete') {
+            // Creator: 협업 최종완료 → 성과 제출 뷰
+            router.push(`/creator?view=settlement&proposalId=${n.reference_id}`)
+        } else if (n.type === 'payment_pending') {
+            // Brand: 계약서 서명 후 결제 대기 → 입금 페이지
+            router.push('/brand?view=deposit')
         }
     }
 
