@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { cn, generateUTMLink } from '@/lib/utils';
-import { Copy, DollarSign, FileText, Package, Pencil, Save, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { DollarSign, FileText, Package, Pencil, Save, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
@@ -553,51 +553,6 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                 </div>
             </div>
 
-            {/* UTM 성과 추적 링크 — product_url 있을 때만 표시 */}
-            {(proposal as any)?.product_url && (() => {
-                const productUrl = (proposal as any).product_url as string;
-                const proposalId = proposal?.id?.toString() || '';
-                const creatorId = (proposal as any).influencer_id ||
-                    (proposal as any).influencerId || '';
-                if (!proposalId || !creatorId) return null;
-                const utmLink = generateUTMLink(productUrl, proposalId, creatorId);
-                return (
-                    <>
-                        <Separator />
-                        <div className="space-y-2">
-                            <label className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                                📊 성과 추적 링크
-                            </label>
-                            <div className="flex gap-1.5">
-                                <input
-                                    readOnly
-                                    value={utmLink}
-                                    className="flex-1 text-[10px] px-2 py-1.5 bg-muted/40 border border-border/50 rounded-md font-mono truncate text-muted-foreground"
-                                    onClick={(e) => (e.target as HTMLInputElement).select()}
-                                />
-                                <Button
-                                    size="icon"
-                                    variant="outline"
-                                    className="h-7 w-7 shrink-0"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(utmLink).then(() => {
-                                            toast.success('UTM 링크가 복사되었습니다!');
-                                        }).catch(() => {
-                                            toast.error('복사 실패. 직접 선택해서 복사해주세요.');
-                                        });
-                                    }}
-                                    title="복사"
-                                >
-                                    <Copy className="w-3 h-3" />
-                                </Button>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                이 링크를 게시물 바이오에 사용하면 브랜드가 GA4에서 유입을 추적할 수 있어요.
-                            </p>
-                        </div>
-                    </>
-                );
-            })()}
 
             {/* Status Indicators - based on actual confirmed flags */}
             <div className="pt-2 flex gap-2">
