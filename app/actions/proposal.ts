@@ -160,6 +160,8 @@ export async function submitDirectProposal(data: any) {
             message: data.message,
             price_offer: data.compensation_amount ? parseInt(data.compensation_amount.replace(/[^0-9]/g, '')) : 0,
             status: 'offered',
+            product_type: data.product_type || 'gift',       // [FIX] 최상위 컬럼
+            video_guide: data.video_guide || 'brand_provided', // [FIX] 최상위 컬럼
             channel_name: data.channel_name || null,
             channel_subtype: data.channel_subtype || null,
             secondary_usage_fee: data.secondary_usage_fee || 0,
