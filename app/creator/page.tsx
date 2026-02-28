@@ -2088,6 +2088,21 @@ function InfluencerDashboardContent() {
                     // Send polite rejection message
                     await sendMessage(proposal.brand_id, `안녕하세요 ${proposal.brand_name}님, 제안 주셔서 감사합니다.\n아쉽게도 현재 제 일정 및 상황상 참여가 어려울 것 같습니다. 😢\n다음에 더 좋은 기회로 뵙기를 희망합니다!`, undefined, proposal.id)
 
+                    // 🔔 브랜드에게 거절 알림
+                    try {
+                        const creatorName = (displayUser as any)?.display_name || displayUser?.name || '크리에이터'
+                        if (proposal.brand_id) {
+                            await sendNotification(
+                                proposal.brand_id,
+                                `${creatorName}님이 '${proposal.product_name || '제안'}'을 거절했습니다.`,
+                                'proposal_rejected',
+                                proposal.id
+                            )
+                        }
+                    } catch (notifErr) {
+                        console.warn('알림 발송 실패 (무시):', notifErr)
+                    }
+
                     // Force refresh so the list updates (moving to rejected)
                     await refreshData()
 
@@ -3518,6 +3533,28 @@ function InfluencerDashboardContent() {
                                     title: "모먼트 삭제",
                                     description: "정말 이 모먼트를 삭제하시겠습니까? 복구할 수 없습니다.",
                                     onConfirm: async () => {
+                                        // 협업 이력 체크
+                                        const { count } = await supabase
+                                            .from('moment_proposals')
+                                            .select('id', { count: 'exact', head: true })
+                                            .eq('moment_id', id)
+                                        if (count && count > 0) {
+                                            // 이력 있으면 비공개 처리로 유도
+                                            setConfirmDialog({
+                                                open: true,
+                                                title: "협업 이력이 있는 모먼트",
+                                                description: `이 모먼트에 협업 이력(${count}건)이 있어 삭제하면 이력이 함께 삭제됩니다. 삭제 대신 비공개로 전환하시겠어요?`,
+                                                onConfirm: async () => {
+                                                    await supabase
+                                                        .from('life_moments')
+                                                        .update({ is_private: true })
+                                                        .eq('id', id)
+                                                    setIsDetailsModalOpen(false)
+                                                },
+                                                variant: "destructive"
+                                            })
+                                            return
+                                        }
                                         await deleteEvent(id);
                                         setIsDetailsModalOpen(false);
                                     },

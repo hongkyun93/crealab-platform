@@ -2300,7 +2300,7 @@ CREATE TABLE public.settlements (
     statement_number text,
     final_completed_at timestamp with time zone,
     performance_submitted_at timestamp with time zone,
-    CONSTRAINT settlements_proposal_type_check CHECK ((proposal_type = ANY (ARRAY['brand_proposal'::text, 'moment_proposal'::text, 'campaign_application'::text]))),
+    CONSTRAINT settlements_proposal_type_check CHECK ((proposal_type = ANY (ARRAY['product_application'::text, 'moment_proposal'::text, 'campaign_application'::text]))),
     CONSTRAINT settlements_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'paid'::text, 'cancelled'::text])))
 );
 

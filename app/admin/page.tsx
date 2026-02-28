@@ -342,12 +342,41 @@ export default function AdminPage() {
 
     const handleMarkPaid = async (settlementId: string) => {
         setPayingId(settlementId)
+
+        // Fetch influencer_id before updating
+        const { data: settlement } = await supabase
+            .from('settlements')
+            .select('influencer_id, amount')
+            .eq('id', settlementId)
+            .single()
+
         const { error } = await supabase
             .from('settlements')
             .update({ status: 'paid', paid_at: new Date().toISOString() })
             .eq('id', settlementId)
-        if (error) toast.error(error.message)
-        else { toast.success('지급 완료 처리되었습니다.'); fetchSettlements() }
+        if (error) {
+            toast.error(error.message)
+        } else {
+            toast.success('지급 완료 처리되었습니다.')
+            fetchSettlements()
+
+            // 🔔 크리에이터에게 정산 완료 알림
+            if (settlement?.influencer_id) {
+                try {
+                    const amountText = settlement.amount ? `${Number(settlement.amount).toLocaleString()}원` : '정산금'
+                    await supabase.from('notifications').insert({
+                        recipient_id: settlement.influencer_id,
+                        sender_id: null,
+                        content: `${amountText}이 정산 지급되었습니다. 확인해보세요!`,
+                        type: 'settlement_paid',
+                        reference_id: settlementId,
+                        is_read: false
+                    })
+                } catch (notifErr) {
+                    console.warn('정산 알림 발송 실패 (무시):', notifErr)
+                }
+            }
+        }
         setPayingId(null)
     }
 

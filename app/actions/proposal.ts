@@ -50,6 +50,25 @@ export async function submitCampaignApplication(
         return { error: `지원 실패: ${error.message}` }
     }
 
+    // 🔔 브랜드에게 새 지원 알림
+    const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('brand_id, title')
+        .eq('id', campaignId)
+        .single()
+
+    if (campaign?.brand_id) {
+        const creatorName = user.user_metadata?.display_name || user.email?.split('@')[0] || '크리에이터'
+        await supabase.from('notifications').insert({
+            recipient_id: campaign.brand_id,
+            sender_id: user.id,
+            content: `${creatorName}님이 '${campaign.title || '캠페인'}' 캠페인에 지원했습니다.`,
+            type: 'proposal_received',
+            reference_id: campaignId,
+            is_read: false
+        })
+    }
+
     revalidatePath('/creator')
     return { success: true }
 }
@@ -58,6 +77,13 @@ export async function submitCampaignApplication(
 export async function updateApplicationStatus(proposalId: string, status: 'accepted' | 'rejected' | 'hold') {
     const supabase = await createClient()
 
+    // Fetch application to get influencer_id and brand info before update
+    const { data: application } = await supabase
+        .from('campaign_applications')
+        .select('influencer_id, campaign_id, campaigns(brand_id, title)')
+        .eq('id', proposalId)
+        .single()
+
     const { error } = await supabase
         .from('campaign_applications')
         .update({ status: status })
@@ -65,6 +91,37 @@ export async function updateApplicationStatus(proposalId: string, status: 'accep
 
     if (error) {
         return { error: `상태 변경 실패: ${error.message}` }
+    }
+
+    // 🔔 커리에이터에게 수락/거절 알림
+    if (application?.influencer_id && (status === 'accepted' || status === 'rejected' || status === 'hold')) {
+        const campaign = (application as any).campaigns
+        const campaignTitle = campaign?.title || '캠페인'
+        const brandId = campaign?.brand_id
+
+        // Get brand name
+        let brandName = '브랜드'
+        if (brandId) {
+            const { data: brandProfile } = await supabase
+                .from('profiles')
+                .select('display_name')
+                .eq('id', brandId)
+                .single()
+            brandName = brandProfile?.display_name || '브랜드'
+        }
+
+        await supabase.from('notifications').insert({
+            recipient_id: application.influencer_id,
+            sender_id: brandId || null,
+            content: status === 'accepted'
+                ? `${brandName}님이 '${campaignTitle}' 지원서를 수락했습니다.`
+                : status === 'hold'
+                    ? `${brandName}님이 '${campaignTitle}' 지원서를 보류 처리했습니다.`
+                    : `${brandName}님이 '${campaignTitle}' 지원서를 검토 후 다음 단계로 진행하지 않기로 결정했습니다.`,
+            type: status === 'accepted' ? 'proposal_accepted' : status === 'hold' ? 'proposal_hold' : 'proposal_rejected',
+            reference_id: proposalId,
+            is_read: false
+        })
     }
 
     revalidatePath('/brand')

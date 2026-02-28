@@ -56,30 +56,58 @@ export function SiteHeader() {
         }
 
         // Redirect Logic based on Notification Type
-        if (n.type === 'proposal_received' || n.type === 'proposal_accepted' || n.type === 'condition_confirmed' || n.type === 'contract_signed') {
-            // Check user role to determine destination
-            // If user is influencer, go to Creator Dashboard
-            // If user is brand, go to Brand Dashboard
-            // However, the notification is specific to the recipient.
-
+        if (n.type === 'proposal_received' || n.type === 'proposal_accepted' || n.type === 'proposal_rejected' || n.type === 'condition_confirmed' || n.type === 'contract_signed' || n.type === 'contract_negotiating' || n.type === 'contract_rejected') {
             if (user?.role === 'creator') {
                 router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
             } else if (user?.role === 'brand') {
                 router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
+            } else if (user?.role === 'mcn' || user?.role === 'agency') {
+                router.push('/mcn')
             }
         } else if (n.type === 'application_received') {
-            // Brand received an application
+            // Brand received a campaign application
             router.push(`/brand?view=outbound&proposalId=${n.reference_id}`)
         } else if (n.type === 'new_message') {
-            // Generic message redirect - ideally should link to chat
             if (user?.role === 'creator') {
                 router.push(`/creator?view=inbound&proposalId=${n.reference_id}`)
             } else if (user?.role === 'brand') {
                 router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
+            } else if (user?.role === 'mcn' || user?.role === 'agency') {
+                router.push('/mcn')
             }
         } else if (n.type === 'settlement_paid') {
-            // Creator views their settlement history
-            router.push('/creator?view=settlement')
+            if (user?.role === 'creator') {
+                router.push('/creator?view=settlement')
+            } else if (user?.role === 'mcn' || user?.role === 'agency') {
+                router.push('/mcn')
+            }
+        } else if (n.type === 'shipping_started') {
+            // Creator: 배송 시작 → 워크스페이스로
+            router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
+        } else if (n.type === 'content_revision') {
+            // Creator: 수정 요청 → 워크스페이스 콘텐츠 탭
+            router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
+        } else if (n.type === 'content_approved') {
+            // Creator: 콘텐츠 승인 → 워크스페이스
+            router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
+        } else if (n.type === 'collaboration_complete') {
+            // Creator: 협업 완료 → 성과 제출 뷰
+            router.push(`/creator?view=settlement&proposalId=${n.reference_id}`)
+        } else if (n.type === 'performance_submitted') {
+            // Brand: 성과 보고서 제출됨 → 브랜드 워크스페이스
+            router.push(`/brand?view=workspace&proposalId=${n.reference_id}`)
+        } else if (n.type === 'delivery_confirmed') {
+            // Brand: 배송 수령 확인 → 브랜드 워크스페이스
+            router.push(`/brand?view=workspace&proposalId=${n.reference_id}`)
+        } else if (n.type === 'content_submission') {
+            // Brand: 콘텐츠 제출 → 브랜드 워크스페이스
+            router.push(`/brand?view=workspace&proposalId=${n.reference_id}`)
+        } else if (n.type === 'payment_confirmed' || n.type === 'deposit_confirmed') {
+            if (user?.role === 'brand') {
+                router.push('/brand?view=deposit')
+            } else if (user?.role === 'creator') {
+                router.push('/creator?view=settlement')
+            }
         }
     }
 
@@ -102,7 +130,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-3 sm:mr-6 flex items-center space-x-2">
                         <Image src="/logo.png" alt="CreadyPick" width={238} height={48} className="h-12 w-auto" priority />
-                        <span className="hidden md:inline-block text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V4.8.1</span>
+                        <span className="hidden md:inline-block text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V4.8.3</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link

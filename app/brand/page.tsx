@@ -71,6 +71,7 @@ import { MyCampaignsView } from "@/components/brand/views/MyCampaignsView"
 import { MyProductsView } from "@/components/brand/views/MyProductsView"
 import { WorkspaceView } from "@/components/brand/views/WorkspaceView"
 import { ReadonlyProposalDialog } from "@/components/proposal/readonly-proposal-dialog"
+import { useProducts } from "@/components/providers/product-provider"
 
 import { DemoBanner } from "@/components/demo-banner"
 import { POPULAR_TAGS } from "@/lib/constants/categories"
@@ -90,6 +91,9 @@ function BrandDashboardContent() {
         momentProposals, // [FIX] needed for chatProposal sync
         allEvents, fetchAllEvents, isAuthLoading, deleteMomentProposal, enablePublicEvents // New: Public events & Moment deletion
     } = useUnifiedProvider()
+
+    // 비공개 상품 관련 (product-provider에서 직접 가져옴)
+    const { hiddenProducts, hideProduct, activateProduct } = useProducts()
 
     const { isOpen: isMobileSidebarOpen, setIsOpen: setIsMobileSidebarOpen } = useMobileSidebar()
 
@@ -451,12 +455,29 @@ function BrandDashboardContent() {
                         setWorkspaceTab('active')
                         setActiveProposalTab('chat')
                     }
+                    // 🔔 거절 시 크리에이터에게 알림
+                    if (status === 'rejected') {
+                        const targetProposal = [
+                            ...brandProposals,
+                            ...campaignProposals,
+                            ...(momentProposals as any[])
+                        ].find((p: any) => p.id?.toString() === id.toString())
+                        const influencerId = targetProposal?.influencer_id || targetProposal?.influencerId
+                        if (influencerId) {
+                            await sendNotification(
+                                influencerId,
+                                `${user?.name || '브랜드'}님이 지원서를 검토 후 다음 단계로 진행하지 않기로 결정했습니다.`,
+                                'proposal_rejected',
+                                id.toString()
+                            )
+                        }
+                    }
                 }
             } catch (err) {
                 toast.error("상태 변경 중 오류가 발생했습니다.")
             }
         }
-    }, [refreshData])
+    }, [refreshData, brandProposals, campaignProposals, momentProposals, sendNotification, user])
 
     const handleGenerateContract = async () => {
         if (!chatProposal || !user) return
@@ -815,7 +836,7 @@ function BrandDashboardContent() {
                 // Update local state
                 setChatProposal((prev: any) => ({ ...prev, ...updateData }))
 
-                // Notify Creator
+                // Notify Creator (message + notification)
                 if (receiverId) {
                     const msgContent = `📦 [시스템] 제품 발송이 시작되었습니다.\n운송장 번호: ${trackingInput}`
                     if (isCampaignProposal) {
@@ -823,6 +844,13 @@ function BrandDashboardContent() {
                     } else {
                         await sendMessage(receiverId, msgContent, undefined, proposalId)
                     }
+                    // 🔔 배송 운송장 알림
+                    await sendNotification(
+                        receiverId,
+                        `${user?.name || '브랜드'}님이 제품을 발송했습니다. 운송장 번호: ${trackingInput}`,
+                        'shipping_started',
+                        proposalId
+                    )
                 }
 
                 toast.success("발송 정보가 업데이트되었습니다.")
@@ -1509,10 +1537,13 @@ function BrandDashboardContent() {
                 return (
                     <MyProductsView
                         products={myProducts}
+                        hiddenProducts={hiddenProducts}
                         setProductModalOpen={setProductModalOpen}
                         handleViewGuide={handleViewGuide}
                         handleEditProduct={handleEditProduct}
                         deleteProduct={deleteProduct}
+                        hideProduct={hideProduct}
+                        activateProduct={activateProduct}
                         onViewDetail={(productId) => {
                             setSelectedProductId(productId)
                             setCurrentView("product-detail")

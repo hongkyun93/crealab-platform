@@ -39,6 +39,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
     const [confirmStatusData, setConfirmStatusData] = React.useState<{ id: string, currentStatus: string } | null>(null)
     const [confirmAcceptId, setConfirmAcceptId] = React.useState<string | null>(null)
     const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null)
+    const [confirmCloseId, setConfirmCloseId] = React.useState<string | null>(null) // 이력 있어 삭제 불가 → 종료로 유도
     const supabase = createClient()
     // Reset optimistic image when selection changes
     React.useEffect(() => {
@@ -528,6 +529,16 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                 onConfirm={async () => {
                     if (confirmDeleteId) {
                         try {
+                            // 지원 이력 체크
+                            const { count } = await supabase
+                                .from('campaign_applications')
+                                .select('id', { count: 'exact', head: true })
+                                .eq('campaign_id', confirmDeleteId)
+                            if (count && count > 0) {
+                                setConfirmDeleteId(null)
+                                setConfirmCloseId(confirmDeleteId)
+                                return
+                            }
                             await deleteCampaign(confirmDeleteId)
                             toast.success('캠페인이 삭제되었습니다.')
                         } catch (e) {
@@ -537,6 +548,23 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                     }
                 }}
                 confirmText="삭제"
+            />
+
+            {/* 지원 이력 있어 삭제 불가 → 종료(closed) 처리로 유도 */}
+            <ConfirmDialog
+                open={!!confirmCloseId}
+                onOpenChange={(open) => !open && setConfirmCloseId(null)}
+                title="지원 이력이 있는 캠페인"
+                description="이 캠페인에 지원 이력이 있어 삭제할 수 없습니다. 삭제 대신 '마감 처리'하면 목록에서 숨기고 언제든지 다시 진행할 수 있습니다."
+                onConfirm={() => {
+                    if (confirmCloseId) {
+                        updateCampaignStatus(confirmCloseId, 'closed')
+                        toast.success('캠페인이 마감 처리되었습니다. "마감/종료" 탭에서 확인하세요.')
+                        setConfirmCloseId(null)
+                    }
+                }}
+                confirmText="마감 처리"
+                variant="destructive"
             />
         </div>
     )

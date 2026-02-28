@@ -1,6 +1,6 @@
 "use client"
 
-import { productMutations, useProductsSWR } from "@/lib/hooks/use-products-swr"
+import { productMutations, useProductsSWR, useHiddenProductsSWR } from "@/lib/hooks/use-products-swr"
 import { SWR_KEYS } from '@/lib/swr-config'
 import type { Product } from "@/lib/types"
 import React, { createContext, useContext, useEffect } from "react"
@@ -9,10 +9,13 @@ import { useAuth } from "./auth-provider"
 
 interface ProductContextType {
     products: Product[]
+    hiddenProducts: Product[]
     isLoading: boolean
     addProduct: (product: Omit<Product, "id" | "brandId" | "createdAt">) => Promise<void>
     updateProduct: (id: string, updates: Partial<Product>) => Promise<void>
     deleteProduct: (id: string) => Promise<void>
+    hideProduct: (id: string) => Promise<void>
+    activateProduct: (id: string) => Promise<void>
     refreshProducts: () => Promise<void>
 }
 
@@ -24,8 +27,8 @@ export function ProductProvider({ children, userId, teamId }: {
     teamId?: string
 }) {
     const { supabase } = useAuth()
-    // Use SWR hook for data fetching
     const { products, isLoading, revalidate } = useProductsSWR()
+    const { hiddenProducts } = useHiddenProductsSWR()
 
     // Log Product Loading
     useEffect(() => {
@@ -75,6 +78,14 @@ export function ProductProvider({ children, userId, teamId }: {
         await productMutations.deleteProduct(id)
     }
 
+    const hideProduct = async (id: string) => {
+        await productMutations.hideProduct(id)
+    }
+
+    const activateProduct = async (id: string) => {
+        await productMutations.activateProduct(id)
+    }
+
     const refreshProducts = async () => {
         await revalidate()
     }
@@ -82,10 +93,13 @@ export function ProductProvider({ children, userId, teamId }: {
     return (
         <ProductContext.Provider value={{
             products,
+            hiddenProducts,
             isLoading,
             addProduct,
             updateProduct,
             deleteProduct,
+            hideProduct,
+            activateProduct,
             refreshProducts
         }}>
             {children}

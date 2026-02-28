@@ -16,6 +16,8 @@ async function fetchProducts(): Promise<Product[]> {
       *,
       profiles(display_name, avatar_url, description)
     `)
+        // NOTE: is_active 필터는 DB 컬럼 추가 후 활성화
+        // .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(100)
 
@@ -59,11 +61,55 @@ async function fetchProducts(): Promise<Product[]> {
         accountTag: p.account_tag,
         channels: p.channels || [],
         createdAt: p.created_at,
-        isMock: p.is_mock || false
+        isMock: p.is_mock || false,
+        isActive: p.is_active // undefined이면 컬럼 없음 → 필터 통과
     }))
 
     console.log('[useProducts] Loaded products:', mapped.length)
-    return mapped
+    // is_active 컬럼이 있으면 false 항목 제외 (없으면 전체 반환)
+    return mapped.filter((p: any) => (p as any).isActive !== false)
+}
+
+/**
+ * Fetcher for hidden (is_active=false) products — brand only
+ */
+async function fetchHiddenProducts(): Promise<Product[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+        .from('brand_products')
+        .select(`*, profiles(display_name, avatar_url, description)`)
+        // NOTE: is_active 필터는 DB 컬럼 추가 후 활성화
+        // .eq('is_active', false)
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+    if (error) return []
+
+    return (data || []).map((p: any) => ({
+        id: p.id,
+        brandId: p.brand_id,
+        brandName: p.profiles?.display_name || 'Brand',
+        brandAvatar: p.profiles?.avatar_url,
+        brandBio: p.profiles?.description,
+        name: p.name,
+        price: p.price || 0,
+        image: p.image_url || '',
+        link: p.website_url || '',
+        points: p.selling_points || '',
+        shots: p.required_shots || '',
+        category: p.category || '기타',
+        description: p.description,
+        contentGuide: p.content_guide,
+        formatGuide: p.format_guide,
+        tags: p.tags || [],
+        accountTag: p.account_tag,
+        channels: p.channels || [],
+        createdAt: p.created_at,
+        isMock: p.is_mock || false,
+        isActive: p.is_active // undefined이면 컬럼 없음
+    }))
+        // is_active=false인 것만 반환 (컬럼 없으면 빈 배열)
+        .filter((p: any) => (p as any).isActive === false)
 }
 
 /**
@@ -89,6 +135,15 @@ export function useProductsSWR() {
         isLoading,
         revalidate,
     }
+}
+
+export function useHiddenProductsSWR() {
+    const { data, error, isLoading } = useSWR(
+        'HIDDEN_PRODUCTS',
+        fetchHiddenProducts,
+        { revalidateOnFocus: true, dedupingInterval: 5000 }
+    )
+    return { hiddenProducts: data || [], error, isLoading }
 }
 
 /**
@@ -195,18 +250,59 @@ export const productMutations = {
         const supabase = createClient()
         console.log('[productMutations] Deleting product:', id)
 
+        // FK 체크: product_applications에 이 상품을 참조하는 지원 이력이 있으면 삭제 불가
+        const { count } = await supabase
+            .from('product_applications')
+            .select('id', { count: 'exact', head: true })
+            .eq('product_id', id)
+
+        if (count && count > 0) {
+            throw new Error(`이 상품에 지원 이력(${count}건)이 있어 삭제할 수 없습니다. 지원 이력이 있는 상품은 삭제 대신 비공개 처리해주세요.`)
+        }
+
         const { error } = await supabase
             .from('brand_products')
             .delete()
             .eq('id', id)
 
         if (error) {
-            console.error('[productMutations] Delete error:', error)
-            throw error
+            const isRlsError = Object.keys(error).length === 0
+            console.error('[productMutations] Delete error:', JSON.stringify(error), isRlsError ? '→ RLS 정책 거부' : '')
+            throw isRlsError ? new Error('삭제 권한이 없습니다.') : error
         }
 
         // Revalidate cache
         await mutate(SWR_KEYS.PRODUCTS_ALL)
         console.log('[productMutations] Product deleted')
+    },
+
+    /**
+     * Hide a product (is_active = false)
+     */
+    async hideProduct(id: string): Promise<void> {
+        const supabase = createClient()
+        const { error } = await supabase
+            .from('brand_products')
+            .update({ is_active: false })
+            .eq('id', id)
+        if (error) throw error
+        await mutate(SWR_KEYS.PRODUCTS_ALL)
+        await mutate('HIDDEN_PRODUCTS')
+        console.log('[productMutations] Product hidden:', id)
+    },
+
+    /**
+     * Restore a hidden product (is_active = true)
+     */
+    async activateProduct(id: string): Promise<void> {
+        const supabase = createClient()
+        const { error } = await supabase
+            .from('brand_products')
+            .update({ is_active: true })
+            .eq('id', id)
+        if (error) throw error
+        await mutate(SWR_KEYS.PRODUCTS_ALL)
+        await mutate('HIDDEN_PRODUCTS')
+        console.log('[productMutations] Product activated:', id)
     },
 }
