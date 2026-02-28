@@ -685,9 +685,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         channel_subtype: (proposal as any).channel_subtype,
                         instagram_handle: proposal.instagramHandle || (proposal as any).channel_url,
                         insight_screenshot: proposal.insightScreenshot,
-                        receiver_name: proposal.receiver_name,
-                        shipping_address: proposal.shipping_address,
-                        shipping_phone: proposal.shipping_phone
                     })
                     .select()
                     .single()
@@ -853,9 +850,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         motivation: proposal.motivation,
                         content_plan: proposal.content_plan,
                         portfolio_links: proposal.portfolioLinks,
-                        receiver_name: proposal.receiver_name,
-                        shipping_address: proposal.shipping_address,
-                        shipping_phone: proposal.shipping_phone
                     })
                     .select()
                     .single()

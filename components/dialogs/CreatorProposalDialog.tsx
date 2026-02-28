@@ -38,9 +38,6 @@ export interface CreatorProposalFormData {
     desiredCost: string
     appealMessage: string
     targetCreatorId?: string
-    shippingName?: string
-    shippingPhone?: string
-    shippingAddress?: string
 }
 
 export interface CreatorProposalTarget {
@@ -93,25 +90,10 @@ export function CreatorProposalDialog({
     const [targetCreatorId, setTargetCreatorId] = useState("")
     const [isAIPlanning, setIsAIPlanning] = useState(false)
 
-    // 배송 정보
-    const [shippingName, setShippingName] = useState("")
-    const [shippingPhone, setShippingPhone] = useState("")
-    const [shippingAddress, setShippingAddress] = useState("")
-    const [shippingDetailAddress, setShippingDetailAddress] = useState("")
-    const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false)
-
     // prefillHandle 및 유저 정보 동기화
     useEffect(() => {
         if (prefillHandle) setChannelUrl(prefillHandle)
     }, [prefillHandle])
-
-    useEffect(() => {
-        if (user && open) {
-            setShippingName(user.shippingName || user.name || "")
-            setShippingPhone(user.shippingPhone || user.phone || "")
-            setShippingAddress(user.shippingAddress || "")
-        }
-    }, [user, open])
 
     // 다이얼로그 닫힐 때 폼 초기화
     useEffect(() => {
@@ -126,11 +108,6 @@ export function CreatorProposalDialog({
             setDesiredCost("")
             setAppealMessage("")
             setTargetCreatorId("")
-            // 배송 정보는 user effect가 다시 채워주지만, 기본적으로 초기화
-            setShippingName("")
-            setShippingPhone("")
-            setShippingAddress("")
-            setShippingDetailAddress("")
         }
     }, [open, prefillHandle])
 
@@ -184,9 +161,6 @@ export function CreatorProposalDialog({
             desiredCost,
             appealMessage,
             targetCreatorId: targetCreatorId || undefined,
-            shippingName,
-            shippingPhone,
-            shippingAddress: shippingDetailAddress ? `${shippingAddress} ${shippingDetailAddress}`.trim() : shippingAddress,
         })
     }
 
@@ -411,59 +385,6 @@ export function CreatorProposalDialog({
                             placeholder="기타 브랜드에게 하고 싶은 말이 있다면 자유롭게 적어주세요."
                         />
                     </div>
-
-                    {/* 배송 정보 (캠페인 등 제품 수령용) */}
-                    <div className="space-y-4 pt-4 border-t mt-2">
-                        <Label className="text-base text-foreground">배송 정보 <span className="text-muted-foreground text-xs font-normal">(제품 수령용)</span></Label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-xs">수령인 이름</Label>
-                                <Input
-                                    value={shippingName}
-                                    onChange={(e) => setShippingName(e.target.value)}
-                                    placeholder="본명 또는 닉네임"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs">수령인 연락처</Label>
-                                <Input
-                                    value={shippingPhone}
-                                    onChange={(e) => setShippingPhone(e.target.value)}
-                                    placeholder="010-0000-0000"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs">배송지 주소</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    value={shippingAddress}
-                                    readOnly
-                                    placeholder="주소 검색을 클릭하여 기본 주소를 입력하세요"
-                                    className="bg-muted text-foreground"
-                                />
-                                <Button type="button" variant="outline" onClick={() => setIsAddressSearchOpen(true)} className="shrink-0 gap-2">
-                                    주소 검색
-                                </Button>
-                            </div>
-                            <Input
-                                value={shippingDetailAddress}
-                                onChange={(e) => setShippingDetailAddress(e.target.value)}
-                                placeholder="상세 주소 입력"
-                                className="mt-2"
-                            />
-                        </div>
-                    </div>
-
-                    <AddressSearchDialog
-                        open={isAddressSearchOpen}
-                        onOpenChange={setIsAddressSearchOpen}
-                        onComplete={(data) => {
-                            setShippingAddress(`[${data.zonecode}] ${data.address}`)
-                            setShippingDetailAddress('')
-                        }}
-                    />
                 </div>
 
                 <DialogFooter>
