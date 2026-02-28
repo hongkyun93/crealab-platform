@@ -137,23 +137,6 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
                 }
             }
 
-            const formattedMessage = [
-                `[지원 정보]`,
-                `- 활동 채널: ${formData.channelName} (${formData.channelUrl})`,
-                `- 희망 원고료: ${formData.desiredCost || '제시 없음'}`,
-                `- 포트폴리오: ${formData.portfolioLinks || '없음'}`,
-                `- 인사이트 첨부: ${insightUrl ? '첨부됨' : '없음'}`,
-                ``,
-                `[지원 동기]`,
-                formData.motivation,
-                ``,
-                `[콘텐츠 제작 계획]`,
-                formData.contentPlan,
-                ``,
-                `[추가 메시지]`,
-                formData.appealMessage || '없음',
-            ].join('\n')
-
             await addProposal({
                 type: "creator_apply",
                 dealType: "ad",
@@ -161,7 +144,7 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
                 productName: product.name,
                 cost: formData.desiredCost ? Number(formData.desiredCost.replace(/[^0-9]/g, '')) : 0,
                 commission: 0,
-                requestDetails: formattedMessage,
+                message: formData.appealMessage || undefined,
                 status: "applied",
                 fromId: effectiveCreatorId,
                 toId: product.brandId,

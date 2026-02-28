@@ -252,18 +252,74 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                             </div>
                         </div>
 
-                        {/* ── Right: Message + Guide ── */}
+                        {/* ── Right: 지원서 내용 ── */}
                         <div className="p-6 space-y-5">
-                            <div>
-                                <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-4">
-                                    <MessageCircle className="h-3.5 w-3.5 text-blue-400" /> 제안 메시지
-                                </h4>
-                                <div className="bg-blue-50/30 dark:bg-blue-900/10 rounded-xl p-5 border border-blue-100/40 dark:border-blue-900/20">
-                                    <p className="text-sm leading-[1.9] whitespace-pre-wrap text-foreground/85">
-                                        {data.message || "메시지 없음"}
-                                    </p>
+                            {/* 지원 동기 */}
+                            {proposal?.motivation && (
+                                <div>
+                                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3">
+                                        <MessageCircle className="h-3.5 w-3.5 text-blue-400" /> 지원 동기
+                                    </h4>
+                                    <div className="bg-blue-50/30 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100/40 dark:border-blue-900/20">
+                                        <p className="text-sm leading-[1.9] whitespace-pre-wrap text-foreground/85">{proposal.motivation}</p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* 콘텐츠 제작 계획 */}
+                            {proposal?.content_plan && (
+                                <div>
+                                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3">
+                                        <Clapperboard className="h-3.5 w-3.5 text-violet-400" /> 콘텐츠 제작 계획
+                                    </h4>
+                                    <div className="bg-violet-50/30 dark:bg-violet-900/10 rounded-xl p-4 border border-violet-100/40 dark:border-violet-900/20">
+                                        <p className="text-sm leading-[1.9] whitespace-pre-wrap text-foreground/85">{proposal.content_plan}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 포트폴리오 링크 */}
+                            {proposal?.portfolio_links && (Array.isArray(proposal.portfolio_links) ? proposal.portfolio_links.length > 0 : !!proposal.portfolio_links) && (
+                                <div>
+                                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3">
+                                        <ExternalLink className="h-3.5 w-3.5 text-emerald-400" /> 포트폴리오
+                                    </h4>
+                                    <div className="space-y-1.5">
+                                        {(Array.isArray(proposal.portfolio_links) ? proposal.portfolio_links : [proposal.portfolio_links])
+                                            .filter(Boolean)
+                                            .map((link: string, i: number) => (
+                                                <a key={i} href={link.startsWith('http') ? link : `https://${link}`} target="_blank" rel="noreferrer"
+                                                    className="flex items-center gap-1.5 text-[12px] text-blue-500 hover:text-blue-600 hover:underline transition-colors truncate">
+                                                    <ExternalLink className="h-3 w-3 shrink-0" />{link}
+                                                </a>
+                                            ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 인사이트 스크린샷 */}
+                            {proposal?.insight_screenshot && (
+                                <div>
+                                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3">
+                                        <TrendingUp className="h-3.5 w-3.5 text-pink-400" /> 인사이트 캡처
+                                    </h4>
+                                    <a href={proposal.insight_screenshot} target="_blank" rel="noreferrer">
+                                        <img src={proposal.insight_screenshot} alt="인사이트" className="rounded-xl border border-border/50 w-full object-cover max-h-48 hover:opacity-90 transition-opacity cursor-zoom-in" />
+                                    </a>
+                                </div>
+                            )}
+
+                            {/* 제안 메시지 (기존, appeal_message 포함) */}
+                            {data.message && (
+                                <div>
+                                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3">
+                                        <MessageCircle className="h-3.5 w-3.5 text-blue-400" /> 추가 메시지
+                                    </h4>
+                                    <div className="bg-blue-50/30 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100/40 dark:border-blue-900/20">
+                                        <p className="text-sm leading-[1.9] whitespace-pre-wrap text-foreground/85">{data.message}</p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Video Guide */}
                             {data.video_guide && (
