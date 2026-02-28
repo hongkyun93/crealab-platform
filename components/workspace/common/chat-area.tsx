@@ -265,7 +265,8 @@ export function ChatArea({ className }: ChatAreaProps) {
             toast.error('메시지 전송에 실패했습니다.');
         } finally {
             setIsSending(false);
-            textareaRef.current?.focus();
+            // re-render(disabled 해제) 이후에 포커스 복원
+            setTimeout(() => textareaRef.current?.focus(), 0);
         }
     };
 
