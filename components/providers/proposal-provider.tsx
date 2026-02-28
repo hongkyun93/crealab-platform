@@ -1023,6 +1023,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.compensation_amount !== undefined) dbUpdates.compensation_amount = updates.compensation_amount
             if (updates.product_name) dbUpdates.product_name = updates.product_name
             if ((updates as any).product_type) dbUpdates.product_type = (updates as any).product_type
+            if ((updates as any).video_guide !== undefined) dbUpdates.video_guide = (updates as any).video_guide
             if (updates.special_terms !== undefined) dbUpdates.special_terms = updates.special_terms
             if (updates.has_incentive !== undefined) dbUpdates.has_incentive = updates.has_incentive
             if (updates.incentive_detail !== undefined) dbUpdates.incentive_detail = updates.incentive_detail
@@ -1085,6 +1086,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.compensation_amount !== undefined) dbUpdates.compensation_amount = updates.compensation_amount
             if (updates.product_name) dbUpdates.product_name = updates.product_name
             if (updates.product_type) dbUpdates.product_type = updates.product_type
+            if ((updates as any).video_guide !== undefined) dbUpdates.video_guide = (updates as any).video_guide
             if (updates.has_incentive !== undefined) dbUpdates.has_incentive = updates.has_incentive
             if (updates.incentive_detail !== undefined) dbUpdates.incentive_detail = updates.incentive_detail
             if ((updates as any).channel_name) dbUpdates.channel_name = (updates as any).channel_name

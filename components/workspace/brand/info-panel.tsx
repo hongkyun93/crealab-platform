@@ -126,6 +126,7 @@ export function InfoPanel() {
         if (updates.condition_secondary_usage_period !== undefined) payload.condition_secondary_usage_period = updates.condition_secondary_usage_period;
         if ((updates as any).secondary_usage_fee !== undefined) payload.secondary_usage_fee = (updates as any).secondary_usage_fee;
         if (updates.product_type !== undefined) payload.product_type = updates.product_type;
+        if ((updates as any).video_guide !== undefined) payload.video_guide = (updates as any).video_guide;
 
         console.log('[InfoPanel] Saving conditions:', payload);
 
