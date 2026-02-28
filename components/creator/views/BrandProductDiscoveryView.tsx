@@ -57,7 +57,7 @@ export const BrandProductDiscoveryView = React.memo(function BrandProductDiscove
                         <Card
                             key={p.id}
                             className="group overflow-hidden flex flex-col h-full border-border/60 hover:shadow-md transition-all cursor-pointer bg-card"
-                            onClick={() => !hideProposeButton && handlePropose(p)}
+                            onClick={() => handlePropose(p)}
                         >
                             {/* Image */}
                             <div className="w-full h-48 bg-muted/20 shrink-0 relative overflow-hidden flex items-center justify-center">
@@ -155,18 +155,16 @@ export const BrandProductDiscoveryView = React.memo(function BrandProductDiscove
                                         </a>
                                     </Button>
                                 )}
-                                {!hideProposeButton && (
-                                    <Button
-                                        className="flex-1 h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            handlePropose(p)
-                                        }}
-                                    >
-                                        제안하기
-                                    </Button>
-                                )}
+                                <Button
+                                    className={`flex-1 h-8 text-xs ${hideProposeButton ? 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border/60' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
+                                    size="sm"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handlePropose(p)
+                                    }}
+                                >
+                                    {hideProposeButton ? '상세보기' : '제안하기'}
+                                </Button>
                             </CardFooter>
                         </Card>
                     ))}
