@@ -26,6 +26,47 @@ const ALLOWED_TYPES = [
 const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'gif', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
 
+interface LocalMessage {
+    id: string;
+    senderId: string;
+    receiverId: string;
+    workspaceId?: string | null;
+    proposalId?: string | null;
+    productApplicationId?: string | null;
+    content: string;
+    timestamp: string;
+    read: boolean;
+    senderName: string;
+    senderAvatar?: string;
+    receiverName: string;
+    receiverAvatar?: string;
+    fileUrl?: string | null;
+    fileName?: string | null;
+    fileSize?: number | null;
+    fileType?: string | null;
+}
+
+function formatRawMessages(data: any[]): LocalMessage[] {
+    return data.map((msg: any) => ({
+        id: msg.id.toString(),
+        senderId: msg.sender_id,
+        receiverId: msg.receiver_id,
+        workspaceId: msg.workspace_id ?? null,
+        proposalId: msg.proposal_id ?? null,
+        productApplicationId: msg.product_application_id ?? null,
+        content: msg.content || '',
+        timestamp: msg.created_at,
+        read: msg.is_read || false,
+        senderName: msg.sender?.display_name || 'User',
+        senderAvatar: msg.sender?.avatar_url,
+        receiverName: msg.receiver?.display_name || 'User',
+        receiverAvatar: msg.receiver?.avatar_url,
+        fileUrl: msg.file_url ?? null,
+        fileName: msg.file_name ?? null,
+        fileSize: msg.file_size ?? null,
+        fileType: msg.file_type ?? null,
+    }))
+}
 
 interface ChatAreaProps {
     className?: string;
@@ -33,14 +74,16 @@ interface ChatAreaProps {
 
 export function ChatArea({ className }: ChatAreaProps) {
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { messages, sendMessage, user } = useUnifiedProvider();
+    const { sendMessage, user } = useUnifiedProvider();
     const { supabase } = useAuth();
+
+    // ── 로컬 메시지 상태 (워크스페이스 단위로 격리) ──
+    const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
+    const [isLocalLoading, setIsLocalLoading] = useState(false);
 
     const [chatMessage, setChatMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
-    // 한국어 IME 조합 중 여부 (조합 중 Enter 전송 방지)
     const [isComposing, setIsComposing] = useState(false);
-    // 첨부 파일 상태
     const [pendingFile, setPendingFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -48,67 +91,115 @@ export function ChatArea({ className }: ChatAreaProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Determine proposal type
+    // Proposal 메타데이터
     const p = proposal as any;
     const isCampaignProposal = p?.type === 'creator_apply' || !!p?.campaignId;
     const isMomentProposal = !!p?.moment_id;
     const proposalIdStr = p?.id?.toString();
     const workspaceId: string | undefined = p?.workspace_id;
 
-    // Determine the OTHER party's user ID
+    // 상대방 user ID
     const otherId: string | undefined = useMemo(() => {
         if (!p || !user?.id) return undefined;
-
-        const brandUserId: string | undefined =
-            p.brand_id || p.brandId || p.campaign?.brand_id;
-        const influencerUserId: string | undefined =
-            p.influencer_id || p.influencerId;
-
+        const brandUserId: string | undefined = p.brand_id || p.brandId || p.campaign?.brand_id;
+        const influencerUserId: string | undefined = p.influencer_id || p.influencerId;
         if (user.id === brandUserId) return influencerUserId;
         if (user.id === influencerUserId) return brandUserId;
         if (user.role === 'brand') return influencerUserId;
         return brandUserId;
     }, [p, user?.id, user?.role]);
 
-    // Filter messages: match by sender/receiver pair AND proposal ID.
-    const filteredMessages = useMemo(() => {
-        if (!user?.id || !otherId) return [];
+    // ── 메시지 fetch (DB 레벨에서 워크스페이스 단위 격리) ──
+    const fetchLocalMessages = useCallback(async () => {
+        if (!user?.id) return;
+        setIsLocalLoading(true);
+        try {
+            const SELECT = `
+                *,
+                sender:profiles!sender_id(id, display_name, avatar_url),
+                receiver:profiles!receiver_id(id, display_name, avatar_url)
+            `;
 
-        return messages.filter((msg) => {
-            const senderReceiverMatch =
-                (msg.senderId === user.id && msg.receiverId === otherId) ||
-                (msg.senderId === otherId && msg.receiverId === user.id);
+            let data: any[] | null = null;
 
-            if (!senderReceiverMatch) return false;
-
-            // [1순위] workspace_id 격리
-            if (workspaceId && msg.workspaceId) {
-                return msg.workspaceId === workspaceId;
+            if (workspaceId) {
+                // [1순위] workspace_id로 정확히 격리 — 가장 안전한 방법
+                const { data: d } = await supabase
+                    .from('messages')
+                    .select(SELECT)
+                    .eq('workspace_id', workspaceId)
+                    .order('created_at', { ascending: true });
+                data = d;
+            } else if (proposalIdStr && !isMomentProposal && !isCampaignProposal) {
+                // [2순위] product_application 전용: proposal_id FK 사용
+                const { data: d } = await supabase
+                    .from('messages')
+                    .select(SELECT)
+                    .eq('proposal_id', proposalIdStr)
+                    .is('workspace_id', null)
+                    .order('created_at', { ascending: true });
+                data = d;
+            } else if (otherId && user?.id) {
+                // [3순위] 레거시 moment/campaign: workspace_id, proposal_id 모두 없는 메시지만
+                // sender/receiver pair + 모든 식별자가 null인 것만 표시
+                const { data: d } = await supabase
+                    .from('messages')
+                    .select(SELECT)
+                    .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
+                    .is('workspace_id', null)
+                    .is('proposal_id', null)
+                    .is('product_application_id', null)
+                    .order('created_at', { ascending: true });
+                data = d;
             }
 
-            // [2순위] proposal_id 매칭 (product_application 전용, FK 있음)
-            if (msg.proposalId && proposalIdStr) return msg.proposalId === proposalIdStr;
+            if (data) {
+                setLocalMessages(formatRawMessages(data));
+            }
+        } catch (err) {
+            console.error('[ChatArea] fetchLocalMessages error:', err);
+        } finally {
+            setIsLocalLoading(false);
+        }
+    }, [workspaceId, proposalIdStr, isMomentProposal, isCampaignProposal, otherId, user?.id, supabase]);
 
-            // [3순위] legacy product_application_id 매칭
-            if (msg.productApplicationId && proposalIdStr) return msg.productApplicationId === proposalIdStr;
+    // ── 초기 로드 + 워크스페이스 단위 Realtime 구독 ──
+    useEffect(() => {
+        fetchLocalMessages();
 
-            // [fallback] moment/campaign 메시지는 식별자 없이 sender/receiver pair로만 표시
-            // (workspace_id가 null이고 proposal_id도 null인 신규 메시지)
-            if (!msg.workspaceId && !msg.proposalId && !msg.productApplicationId) return true;
+        // Realtime: workspace_id 있으면 workspace 채널로 구독
+        // 없으면 sender/receiver pair 기반 구독 (레거시)
+        if (!workspaceId && !otherId) return;
 
-            return false;
-        });
-    }, [messages, user?.id, otherId, proposalIdStr, workspaceId]);
+        const channelName = workspaceId
+            ? `workspace-chat-${workspaceId}`
+            : `legacy-chat-${[user?.id, otherId].sort().join('-')}`;
 
-    // Auto-scroll to bottom when messages change
+        const filter = workspaceId
+            ? `workspace_id=eq.${workspaceId}`
+            : `receiver_id=eq.${user?.id}`;
+
+        const channel = supabase
+            .channel(channelName)
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'messages', filter },
+                () => { fetchLocalMessages(); }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [workspaceId, otherId, user?.id, fetchLocalMessages, supabase]);
+
+    // Auto-scroll
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [filteredMessages]);
+    }, [localMessages]);
 
     // 파일 유효성 검사
     const validateFile = useCallback((file: File): string | null => {
         if (file.size > MAX_FILE_SIZE) {
-            return `파일 크기가 5MB를 초과합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`;
+            return `파일 크기가 20MB를 초과합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`;
         }
         const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
         if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(ext)) {
@@ -117,7 +208,6 @@ export function ChatArea({ className }: ChatAreaProps) {
         return null;
     }, []);
 
-    // 파일 선택 핸들러
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -128,10 +218,9 @@ export function ChatArea({ className }: ChatAreaProps) {
             return;
         }
         setPendingFile(file);
-        e.target.value = ''; // 동일 파일 재선택 허용
+        e.target.value = '';
     }, [validateFile]);
 
-    // 파일 업로드 → 메시지 전송
     const handleSend = async () => {
         const trimmed = chatMessage.trim();
         if ((!trimmed && !pendingFile) || !proposal || isSending || isUploading || !otherId) return;
@@ -146,7 +235,6 @@ export function ChatArea({ className }: ChatAreaProps) {
             try {
                 const folder = workspaceId || proposalIdStr || 'unknown';
                 const publicUrl = await uploadFileViaAPI(pendingFile, 'workspace-files', folder);
-
                 uploadedFile = {
                     url: publicUrl,
                     name: pendingFile.name,
@@ -166,10 +254,11 @@ export function ChatArea({ className }: ChatAreaProps) {
 
         setIsSending(true);
         try {
-            // messages.proposal_id는 product_applications(id) FK가 있음
-            // → product_application만 proposalId 전달, moment/campaign은 null(FK 위반 방지)
+            // product_application만 proposal_id FK 전달, moment/campaign은 null (FK 위반 방지)
             const sendProposalId = (!isCampaignProposal && !isMomentProposal) ? proposalIdStr : undefined;
             await sendMessage(otherId, msgContent, uploadedFile, sendProposalId, undefined, workspaceId);
+            // 전송 후 로컬 메시지 갱신
+            await fetchLocalMessages();
         } catch (e) {
             console.error('[ChatArea] Message send failed:', e);
             setChatMessage(msgContent);
@@ -180,12 +269,8 @@ export function ChatArea({ className }: ChatAreaProps) {
         }
     };
 
-    // 한국어 IME 버그 방지:
-    // - onCompositionStart/End 로 조합 중 상태 추적
-    // - isComposing 중에는 Enter 전송 차단
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
-            // isComposing: 한국어 조합 중 (예: 'ㅎ' + Enter 시 전송 방지)
             if (isComposing) return;
             e.preventDefault();
             handleSend();
@@ -215,10 +300,10 @@ export function ChatArea({ className }: ChatAreaProps) {
         }
     };
 
-    // Group messages by date
+    // 날짜별 그룹
     const groupedMessages = useMemo(() => {
-        const groups: { date: string; messages: typeof filteredMessages }[] = [];
-        filteredMessages.forEach((msg) => {
+        const groups: { date: string; messages: typeof localMessages }[] = [];
+        localMessages.forEach((msg) => {
             const date = formatDate(msg.timestamp);
             const lastGroup = groups[groups.length - 1];
             if (lastGroup && lastGroup.date === date) {
@@ -228,7 +313,7 @@ export function ChatArea({ className }: ChatAreaProps) {
             }
         });
         return groups;
-    }, [filteredMessages]);
+    }, [localMessages]);
 
     const isBusy = isSending || isUploading;
 
@@ -245,7 +330,11 @@ export function ChatArea({ className }: ChatAreaProps) {
 
             {/* Messages List */}
             <div className="flex-1 p-4 overflow-y-auto space-y-4 min-h-0">
-                {filteredMessages.length === 0 ? (
+                {isLocalLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                ) : localMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
                         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
                             <Send className="w-5 h-5 opacity-40" />
@@ -263,7 +352,7 @@ export function ChatArea({ className }: ChatAreaProps) {
                                 </span>
                             </div>
 
-                            {/* Messages in this date group */}
+                            {/* Messages */}
                             <div className="space-y-3">
                                 {group.messages.map((msg) => {
                                     const isMyMessage = msg.senderId === user?.id;
@@ -368,7 +457,7 @@ export function ChatArea({ className }: ChatAreaProps) {
                         className="text-muted-foreground hover:text-foreground shrink-0 mb-0.5"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isBusy}
-                        title="파일 첨부 (PDF, DOC, DOCX, GIF · 5MB 이하)"
+                        title="파일 첨부 (PDF, DOC, DOCX, GIF · 20MB 이하)"
                     >
                         <Paperclip className="w-5 h-5" />
                     </Button>
@@ -379,7 +468,6 @@ export function ChatArea({ className }: ChatAreaProps) {
                             value={chatMessage}
                             onChange={(e) => setChatMessage(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            // 한국어 IME 조합 중 상태 추적 — 조합 완료 전 Enter 전송 방지
                             onCompositionStart={() => setIsComposing(true)}
                             onCompositionEnd={() => setIsComposing(false)}
                             rows={1}
@@ -407,7 +495,7 @@ export function ChatArea({ className }: ChatAreaProps) {
                     </Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1.5 pl-10">
-                    Enter로 전송 · Shift+Enter로 줄바꿈 · 파일첨부: PDF, DOC, DOCX, GIF (5MB 이하)
+                    Enter로 전송 · Shift+Enter로 줄바꿈 · 파일첨부: PDF, DOC, DOCX, GIF (20MB 이하)
                 </p>
             </div>
         </div>
