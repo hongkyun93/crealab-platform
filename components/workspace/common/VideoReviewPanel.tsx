@@ -773,7 +773,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
 
                 {/* Saved feedback chips — ref'd so ▼ arrows can scroll to them */}
                 {hasSavedFeedbacks && (
-                    <div ref={feedbackListRef} className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto">
+                    <div ref={feedbackListRef} className="flex flex-wrap gap-1.5">
                         {feedbacks.map(fb => {
                             // ── sender 역할 분류 ──────────────────────────────────
                             const brandId = (proposal as any)?.brand_id
