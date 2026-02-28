@@ -249,6 +249,8 @@ export default function MessagePage() {
             setSelectedFile(fileToUpload) // Restore file
         } finally {
             setIsSending(false)
+            // re-render(disabled 해제) 이후에 포커스 복원
+            setTimeout(() => textareaRef.current?.focus(), 0)
         }
     }
 
