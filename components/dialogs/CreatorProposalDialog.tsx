@@ -191,18 +191,18 @@ export function CreatorProposalDialog({
     }
 
     const channelPlaceholder: Record<string, string> = {
-        instagram: "https://instagram.com/userid",
-        youtube: "https://youtube.com/@channel",
-        tiktok: "https://tiktok.com/@userid",
-        blog: "https://blog.naver.com/...",
-        other: "https://...",
+        instagram: "hongkyuniiii (@ 없이 아이디만)",
+        youtube: "채널 아이디 또는 @핸들명",
+        tiktok: "채널 아이디 (@ 없이)",
+        blog: "블로그 아이디 또는 URL",
+        other: "채널 아이디 또는 링크",
     }
     const channelLabel: Record<string, string> = {
-        instagram: "인스타그램 프로필 주소 또는 ID",
-        youtube: "유튜브 채널 주소",
-        tiktok: "틱톡 프로필 주소",
-        blog: "블로그 주소",
-        other: "채널/포트폴리오 주소",
+        instagram: "인스타그램 아이디",
+        youtube: "유튜브 채널 아이디",
+        tiktok: "틱톡 아이디",
+        blog: "블로그 아이디",
+        other: "채널 아이디 / 링크",
     }
 
     return (

@@ -99,6 +99,21 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
         }
     }, [proposal])
 
+    // 채널 아이디 → 풀 URL 자동 생성
+    const channelHandle: string = proposal?.instagram_handle || ''
+    const buildChannelUrl = (channel: string, handle: string): string | null => {
+        if (!handle) return null
+        const h = handle.replace(/^@/, '')
+        switch (channel) {
+            case 'instagram': return `https://www.instagram.com/${h}`
+            case 'youtube': return `https://www.youtube.com/@${h}`
+            case 'tiktok': return `https://www.tiktok.com/@${h}`
+            case 'blog': return h.startsWith('http') ? h : `https://blog.naver.com/${h}`
+            default: return h.startsWith('http') ? h : null
+        }
+    }
+    const channelUrl = buildChannelUrl(data?.channel_name || '', channelHandle)
+
     if (!proposal || !data) return null
 
     const statusInfo = STATUS_MAP[data.status] || STATUS_MAP.offered
@@ -185,6 +200,17 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                                             </span>
                                         ))}
                                     </div>
+                                    {channelUrl && (
+                                        <a
+                                            href={channelUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-500 hover:text-blue-600 hover:underline transition-colors mt-1"
+                                        >
+                                            <ExternalLink className="h-3 w-3" />
+                                            {channelHandle.replace(/^@/, '')} 채널 바로가기
+                                        </a>
+                                    )}
                                 </div>
                             </div>
 
