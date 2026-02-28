@@ -14,6 +14,7 @@ import {
     Star,
 } from "lucide-react"
 import React, { useState } from "react"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 
 interface ProductBrowseViewProps {
     /** 전체 제품 배열 */
@@ -38,6 +39,8 @@ export function ProductBrowseView({
     title = "브랜드 제품 둘러보기",
     description = "마음에 들면 광고나 공구를 먼저 제안해보세요.",
 }: ProductBrowseViewProps) {
+    const { user } = useUnifiedProvider()
+    const isBrand = user?.role === 'brand'
     const [searchQuery, setSearchQuery] = useState("")
     const [tagFilter, setTagFilter] = useState<string[]>([])
     const [pageSize, setPageSize] = useState<20 | 50 | 100>(20)
@@ -186,6 +189,7 @@ export function ProductBrowseView({
                                 else if (p.link) window.open(p.link, "_blank")
                             }}
                             handlePropose={(p) => onViewDetail(p)}
+                            hideProposeButton={isBrand}
                         />
                     ) : (
                         <BrandProductListView
@@ -195,6 +199,7 @@ export function ProductBrowseView({
                                 else if (p.link) window.open(p.link, "_blank")
                             }}
                             handlePropose={(p) => onViewDetail(p)}
+                            hideProposeButton={isBrand}
                         />
                     )}
                 </div>

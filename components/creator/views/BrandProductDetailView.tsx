@@ -228,29 +228,27 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
 
                             <div className="flex flex-col sm:flex-row gap-3">
                                 {user?.role !== 'brand' && (
-                                    <>
-                                        <Button size="lg" className="flex-1 text-lg h-14 shadow-lg shadow-primary/20 font-bold" onClick={() => setIsOpen(true)}>
-                                            <Send className="mr-2 h-5 w-5" /> 협업 제안하기
-                                        </Button>
-
-                                        <CreatorProposalDialog
-                                            open={isOpen}
-                                            onOpenChange={setIsOpen}
-                                            target={product ? {
-                                                brandName: product.brandName || "브랜드",
-                                                targetName: product.name,
-                                                productName: product.name,
-                                                sellingPoints: product.points,
-                                                category: product.category,
-                                                requiredShots: product.shots,
-                                            } : null}
-                                            onSubmit={handlePropose}
-                                            isSubmitting={isSubmitting}
-                                            teamMembers={teamMembers}
-                                            prefillHandle={user?.handle || ""}
-                                        />
-                                    </>
+                                    <Button size="lg" className="flex-1 text-lg h-14 shadow-lg shadow-primary/20 font-bold" onClick={() => setIsOpen(true)}>
+                                        <Send className="mr-2 h-5 w-5" /> 협업 제안하기
+                                    </Button>
                                 )}
+
+                                <CreatorProposalDialog
+                                    open={isOpen}
+                                    onOpenChange={setIsOpen}
+                                    target={product ? {
+                                        brandName: product.brandName || "브랜드",
+                                        targetName: product.name,
+                                        productName: product.name,
+                                        sellingPoints: product.points,
+                                        category: product.category,
+                                        requiredShots: product.shots,
+                                    } : null}
+                                    onSubmit={handlePropose}
+                                    isSubmitting={isSubmitting}
+                                    teamMembers={teamMembers}
+                                    prefillHandle={user?.handle || ""}
+                                />
 
                                 {product.link && (
                                     <Button variant="outline" size="lg" className="flex-1 h-14 border-2 font-bold" asChild>

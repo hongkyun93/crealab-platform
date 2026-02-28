@@ -35,12 +35,14 @@ interface BrandProductListViewProps {
     products: any[]
     handleViewGuide: (product: any) => void
     handlePropose: (product: any) => void
+    hideProposeButton?: boolean
 }
 
 export const BrandProductListView = React.memo(function BrandProductListView({
     products,
     handleViewGuide,
-    handlePropose
+    handlePropose,
+    hideProposeButton = false,
 }: BrandProductListViewProps) {
     return (
         <div className="space-y-2.5 animate-in fade-in slide-in-from-bottom-2">
@@ -55,7 +57,7 @@ export const BrandProductListView = React.memo(function BrandProductListView({
                         <Card
                             key={p.id}
                             className="overflow-hidden flex flex-row items-stretch border-border/60 hover:shadow-md transition-all group cursor-pointer"
-                            onClick={() => handlePropose(p)}
+                            onClick={() => !hideProposeButton && handlePropose(p)}
                         >
                             {/* Thumbnail — self-stretch */}
                             <div className="w-24 shrink-0 bg-muted relative overflow-hidden self-stretch">
@@ -141,16 +143,18 @@ export const BrandProductListView = React.memo(function BrandProductListView({
                                             </a>
                                         </Button>
                                     )}
-                                    <Button
-                                        className="h-7 text-xs px-2.5 bg-primary text-primary-foreground hover:bg-primary/90"
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            handlePropose(p)
-                                        }}
-                                    >
-                                        제안하기
-                                    </Button>
+                                    {!hideProposeButton && (
+                                        <Button
+                                            className="h-7 text-xs px-2.5 bg-primary text-primary-foreground hover:bg-primary/90"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handlePropose(p)
+                                            }}
+                                        >
+                                            제안하기
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </Card>

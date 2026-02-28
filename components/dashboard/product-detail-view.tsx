@@ -154,9 +154,11 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
                         )}
 
                         <div className="flex flex-col sm:flex-row gap-3">
-                            <Button size="lg" className="flex-1 text-lg h-14 shadow-lg shadow-primary/20 font-bold" onClick={() => setIsProposalOpen(true)}>
-                                <Send className="mr-2 h-5 w-5" /> 협업 제안하기
-                            </Button>
+                            {user?.role !== 'brand' && (
+                                <Button size="lg" className="flex-1 text-lg h-14 shadow-lg shadow-primary/20 font-bold" onClick={() => setIsProposalOpen(true)}>
+                                    <Send className="mr-2 h-5 w-5" /> 협업 제안하기
+                                </Button>
+                            )}
 
                             <Dialog open={isProposalOpen} onOpenChange={setIsProposalOpen}>
                                 <DialogContent className="sm:max-w-md">

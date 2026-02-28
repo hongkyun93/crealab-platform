@@ -35,12 +35,14 @@ interface BrandProductDiscoveryViewProps {
     products: any[]
     handleViewGuide: (product: any) => void
     handlePropose: (product: any) => void
+    hideProposeButton?: boolean
 }
 
 export const BrandProductDiscoveryView = React.memo(function BrandProductDiscoveryView({
     products,
     handleViewGuide,
-    handlePropose
+    handlePropose,
+    hideProposeButton = false,
 }: BrandProductDiscoveryViewProps) {
     return (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
@@ -55,7 +57,7 @@ export const BrandProductDiscoveryView = React.memo(function BrandProductDiscove
                         <Card
                             key={p.id}
                             className="group overflow-hidden flex flex-col h-full border-border/60 hover:shadow-md transition-all cursor-pointer bg-card"
-                            onClick={() => handlePropose(p)}
+                            onClick={() => !hideProposeButton && handlePropose(p)}
                         >
                             {/* Image */}
                             <div className="w-full h-48 bg-muted/20 shrink-0 relative overflow-hidden flex items-center justify-center">
@@ -153,16 +155,18 @@ export const BrandProductDiscoveryView = React.memo(function BrandProductDiscove
                                         </a>
                                     </Button>
                                 )}
-                                <Button
-                                    className="flex-1 h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-                                    size="sm"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        handlePropose(p)
-                                    }}
-                                >
-                                    제안하기
-                                </Button>
+                                {!hideProposeButton && (
+                                    <Button
+                                        className="flex-1 h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            handlePropose(p)
+                                        }}
+                                    >
+                                        제안하기
+                                    </Button>
+                                )}
                             </CardFooter>
                         </Card>
                     ))}
