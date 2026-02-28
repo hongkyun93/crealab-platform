@@ -320,19 +320,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Only does signInWithPassword + redirect. Profile loading is handled by initAuth on the target page.
     const login = async (email: string, password: string): Promise<User> => {
         try {
-            // 1. Clear stale caches
+            // 1. Clear stale caches (localStorage/sessionStorage only — HttpOnly cookies are server-managed)
             localStorage.removeItem("creadypick_user")
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('sb-')) localStorage.removeItem(key)
             })
             sessionStorage.clear()
-            document.cookie.split(';').forEach(cookie => {
-                const name = cookie.split('=')[0].trim()
-                if (name.startsWith('sb-') || name === 'supabase-auth-token') {
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`
-                }
-            })
             setUser(null)
 
             // 2. Sign in — this is the ONLY Supabase call we make during login
@@ -371,37 +364,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Logout function
     const logout = async () => {
         try {
-            console.log('[AuthProvider] Signing out via server API...')
-
-            // 1. 서버 API를 호출하여 안전하게 HttpOnly 쿠키(sb-*) 파기
+            // 1. 서버 API로 HttpOnly 쿠키(sb-*) 파기 — JS는 HttpOnly 쿠키에 접근 불가
             await fetch('/api/auth/logout', { method: 'POST' })
 
-            // 2. Clear state immediately
+            // 2. Clear client state
             setUser(null)
             lastUserId.current = null
 
-            // 3. Clear localStorage (creadypick + supabase sb-* keys)
+            // 3. Clear localStorage/sessionStorage (non-HttpOnly)
             localStorage.removeItem("creadypick_user")
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('sb-')) localStorage.removeItem(key)
             })
-
-            // 4. Clear sessionStorage
             sessionStorage.clear()
 
-            // 5. 서버 측 쿠키 파기가 최우선이지만 혹시 모를 로컬 클리어
-            document.cookie.split(';').forEach(cookie => {
-                const name = cookie.split('=')[0].trim()
-                if (name.startsWith('sb-') || name === 'supabase-auth-token') {
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-                }
-            })
-
-            // 6. Navigate immediately (Hard Reload to /login)
+            // 4. Hard redirect (clears all React state)
             window.location.href = '/login'
         } catch (error: any) {
             console.error('[AuthProvider] Logout failed:', error)
-            // Force redirect even if error
             window.location.href = '/login'
         }
     }

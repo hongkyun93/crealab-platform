@@ -54,9 +54,6 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
 
     // Setup Realtime subscription for live updates
     useEffect(() => {
-
-        console.log('[EventProvider] Setting up Realtime subscription')
-
         const channel = supabase
             .channel('life_moments_changes')
             .on(
@@ -67,8 +64,6 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
                     table: 'life_moments'
                 },
                 (payload) => {
-                    console.log('[EventProvider] Realtime update:', payload)
-
                     // Revalidate all event caches
                     if (teamId) {
                         mutate(SWR_KEYS.EVENTS_USER(teamId))
@@ -81,7 +76,6 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
             .subscribe()
 
         return () => {
-            console.log('[EventProvider] Cleaning up Realtime subscription')
             supabase.removeChannel(channel)
         }
     }, [teamId, userId])

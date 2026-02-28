@@ -41,5 +41,8 @@ export async function updateSession(request: NextRequest) {
     // where fresh auth cookies from signInWithPassword get wiped before
     // the next request can use them, causing AbortError loops.
 
-    return supabaseResponse
+    // [PERF] Return user alongside response so middleware.ts can reuse it
+    // without making a second getUser() round-trip to Supabase auth server.
+    return { response: supabaseResponse, user }
 }
+

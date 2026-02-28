@@ -3,8 +3,6 @@ import { SWR_KEYS } from '@/lib/swr-config'
 import type { InfluencerEvent } from '@/lib/types'
 import useSWR, { mutate } from 'swr'
 
-const supabase = createClient()
-
 /**
  * Helper to map DB result to InfluencerEvent
  */
@@ -69,6 +67,7 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
  * Fetcher for user-specific events (Team-based or User-based)
  */
 async function fetchUserEvents(teamId?: string, userId?: string, fetchMode: 'team' | 'user' = 'team'): Promise<InfluencerEvent[]> {
+    const supabase = createClient()
     console.log('[useEvents] Fetching events. Team:', teamId, 'User:', userId, 'Mode:', fetchMode)
 
     let query = supabase
@@ -141,6 +140,7 @@ async function fetchUserEvents(teamId?: string, userId?: string, fetchMode: 'tea
  * Fetcher for all public events
  */
 async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
+    const supabase = createClient()
     console.log('[useEvents] Fetching ALL public events...')
 
     const { data, error } = await supabase
@@ -254,6 +254,7 @@ export const eventMutations = {
         newEvent: Omit<InfluencerEvent, "id" | "influencer" | "creator" | "handle" | "avatar" | "verified" | "followers">
     ): Promise<boolean> {
         try {
+            const supabase = createClient()
             console.log('[eventMutations] Creating event. Team:', teamId, 'User:', userId, 'Target:', newEvent.influencerId)
 
             if (!teamId && !userId) {
@@ -319,7 +320,8 @@ export const eventMutations = {
         updates: Partial<InfluencerEvent>
     ): Promise<boolean> {
         try {
-            console.log('[eventMutations] Updating event:', id, updates)
+            const supabase = createClient()
+            console.log('[eventMutations] Updating event:', id)
 
             const dbUpdates: any = {}
             if (updates.event) dbUpdates.title = updates.event
@@ -373,6 +375,7 @@ export const eventMutations = {
         id: string
     ): Promise<boolean> {
         try {
+            const supabase = createClient()
             console.log('[eventMutations] Deleting event:', id)
 
             // [FIX] Manually cascade delete moment_proposals

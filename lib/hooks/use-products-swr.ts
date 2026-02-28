@@ -3,12 +3,11 @@ import { SWR_KEYS } from '@/lib/swr-config'
 import type { Product } from '@/lib/types'
 import useSWR, { mutate } from 'swr'
 
-const supabase = createClient()
-
 /**
  * Fetcher for all products
  */
 async function fetchProducts(): Promise<Product[]> {
+    const supabase = createClient()
     console.log('[useProducts] Fetching products...')
 
     const { data, error } = await supabase
@@ -104,7 +103,8 @@ export const productMutations = {
         newProduct: Omit<Product, "id" | "brandId" | "createdAt">,
         teamId?: string
     ): Promise<void> {
-        console.log('[productMutations] Creating product:', { userId, teamId, newProduct })
+        const supabase = createClient()
+        console.log('[productMutations] Creating product:', { userId, teamId })
 
         const insertData: any = {
             brand_id: userId, // Always required
@@ -155,7 +155,8 @@ export const productMutations = {
      * Update an existing product
      */
     async updateProduct(id: string, updates: Partial<Product>): Promise<void> {
-        console.log('[productMutations] Updating product:', id, updates)
+        const supabase = createClient()
+        console.log('[productMutations] Updating product:', id)
 
         const dbUpdates: any = {}
         if (updates.name) dbUpdates.name = updates.name
@@ -191,6 +192,7 @@ export const productMutations = {
      * Delete a product
      */
     async deleteProduct(id: string): Promise<void> {
+        const supabase = createClient()
         console.log('[productMutations] Deleting product:', id)
 
         const { error } = await supabase

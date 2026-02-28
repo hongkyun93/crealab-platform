@@ -14,10 +14,10 @@ export const swrConfig: SWRConfiguration = {
     revalidateOnFocus: true,           // Refresh when user returns to tab
     revalidateOnReconnect: true,       // Refresh when network reconnects
     revalidateIfStale: true,           // Refresh if data is stale
-    dedupingInterval: 2000,            // Dedupe requests within 2s
+    dedupingInterval: 10000,           // [PERF] Dedupe requests within 10s
 
     // Cache settings
-    focusThrottleInterval: 5000,       // Throttle focus revalidation to 5s
+    focusThrottleInterval: 10000,      // [PERF] Throttle focus revalidation to 10s
 
     // Error handling
     errorRetryInterval: 5000,          // Retry failed requests after 5s

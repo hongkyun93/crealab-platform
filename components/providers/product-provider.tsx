@@ -38,9 +38,6 @@ export function ProductProvider({ children, userId, teamId }: {
 
     // Setup Realtime subscription for live updates
     useEffect(() => {
-
-        console.log('[ProductProvider] Setting up Realtime subscription')
-
         const channel = supabase
             .channel('brand_products_changes')
             .on(
@@ -51,14 +48,12 @@ export function ProductProvider({ children, userId, teamId }: {
                     table: 'brand_products'
                 },
                 (payload) => {
-                    console.log('[ProductProvider] Realtime update:', payload)
                     mutate(SWR_KEYS.PRODUCTS_ALL)
                 }
             )
             .subscribe()
 
         return () => {
-            console.log('[ProductProvider] Cleaning up Realtime subscription')
             supabase.removeChannel(channel)
         }
     }, [])

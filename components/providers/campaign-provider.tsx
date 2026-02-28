@@ -1,9 +1,9 @@
 "use client"
 
 import { createCampaign as createCampaignAction, deleteCampaign as deleteCampaignAction, updateCampaignStatus } from "@/app/actions/campaign"
+import { invalidateCampaignsCache, useCampaignsSWR } from "@/lib/hooks/use-campaigns-swr"
 import type { Campaign } from "@/lib/types"
-import React, { createContext, useContext, useEffect, useRef, useState } from "react"
-import { useAuth } from "./auth-provider"
+import React, { createContext, useContext } from "react"
 
 interface CampaignContextType {
     campaigns: Campaign[]
@@ -22,213 +22,74 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
     userType?: string,
     teamId?: string
 }) {
-    const { supabase } = useAuth()
-    const [campaigns, setCampaigns] = useState<Campaign[]>([])
-    const [isLoading, setIsLoading] = useState(false)
-    const isFetching = useRef(false)
+    // [PERF] Replaced manual useState + fetch with SWR for automatic caching & deduplication
+    const { campaigns, isLoading } = useCampaignsSWR(userId, teamId)
 
-    // Fetch campaigns from database (Team-based)
-    const fetchCampaigns = async (targetUserId?: string, signal?: AbortSignal) => {
-        if (isFetching.current) {
-            isFetching.current = false  // force-reset so refresh always goes through
-        }
-        if (!targetUserId && !userId && !teamId) return
-
-        isFetching.current = true
-        setIsLoading(true)
-
-        try {
-            const id = targetUserId || userId
-            console.log(`[CampaignProvider] Fetching campaigns. User: ${id}, Type: ${userType}, Team: ${teamId}`)
-            window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `캠페인 데이터 불러오는 중... (팀: ${teamId || 'ALL'})`, type: 'loading' } }))
-
-            let query = supabase
-                .from('campaigns')
-                .select(`
-                    *,
-                    profiles(display_name, avatar_url)
-                `)
-                .order('created_at', { ascending: false })
-                .limit(100)
-                .abortSignal(signal || null as any)
-
-            // Filter by team_id if available (Team-based)
-            // [MCN Support] If teamId is 'ALL', fetch all campaigns accessible via RLS
-            if (teamId && teamId !== 'ALL') {
-                query = query.eq('team_id', teamId)
-            }
-            // RLS automatically filters by team_id, so no need for brand_id filter
-            // Creators/Influencers see all public campaigns via RLS
-
-            const { data, error } = await query
-
-            if (error) {
-                // Ignore AbortError and transient network errors
-                if (error.name === 'AbortError' || (
-                    (error.code === undefined || error.code === '') && (
-                        error.message?.includes('AbortError') ||
-                        error.message?.includes('aborted') ||
-                        error.message === 'Failed to fetch' ||
-                        error.message === 'Load failed' ||
-                        error.details?.includes('AbortError')
-                    )
-                )) {
-                    return
-                }
-
-                console.error('[CampaignProvider] Fetch error:', JSON.stringify(error, null, 2))
-                return
-            }
-
-            if (data) {
-                window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: `캠페인 ${data.length}건 로드 완료`, type: 'success' } }))
-                const mapped: Campaign[] = data.map((c: any) => ({
-                    id: c.id,
-                    brandId: c.brand_id,
-                    brand: c.profiles?.display_name || 'Brand',
-                    brandAvatar: c.profiles?.avatar_url,
-                    product: c.product_name,
-                    category: c.category,
-                    budget: c.budget?.toString() || '0',
-                    target: c.target || '',
-                    description: c.description || '',
-                    image: c.image || c.image_url,
-                    date: new Date(c.created_at).toISOString().split('T')[0],
-                    eventDate: c.event_date,
-                    postingDate: c.posting_date,
-                    targetProduct: c.target_product,
-                    status: c.status || 'active',
-                    tags: c.tags || [],
-                    isMock: false,
-                    // New Fields
-                    title: c.title,
-                    recruitment_count: c.recruitment_count,
-                    recruitment_deadline: c.recruitment_deadline,
-                    channels: c.channels || [],
-                    reference_link: c.reference_link,
-                    hashtags: c.hashtags || [],
-                    selection_announcement_date: c.selection_announcement_date,
-                    min_followers: c.min_followers,
-                    max_followers: c.max_followers,
-                    product_type: c.product_type || 'gift'
-                }))
-
-                setCampaigns(mapped)
-                console.log('[CampaignProvider] Loaded campaigns:', mapped.length)
-            }
-        } catch (err) {
-            console.error('[CampaignProvider] Exception:', err)
-        } finally {
-            isFetching.current = false
-            setIsLoading(false)
-        }
+    // Refresh campaigns by invalidating SWR cache (triggers background re-fetch)
+    const refreshCampaigns = async (_userId?: string) => {
+        await invalidateCampaignsCache(userId, teamId)
     }
 
-    // Fetch on mount and when userId/teamId changes
-    useEffect(() => {
-        const controller = new AbortController()
-        const signal = controller.signal
-
-        if (userId || teamId) {
-            fetchCampaigns(userId, signal)
-        } else {
-            // Clear data if no user (logout)
-            setCampaigns([])
-        }
-
-        return () => {
-            controller.abort()
-        }
-    }, [userId, teamId]) // Keep as-is, but Provider will only re-mount when primitive values change
-
-    // Add campaign
+    // Add campaign via Server Action, then invalidate SWR cache
     const addCampaign = async (newCampaign: Omit<Campaign, "id" | "date" | "matchScore">) => {
         if (!userId) {
             throw new Error('User ID required to create campaign')
         }
 
-        try {
-            console.log('[CampaignProvider] Creating campaign:', newCampaign)
+        const formData = new FormData()
+        formData.append('product', newCampaign.product)
+        formData.append('category', newCampaign.category)
+        formData.append('budget', newCampaign.budget)
+        formData.append('target', newCampaign.target)
+        formData.append('description', newCampaign.description)
+        if (newCampaign.image) formData.append('image', newCampaign.image)
+        if (newCampaign.eventDate) formData.append('eventDate', newCampaign.eventDate)
+        if (newCampaign.postingDate) formData.append('postingDate', newCampaign.postingDate)
+        if (newCampaign.targetProduct) formData.append('targetProduct', newCampaign.targetProduct)
+        if (newCampaign.status) formData.append('status', newCampaign.status)
+        if (newCampaign.tags) formData.append('tags', newCampaign.tags.join(','))
 
-            const formData = new FormData()
-            formData.append('product', newCampaign.product)
-            formData.append('category', newCampaign.category)
-            formData.append('budget', newCampaign.budget)
-            formData.append('target', newCampaign.target)
-            formData.append('description', newCampaign.description)
-            if (newCampaign.image) formData.append('image', newCampaign.image)
-            if (newCampaign.eventDate) formData.append('eventDate', newCampaign.eventDate)
-            if (newCampaign.postingDate) formData.append('postingDate', newCampaign.postingDate)
-            if (newCampaign.targetProduct) formData.append('targetProduct', newCampaign.targetProduct)
-            if (newCampaign.status) formData.append('status', newCampaign.status)
-            if (newCampaign.tags) formData.append('tags', newCampaign.tags.join(','))
+        // New Fields
+        if (newCampaign.recruitment_count) formData.append('recruitmentCount', newCampaign.recruitment_count.toString())
+        if (newCampaign.recruitment_deadline) formData.append('recruitmentDeadline', newCampaign.recruitment_deadline)
+        if (newCampaign.channels) formData.append('channels', newCampaign.channels.join(','))
+        if (newCampaign.reference_link) formData.append('referenceLink', newCampaign.reference_link)
+        if (newCampaign.hashtags) formData.append('hashtags', newCampaign.hashtags.join(','))
+        if (newCampaign.selection_announcement_date) formData.append('selectionDate', newCampaign.selection_announcement_date)
+        if (newCampaign.min_followers) formData.append('minFollowers', newCampaign.min_followers.toString())
+        if (newCampaign.max_followers) formData.append('maxFollowers', newCampaign.max_followers.toString())
 
-            // New Fields
-            if (newCampaign.recruitment_count) formData.append('recruitmentCount', newCampaign.recruitment_count.toString())
-            if (newCampaign.recruitment_deadline) formData.append('recruitmentDeadline', newCampaign.recruitment_deadline)
-            if (newCampaign.channels) formData.append('channels', newCampaign.channels.join(','))
-            if (newCampaign.reference_link) formData.append('referenceLink', newCampaign.reference_link)
-            if (newCampaign.hashtags) formData.append('hashtags', newCampaign.hashtags.join(','))
-            if (newCampaign.selection_announcement_date) formData.append('selectionDate', newCampaign.selection_announcement_date)
-            if (newCampaign.min_followers) formData.append('minFollowers', newCampaign.min_followers.toString())
-            if (newCampaign.max_followers) formData.append('maxFollowers', newCampaign.max_followers.toString())
+        // [MCN Support] Pass Team ID
+        if (teamId) formData.append('teamId', teamId)
 
-            // [NEW] Pass Team ID
-            if (teamId) formData.append('teamId', teamId)
+        const result = await createCampaignAction(formData)
 
-            const result = await createCampaignAction(formData)
-
-            if (result.success) {
-                await fetchCampaigns(userId)
-                console.log('[CampaignProvider] Campaign created successfully')
-            } else {
-                throw new Error(result.error || 'Failed to create campaign')
-            }
-        } catch (error: any) {
-            console.error('[CampaignProvider] Add error:', error)
-            throw error
+        if (result.success) {
+            await invalidateCampaignsCache(userId, teamId)
+        } else {
+            throw new Error(result.error || 'Failed to create campaign')
         }
     }
 
-    // Update campaign status
+    // Update campaign status via Server Action, then invalidate SWR cache
     const updateCampaign = async (id: string | number, status: string) => {
-        try {
-            console.log('[CampaignProvider] Updating campaign:', id, status)
+        const result = await updateCampaignStatus(id.toString(), status as 'active' | 'closed')
 
-            const result = await updateCampaignStatus(id.toString(), status as 'active' | 'closed')
-
-            if (result.success) {
-                // Update local state
-                setCampaigns(prev => prev.map(c =>
-                    c.id === id ? { ...c, status: status as any } : c
-                ))
-                console.log('[CampaignProvider] Campaign updated')
-            } else {
-                throw new Error(result.error || 'Failed to update campaign')
-            }
-        } catch (error: any) {
-            console.error('[CampaignProvider] Update error:', error)
-            throw error
+        if (result.success) {
+            await invalidateCampaignsCache(userId, teamId)
+        } else {
+            throw new Error(result.error || 'Failed to update campaign')
         }
     }
 
-    // Delete campaign
+    // Delete campaign via Server Action, then invalidate SWR cache
     const deleteCampaign = async (id: string | number) => {
-        try {
-            console.log('[CampaignProvider] Deleting campaign:', id)
+        const result = await deleteCampaignAction(id.toString())
 
-            const result = await deleteCampaignAction(id.toString())
-
-            if (result.success) {
-                // Remove from local state
-                setCampaigns(prev => prev.filter(c => c.id !== id))
-                console.log('[CampaignProvider] Campaign deleted')
-            } else {
-                throw new Error(result.error || 'Failed to delete campaign')
-            }
-        } catch (error: any) {
-            console.error('[CampaignProvider] Delete error:', error)
-            throw error
+        if (result.success) {
+            await invalidateCampaignsCache(userId, teamId)
+        } else {
+            throw new Error(result.error || 'Failed to delete campaign')
         }
     }
 
@@ -239,7 +100,7 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
             addCampaign,
             updateCampaign,
             deleteCampaign,
-            refreshCampaigns: fetchCampaigns
+            refreshCampaigns,
         }}>
             {children}
         </CampaignContext.Provider>

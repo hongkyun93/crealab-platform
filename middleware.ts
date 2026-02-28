@@ -5,8 +5,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl
 
-    // 세션 갱신 (Supabase SSR 필수)
-    const response = await updateSession(request)
+    // 세션 갱신 (Supabase SSR 필수) + [PERF] user 반환으로 두 번째 getUser() 제거
+    const { response, user } = await updateSession(request)
 
     // /login, /signup: 캐시 방지만 적용 (쿠키 삭제는 logout()에서 처리)
     if (pathname === '/login' || pathname === '/signup') {
@@ -48,25 +48,7 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/mcn')
 
     if (isProtected) {
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    getAll() {
-                        return request.cookies.getAll()
-                    },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            response.cookies.set(name, value, options)
-                        )
-                    },
-                },
-            }
-        )
-
-        const { data: { user } } = await supabase.auth.getUser()
-
+        // [PERF] user already fetched by updateSession() — no second getUser() needed
         // 로그인 안 된 경우 → 로그인 페이지로
         if (!user) {
             return NextResponse.redirect(new URL('/login', request.url))
@@ -75,23 +57,39 @@ export async function middleware(request: NextRequest) {
         // 1. FAST CHECK: Metadata (JWT)
         let role = user.user_metadata?.role
 
-        // 2. SAFE FALLBACK: RPC
+        // 2. SAFE FALLBACK: RPC — only if role missing from JWT (rare case)
         if (!role) {
             console.log('[Middleware] Role missing in metadata, checking RPC...')
+            const supabase = createServerClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                {
+                    cookies: {
+                        getAll() {
+                            return request.cookies.getAll()
+                        },
+                        setAll(cookiesToSet) {
+                            cookiesToSet.forEach(({ name, value, options }) =>
+                                response.cookies.set(name, value, options)
+                            )
+                        },
+                    },
+                }
+            )
             const { data: userData } = await supabase.rpc('get_current_user_info')
             if (userData) {
                 role = (userData as any).role
             }
-        }
 
-        // 3. LEGACY FALLBACK: Profiles table
-        if (!role) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', user.id)
-                .single()
-            role = profile?.role
+            // 3. LEGACY FALLBACK: Profiles table
+            if (!role) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single()
+                role = profile?.role
+            }
         }
 
         const VALID_ROLES = ['admin', 'brand', 'agency', 'creator', 'mcn']
