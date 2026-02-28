@@ -522,7 +522,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
 
             {/* Schedule Info */}
             <div className="space-y-3">
-                <label className="text-xs text-muted-foreground font-medium">주요 일정 (예상)</label>
+                <label className="text-xs text-muted-foreground font-medium">주요 일정</label>
 
                 <div className="grid grid-cols-[1fr_auto] gap-2 items-center text-xs">
                     <span className="text-muted-foreground flex items-center gap-1.5">
