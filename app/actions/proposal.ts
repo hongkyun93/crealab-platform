@@ -154,17 +154,29 @@ export async function submitDirectProposal(data: any) {
     if (data.event_id) {
         const momentProposalData = {
             brand_id: user.id,
-            brand_team_id: brandTeamId, // [FIX] Set brand_team_id
+            brand_team_id: brandTeamId,
             influencer_id: data.influencer_id,
             moment_id: data.event_id,
             message: data.message,
             price_offer: data.compensation_amount ? parseInt(data.compensation_amount.replace(/[^0-9]/g, '')) : 0,
             status: 'offered',
-            product_type: data.product_type || 'gift',       // [FIX] 최상위 컬럼
-            video_guide: data.video_guide || 'brand_provided', // [FIX] 최상위 컬럼
+            // 최상위 컬럼 — 표시/워크스페이스에서 직접 읽히는 필드들
+            product_name: data.product_name || null,
+            product_type: data.product_type || 'gift',
+            video_guide: data.video_guide || 'brand_provided',
+            has_incentive: data.has_incentive || false,
+            incentive_detail: data.incentive_detail || null,
+            product_url: data.product_url || null,
+            desired_date: data.desired_date || null,
+            date_flexible: data.date_flexible || false,
             channel_name: data.channel_name || null,
             channel_subtype: data.channel_subtype || null,
             secondary_usage_fee: data.secondary_usage_fee || 0,
+            condition_draft_submission_date: data.condition_draft_submission_date || null,
+            condition_final_submission_date: data.condition_final_submission_date || null,
+            condition_upload_date: data.condition_upload_date || null,
+            condition_secondary_usage_period: data.condition_secondary_usage_period || null,
+            // conditions JSONB — 이중 저장으로 하위 호환성 유지
             conditions: {
                 group: 'moment_proposal',
                 product_name: data.product_name,
