@@ -92,7 +92,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
             secondary_usage_fee: c.secondary_usage_fee || proposal.secondary_usage_fee || 0,
 
             // Video Guide
-            video_guide: c.video_guide || proposal.video_guide || 'creator_planned',
+            video_guide: c.video_guide || proposal.video_guide || null,
 
             // Context
             moment_title: proposal.moment_title || proposal.moment?.title || proposal.campaignName || proposal.product?.name,
@@ -240,22 +240,24 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                             </div>
 
                             {/* Video Guide */}
-                            <div>
-                                <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3">
-                                    <Clapperboard className="h-3.5 w-3.5 text-amber-400" /> 영상 가이드
-                                </h4>
-                                {data.video_guide === 'brand_provided' ? (
-                                    <div className="bg-amber-50/40 dark:bg-amber-900/10 rounded-xl p-4 border border-amber-100/50 dark:border-amber-900/20">
-                                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">📋 브랜드 가이드 제공</p>
-                                        <p className="text-xs text-amber-700/70 dark:text-amber-300/60">브랜드에서 제공하는 가이드라인에 따라 제작해주세요.</p>
-                                    </div>
-                                ) : (
-                                    <div className="bg-muted/30 rounded-xl p-4 border border-border/40">
-                                        <p className="text-sm font-medium text-foreground/80 mb-1">🎨 크리에이터 재량</p>
-                                        <p className="text-xs text-muted-foreground">별도 가이드 없이 크리에이터님의 스타일대로 자유롭게 제작해주세요.</p>
-                                    </div>
-                                )}
-                            </div>
+                            {data.video_guide && (
+                                <div>
+                                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-3">
+                                        <Clapperboard className="h-3.5 w-3.5 text-amber-400" /> 영상 가이드
+                                    </h4>
+                                    {data.video_guide === 'brand_provided' ? (
+                                        <div className="bg-amber-50/40 dark:bg-amber-900/10 rounded-xl p-4 border border-amber-100/50 dark:border-amber-900/20">
+                                            <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">📋 브랜드 가이드 제공</p>
+                                            <p className="text-xs text-amber-700/70 dark:text-amber-300/60">브랜드에서 제공하는 가이드라인에 따라 제작해주세요.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-muted/30 rounded-xl p-4 border border-border/40">
+                                            <p className="text-sm font-medium text-foreground/80 mb-1">🎨 크리에이터 재량</p>
+                                            <p className="text-xs text-muted-foreground">별도 가이드 없이 크리에이터님의 스타일대로 자유롭게 제작해주세요.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

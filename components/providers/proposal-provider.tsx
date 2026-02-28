@@ -749,6 +749,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             } else if (proposal.momentId) {
                 // Moment Proposal
                 console.log('[ProposalProvider] Submitting Moment Proposal:', proposal)
+                const resolvedProductType = (proposal as any).productType || (proposal as any).product_type || 'gift'
+                const resolvedVideoGuide = (proposal as any).videoGuide || (proposal as any).video_guide || 'brand_provided'
                 const { data, error } = await supabase
                     .from('moment_proposals')
                     .insert({
@@ -760,10 +762,13 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         message: proposal.message,
                         price_offer: proposal.cost,
                         status: 'offered',
+                        product_type: resolvedProductType,
+                        video_guide: resolvedVideoGuide,
                         conditions: {
                             group: 'moment_proposal',
                             product_name: proposal.productName,
-                            product_type: "gift",
+                            product_type: resolvedProductType,
+                            video_guide: resolvedVideoGuide,
                             has_incentive: false,
                             incentive_detail: null,
 

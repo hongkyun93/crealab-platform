@@ -488,6 +488,21 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                 </div>
             )}
 
+            {/* 영상 가이드 */}
+            {((proposal as any)?.video_guide) && (
+                <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground font-medium">영상 가이드</label>
+                    <div className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border",
+                        (proposal as any).video_guide === 'brand_provided'
+                            ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800'
+                            : 'bg-slate-50 dark:bg-slate-900/20 text-slate-700 dark:text-slate-300 border-slate-100 dark:border-slate-800'
+                    )}>
+                        {(proposal as any).video_guide === 'brand_provided' ? '📋 브랜드 가이드 제공' : '🎨 크리에이터 기획'}
+                    </div>
+                </div>
+            )}
+
             <Separator />
 
             {/* Special Terms Display */}

@@ -623,6 +623,7 @@ function BrandDashboardContent() {
     const [confirmContractSend, setConfirmContractSend] = useState(false)
 
     const [productType, setProductType] = useState("gift") // gift, loan
+    const [videoGuide, setVideoGuide] = useState("brand_provided") // brand_provided, creator_planned
     const [compensation, setCompensation] = useState("")
     const [hasIncentive, setHasIncentive] = useState(false)
     const [incentiveDetail, setIncentiveDetail] = useState("")
@@ -1156,6 +1157,7 @@ function BrandDashboardContent() {
                 product_name: offerProduct,
                 product_url: productLink,
                 product_type: productType,
+                video_guide: videoGuide,
                 compensation_amount: compensation,
                 has_incentive: hasIncentive,
                 incentive_detail: incentiveDetail,
@@ -1946,6 +1948,16 @@ function BrandDashboardContent() {
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="loan" id="r-loan" />
                                         <Label htmlFor="r-loan" className="text-xs font-normal">제품 대여</Label>
+                                    </div>
+                                </RadioGroup>
+                                <RadioGroup value={videoGuide} onValueChange={setVideoGuide} className="flex gap-4 pt-1">
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="brand_provided" id="r-vg-brand" />
+                                        <Label htmlFor="r-vg-brand" className="text-xs font-normal">영상 가이드 제공</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="creator_planned" id="r-vg-creator" />
+                                        <Label htmlFor="r-vg-creator" className="text-xs font-normal">크리에이터 기획</Label>
                                     </div>
                                 </RadioGroup>
                             </div>
