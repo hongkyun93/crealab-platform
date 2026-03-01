@@ -56,22 +56,31 @@ export function SiteHeader() {
         }
 
         // Redirect Logic based on Notification Type
-        if (n.type === 'proposal_received' || n.type === 'proposal_accepted' || n.type === 'proposal_rejected' || n.type === 'condition_confirmed' || n.type === 'contract_signed' || n.type === 'contract_negotiating' || n.type === 'contract_rejected') {
+        if (n.type === 'proposal_received' || n.type === 'proposal_rejected' || n.type === 'condition_confirmed' || n.type === 'contract_signed' || n.type === 'contract_negotiating' || n.type === 'contract_rejected') {
             if (user?.role === 'creator') {
                 router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
             } else if (user?.role === 'brand') {
-                router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
+                router.push(`/brand?view=proposals&workspaceTab=inbound&proposalId=${n.reference_id}`)
+            } else if (user?.role === 'mcn' || user?.role === 'agency') {
+                router.push('/mcn')
+            }
+        } else if (n.type === 'proposal_accepted') {
+            if (user?.role === 'creator') {
+                router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
+            } else if (user?.role === 'brand') {
+                // 크리에이터가 수락 → active 탭으로
+                router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
             } else if (user?.role === 'mcn' || user?.role === 'agency') {
                 router.push('/mcn')
             }
         } else if (n.type === 'application_received') {
-            // Brand received a campaign application
-            router.push(`/brand?view=outbound&proposalId=${n.reference_id}`)
+            // Brand received a product/campaign application
+            router.push(`/brand?view=proposals&workspaceTab=inbound&proposalId=${n.reference_id}`)
         } else if (n.type === 'new_message') {
             if (user?.role === 'creator') {
-                router.push(`/creator?view=inbound&proposalId=${n.reference_id}`)
+                router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
             } else if (user?.role === 'brand') {
-                router.push(`/brand?view=inbound&proposalId=${n.reference_id}`)
+                router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
             } else if (user?.role === 'mcn' || user?.role === 'agency') {
                 router.push('/mcn')
             }
@@ -82,26 +91,22 @@ export function SiteHeader() {
                 router.push('/mcn')
             }
         } else if (n.type === 'shipping_started') {
-            // Creator: 배송 시작 → 워크스페이스로
             router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
         } else if (n.type === 'content_revision') {
-            // Creator: 수정 요청 → 워크스페이스 콘텐츠 탭
             router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
         } else if (n.type === 'content_approved') {
-            // Creator: 콘텐츠 승인 → 워크스페이스
             router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
         } else if (n.type === 'collaboration_complete') {
-            // Creator: 협업 완료 → 성과 제출 뷰
             router.push(`/creator?view=settlement&proposalId=${n.reference_id}`)
         } else if (n.type === 'performance_submitted') {
             // Brand: 성과 보고서 제출됨 → 브랜드 워크스페이스
-            router.push(`/brand?view=workspace&proposalId=${n.reference_id}`)
+            router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
         } else if (n.type === 'delivery_confirmed') {
             // Brand: 배송 수령 확인 → 브랜드 워크스페이스
-            router.push(`/brand?view=workspace&proposalId=${n.reference_id}`)
+            router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
         } else if (n.type === 'content_submission') {
             // Brand: 콘텐츠 제출 → 브랜드 워크스페이스
-            router.push(`/brand?view=workspace&proposalId=${n.reference_id}`)
+            router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
         } else if (n.type === 'payment_confirmed' || n.type === 'deposit_confirmed') {
             if (user?.role === 'brand') {
                 router.push('/brand?view=deposit')

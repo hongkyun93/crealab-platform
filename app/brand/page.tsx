@@ -272,12 +272,16 @@ function BrandDashboardContent() {
 
         if (proposalId && !chatProposal) {
 
-            // Search in brandProposals (Direct Offers)
-            let target = brandProposals.find((p: any) => (p.id === proposalId || p.id?.toString() === proposalId))
+            // 1. Search in brandProposals (product_applications)
+            let target: any = brandProposals.find((p: any) => (p.id === proposalId || p.id?.toString() === proposalId))
 
-            // Search in campaigns (Applications)
+            // 2. Search in campaignProposals (campaign_applications)
             if (!target) {
-                // Flatten all proposals from campaigns
+                target = campaignProposals.find((p: any) => (p.id === proposalId || p.id?.toString() === proposalId))
+            }
+
+            // 3. Search in campaigns[].proposals (legacy fallback)
+            if (!target) {
                 for (const campaign of campaigns) {
                     const anyCampaign = campaign as any
                     if (anyCampaign.proposals) {
@@ -296,7 +300,15 @@ function BrandDashboardContent() {
                 setIsChatOpen(true)
             }
         }
-    }, [searchParams, brandProposals, campaigns, isAuthLoading]) // Removed chatProposal from deps to prevent loop
+    }, [searchParams, brandProposals, campaignProposals, campaigns, isAuthLoading]) // Removed chatProposal from deps to prevent loop
+
+    // Auto-set workspaceTab from URL (Notification Redirect)
+    useEffect(() => {
+        const tab = searchParams.get('workspaceTab')
+        if (tab && ['inbound', 'outbound', 'active', 'rejected', 'completed'].includes(tab)) {
+            setWorkspaceTab(tab)
+        }
+    }, [searchParams])
 
     // [URL Sync] dialog 열릴 때 URL에 proposalId 기록, 닫힐 때 제거
     // → 새로고침해도 위 auto-open 로직이 proposalId를 읽어 dialog 복원

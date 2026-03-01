@@ -29,7 +29,7 @@ export async function submitCampaignApplication(
 
     const influencerTeamId = teamMember?.team_id
 
-    const { error } = await supabase
+    const { data: appData, error } = await supabase
         .from('campaign_applications')
         .insert({
             campaign_id: campaignId,
@@ -44,6 +44,8 @@ export async function submitCampaignApplication(
             insight_screenshot: data.insight_screenshot,
             status: 'applied'
         })
+        .select()
+        .single()
 
     if (error) {
         console.error('Application Error:', error)
@@ -64,7 +66,7 @@ export async function submitCampaignApplication(
             sender_id: user.id,
             content: `${creatorName}님이 '${campaign.title || '캠페인'}' 캠페인에 지원했습니다.`,
             type: 'proposal_received',
-            reference_id: campaignId,
+            reference_id: appData?.id?.toString() ?? campaignId,
             is_read: false
         })
     }
