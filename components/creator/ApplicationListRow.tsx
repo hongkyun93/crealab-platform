@@ -33,7 +33,7 @@ export function ApplicationListRow({ app, onClick }: ApplicationListRowProps) {
 
                     <div className="hidden md:block min-w-0">
                         <div className="text-sm font-medium truncate">{app.productName || "제품 정보 없음"}</div>
-                        <div className="text-xs text-muted-foreground">{app.cost ? `${app.cost.toLocaleString()}원` : '희망비용 미입력'}</div>
+                        <div className="text-xs text-muted-foreground">{app.price_offer || app.priceOffer ? `${(app.price_offer || app.priceOffer).toLocaleString()}원` : '희망비용 미입력'}</div>
                     </div>
 
                     <div className="flex items-center gap-2">

@@ -386,7 +386,7 @@ export default function AdminPage() {
         try {
             const { data, error } = await supabase
                 .from('brand_deposits')
-                .select('*')
+                .select('*, brand:profiles!brand_deposits_brand_id_fkey(display_name, representative_name)')
                 .eq('type', 'charge')
                 .eq('status', 'pending')
                 .order('created_at', { ascending: false })
@@ -407,25 +407,16 @@ export default function AdminPage() {
             const currentBalance = profileData?.deposit_balance ?? 0
             const newBalance = currentBalance + amount
 
-            // 2. brand_deposits 레코드 업데이트
-            const { error: txErr } = await supabase
-                .from('brand_deposits')
-                .update({
-                    amount,
-                    balance_after: newBalance,
-                    status: 'confirmed',
-                    confirmed_by: user?.id,
-                    confirmed_at: new Date().toISOString(),
-                })
-                .eq('id', deposit.id)
-            if (txErr) throw txErr
-
-            // 3. profiles.deposit_balance 업데이트
-            const { error: balErr } = await supabase
-                .from('profiles')
-                .update({ deposit_balance: newBalance })
-                .eq('id', deposit.brand_id)
-            if (balErr) throw balErr
+            // 2+3. SECURITY DEFINER 함수로 brand_deposits + profiles.deposit_balance 동시 업데이트
+            // (profiles UPDATE RLS는 본인만 허용 → 함수가 DB owner 권한으로 우회)
+            const { error: rpcErr } = await supabase.rpc('admin_confirm_deposit', {
+                p_deposit_id: deposit.id,
+                p_brand_id: deposit.brand_id,
+                p_amount: amount,
+                p_new_balance: newBalance,
+                p_confirmed_by: user?.id ?? null,
+            })
+            if (rpcErr) throw rpcErr
 
             // 4. 브랜드 알림
             await supabase.from('notifications').insert({
@@ -552,7 +543,10 @@ export default function AdminPage() {
                                             <span className="text-sm font-medium">{(w.brand as any)?.display_name ?? '-'} → {(w.creator as any)?.display_name ?? '-'}</span>
                                             <span className="text-xs text-muted-foreground">{w.type ?? '-'}</span>
                                             <Badge variant="secondary" className="w-fit">{w.status ?? '-'}</Badge>
-                                            <span className="text-[10px] text-muted-foreground text-right">{new Date(w.created_at).toLocaleDateString()}</span>
+                                            <div className="text-right">
+                                                <span className="text-[10px] text-muted-foreground block">{new Date(w.created_at).toLocaleDateString()}</span>
+                                                <span className="text-[9px] font-mono text-muted-foreground/50">관리번호 : #{String(w.id).replace(/-/g, '').slice(-6).toUpperCase()}</span>
+                                            </div>
                                         </div>
                                     </Card>
                                 ))}
@@ -688,7 +682,7 @@ export default function AdminPage() {
                                 {pendingDeposits.map((d: any) => (
                                     <Card key={d.id} className="flex items-center justify-between p-4">
                                         <div className="space-y-1">
-                                            <p className="text-sm font-bold">브랜드 ID: {d.brand_id?.slice(0, 8)}</p>
+                                            <p className="text-sm font-bold">{(d.brand as any)?.display_name ? `${(d.brand as any).display_name}_DEPOSIT` : d.brand_id?.slice(0, 8)}</p>
                                             <p className="text-xs text-muted-foreground">노트: {d.note ?? '-'}</p>
                                             <p className="text-[10px] text-muted-foreground">요청일시: {new Date(d.created_at).toLocaleString('ko-KR')}</p>
                                         </div>

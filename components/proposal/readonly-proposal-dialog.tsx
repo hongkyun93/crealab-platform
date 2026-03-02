@@ -58,7 +58,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
 
         const c = proposal.conditions || {}
 
-        const rawAmount = c.compensation_amount || proposal.compensation_amount || proposal.price_offer || proposal.cost || 0
+        const rawAmount = c.price_offer || c.priceOffer || c.compensation_amount || proposal.compensation_amount || proposal.price_offer || proposal.priceOffer || 0
         const amount = typeof rawAmount === 'string' ? parseInt(rawAmount.replace(/[^0-9]/g, '')) || 0 : rawAmount
 
         const isBrandView = currentUserId && (currentUserId === proposal.brand_id || currentUserId === proposal.sender_id)

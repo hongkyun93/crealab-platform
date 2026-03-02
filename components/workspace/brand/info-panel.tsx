@@ -88,13 +88,11 @@ export function InfoPanel() {
 
         const payload: any = {};
 
-        // price_offer: ConditionsPanel sends both price_offer and cost
+        // price_offer
         if (updates.price_offer !== undefined) {
             payload.price_offer = updates.price_offer;
+            // [LEGACY] compensation_amount for DB fallback if needed
             payload.compensation_amount = `${updates.price_offer}`;
-        } else if (updates.cost !== undefined) {
-            payload.price_offer = updates.cost;
-            payload.compensation_amount = `${updates.cost}`;
         }
 
         // product_name: ConditionsPanel sends both product_name and productName
@@ -127,6 +125,7 @@ export function InfoPanel() {
         if ((updates as any).secondary_usage_fee !== undefined) payload.secondary_usage_fee = (updates as any).secondary_usage_fee;
         if (updates.product_type !== undefined) payload.product_type = updates.product_type;
         if ((updates as any).video_guide !== undefined) payload.video_guide = (updates as any).video_guide;
+        if ((updates as any).condition_maintenance_period !== undefined) payload.condition_maintenance_period = (updates as any).condition_maintenance_period;
 
         console.log('[InfoPanel] Saving conditions:', payload);
 
@@ -267,12 +266,17 @@ export function InfoPanel() {
                         {(proposal?.creatorAvatar || (proposal as any)?.creator_avatar) ? (
                             <img src={proposal?.creatorAvatar || (proposal as any)?.creator_avatar} alt="Creator" className="w-full h-full object-cover" />
                         ) : (
-                            (proposal?.creatorName?.[0] || 'C')
+                            (proposal?.creatorName?.[0] || (proposal as any)?.creator_name?.[0] || 'C')
                         )}
                     </div>
                     <div>
-                        <h2 className="font-bold text-lg leading-tight">{proposal?.creatorName || 'Creator Name'}</h2>
-                        <p className="text-xs text-muted-foreground">{proposal?.product_name || proposal?.campaignName || '협업 프로젝트'}</p>
+                        <h2 className="font-bold text-lg leading-tight">{proposal?.creatorName || (proposal as any)?.creator_name || (proposal as any)?.influencer?.display_name || (proposal as any)?.influencer?.name || '크리에이터'}</h2>
+                        <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>{proposal?.product_name || proposal?.campaignName || '협업 프로젝트'}</span>
+                            <span className="font-mono text-[9px] text-muted-foreground/50 bg-muted/50 px-1.5 py-0.5 rounded">
+                                관리번호 : #{String((proposal as any)?.workspace_id || proposal?.id || '').replace(/-/g, '').slice(-6).toUpperCase()}
+                            </span>
+                        </p>
                     </div>
                 </div>
 

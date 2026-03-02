@@ -232,7 +232,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 conditions: {
                     product_name: data.productName,
                     product_type: data.productType,
-                    compensation_amount: data.compensationAmount ? String(parseInt(data.compensationAmount.replace(/[^0-9]/g, ''))) : null,
+                    price_offer: data.priceOffer ? parseInt(data.priceOffer.replace(/[^0-9]/g, '')) : null,
                     has_incentive: data.hasIncentive,
                     incentive_detail: data.hasIncentive ? data.incentiveDetail : null,
                     channel_name: data.channelName,
@@ -686,7 +686,12 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                         </div>
                                     </TableCell>
                                     <TableCell>{item.product_name || item.productName}</TableCell>
-                                    <TableCell className="text-muted-foreground text-xs">{new Date(item.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-muted-foreground text-xs">
+                                        <div className="flex flex-col gap-0.5">
+                                            <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                            <span className="font-mono text-[9px] text-muted-foreground/50">관리번호 : #{String(item.workspace_id || item.id).replace(/-/g, '').slice(-6).toUpperCase()}</span>
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <Badge variant="outline" className={`text-[10px] h-5 px-2 font-medium border-2 rounded-full transition-all bg-background
                                             ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
@@ -785,7 +790,10 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                 </div>
                             </CardContent>
                             <CardFooter className="pt-0 pb-3 text-[10px] text-muted-foreground flex justify-between items-center">
-                                <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                <div className="flex flex-col gap-0.5">
+                                    <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                    <span className="font-mono text-[9px] text-muted-foreground/40">관리번호 : #{String(item.workspace_id || item.id).replace(/-/g, '').slice(-6).toUpperCase()}</span>
+                                </div>
                                 <div className="flex items-center gap-2">
                                     {item.moment_id && onViewProposal && (
                                         <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-blue-500 hover:text-blue-600 hover:bg-blue-50"
@@ -867,7 +875,12 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                                                             '수락 대기중'}
                                                 </Badge>
                                             </h3>
-                                            <p className="text-sm text-muted-foreground mt-1">{item.product_name || item.productName || "제품 협찬"}</p>
+                                            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                                                <span>{item.product_name || item.productName || "제품 협찬"}</span>
+                                                <span className="text-[9px] font-mono text-muted-foreground/40 bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
+                                                    관리번호 : #{String(item.workspace_id || item.id).replace(/-/g, '').slice(-6).toUpperCase()}
+                                                </span>
+                                            </p>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <FavoriteButton targetId={String(item.id)} targetType="workspace" className="hidden sm:flex" />
@@ -1152,7 +1165,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                         productUrl: editingProposal.conditions?.product_url || editingProposal.product_url || "",
                         productType: editingProposal.conditions?.product_type || "gift",
                         videoGuide: editingProposal.conditions?.video_guide || "brand_provided",
-                        compensationAmount: editingProposal.conditions?.compensation_amount || "",
+                        priceOffer: editingProposal.conditions?.price_offer || editingProposal.conditions?.compensation_amount || "",
                         hasIncentive: editingProposal.conditions?.has_incentive || false,
                         incentiveDetail: editingProposal.conditions?.incentive_detail || "",
                         channelName: editingProposal.conditions?.channel_name || "instagram",

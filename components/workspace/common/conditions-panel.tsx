@@ -26,7 +26,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
 
     // Local state for editing
     const [editValues, setEditValues] = useState({
-        cost: 0,
+        priceOffer: 0,
         productName: '',
         dateReceived: '',
         dateDraft: '',
@@ -39,7 +39,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
         channelSubtype: '' as string,
         secondaryUsage: '',
         secondaryUsageFee: 0,
-        productType: 'gift' as 'gift' | 'loan'
+        productType: 'gift' as 'gift' | 'loan',
+        maintenancePeriod: '' as string,
     });
 
     // Semantic Date Helpers (Simulated for now, would be better if proposal had specific date fields)
@@ -88,8 +89,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
     useEffect(() => {
         if (isEditing && proposal) {
             setEditValues({
-                // [FIX] Unify to price_offer (Master) -> compensation_amount (Legacy) -> cost (Legacy)
-                cost: proposal.price_offer || (proposal.compensation_amount ? parseInt(proposal.compensation_amount.replace(/[^0-9]/g, '')) : 0) || proposal.cost || 0,
+                priceOffer: proposal.price_offer || (proposal.compensation_amount ? parseInt(proposal.compensation_amount.replace(/[^0-9]/g, '')) : 0) || 0,
                 productName: proposal.product_name || proposal.productName || (proposal.productId ? '제품명 로딩중...' : ''),
                 // Use stored dates if available (check both camelCase and snake_case), otherwise fallback to logic
                 dateReceived: proposal.condition_product_receipt_date || proposal.date_received || defaultDates.receipt,
@@ -103,7 +103,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                 channelSubtype: proposal.channel_subtype || '',
                 secondaryUsage: proposal.condition_secondary_usage_period || proposal.secondaryUsage || '',
                 secondaryUsageFee: proposal.secondary_usage_fee || 0,
-                productType: (proposal.product_type as 'gift' | 'loan') || 'gift'
+                productType: (proposal.product_type as 'gift' | 'loan') || 'gift',
+                maintenancePeriod: proposal.condition_maintenance_period || '',
             });
         }
     }, [isEditing]); // Removed 'proposal' dependency to prevent infinite loop if proposal ref is unstable
@@ -111,7 +112,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
     const handleSave = async () => {
         const updates = {
             // Map back to DB columns (snake_case)
-            price_offer: editValues.cost,
+            price_offer: editValues.priceOffer,
             product_name: editValues.productName,
             condition_product_receipt_date: editValues.dateReceived,
             condition_draft_submission_date: editValues.dateDraft,
@@ -126,10 +127,11 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
             condition_secondary_usage_period: editValues.secondaryUsage,
             secondary_usage_fee: editValues.secondaryUsageFee || 0,
             product_type: editValues.productType,
+            condition_maintenance_period: editValues.maintenancePeriod || undefined,
 
 
             // Keep camelCase for legacy store compat if needed (optional)
-            cost: editValues.cost,
+            priceOffer: editValues.priceOffer,
             productName: editValues.productName,
             specialTerms: editValues.specialTerms
         };
@@ -152,9 +154,9 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
     // View Data (Prioritize saved dates over calculated ones)
     const product = proposal?.product_name || proposal?.productName || (proposal?.productId ? '제품명 로딩중...' : '협업 제품 정보 없음');
     // [FIX] Unified Logic: price_offer is master. Fallback to parsing string if needed.
-    const cost = proposal?.price_offer || (proposal?.compensation_amount ? parseInt(proposal.compensation_amount.replace(/[^0-9]/g, '')) : 0) || proposal?.cost || 0;
-    const formattedCost = cost > 0
-        ? `${cost.toLocaleString()}원`
+    const priceOffer = proposal?.price_offer || (proposal?.compensation_amount ? parseInt(proposal.compensation_amount.replace(/[^0-9]/g, '')) : 0) || 0;
+    const formattedCost = priceOffer > 0
+        ? `${priceOffer.toLocaleString()}원`
         : '협의 필요';
     const specialTerms = proposal?.special_terms || proposal?.specialTerms; // [FIX] Prioritize special_terms
     // [New] View Data
@@ -232,8 +234,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                         <div className="relative">
                             <Input
                                 type="number"
-                                value={editValues.cost}
-                                onChange={(e) => setEditValues({ ...editValues, cost: Number(e.target.value) })}
+                                value={editValues.priceOffer}
+                                onChange={(e) => setEditValues({ ...editValues, priceOffer: Number(e.target.value) })}
                                 className="h-8 text-xs bg-background font-bold text-emerald-600 pr-8"
                             />
                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">원</span>
@@ -327,6 +329,21 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                                 </div>
                             )}
                         </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">게시 유지 기간</Label>
+                            <select
+                                value={editValues.maintenancePeriod}
+                                onChange={(e) => setEditValues({ ...editValues, maintenancePeriod: e.target.value })}
+                                className="w-full h-8 text-xs rounded-md border border-input bg-background px-2"
+                            >
+                                <option value="">기간 선택</option>
+                                <option value="3개월">3개월</option>
+                                <option value="6개월">6개월</option>
+                                <option value="12개월">12개월</option>
+                                <option value="영구">영구</option>
+                                <option value="협의">협의 필요</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* 제품 제공 방식 토글 */}
@@ -350,15 +367,6 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                         </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">특약사항 (Special Terms)</Label>
-                        <Textarea
-                            value={editValues.specialTerms}
-                            onChange={(e) => setEditValues({ ...editValues, specialTerms: e.target.value })}
-                            placeholder="추가적인 계약 조건이나 요청사항을 입력하세요."
-                            className="min-h-[80px] text-xs bg-background resize-none leading-relaxed"
-                        />
-                    </div>
 
                     {/* Date Inputs */}
                     {/* Date Inputs */}
@@ -399,6 +407,17 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                                 className="h-8 text-xs font-bold text-indigo-600 bg-background"
                             />
                         </div>
+                    </div>
+
+                    {/* 특약사항 — 맨 마지막 */}
+                    <div className="space-y-1.5 pt-2 border-t border-border/40">
+                        <Label className="text-xs text-muted-foreground">특약사항 (Special Terms)</Label>
+                        <Textarea
+                            value={editValues.specialTerms}
+                            onChange={(e) => setEditValues({ ...editValues, specialTerms: e.target.value })}
+                            placeholder="추가적인 계약 조건이나 요청사항을 입력하세요."
+                            className="min-h-[80px] text-xs bg-background resize-none leading-relaxed"
+                        />
                     </div>
                 </div>
             </div>
@@ -470,6 +489,11 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                             <span className="ml-1 text-emerald-600">· {secondaryUsageFee.toLocaleString()}원</span>
                         )}
                     </div>
+                    {(proposal as any)?.condition_maintenance_period && (
+                        <div className="text-[10px] text-muted-foreground">
+                            게시 유지: {(proposal as any).condition_maintenance_period}
+                        </div>
+                    )}
                 </div>
             </div>
 

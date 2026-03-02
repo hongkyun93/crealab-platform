@@ -103,11 +103,14 @@ async function fetchUserMoments(teamId?: string, userId?: string, fetchMode: 'te
     const { data, error } = await query
 
     if (error) {
-        // Ignore AbortError (Request Cancelled)
+        // Ignore transient network/abort errors (not actionable)
         if (
             error.name === 'AbortError' ||
             error.message?.includes('AbortError') ||
             error.code === '20' ||
+            error.message?.includes('Failed to fetch') ||
+            error.message?.includes('NetworkError') ||
+            error.message?.includes('Load failed') ||
             // Ignore empty error objects (often cancellation artifacts)
             (Object.keys(error).length === 0 && !error.message)
         ) {
@@ -157,11 +160,14 @@ async function fetchPublicMoments(): Promise<CreatorMoment[]> {
         .limit(100)
 
     if (error) {
-        // Ignore AbortError (Request Cancelled)
+        // Ignore transient network/abort errors (not actionable)
         if (
             error.name === 'AbortError' ||
             error.message?.includes('AbortError') ||
             error.code === '20' ||
+            error.message?.includes('Failed to fetch') ||
+            error.message?.includes('NetworkError') ||
+            error.message?.includes('Load failed') ||
             // Ignore empty error objects (often cancellation artifacts)
             (Object.keys(error).length === 0 && !error.message)
         ) {

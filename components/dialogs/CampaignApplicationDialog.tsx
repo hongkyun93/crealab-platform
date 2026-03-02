@@ -204,7 +204,7 @@ ${additionalMessage || '없음'}
             const draftData = {
                 type: "creator_apply" as const, // Lint 오류 해결을 위해 ProposalType 에 존재할 법한 타입으로 캐스팅
                 campaignId: campaign.id,
-                cost: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
+                price_offer: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
                 commission: 0,
                 requestDetails: formattedMessage,
                 status: "draft",
@@ -353,7 +353,7 @@ ${additionalMessage || '없음'}
                 await addProposal({
                     type: "creator_apply" as const,
                     campaignId: campaign.id,
-                    cost: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
+                    price_offer: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
                     commission: 0,
                     requestDetails: formattedMessage,
                     status: "applied",

@@ -200,7 +200,7 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
                                             channel_subtype: data.channelSubtype,
                                             channel_url: data.channelUrl,
                                             product_type: 'ad',
-                                            cost: data.desiredCost ? parseInt(data.desiredCost) : 0,
+                                            price_offer: data.desiredCost ? parseInt(data.desiredCost) : 0,
                                             motivation: data.motivation,
                                             content_plan: data.contentPlan,
                                             portfolioLinks: data.portfolioLinks ? data.portfolioLinks.split("\n").map(l => l.trim()).filter(Boolean) : [],

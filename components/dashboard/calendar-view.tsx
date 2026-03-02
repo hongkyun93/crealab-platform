@@ -145,8 +145,8 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                                         ? `${Number(event.price_offer).toLocaleString()}원`
                                                         : event.compensation_amount
                                                             ? (Number.isNaN(Number(event.compensation_amount)) ? event.compensation_amount : `${Number(event.compensation_amount).toLocaleString()}원`)
-                                                            : event.cost
-                                                                ? `${Number(event.cost).toLocaleString()}원`
+                                                            : event.priceOffer
+                                                                ? `${Number(event.priceOffer).toLocaleString()}원`
                                                                 : '-'
                                                 )}
                                             </TableCell>
@@ -256,8 +256,8 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                                             ? `${Number(event.price_offer).toLocaleString()}원`
                                                             : event.compensation_amount
                                                                 ? (Number.isNaN(Number(event.compensation_amount)) ? event.compensation_amount : `${Number(event.compensation_amount).toLocaleString()}원`)
-                                                                : event.cost
-                                                                    ? `${Number(event.cost).toLocaleString()}원`
+                                                                : event.priceOffer
+                                                                    ? `${Number(event.priceOffer).toLocaleString()}원`
                                                                     : '-'}
                                                     </div>
                                                 </div>

@@ -161,9 +161,6 @@ function BrandDashboardContent() {
     const [isChatOpen, setIsChatOpen] = useState(false)
     const [chatProposal, setChatProposal] = useState<any>(null)
     const [chatMessage, setChatMessage] = useState("")
-    const [generatedContract, setGeneratedContract] = useState("")
-    const [isGeneratingContract, setIsGeneratingContract] = useState(false)
-    const [isSendingContract, setIsSendingContract] = useState(false)
     const [workspaceTab, setWorkspaceTab] = useState("inbound") // Lifted state for sidebar control
     const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
     const [workspaceViewMode, setWorkspaceViewMode] = useState<'list' | 'grid' | 'table'>('list') // View mode for workspace archive
@@ -381,10 +378,15 @@ function BrandDashboardContent() {
             let stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete' = 'negotiation';
 
             if (chatProposal.brand_condition_confirmed && chatProposal.creator_condition_confirmed) stage = 'contract';
-            if (chatProposal.contract_status === 'signed') stage = 'contract'; // 계약 서명 완료 → 입금 대기
+
+            // [FIX] Realtime 버그로 인해 DB에 'partial'로 잘못 저장되었을 경우를 대비한 양측 서명 강제 체크
+            const isFullySigned = chatProposal.contract_status === 'signed' || (chatProposal.brand_signature && chatProposal.creator_signature);
+            if (isFullySigned) stage = 'contract'; // 계약 서명 완료 → 입금 대기
             // [입금 확인 게이트] 관리자가 payment_confirmed_at 세팅 후에만 shipping으로 이동
-            if (chatProposal.contract_status === 'signed' && (chatProposal as any).payment_confirmed_at) stage = 'shipping';
-            if (chatProposal.delivery_status === 'shipped' || chatProposal.delivery_status === 'delivered') stage = 'content';
+            if (isFullySigned && (chatProposal as any).payment_confirmed_at) stage = 'shipping';
+
+            if (chatProposal.delivery_status === 'shipped') stage = 'shipping';
+            if (chatProposal.delivery_status === 'delivered') stage = 'content';
             if (chatProposal.content_submission_url || chatProposal.content_submission_file_url) {
                 stage = 'content'; // 초안 제출 → content 단계 유지
             }
@@ -409,14 +411,6 @@ function BrandDashboardContent() {
         }
     }, [chatProposal]);
 
-    // Sync contract content from proposal when loaded or switched
-    useEffect(() => {
-        if (chatProposal?.contract_content) {
-            setGeneratedContract(chatProposal.contract_content)
-        } else {
-            setGeneratedContract("")
-        }
-    }, [chatProposal])
 
     const handleSendFeedback = async () => {
         if (!feedbackMsg.trim() || !chatProposal || !user || isSendingFeedback) return
@@ -495,38 +489,6 @@ function BrandDashboardContent() {
         }
     }, [refreshData, brandProposals, campaignProposals, momentProposals, sendNotification, user])
 
-    const handleGenerateContract = async () => {
-        if (!chatProposal || !user) return
-
-        setIsGeneratingContract(true)
-        try {
-            const creatorId = chatProposal.creator_id || chatProposal.creatorId
-            const creatorMessages = messages.filter((m: any) => m.proposalId === chatProposal.id?.toString() || m.productApplicationId === chatProposal.id?.toString())
-
-            const response = await fetch('/api/generate-contract', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: creatorMessages,
-                    proposal: chatProposal,
-                    brandName: (user as any).display_name || (user as any).name || "브랜드",
-                    creatorName: chatProposal.creator_name || chatProposal.creatorName || "크리에이터"
-                })
-            })
-
-            const data = await response.json()
-            if (data.result) {
-                setGeneratedContract(data.result)
-            } else {
-                toast.error("계약서 생성에 실패했습니다: " + (data.error || "알 수 없는 오류"))
-            }
-        } catch (e) {
-            console.error(e)
-            toast.error("계약서 생성 중 오류가 발생했습니다.")
-        } finally {
-            setIsGeneratingContract(false)
-        }
-    }
 
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
@@ -630,44 +592,9 @@ function BrandDashboardContent() {
     const [selectedCreator, setSelectedInfluencer] = useState<any>(null)
     const [offerProduct, setOfferProduct] = useState("")
     const [confirmStatusData, setConfirmStatusData] = useState<{ id: string, status: string } | null>(null)
-    const [confirmContractSend, setConfirmContractSend] = useState(false)
-
-    const [productType, setProductType] = useState("gift") // gift, loan
-    const [videoGuide, setVideoGuide] = useState("brand_provided") // brand_provided, creator_planned
-    const [compensation, setCompensation] = useState("")
-    const [hasIncentive, setHasIncentive] = useState(false)
-    const [incentiveDetail, setIncentiveDetail] = useState("")
-    const [contentType, setContentType] = useState("")
-    const [message, setMessage] = useState("")
-    const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
-    const [productLink, setProductLink] = useState("") // New: Product URL
-    const [isSubmitting, setIsSubmitting] = useState(false)
-
-
-
-    const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false)
-    const sigCanvas = useRef<any>(null)
-
-    const handleSendContract = () => {
-        if (!chatProposal || !generatedContract) return
-        if (isSendingContract) return
-        setIsSignatureModalOpen(true)
-    }
-
-    const performContractSend = async () => {
-        if (!chatProposal || !generatedContract) return
-        if (isSendingContract) return
-        if (sigCanvas.current.isEmpty()) {
-            toast.error("서명을 입력해주세요.")
-            return
-        }
-
-        setConfirmContractSend(true)
-    }
 
     const executeStatusChange = async () => {
         if (!confirmStatusData) return
-
         try {
             await updateProposal(confirmStatusData.id, {
                 status: confirmStatusData.status as any
@@ -681,77 +608,16 @@ function BrandDashboardContent() {
         }
     }
 
-
-    const executeContractSend = async () => {
-        setIsSendingContract(true)
-        try {
-            const signatureData = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png')
-
-            // Determine if this is a 'Brand Proposal' (Direct Offer) or 'Proposal' (Campaign Apply)
-            // Brand Proposals don't have campaignId, regular Proposals do.
-            const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply';
-            const proposalId = chatProposal.id?.toString();
-
-            let success = false;
-
-            if (isCampaignProposal) {
-                // It's a Campaign Application -> Use proposals table
-                success = await updateProposal(proposalId, {
-                    contract_content: generatedContract,
-                    contract_status: 'sent',
-                    brand_signature: signatureData,
-                    brand_signed_at: new Date().toISOString()
-                })
-            } else {
-                // It's a Brand Direct Offer -> Use brand_proposals table
-                success = await updateBrandProposal(proposalId, {
-                    contract_content: generatedContract,
-                    contract_status: 'sent',
-                    brand_signature: signatureData,
-                    brand_signed_at: new Date().toISOString()
-                })
-            }
-
-            if (!success) {
-                return
-            }
-
-            // Update local state for immediate feedback
-            setChatProposal((prev: any) => ({ ...prev, contract_status: 'sent', contract_content: generatedContract, brand_signature: signatureData }))
-            setIsSignatureModalOpen(false)
-
-            // Send system message
-            const receiverId = chatProposal.creator_id || chatProposal.creatorId || chatProposal.influencer?.id
-            if (receiverId) {
-                const msgContent = "📄 [시스템] 표준 계약서가 발송되었습니다. (브랜드 서명 완료)\n[계약 관리] 탭에서 확인 후 서명해주세요."
-
-                // Pass ID to correct argument to avoid FK error
-                await sendMessage(receiverId, msgContent, undefined, chatProposal.workspace_id?.toString())
-            }
-
-            // 🔔 크리에이터에게 계약서 발송 알림
-            if (receiverId) {
-                try {
-                    await sendNotification(
-                        receiverId,
-                        `${user?.name}님이 계약서를 발송했습니다. 확인 후 서명해주세요.`,
-                        'contract_sent',
-                        chatProposal?.workspace_id?.toString() || proposalId
-                    )
-                } catch (notifErr) {
-                    console.warn('알림 발송 실패 (무시):', notifErr)
-                }
-            }
-
-            toast.success("계약서가 성공적으로 발송되었습니다.")
-        } catch (e) {
-            console.error(e)
-            toast.error("계약서 발송 중 오류가 발생했습니다.")
-        } finally {
-            setIsSendingContract(false)
-            setConfirmContractSend(false)
-        }
-    }
+    const [productType, setProductType] = useState("gift") // gift, loan
+    const [videoGuide, setVideoGuide] = useState("brand_provided") // brand_provided, creator_planned
+    const [compensation, setCompensation] = useState("")
+    const [hasIncentive, setHasIncentive] = useState(false)
+    const [incentiveDetail, setIncentiveDetail] = useState("")
+    const [contentType, setContentType] = useState("")
+    const [message, setMessage] = useState("")
+    const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+    const [productLink, setProductLink] = useState("") // New: Product URL
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const [selectedCampaignId, setSelectedCampaignId] = useState<string | number | null>(null)
     const [submitProgress, setSubmitProgress] = useState(0) // New: Progress state
 
@@ -762,57 +628,11 @@ function BrandDashboardContent() {
     const [newProductPrice, setNewProductPrice] = useState("")
     const [newProductCategory, setNewProductCategory] = useState("")
     const [newProductDescription, setNewProductDescription] = useState("")
-    const [isFullContractOpen, setIsFullContractOpen] = useState(false)
     const [isSendingMessage, setIsSendingMessage] = useState(false)
     const [newProductImage, setNewProductImage] = useState("")
     const [trackingInput, setTrackingInput] = useState("")
     const [isUpdatingShipping, setIsUpdatingShipping] = useState(false)
 
-    const handleDownloadContract = () => {
-        if (!generatedContract && !chatProposal?.contract_content) {
-            toast.error("계약서 내용이 없습니다.")
-            return
-        }
-
-        const contractText = chatProposal?.contract_content || generatedContract
-        const win = window.open('', '', 'width=800,height=600')
-        win?.document.write(`
-            <html>
-                <head>
-                    <title>표준 광고 협업 계약서</title>
-                    <style>
-                        body { font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; }
-                        h1 { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-                        pre { white-space: pre-wrap; font-family: inherit; }
-                        .signature-section { margin-top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-                        .sign-box { width: 45%; border-top: 1px solid #333; padding-top: 10px; }
-                        .sign-img { max-height: 50px; margin-top: 10px; }
-                    </style>
-                </head>
-                <body>
-                    <h1>표준 광고 협업 계약서</h1>
-                    <pre>${contractText}</pre>
-                    
-                    <div class="signature-section">
-                        <div class="sign-box">
-                            <p><strong>갑 (브랜드):</strong> ${chatProposal?.brand_name || 'CreadyPick'}</p>
-                            ${chatProposal?.brand_signature ? `<img src="${chatProposal.brand_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
-                            <p><small>${chatProposal?.brand_signed_at ? new Date(chatProposal.brand_signed_at).toLocaleDateString() : ''}</small></p>
-                        </div>
-                        <div class="sign-box">
-                            <p><strong>을 (크리에이터):</strong> ${chatProposal?.creator_name || chatProposal?.influencer?.name || user?.name}</p>
-                            ${chatProposal?.creator_signature ? `<img src="${chatProposal.creator_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
-                            <p><small>${chatProposal?.creator_signed_at ? new Date(chatProposal.creator_signed_at).toLocaleDateString() : ''}</small></p>
-                        </div>
-                    </div>
-                    <script>
-                        window.onload = function() { window.print(); window.close(); }
-                    </script>
-                </body>
-            </html>
-        `)
-        win?.document.close()
-    }
     const handleUpdateShipping = async () => {
         if (!trackingInput.trim()) {
             toast.error("운송장 번호를 입력해주세요.")
@@ -2490,101 +2310,9 @@ function BrandDashboardContent() {
                         </AlertDialogContent>
                     </AlertDialog>
 
-                    {/* Contract Send Confirmation Dialog */}
-                    <AlertDialog open={confirmContractSend} onOpenChange={setConfirmContractSend}>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>계약서 발송</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    서명과 함께 계약서를 발송하시겠습니까?
-                                    <br />
-                                    상대방이 서명하기 전까지는 수정하여 다시 보낼 수 있습니다.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setConfirmContractSend(false)}>취소</AlertDialogCancel>
-                                <AlertDialogAction onClick={executeContractSend}>발송하기</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
                     <BrandWorkspaceLayout />
                 </DialogContent>
             </Dialog>
-
-            {/* Signature Modal */}
-            < Dialog open={isSignatureModalOpen} onOpenChange={setIsSignatureModalOpen} >
-                <DialogContent className="sm:max-w-xl">
-                    <DialogHeader>
-                        <DialogTitle>전자 서명 (Electronic Signature)</DialogTitle>
-                        <DialogDescription>
-                            계약서에 첨부될 서명을 아래 영역에 그려주세요. 법적 서명란에 자동 삽입됩니다.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <div className="border-2 border-dashed border-slate-300 rounded-xl bg-muted/30 overflow-hidden relative group">
-                            <SignatureCanvas
-                                ref={sigCanvas as any}
-                                penColor="black"
-                                canvasProps={{
-                                    className: "w-full h-48 cursor-crosshair active:cursor-none",
-                                    style: { width: '100%', height: '192px' }
-                                }}
-                            />
-                            <div className="absolute top-2 right-2 opacity-50 text-[10px] pointer-events-none group-hover:opacity-100 transition-opacity">
-                                ✍️ Sign Here
-                            </div>
-                        </div>
-                        <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
-                            <span>마우스나 터치로 서명하세요.</span>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs text-muted-foreground/70 hover:text-red-500"
-                                onClick={() => sigCanvas.current.clear()}
-                            >
-                                <X className="h-3 w-3 mr-1" /> 초기화
-                            </Button>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsSignatureModalOpen(false)}>취소</Button>
-                        <Button onClick={performContractSend} disabled={isSendingContract} className="gap-2">
-                            {isSendingContract ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4" />}
-                            서명 완료 및 발송
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog >
-
-            {/* Full Contract Viewer Dialog */}
-            < Dialog open={isFullContractOpen} onOpenChange={setIsFullContractOpen} >
-                <DialogContent className="sm:max-w-3xl h-[80vh] flex flex-col p-6 overflow-hidden">
-                    <DialogHeader className="mb-4">
-                        <DialogTitle>표준 광고 협업 계약서</DialogTitle>
-                        <DialogDescription>작성된 계약서의 전체 내용입니다.</DialogDescription>
-                    </DialogHeader>
-                    <div className="flex-1 overflow-y-auto p-6 bg-muted/30 rounded-xl border border-border font-mono text-sm whitespace-pre-wrap">
-                        {generatedContract || `제 1조 [목적]
-본 계약은 '갑'(${user?.name || '브랜드'})과 '을'(${chatProposal?.creator_name || '크리에이터'})간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.
-
-제 2조 [원고료 및 지급]
-1. '갑'은 '을'에게 콘텐츠 제작의 대가로 금 ${chatProposal?.cost ? parseInt(chatProposal.cost).toLocaleString() : chatProposal?.compensation_amount || '0'}원을 지급한다.
-2. 지급 시기는 콘텐츠 업로드 후 30일 이내로 한다.
-
-제 3조 [콘텐츠 제작]
-'을'은 '갑'의 가이드를 준수하여 고품질의 콘텐츠를 제작하며, 합의된 일정 내에 업로드한다.
-
-... (중략) ...
-
-상기 내용을 확인하였으며, 계약에 동의합니다.`}
-                    </div>
-                    <DialogFooter className="mt-6">
-                        <Button onClick={() => setIsFullContractOpen(false)}>닫기</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog >
-
-
 
             {/* Confirmation Dialog */}
             < AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen} >

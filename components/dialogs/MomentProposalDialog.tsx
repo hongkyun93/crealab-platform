@@ -39,7 +39,7 @@ export interface MomentProposalFormData {
     productUrl: string
     productType: "gift" | "loan"
     videoGuide: "brand_provided" | "creator_planned"
-    compensationAmount: string
+    priceOffer: string
     hasIncentive: boolean
     incentiveDetail: string
     channelName: string
@@ -88,7 +88,7 @@ export function MomentProposalDialog({
     const [selectedProductId, setSelectedProductId] = useState<string | undefined>()
     const [productType, setProductType] = useState<"gift" | "loan">("gift")
     const [videoGuide, setVideoGuide] = useState<"brand_provided" | "creator_planned">("brand_provided")
-    const [compensationAmount, setCompensationAmount] = useState("")
+    const [priceOffer, setPriceOffer] = useState("")
 
     const [hasIncentive, setHasIncentive] = useState(false)
     const [incentiveDetail, setIncentiveDetail] = useState("")
@@ -115,7 +115,7 @@ export function MomentProposalDialog({
                 setSelectedProductId(initialData.selectedProductId)
                 setProductType(initialData.productType || "gift")
                 setVideoGuide(initialData.videoGuide || "brand_provided")
-                setCompensationAmount(initialData.compensationAmount || "")
+                setPriceOffer(initialData.priceOffer || "")
                 setHasIncentive(initialData.hasIncentive || false)
                 setIncentiveDetail(initialData.incentiveDetail || "")
                 setChannelName(initialData.channelName || "instagram")
@@ -134,7 +134,7 @@ export function MomentProposalDialog({
                 setSelectedProductId(undefined)
                 setProductType("gift")
                 setVideoGuide("brand_provided")
-                setCompensationAmount("")
+                setPriceOffer("")
                 setHasIncentive(false)
                 setIncentiveDetail("")
                 setChannelName("instagram")
@@ -162,7 +162,7 @@ export function MomentProposalDialog({
             productUrl,
             productType,
             videoGuide,
-            compensationAmount,
+            priceOffer,
             hasIncentive,
             incentiveDetail,
             channelName,
@@ -290,8 +290,8 @@ export function MomentProposalDialog({
                             <Input
                                 id="compensation"
                                 type="text"
-                                value={compensationAmount}
-                                onChange={(e) => setCompensationAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                                value={priceOffer}
+                                onChange={(e) => setPriceOffer(e.target.value.replace(/[^0-9]/g, ''))}
                                 placeholder="예: 300000"
                                 className="pr-8"
                             />

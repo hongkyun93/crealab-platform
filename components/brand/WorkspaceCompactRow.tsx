@@ -103,10 +103,17 @@ export function WorkspaceCompactRow({ item, onClick }: WorkspaceCompactRowProps)
                         {item.product_name || "제품 협찬"}
                     </p>
 
-                    {/* Row 3: date + message */}
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {dateStr} · {item.message || "메시지 없음"}
-                    </p>
+                    {/* Row 3: date + message + 관리번호 */}
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-muted-foreground truncate flex-1">
+                            {dateStr} · {item.message || "메시지 없음"}
+                        </p>
+                        {(item.workspace_id || item.id) && (
+                            <span className="text-[9px] font-mono text-muted-foreground/60 shrink-0 bg-muted/50 px-1.5 py-0.5 rounded">
+                                관리번호 : #{String(item.workspace_id || item.id).replace(/-/g, '').slice(-6).toUpperCase()}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
 

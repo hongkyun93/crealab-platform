@@ -202,7 +202,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                 </div>
                                                 <div className="flex justify-between items-center text-xs pt-1">
                                                     <span className="text-muted-foreground">희망 비용</span>
-                                                    <span className="font-bold text-emerald-600">{p.cost ? `${p.cost.toLocaleString()}원` : "협의"}</span>
+                                                    <span className="font-bold text-emerald-600">{p.price_offer || p.priceOffer ? `${(p.price_offer || p.priceOffer).toLocaleString()}원` : "협의"}</span>
                                                 </div>
                                             </CardContent>
                                             <CardFooter className="p-2 bg-muted/5 grid grid-cols-2 gap-2">

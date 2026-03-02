@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Proposal } from "@/lib/types/proposal";
 import { cn } from "@/lib/utils";
-import { BadgeCheck, CheckCircle2, Clock, Copy, CreditCard, Download, FileSignature, FileText, Loader2, Pencil, PenTool, RotateCcw, Save, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
+import { BadgeCheck, CheckCircle2, Clock, Copy, CreditCard, Download, FileSignature, FileText, Loader2, Pencil, PenTool, RotateCcw, Save, ShieldCheck, Upload, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from 'react';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
@@ -196,9 +196,6 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     // ── 예치금 잔액 (브랜드 뷰에서만 사용) ──
     const [depositBalance, setDepositBalance] = useState<number | null>(null);
     const [isPayingDeposit, setIsPayingDeposit] = useState(false);
-    const [payTab, setPayTab] = useState<'transfer' | 'deposit'>('transfer');
-    const [isNotifyingTransfer, setIsNotifyingTransfer] = useState(false);
-    const [transferNotified, setTransferNotified] = useState(false);
 
     // ── 프로필 추가 파싱 ──
     const [brandProfile, setBrandProfile] = useState<any>(null);
@@ -283,27 +280,11 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [brandId, isFullySigned, userType]);
 
-    // ── 새로고침 후 입금 알림 상태 복원 ──
-    useEffect(() => {
-        if (!isFullySigned || userType !== 'brand' || !brandId) return;
-        const checkNotified = async () => {
-            const { data } = await supabase
-                .from('brand_deposits')
-                .select('id')
-                .eq('brand_id', brandId)
-                .eq('type', 'charge')
-                .eq('status', 'pending')
-                .like('note', `계좌이체 입금 알림:${proposal.id}%`)
-                .maybeSingle();
-            if (data) setTransferNotified(true);
-        };
-        checkNotified();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [brandId, isFullySigned, userType]);
+
 
     const handlePayFromDeposit = async () => {
-        const cost: number = (proposal as any).price_offer ?? 0;
-        const totalWithVat = Math.round(cost * 1.1);
+        const priceOffer: number = (proposal as any).price_offer ?? 0;
+        const totalWithVat = Math.round(priceOffer * 1.1);
         if (depositBalance === null || depositBalance < totalWithVat) {
             return;
         }
@@ -316,42 +297,26 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                     ? 'campaign_application'
                     : 'product_application';
 
-            // 1. 거래 내역 삽입
-            const { error: txErr } = await supabase.from('brand_deposits').insert({
-                brand_id: brandId,
-                type: 'use',
-                amount: totalWithVat,
-                balance_after: newBalance,
-                reference_id: proposal.id,
-                reference_type: proposalType,
-                note: `워크스페이스 광고비 자동 차감 (${(proposal as any).product_name ?? ''})`,
-                status: 'confirmed',
-                confirmed_at: new Date().toISOString(),
+            // SECURITY DEFINER 함수로 원자 처리:
+            // 1. brand_deposits INSERT  2. profiles.deposit_balance 차감  3. payment_confirmed_at 세팅
+            const { error: rpcErr } = await supabase.rpc('brand_pay_from_deposit', {
+                p_proposal_id: proposal.id,
+                p_proposal_type: proposalType,
+                p_amount: totalWithVat,
+                p_product_name: (proposal as any).product_name ?? '',
             });
-            if (txErr) throw txErr;
-
-            // 2. 예치금 잔액 차감
-            const { error: balErr } = await supabase
-                .from('profiles')
-                .update({ deposit_balance: newBalance })
-                .eq('id', brandId);
-            if (balErr) throw balErr;
-
-            // 3. payment_confirmed_at 세팅
-            const tableMap: Record<string, string> = {
-                product_application: 'product_applications',
-                moment_proposal: 'moment_proposals',
-                campaign_application: 'campaign_applications',
-            };
-            const table = tableMap[proposalType] ?? 'product_applications';
-            const { error: payErr } = await supabase
-                .from(table)
-                .update({ payment_confirmed_at: new Date().toISOString() })
-                .eq('id', proposal.id);
-            if (payErr) throw payErr;
+            if (rpcErr) throw rpcErr;
 
             updateProposal({ payment_confirmed_at: new Date().toISOString() } as any);
             setDepositBalance(newBalance);
+
+            // 배송 단계로 전환
+            setContractViewOpen(false);
+            useWorkspaceStore.getState().setCurrentStage('shipping');
+
+            // 성공 피드백
+            const { toast: showToast } = await import('sonner');
+            showToast.success(`광고비 결제 완료! (${totalWithVat.toLocaleString()}원) 배송 단계가 활성화됐습니다.`);
 
             // 🔔 크리에이터에게 입금 확인 알림
             try {
@@ -368,81 +333,142 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             } catch (notifErr) {
                 console.warn('입금 확인 알림 실패 (무시):', notifErr);
             }
-        } catch (err) {
-            console.error('[SmartContractPanel] deposit payment failed:', err);
+        } catch (err: any) {
+            const msg = err?.message ?? err?.code ?? JSON.stringify(err);
+            console.error('[SmartContractPanel] deposit payment failed:', msg);
+            const { toast: showToast } = await import('sonner');
+            showToast.error(`결제 실패: ${msg}`);
         } finally {
             setIsPayingDeposit(false);
         }
     };
 
-    // ── 계좌이체 입금 완료 알리기 ──
-    const handleNotifyTransfer = async () => {
-        if (transferNotified || isNotifyingTransfer) return;
-        setIsNotifyingTransfer(true);
-        try {
-            const cost: number = (proposal as any).price_offer ?? 0;
-            const totalWithVat = Math.round(cost * 1.1);
-            const proposalType = (proposal as any).moment_id
-                ? 'moment_proposal'
-                : (proposal as any).campaign_id
-                    ? 'campaign_application'
-                    : 'product_application';
-
-            // brand_deposits에 pending charge 레코드 삽입 → 관리자 "입금 확인" 탭에 노출
-            const { error } = await supabase.from('brand_deposits').insert({
-                brand_id: brandId,
-                type: 'charge',
-                amount: totalWithVat,
-                status: 'pending',
-                balance_after: depositBalance ?? 0,  // 관리자가 확인 시 실제값으로 업데이트
-                note: `계좌이체 입금 알림:${proposal.id}`,
-            });
-            if (error) throw error;
-
-            // 관리자 알림
-            await supabase.from('notifications').insert({
-                recipient_id: brandId, // 관리자 알림은 별도 channel이 없으므로 brand 측에 확인 안내
-                type: 'payment_pending',
-                content: `입금 완료 알림이 접수되었습니다. 관리자가 확인 후 다음 단계가 활성화됩니다. (금액: ${totalWithVat.toLocaleString()}원)`,
-                reference_id: (proposal as any).workspace_id?.toString() || proposal.id as string,
-            });
-
-            setTransferNotified(true);
-        } catch (err) {
-            console.error('[SmartContractPanel] notify transfer failed:', err);
-        } finally {
-            setIsNotifyingTransfer(false);
-        }
-    };
 
 
     const generateContract = async () => {
         setIsGenerating(true);
         try {
-            const res = await fetch('/api/generate-contract', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    proposal,
-                    brandName,
-                    creatorName,
-                    messages: [],
-                    brandProfile: brandProfile || null,
-                    creatorProfile: creatorProfile || null,
-                }),
-            });
-            const data = await res.json();
-            if (data.result) {
-                setContractContent(data.result);
-                if (onSaveContract) await onSaveContract(data.result);
-                updateProposal({ contract_content: data.result } as any);
-            }
+            const p = proposal as any;
+
+            // ── 변수 추출 ──
+            const bName = brandProfile?.display_name || p.brand_name || '브랜드(갑)';
+            const bRep = brandProfile?.representative_name || '';
+            const bAddress = brandProfile?.company_address || '';
+            const cName = creatorProfile?.legal_name || creatorProfile?.display_name || p.creator_name || '크리에이터(을)';
+            const cAddress = creatorProfile?.legal_address || creatorProfile?.shipping_address || '';
+            const productName = p.product_name || p.productName || '협업 제품';
+            const channelName = p.channel_name || p.channelName || 'SNS 채널';
+            const channelSubtype = p.channel_subtype || p.channelSubtype || '콘텐츠';
+            const priceOffer = p.price_offer ? Number(p.price_offer).toLocaleString() : '0';
+            const secondaryPeriod = p.condition_secondary_usage_period || p.secondary_usage_period || '6개월';
+            const secondaryFee = p.secondary_usage_fee ? `${Number(p.secondary_usage_fee).toLocaleString()}원` : '광고비에 포함';
+            const receiptDate = p.condition_product_receipt_date || p.dateReceived || '협의 후 결정';
+            const draftDate = p.condition_draft_submission_date || p.dateDraft || '협의 후 결정';
+            const finalDate = p.condition_final_submission_date || p.dateFinal || '협의 후 결정';
+            const uploadDate = p.condition_upload_date || p.dateUpload || '협의 후 결정';
+            const maintenancePeriod = p.condition_maintenance_period || '협의 후 결정';
+            const hasIncentive = p.has_incentive;
+            const incentiveDetail = p.incentive_detail || '';
+            const specialTerms = p.special_terms || p.specialTerms || '';
+            const isLoan = (p.product_type || '').toLowerCase() === 'loan';
+            const taxClause = creatorProfile?.creator_business_number
+                ? '세금계산서 발행 (부가세 10% 별도)'
+                : '사업소득세 3.3% 원천징수 별도';
+            const contractDate = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            // ── 표준 계약서 템플릿 ──
+            const template = `# 인플루언서 콘텐츠 광고 협업 계약서
+
+**광고주(갑):** ${bName}
+**크리에이터(을):** ${cName}
+
+---
+
+## 제1조 (목적)
+본 계약은 광고주와 크리에이터가 ${productName} 홍보를 위한 브랜디드/PPL 콘텐츠 제작 및 ${channelName} 채널 게재에 관하여 합의된 조건을 명확히 하기 위해 체결한다.
+
+## 제2조 (용역 범위)
+1. 크리에이터는 ${productName}을 소재로 ${channelSubtype} 형식의 콘텐츠를 제작하여 ${channelName} 채널에 게재한다.
+2. 일정
+   - 제품 수령 기한: ${receiptDate}
+   - 초안 제출 기한: ${draftDate}
+   - 최종본 제출 기한: ${finalDate}
+   - 게재(업로드) 완료 기한: ${uploadDate}
+   - 게시 유지 기간: 업로드 이후 ${maintenancePeriod}
+
+## 제3조 (광고비 및 지급)
+1. 광고주는 크리에이터에게 광고비 **${priceOffer}원** (${taxClause})을 업로드 완료 후 30일 이내에 지급한다.
+${hasIncentive ? `2. 인센티브: ${incentiveDetail}\n` : ''}3. 2차 활용 기간: **${secondaryPeriod}** (추가 비용: ${secondaryFee})
+4. 크리에이터가 지정 기한 내 업로드를 완료하지 못할 경우, 지연일수에 따라 연 12% 비율의 지체상금을 광고주에게 반환한다. 단, 광고주의 귀책 또는 불가항력의 경우는 제외한다.
+${isLoan ? `\n## 제3조의2 (제품 반납)\n광고주가 제공한 제품은 대여품으로, 콘텐츠 게재 완료 후 14일 이내에 광고주에게 반납해야 한다. 분실 또는 파손 시 동일 제품의 시가에 해당하는 금액을 배상한다.` : ''}
+
+## 제4조 (콘텐츠 수정)
+1. 기획안 수정 요청은 촬영 개시 전에 진행한다.
+2. 편집본 수정은 게재 전에 한하며, 자막 및 부분 편집 범위로 제한한다.
+3. 광고주가 콘텐츠 수령 후 영업일 3일 내 명확한 사유 없이 미통보 시 승인된 것으로 간주한다.
+
+## 제5조 (저작권 및 2차 활용)
+1. 제작물의 저작권은 광고주에 귀속된다. 단, 광고비 미지급 시 광고주는 결과물을 사용할 수 없다.
+2. 제작물 활용 범위: 광고주의 국내외 공식 SNS, 온/오프라인 판매채널, 온라인 마케팅 채널 (범위 외 활용 시 크리에이터 사전 동의 필요)
+3. 크리에이터는 광고주 동의 후 자신의 포트폴리오에 제작물을 활용할 수 있다.
+4. 계약 기간 연장 또는 추가 매체 활용은 별도 서면 합의가 필요하다.
+
+## 제6조 (초상권)
+본 계약의 초상권 범위는 크리에이터의 얼굴 및 본인으로 인지될 수 있는 범위로 한다. 범위 외 신체(손 등) 활용은 별도 합의가 필요하다.
+
+## 제7조 (크리에이터 준수사항)
+크리에이터는 다음 각 호의 행위를 하여서는 아니 된다.
+1. 범죄행위(사기, 폭행, 음주운전, 마약, 성범죄, 도박) 또는 사회적 물의로 광고주 이미지에 심각한 손상을 주는 행위
+2. 광고주의 이미지 또는 명예를 훼손하는 행위
+3. 관련 법령(표시광고법 등) 및 플랫폼 정책 위반 콘텐츠 게재
+4. 공정거래위원회 고시에 따른 경제적 이해관계 표시 의무 위반 — 게재 콘텐츠에 "#광고", "#협찬" 등 추천·보증 표시를 반드시 명기해야 한다
+
+## 제8조 (비밀 유지)
+양 당사자는 계약 기간 중 및 종료 후에도 상대방의 보수, 광고 방법, 기획 노하우 등을 제3자에게 누설하거나 이용하여서는 아니 된다.
+
+## 제9조 (권리·의무 양도 금지)
+양 당사자는 상대방의 서면 동의 없이 본 계약상의 권리·의무를 제3자에게 양도할 수 없다.
+
+## 제10조 (불가항력)
+천재지변, 전쟁, 내란, 관련 법령 개폐 등 합리적 지배 범위 밖의 사유로 계약 이행이 불가한 경우 해당 당사자는 책임을 면한다.
+
+## 제11조 (계약 해지)
+다음 각 호의 경우 서면 통보 후 15일 내 미시정 시 계약을 해지할 수 있다.
+1. 부도, 파산, 회생절차 신청
+2. 본 계약의 중요한 내용을 위반한 경우
+3. 크리에이터가 제7조를 위반하여 광고주 이미지에 심각한 손상을 준 경우
+
+## 제12조 (손해 배상)
+1. 귀책 당사자는 상대방에게 발생한 손해를 배상한다. 단, 손해배상액은 본 계약 광고비 금액을 초과하지 않는다.
+2. 크리에이터가 제2조의 게재 의무를 이행하지 않을 경우 광고비 전액을 위약금으로 광고주에게 반환한다.
+
+## 제13조 (전자서명)
+본 계약은 전자적 형태로 체결될 수 있으며, 전자서명법 및 전자문서 및 전자거래 기본법에 따라 서면과 동일한 법적 효력을 가진다.
+
+## 제14조 (분쟁 해결)
+본 계약과 관련한 분쟁은 서울중앙지방법원을 제1심 관할 법원으로 한다.
+${specialTerms ? `\n## 제15조 (특약사항)\n${specialTerms}` : ''}
+
+---
+
+계약 체결일: ${contractDate}
+
+**광고주(갑):** ${bName}${bRep ? ` / 대표 ${bRep}` : ''}
+주소: ${bAddress}
+
+**크리에이터(을):** ${cName}
+주소: ${cAddress}`;
+
+            setContractContent(template);
+            if (onSaveContract) await onSaveContract(template);
+            updateProposal({ contract_content: template } as any);
         } catch (err) {
-            console.error('[SmartContractPanel] AI contract generation failed:', err);
+            console.error('[SmartContractPanel] contract generation failed:', err);
         } finally {
             setIsGenerating(false);
         }
     };
+
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -634,8 +660,8 @@ body { background: #fff !important; color: #111 !important; }
                                 {canEdit && !isEditing && (
                                     <>
                                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={generateContract} disabled={isGenerating}>
-                                            {isGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                                            재생성
+                                            {isGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RotateCcw className="h-3 w-3 mr-1" />}
+                                            재작성
                                         </Button>
                                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => fileInputRef.current?.click()} disabled={isParsingFile}>
                                             {isParsingFile ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
@@ -687,11 +713,11 @@ body { background: #fff !important; color: #111 !important; }
                                 <p className="text-xs mt-1">약 10~20초 소요됩니다</p>
                             </div>
                         ) : isEditing ? (
-                            <div className="p-4">
+                            <div className="p-4 flex flex-col flex-1 min-h-0 h-full">
                                 <Textarea
                                     value={editContent}
                                     onChange={(e) => setEditContent(e.target.value)}
-                                    className="font-mono text-xs leading-relaxed min-h-[200px]"
+                                    className="font-mono text-xs leading-relaxed flex-1 min-h-[500px] resize-none h-full"
                                     placeholder="계약서 내용을 수정하세요..."
                                 />
                             </div>
@@ -708,9 +734,9 @@ body { background: #fff !important; color: #111 !important; }
                                             disabled={isGenerating}
                                             className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 transition-all cursor-pointer"
                                         >
-                                            <Sparkles className="h-6 w-6 text-indigo-500" />
-                                            <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-400">AI 자동 생성</span>
-                                            <span className="text-[10px] text-muted-foreground text-center">제안 조건 기반으로 AI가 자동 작성</span>
+                                            <FileText className="h-6 w-6 text-indigo-500" />
+                                            <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-400">표준 계약서 생성</span>
+                                            <span className="text-[10px] text-muted-foreground text-center">조건 기반으로 표준 계약서 자동 작성</span>
                                         </button>
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
@@ -834,159 +860,57 @@ body { background: #fff !important; color: #111 !important; }
                                 <CreditCard className="h-4 w-4 text-orange-600 dark:text-orange-400 shrink-0" />
                                 <p className="text-xs font-bold text-orange-700 dark:text-orange-300">💰 광고비 결제 안내</p>
                             </div>
-                            {/* 탭 전환 */}
-                            <div className="flex rounded-lg bg-orange-100 dark:bg-orange-900/40 p-0.5 gap-0.5">
-                                <button
-                                    type="button"
-                                    onClick={() => setPayTab('transfer')}
-                                    className={cn(
-                                        'flex-1 text-[11px] font-bold py-1.5 rounded-md transition-all',
-                                        payTab === 'transfer'
-                                            ? 'bg-white dark:bg-orange-800 text-orange-700 dark:text-orange-200 shadow-sm'
-                                            : 'text-orange-600/70 dark:text-orange-400/60 hover:text-orange-700'
-                                    )}
-                                >
-                                    계좌이체
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setPayTab('deposit')}
-                                    className={cn(
-                                        'flex-1 text-[11px] font-bold py-1.5 rounded-md transition-all',
-                                        payTab === 'deposit'
-                                            ? 'bg-white dark:bg-orange-800 text-orange-700 dark:text-orange-200 shadow-sm'
-                                            : 'text-orange-600/70 dark:text-orange-400/60 hover:text-orange-700'
-                                    )}
-                                >
-                                    예치금 차감
-                                    {depositBalance !== null && depositBalance > 0 && (
-                                        <span className="ml-1 text-[9px] bg-orange-500 text-white rounded-full px-1.5 py-0.5">
-                                            {depositBalance.toLocaleString()}원
-                                        </span>
-                                    )}
-                                </button>
-                            </div>
-
-                            {payTab === 'transfer' ? (
-                                <>
-                                    <p className="text-[10px] text-orange-800 dark:text-orange-200 leading-relaxed">
-                                        계약이 완전히 체결되었습니다. 아래 계좌로 광고비를 입금해 주세요.<br />
-                                        입금 확인 후 배송 단계가 자동으로 활성화됩니다.
-                                    </p>
-                                    <div className="rounded-lg bg-white dark:bg-orange-950/40 border border-orange-200 dark:border-orange-700 p-3 space-y-2 text-xs">
-                                        <div className="flex justify-between">
-                                            <span className="text-orange-700/70 dark:text-orange-300/60">은행</span>
-                                            <span className="font-bold text-orange-900 dark:text-orange-100">우리은행</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-orange-700/70 dark:text-orange-300/60">계좌번호</span>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="font-mono font-bold tracking-wide text-orange-900 dark:text-orange-100">1005-504-356962</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => navigator.clipboard.writeText('1005504356962')}
-                                                    className="p-0.5 rounded hover:bg-orange-100 dark:hover:bg-orange-800 transition-colors"
-                                                    title="계좌번호 복사"
-                                                >
-                                                    <Copy className="h-3 w-3 text-orange-500" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-orange-700/70 dark:text-orange-300/60">예금주</span>
-                                            <span className="font-bold text-orange-900 dark:text-orange-100">주식회사 인비저블 컴퍼니</span>
-                                        </div>
-                                        {(proposal as any).price_offer > 0 && (
-                                            <div className="flex justify-between pt-2 border-t border-orange-200 dark:border-orange-700">
-                                                <span className="text-orange-700/70 dark:text-orange-300/60">입금 금액 (VAT 10% 포함)</span>
-                                                <span className="font-bold text-orange-600 dark:text-orange-400 text-sm">
-                                                    {Math.round((proposal as any).price_offer * 1.1).toLocaleString()}원
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <p className="text-[10px] text-orange-600/60 dark:text-orange-400/40">
-                                        ※ 입금자명: <span className="font-mono font-semibold text-orange-700 dark:text-orange-300 text-xs bg-orange-100 dark:bg-orange-900/40 px-1.5 py-0.5 rounded">
-                                            {(() => {
-                                                const code = String(parseInt((proposal as any)?.id?.replace(/-/g, '').slice(-4) || '0', 16) % 100).padStart(2, '0');
-                                                const name = brandProfile?.display_name || brandProfile?.representative_name || '회사명';
-                                                return `${name}${code}`;
-                                            })()}
-                                        </span> 으로 입력해 주세요.
-                                    </p>
-                                    {/* 입금 완료 알리기 버튼 */}
-                                    {transferNotified ? (
-                                        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-700 px-3 py-2.5 flex items-center gap-2">
-                                            <span className="text-emerald-600 dark:text-emerald-400 text-sm">✅</span>
-                                            <div>
-                                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">입금 알림 접수 완료</p>
-                                                <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/60">관리자가 확인 후 배송 단계가 활성화됩니다.</p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={handleNotifyTransfer}
-                                            disabled={isNotifyingTransfer}
-                                            className="w-full py-2.5 rounded-lg text-xs font-bold transition-all bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-orange-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                                        >
-                                            {isNotifyingTransfer ? '처리 중...' : '✅ 입금 완료 알리기'}
-                                        </button>
-                                    )}
-                                </>
-                            ) : (
-                                /* 예치금 차감 탭 */
-                                <div className="space-y-3">
-                                    {(() => {
-                                        const cost = (proposal as any).price_offer ?? 0;
-                                        const totalWithVat = Math.round(cost * 1.1);
-                                        const bal = depositBalance ?? 0;
-                                        const sufficient = bal >= totalWithVat;
-                                        const afterPay = bal - totalWithVat;
-                                        return (
-                                            <>
-                                                <div className="rounded-lg bg-white dark:bg-orange-950/40 border border-orange-200 dark:border-orange-700 p-3 space-y-2 text-xs">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-orange-700/70">현재 예치금 잔액</span>
-                                                        <span className={cn('font-bold', sufficient ? 'text-orange-900 dark:text-orange-100' : 'text-red-600')}>{bal.toLocaleString()}원</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-orange-700/70">차감 금액 (VAT 포함)</span>
-                                                        <span className="font-bold text-orange-900 dark:text-orange-100">-{totalWithVat.toLocaleString()}원</span>
-                                                    </div>
-                                                    <div className="flex justify-between pt-2 border-t border-orange-200 dark:border-orange-700">
-                                                        <span className="text-orange-700/70">결제 후 잔액</span>
-                                                        <span className={cn('font-black text-sm', sufficient ? 'text-emerald-600' : 'text-red-600')}>
-                                                            {sufficient ? afterPay.toLocaleString() : '잔액 부족'}원
-                                                        </span>
-                                                    </div>
+                            {/* 예치금 차감 결제 */}
+                            <div className="space-y-3">
+                                {(() => {
+                                    const priceOffer: number = (proposal as any).price_offer ?? 0;
+                                    const totalWithVat = Math.round(priceOffer * 1.1);
+                                    const bal = depositBalance ?? 0;
+                                    const sufficient = bal >= totalWithVat;
+                                    const afterPay = bal - totalWithVat;
+                                    return (
+                                        <>
+                                            <div className="rounded-lg bg-white dark:bg-orange-950/40 border border-orange-200 dark:border-orange-700 p-3 space-y-2 text-xs">
+                                                <div className="flex justify-between">
+                                                    <span className="text-orange-700/70">현재 예치금 잔액</span>
+                                                    <span className={cn('font-bold', sufficient ? 'text-orange-900 dark:text-orange-100' : 'text-red-600')}>{bal.toLocaleString()}원</span>
                                                 </div>
-                                                {!sufficient && (
-                                                    <p className="text-[10px] text-red-500 dark:text-red-400">
-                                                        예치금이 부족합니다. 사이드바 예치금 관리에서 충전해 주세요.
-                                                    </p>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    onClick={handlePayFromDeposit}
-                                                    disabled={!sufficient || isPayingDeposit}
-                                                    className={cn(
-                                                        'w-full py-2.5 rounded-lg text-xs font-bold transition-all',
-                                                        sufficient && !isPayingDeposit
-                                                            ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-orange-200'
-                                                            : 'bg-muted text-muted-foreground cursor-not-allowed'
-                                                    )}
-                                                >
-                                                    {isPayingDeposit ? '처리 중...' : `지금 결제하기 — ${totalWithVat.toLocaleString()}원`}
-                                                </button>
-                                                <p className="text-[10px] text-orange-600/60 dark:text-orange-400/40">
-                                                    예치금 차감 결제는 즉시 확인되어 배송 단계가 바로 활성화됩니다.
+                                                <div className="flex justify-between">
+                                                    <span className="text-orange-700/70">차감 금액 (VAT 포함)</span>
+                                                    <span className="font-bold text-orange-900 dark:text-orange-100">-{totalWithVat.toLocaleString()}원</span>
+                                                </div>
+                                                <div className="flex justify-between pt-2 border-t border-orange-200 dark:border-orange-700">
+                                                    <span className="text-orange-700/70">결제 후 잔액</span>
+                                                    <span className={cn('font-black text-sm', sufficient ? 'text-emerald-600' : 'text-red-600')}>
+                                                        {sufficient ? afterPay.toLocaleString() : '잔액 부족'}원
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {!sufficient && (
+                                                <p className="text-[10px] text-red-500 dark:text-red-400">
+                                                    예치금이 부족합니다. 사이드바 예치금 관리에서 충전해 주세요.
                                                 </p>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-                            )}
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={handlePayFromDeposit}
+                                                disabled={!sufficient || isPayingDeposit}
+                                                className={cn(
+                                                    'w-full py-2.5 rounded-lg text-xs font-bold transition-all',
+                                                    sufficient && !isPayingDeposit
+                                                        ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-orange-200'
+                                                        : 'bg-muted text-muted-foreground cursor-not-allowed'
+                                                )}
+                                            >
+                                                {isPayingDeposit ? '처리 중...' : `지금 결제하기 — ${totalWithVat.toLocaleString()}원`}
+                                            </button>
+                                            <p className="text-[10px] text-orange-600/60 dark:text-orange-400/40">
+                                                예치금 차감 결제는 즉시 확인되어 배송 단계가 바로 활성화됩니다.
+                                            </p>
+                                        </>
+                                    );
+                                })()}
+                            </div>
                         </div>
 
                     )

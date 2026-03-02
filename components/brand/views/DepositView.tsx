@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 
 interface DepositTx {
     id: string
-    type: 'charge' | 'use' | 'refund'
+    type: 'charge' | 'use' | 'refund' | 'transfer_notify' | string
     amount: number
     balance_after: number
     note: string | null
@@ -69,7 +69,7 @@ export function DepositView({ userId, depositBalance = 0, onBalanceRefresh }: De
         const { error } = await supabase.from('brand_deposits').insert({
             brand_id: userId,
             type: 'charge',
-            amount: 0,    // 관리자가 실제 금액 확인 후 업데이트
+            amount: 1,    // placeholder — 관리자가 실제 금액 확인 후 덮어씀
             balance_after: balance,
             status: 'pending',
             note: '충전 요청 (계좌이체 대기)',
@@ -83,10 +83,11 @@ export function DepositView({ userId, depositBalance = 0, onBalanceRefresh }: De
         }
     }
 
-    const txTypeConfig = {
+    const txTypeConfig: Record<string, { label: string; icon: any; color: string; bg: string; sign: string }> = {
         charge: { label: '충전', icon: ArrowUpCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', sign: '+' },
         use: { label: '사용', icon: ArrowDownCircle, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/20', sign: '-' },
         refund: { label: '환불', icon: ArrowUpCircle, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20', sign: '+' },
+        transfer_notify: { label: '이체 알림', icon: ArrowUpCircle, color: 'text-gray-500', bg: 'bg-gray-50 dark:bg-gray-900/20', sign: '' },
     }
 
     const statusConfig = {
@@ -211,8 +212,8 @@ export function DepositView({ userId, depositBalance = 0, onBalanceRefresh }: De
                     ) : (
                         <div className="divide-y">
                             {transactions.map((tx) => {
-                                const cfg = txTypeConfig[tx.type]
-                                const statusCfg = statusConfig[tx.status]
+                                const cfg = txTypeConfig[tx.type] ?? { label: tx.type, icon: ArrowUpCircle, color: 'text-muted-foreground', bg: 'bg-muted/30', sign: '' }
+                                const statusCfg = statusConfig[tx.status] ?? { label: tx.status, variant: 'secondary' as any }
                                 const Icon = cfg.icon
                                 return (
                                     <div key={tx.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/30 transition-colors">
@@ -230,14 +231,17 @@ export function DepositView({ userId, depositBalance = 0, onBalanceRefresh }: De
                                                 </Badge>
                                             </div>
                                             {tx.note && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{tx.note}</p>}
-                                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                {new Date(tx.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                            <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2">
+                                                <span>{new Date(tx.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span className="font-mono text-[9px] text-muted-foreground/40">관리번호 : #{String(tx.reference_id || tx.id).replace(/-/g, '').slice(-6).toUpperCase()}</span>
                                             </p>
                                         </div>
                                         <div className="text-right shrink-0">
-                                            <p className={cn('text-sm font-black', cfg.color)}>
-                                                {cfg.sign}{tx.amount.toLocaleString()}원
-                                            </p>
+                                            {!(tx.type === 'charge' && tx.status === 'pending') && (
+                                                <p className={cn('text-sm font-black', cfg.color)}>
+                                                    {cfg.sign}{tx.amount.toLocaleString()}원
+                                                </p>
+                                            )}
                                             {tx.status === 'confirmed' && (
                                                 <p className="text-[10px] text-muted-foreground">잔액 {tx.balance_after.toLocaleString()}원</p>
                                             )}

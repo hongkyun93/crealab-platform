@@ -9,8 +9,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { validateContentFile } from '@/lib/utils/file-validation';
 import { BarChart3, CheckCircle2, Eye, FileText, Instagram, Loader2, MapPin, Package, Pencil, Sparkles, Truck, Upload, User, Video } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { compressVideo } from '@/lib/video-compressor';
 import { ConditionsPanel } from '../common/conditions-panel';
 import { ProgressBar } from '../common/progress-bar';
 import { StageCard } from '../common/stage-card';
@@ -281,9 +282,6 @@ export function CreatorInfoPanel() {
         if (updates.price_offer !== undefined) {
             payload.price_offer = updates.price_offer;
             payload.compensation_amount = `${updates.price_offer}`;
-        } else if (updates.cost !== undefined) {
-            payload.price_offer = updates.cost;
-            payload.compensation_amount = `${updates.cost}`;
         }
         if (updates.productName !== undefined) payload.product_name = updates.productName;
         else if (updates.product_name !== undefined) payload.product_name = updates.product_name;
@@ -478,7 +476,12 @@ export function CreatorInfoPanel() {
                     </div>
                     <div>
                         <h2 className="font-bold text-lg leading-tight">{proposal?.brandName || proposal?.brand_name || 'Brand Name'}</h2>
-                        <p className="text-xs text-muted-foreground">{proposal?.productName || proposal?.product_name || proposal?.campaignName || 'Project Name'}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>{proposal?.productName || proposal?.product_name || proposal?.campaignName || 'Project Name'}</span>
+                            <span className="font-mono text-[9px] text-muted-foreground/50 bg-muted/50 px-1.5 py-0.5 rounded">
+                                관리번호 : #{String((proposal as any)?.workspace_id || proposal?.id || '').replace(/-/g, '').slice(-6).toUpperCase()}
+                            </span>
+                        </p>
                     </div>
                 </div>
 
@@ -600,9 +603,9 @@ export function CreatorInfoPanel() {
                                             className="w-full flex items-center justify-center gap-1.5 text-xs text-primary hover:text-primary/80 py-1.5 px-2 rounded-md border border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/5 transition-colors"
                                             onClick={() => {
                                                 if (user) {
-                                                    setShipName(user.name || '');
-                                                    setShipPhone(user.phone || '');
-                                                    setShipAddress(user.address || '');
+                                                    setShipName(user.shippingName || user.legalName || user.name || '');
+                                                    setShipPhone(user.shippingPhone || user.phone || '');
+                                                    setShipAddress(user.shippingAddress || user.legalAddress || user.address || '');
                                                 }
                                             }}
                                         >
@@ -855,13 +858,26 @@ export function CreatorInfoPanel() {
                                                         setIsUploading(true); setUploadProgress(0);
                                                         try {
                                                             const { data: { session } } = await supabase.auth.getSession();
-                                                            const ext = file.name.split('.').pop();
-                                                            const filePath = `content/${proposal.id}/draft.${ext}`;
+
+                                                            let uploadFile = file;
+                                                            if (file.type.startsWith('video/')) {
+                                                                toast.info("동영상을 최적화하고 있습니다. 잠시만 기다려주세요...");
+                                                                uploadFile = await compressVideo(file, (p) => {
+                                                                    setUploadProgress(Math.round(p * 50));
+                                                                });
+                                                            }
+
+                                                            const ext = uploadFile.name.split('.').pop() || 'mp4';
+                                                            const filePath = `content/${proposal.id}/draft_${Date.now()}.${ext}`;
                                                             const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
                                                             const fileUrl: string = await new Promise((resolve, reject) => {
                                                                 const xhr = new XMLHttpRequest();
                                                                 xhr.upload.addEventListener('progress', (ev) => {
-                                                                    if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                                                                    if (ev.lengthComputable) {
+                                                                        const base = file.type.startsWith('video/') ? 50 : 0;
+                                                                        const scale = file.type.startsWith('video/') ? 50 : 100;
+                                                                        setUploadProgress(base + Math.round((ev.loaded / ev.total) * scale));
+                                                                    }
                                                                 });
                                                                 xhr.addEventListener('load', () => {
                                                                     if (xhr.status >= 200 && xhr.status < 300) {
@@ -874,7 +890,7 @@ export function CreatorInfoPanel() {
                                                                 xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token}`);
                                                                 xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
                                                                 xhr.setRequestHeader('x-upsert', 'true');
-                                                                xhr.send(file);
+                                                                xhr.send(uploadFile);
                                                             });
                                                             const ver = (proposal.content_submission_version || 0.9);
                                                             const nextVer = parseFloat((ver + 0.1).toFixed(1));
@@ -925,7 +941,8 @@ export function CreatorInfoPanel() {
                                                         {proposal?.content_submission_status === 'revision_requested' ? '수정본 업로드' : '초안 업로드'}
                                                     </Button>
                                                 )}
-                                                <p className="text-[10px] text-muted-foreground mt-1 text-center">MP4, MOV, WebM, 이미지, PDF (최대 500MB)</p>
+                                                <p className="text-[10px] text-muted-foreground mt-1 text-center">MP4, MOV, WebM, 이미지, PDF (최대 150MB)</p>
+                                                <p className="text-[10px] text-indigo-500/70 mt-0.5 text-center leading-tight">동영상은 업로드 시 브라우저에서 자동 압축(최적화) 처리되어<br />화질은 보존하며 용량을 크게 줄여 전송됩니다.</p>
                                             </div>
                                         )}
 
@@ -971,7 +988,7 @@ export function CreatorInfoPanel() {
                                                         try {
                                                             const { data: { session } } = await supabase.auth.getSession();
                                                             const ext = file.name.split('.').pop();
-                                                            const filePath = `content/${proposal.id}/final.${ext}`;
+                                                            const filePath = `content/${proposal.id}/final_${Date.now()}.${ext}`;
                                                             const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
                                                             const fileUrl: string = await new Promise((resolve, reject) => {
                                                                 const xhr = new XMLHttpRequest();
@@ -1049,7 +1066,7 @@ export function CreatorInfoPanel() {
                                                         try {
                                                             const { data: { session } } = await supabase.auth.getSession();
                                                             const ext = file.name.split('.').pop();
-                                                            const filePath = `content/${proposal.id}/clean.${ext}`;
+                                                            const filePath = `content/${proposal.id}/clean_${Date.now()}.${ext}`;
                                                             const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
                                                             const fileUrl: string = await new Promise((resolve, reject) => {
                                                                 const xhr = new XMLHttpRequest();

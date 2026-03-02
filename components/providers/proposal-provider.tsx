@@ -137,7 +137,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         brand_name: p.campaigns?.profiles?.display_name,
                         product_name: p.campaigns?.product_name,
                         brand_avatar: p.campaigns?.profiles?.avatar_url || p.campaigns?.product_image_url,
-                        cost: p.price_offer,
                         // [FIX] Condition fields were missing from campaign_applications mapping
                         price_offer: p.price_offer,
                         special_terms: p.special_terms,
@@ -217,20 +216,51 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         *,
                         brand:profiles!brand_id(display_name, avatar_url),
                         influencer:profiles!creator_id(display_name, avatar_url),
-                        products:brand_products(name, image_url)
+                        products:brand_products(name, image_url),
+                        workspace:workspaces!workspace_id(
+                            contract_status, contract_content,
+                            brand_signature, creator_signature, brand_signed_at, creator_signed_at,
+                            shipping_phone, shipping_address, tracking_number, delivery_status,
+                            content_submission_status, content_submission_url, content_submission_file_url,
+                            content_submission_date, content_submission_version,
+                            content_final_url, content_clean_url,
+                            content_final_approved_at, content_revision_requested_at,
+                            payment_confirmed_at, price_offer, product_type, video_guide,
+                            condition_draft_submission_date, condition_final_submission_date,
+                            condition_upload_date, condition_product_receipt_date,
+                            condition_secondary_usage_period, secondary_usage_fee,
+                            brand_condition_confirmed, creator_condition_confirmed,
+                            project_title, status
+                        )
                     `)
                     // [SECURITY] 브랜드한테는 본인이 받은 타인의 draft가 보이지 않아야 하고, 
                     // 크리에이터한테는 본인이 작성한 draft가 보여야 함.
                     .or(`and(brand_id.eq.${id},status.neq.draft),creator_id.eq.${id}`)
                     .order('created_at', { ascending: false })
                     .abortSignal(signal || null as any),
+
                 supabase
                     .from('moment_proposals')
                     .select(`
                         *,
                         brand:profiles!brand_id(display_name, avatar_url),
                         influencer:profiles!creator_id(display_name, avatar_url),
-                        moment:life_moments(title, moment_start_date, channels)
+                        moment:life_moments(title, moment_start_date, channels),
+                        workspace:workspaces!workspace_id(
+                            contract_status, contract_content,
+                            brand_signature, creator_signature, brand_signed_at, creator_signed_at,
+                            shipping_phone, shipping_address, tracking_number, delivery_status,
+                            content_submission_status, content_submission_url, content_submission_file_url,
+                            content_submission_date, content_submission_version,
+                            content_final_url, content_clean_url,
+                            content_final_approved_at, content_revision_requested_at,
+                            payment_confirmed_at, price_offer, product_type, video_guide,
+                            condition_draft_submission_date, condition_final_submission_date,
+                            condition_upload_date, condition_product_receipt_date,
+                            condition_secondary_usage_period, condition_maintenance_period,
+                            secondary_usage_fee, brand_condition_confirmed, creator_condition_confirmed,
+                            project_title, status
+                        )
                     `)
                     // [SECURITY] 모먼트 제안의 경우 브랜드가 보내는 것이므로 반대. 
                     // 임시저장은 발신자(브랜드)만 볼 수 있고, 수신자(크리에이터)는 볼 수 없어야 함.
@@ -272,7 +302,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 moment_id: p.moment_id,
                 product_id: p.product_id,
                 product_name: p.product_name || p.products?.name,
-                product_type: p.product_type,
+                product_type: p.workspace?.product_type ?? p.product_type,
                 compensation_amount: p.compensation_amount,
                 has_incentive: p.has_incentive,
                 incentive_detail: p.incentive_detail,
@@ -284,8 +314,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 portfolio_links: p.portfolio_links,
                 instagram_handle: p.instagram_handle,
                 insight_screenshot: p.insight_screenshot,
-                channel_name: p.channel_name,         // [FIX] 채널명
-                channel_subtype: p.channel_subtype,   // [NEW] 서브타입
+                channel_name: p.channel_name,
+                channel_subtype: p.channel_subtype,
                 created_at: p.created_at,
                 updated_at: p.updated_at,
                 brand_name: p.brand?.display_name,
@@ -294,37 +324,44 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 creatorName: p.influencer?.display_name,
                 creator_avatar: p.influencer?.avatar_url,
                 creatorAvatar: p.influencer?.avatar_url,
-                contract_content: p.contract_content,
-                contract_status: p.contract_status,
-                brand_signature: p.brand_signature,
-                creator_signature: p.creator_signature,
 
-                delivery_status: p.delivery_status,
-                brand_condition_confirmed: p.brand_condition_confirmed,
-                creator_condition_confirmed: p.creator_condition_confirmed,
-                // [FIX] Condition fields were missing from mappedBrand
-                price_offer: p.price_offer,
-                special_terms: p.special_terms,
-                condition_product_receipt_date: p.condition_product_receipt_date,
-                condition_draft_submission_date: p.condition_draft_submission_date,
-                condition_final_submission_date: p.condition_final_submission_date,
-                condition_upload_date: p.condition_upload_date,
-                condition_secondary_usage_period: p.condition_secondary_usage_period,
-                secondary_usage_fee: p.secondary_usage_fee,
-                content_submission_url: p.content_submission_url,
-                content_submission_file_url: p.content_submission_file_url,
-                content_submission_status: p.content_submission_status,
-                content_submission_version: p.content_submission_version,
-                content_submission_date: p.content_submission_date,
-                content_final_url: p.content_final_url,
-                content_clean_url: p.content_clean_url,
-                content_final_approved_at: p.content_final_approved_at,
-                content_revision_requested_at: p.content_revision_requested_at,
+                // [SOT] workspaces 우선, 없으면 product_applications 직접 컬럼 fallback
+                contract_content: p.workspace?.contract_content ?? p.contract_content,
+                contract_status: p.workspace?.contract_status ?? p.contract_status,
+                brand_signature: p.workspace?.brand_signature ?? p.brand_signature,
+                creator_signature: p.workspace?.creator_signature ?? p.creator_signature,
+                brand_signed_at: p.workspace?.brand_signed_at ?? p.brand_signed_at,
+                creator_signed_at: p.workspace?.creator_signed_at ?? p.creator_signed_at,
+
+                delivery_status: p.workspace?.delivery_status ?? p.delivery_status,
+                brand_condition_confirmed: p.workspace?.brand_condition_confirmed ?? p.brand_condition_confirmed,
+                creator_condition_confirmed: p.workspace?.creator_condition_confirmed ?? p.creator_condition_confirmed,
+                price_offer: p.workspace?.price_offer ?? p.price_offer,
+                special_terms: p.conditions?.special_terms ?? p.special_terms,
+                condition_product_receipt_date: p.workspace?.condition_product_receipt_date ?? p.condition_product_receipt_date,
+                condition_draft_submission_date: p.workspace?.condition_draft_submission_date ?? p.condition_draft_submission_date,
+                condition_final_submission_date: p.workspace?.condition_final_submission_date ?? p.condition_final_submission_date,
+                condition_upload_date: p.workspace?.condition_upload_date ?? p.condition_upload_date,
+                condition_secondary_usage_period: p.workspace?.condition_secondary_usage_period ?? p.condition_secondary_usage_period,
+                secondary_usage_fee: p.workspace?.secondary_usage_fee ?? p.secondary_usage_fee,
+                shipping_phone: p.workspace?.shipping_phone ?? p.shipping_phone,
+                shipping_address: p.workspace?.shipping_address ?? p.shipping_address,
+                tracking_number: p.workspace?.tracking_number ?? p.tracking_number,
+                content_submission_url: p.workspace?.content_submission_url ?? p.content_submission_url,
+                content_submission_file_url: p.workspace?.content_submission_file_url ?? p.content_submission_file_url,
+                content_submission_status: p.workspace?.content_submission_status ?? p.content_submission_status,
+                content_submission_version: p.workspace?.content_submission_version ?? p.content_submission_version,
+                content_submission_date: p.workspace?.content_submission_date ?? p.content_submission_date,
+                content_final_url: p.workspace?.content_final_url ?? p.content_final_url,
+                content_clean_url: p.workspace?.content_clean_url ?? p.content_clean_url,
+                content_final_approved_at: p.workspace?.content_final_approved_at ?? p.content_final_approved_at,
+                content_revision_requested_at: p.workspace?.content_revision_requested_at ?? p.content_revision_requested_at,
                 product_url: p.products?.image_url,
                 product: p.products,
-                workspace_id: p.workspace_id, // [Workspaces]
-                payment_confirmed_at: p.payment_confirmed_at // [입금 확인 게이트]
+                workspace_id: p.workspace_id,
+                payment_confirmed_at: p.workspace?.payment_confirmed_at ?? p.payment_confirmed_at
             }))
+
 
             // [NEW] Separate Moment Proposals State Population
             const rawMomentProposals: MomentProposal[] = momentData.map((p: any) => ({
@@ -335,7 +372,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 moment_id: p.moment_id,
                 product_id: p.product_id,
                 status: p.status,
-                price_offer: p.price_offer,
+                // [SOT] workspaces 우선, 없으면 conditions JSONB fallback
+                price_offer: p.workspace?.price_offer ?? p.conditions?.price_offer ?? p.price_offer,
                 message: p.message,
                 created_at: p.created_at,
                 updated_at: p.updated_at,
@@ -343,56 +381,58 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 brand_avatar: p.brand?.avatar_url,
                 creator_name: p.influencer?.display_name,
                 creator_avatar: p.influencer?.avatar_url,
-                moment_title: p.moment?.title || p.moment?.title,
+                moment_title: p.moment?.title,
                 conditions: p.conditions,
 
-                // [FIX] mappedMoment에서 가져온 누락된 필드 추가
                 product_name: p.product_name || p.conditions?.product_name || "협업 제안",
-                product_type: p.product_type || p.conditions?.product_type,
+                product_type: p.workspace?.product_type ?? p.conditions?.product_type ?? p.product_type,
                 compensation_amount: p.compensation_amount || (p.price_offer ? String(p.price_offer) : undefined),
                 has_incentive: p.has_incentive || p.conditions?.has_incentive,
                 incentive_detail: p.incentive_detail || p.conditions?.incentive_detail,
                 desired_date: p.desired_date || p.conditions?.desired_date,
                 date_flexible: p.date_flexible || p.conditions?.date_flexible,
-                video_guide: p.video_guide || p.conditions?.video_guide,
+                video_guide: p.workspace?.video_guide ?? p.conditions?.video_guide ?? p.video_guide,
 
                 special_terms: p.special_terms || p.conditions?.special_terms,
-                condition_product_receipt_date: p.condition_product_receipt_date || p.conditions?.condition_product_receipt_date,
-                condition_draft_submission_date: p.condition_draft_submission_date || p.conditions?.condition_draft_submission_date,
-                condition_final_submission_date: p.condition_final_submission_date || p.conditions?.condition_final_submission_date,
-                condition_upload_date: p.condition_upload_date || p.conditions?.condition_upload_date,
-                condition_secondary_usage_period: p.condition_secondary_usage_period || p.conditions?.condition_secondary_usage_period,
-                secondary_usage_fee: p.secondary_usage_fee || p.conditions?.secondary_usage_fee,
-                brand_condition_confirmed: p.brand_condition_confirmed,
-                creator_condition_confirmed: p.creator_condition_confirmed,
+                condition_product_receipt_date: p.workspace?.condition_product_receipt_date ?? p.conditions?.condition_product_receipt_date,
+                condition_draft_submission_date: p.workspace?.condition_draft_submission_date ?? p.conditions?.condition_draft_submission_date,
+                condition_final_submission_date: p.workspace?.condition_final_submission_date ?? p.conditions?.condition_final_submission_date,
+                condition_upload_date: p.workspace?.condition_upload_date ?? p.conditions?.condition_upload_date,
+                condition_secondary_usage_period: p.workspace?.condition_secondary_usage_period ?? p.conditions?.condition_secondary_usage_period,
+                condition_maintenance_period: p.workspace?.condition_maintenance_period ?? p.conditions?.condition_maintenance_period,
+                secondary_usage_fee: p.workspace?.secondary_usage_fee ?? p.conditions?.secondary_usage_fee,
+                brand_condition_confirmed: p.workspace?.brand_condition_confirmed ?? p.conditions?.brand_condition_confirmed,
+                creator_condition_confirmed: p.workspace?.creator_condition_confirmed ?? p.conditions?.creator_condition_confirmed,
 
-                contract_content: p.contract_content,
-                contract_status: p.contract_status,
-                brand_signature: p.brand_signature,
-                creator_signature: p.creator_signature,
+                contract_content: p.workspace?.contract_content ?? p.conditions?.contract_content,
+                contract_status: p.workspace?.contract_status ?? p.conditions?.contract_status,
+                brand_signature: p.workspace?.brand_signature ?? p.conditions?.brand_signature,
+                creator_signature: p.workspace?.creator_signature ?? p.conditions?.creator_signature,
+                brand_signed_at: p.workspace?.brand_signed_at ?? p.conditions?.brand_signed_at,
+                creator_signed_at: p.workspace?.creator_signed_at ?? p.conditions?.creator_signed_at,
 
                 channel_subtype: (p.moment?.channels && p.moment.channels.length > 0)
                     ? p.moment.channels.join(',')
                     : null,
                 channel_name: p.moment?.channels?.[0]?.split('_')[0] || null,
-                product_url: (p.moment?.title || p.moment?.title) ? `모먼트: ${p.moment?.title || p.moment?.title}` : undefined,
+                product_url: p.moment?.title ? `모먼트: ${p.moment.title}` : undefined,
 
-                content_submission_url: p.content_submission_url,
-                content_submission_file_url: p.content_submission_file_url,
-                content_submission_status: p.content_submission_status,
-                content_submission_version: p.content_submission_version,
-                content_submission_date: p.content_submission_date,
-                content_final_url: p.content_final_url,
-                content_clean_url: p.content_clean_url,
-                content_final_approved_at: p.content_final_approved_at,
-                content_revision_requested_at: p.content_revision_requested_at,
+                content_submission_url: p.workspace?.content_submission_url ?? p.conditions?.content_submission_url,
+                content_submission_file_url: p.workspace?.content_submission_file_url ?? p.conditions?.content_submission_file_url,
+                content_submission_status: p.workspace?.content_submission_status ?? p.conditions?.content_submission_status,
+                content_submission_version: p.workspace?.content_submission_version ?? p.conditions?.content_submission_version,
+                content_submission_date: p.workspace?.content_submission_date ?? p.conditions?.content_submission_date,
+                content_final_url: p.workspace?.content_final_url ?? p.conditions?.content_final_url,
+                content_clean_url: p.workspace?.content_clean_url ?? p.conditions?.content_clean_url,
+                content_final_approved_at: p.workspace?.content_final_approved_at ?? p.conditions?.content_final_approved_at,
+                content_revision_requested_at: p.workspace?.content_revision_requested_at ?? p.conditions?.content_revision_requested_at,
                 workspace_id: p.workspace_id,
-                payment_confirmed_at: p.payment_confirmed_at,
-                receiver_name: p.receiver_name,
-                shipping_phone: p.shipping_phone,
-                shipping_address: p.shipping_address,
-                tracking_number: p.tracking_number,
-                delivery_status: p.delivery_status,
+                payment_confirmed_at: p.workspace?.payment_confirmed_at ?? p.conditions?.payment_confirmed_at ?? p.payment_confirmed_at,
+                receiver_name: p.conditions?.receiver_name,
+                shipping_phone: p.workspace?.shipping_phone ?? p.conditions?.shipping_phone,
+                shipping_address: p.workspace?.shipping_address ?? p.conditions?.shipping_address,
+                tracking_number: p.workspace?.tracking_number ?? p.conditions?.tracking_number,
+                delivery_status: p.workspace?.delivery_status ?? p.conditions?.delivery_status,
             }))
 
             setMomentProposals(rawMomentProposals)
@@ -440,6 +480,42 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         }
     }, [userId]) // Primitive value enables parallel loading with other providers
 
+    // [FIX] moment_proposals Realtime remapper:
+    // payload.new from Realtime is the raw DB row. Many fields in moment_proposals
+    // live in the conditions JSONB (contract_status, signatures, delivery_status, etc.).
+    // Spreading payload.new directly would overwrite derived values with null.
+    // This helper re-derives from conditions JSONB to protect those fields.
+    const remapMomentProposalFromRealtime = (raw: any, existing: any) => {
+        const cond = raw.conditions || existing?.conditions || {};
+        return {
+            ...existing,         // keep all derived/mapped fields as base
+            status: raw.status ?? existing?.status,
+            message: raw.message ?? existing?.message,
+            conditions: raw.conditions ?? existing?.conditions,
+            payment_confirmed_at: raw.payment_confirmed_at ?? cond.payment_confirmed_at ?? existing?.payment_confirmed_at,
+            // Re-derive JSONB-sourced fields from new conditions, don't let raw nulls overwrite
+            contract_status: cond.contract_status ?? existing?.contract_status,
+            contract_content: cond.contract_content ?? existing?.contract_content,
+            brand_signature: cond.brand_signature ?? existing?.brand_signature,
+            creator_signature: cond.creator_signature ?? existing?.creator_signature,
+            brand_signed_at: cond.brand_signed_at ?? existing?.brand_signed_at,
+            creator_signed_at: cond.creator_signed_at ?? existing?.creator_signed_at,
+            brand_condition_confirmed: cond.brand_condition_confirmed ?? existing?.brand_condition_confirmed,
+            creator_condition_confirmed: cond.creator_condition_confirmed ?? existing?.creator_condition_confirmed,
+            delivery_status: cond.delivery_status ?? existing?.delivery_status,
+            tracking_number: cond.tracking_number ?? existing?.tracking_number,
+            shipping_address: cond.shipping_address ?? existing?.shipping_address,
+            shipping_phone: cond.shipping_phone ?? existing?.shipping_phone,
+            content_submission_status: cond.content_submission_status ?? existing?.content_submission_status,
+            content_submission_url: cond.content_submission_url ?? existing?.content_submission_url,
+            content_submission_file_url: cond.content_submission_file_url ?? existing?.content_submission_file_url,
+            content_submission_date: cond.content_submission_date ?? existing?.content_submission_date,
+            content_final_url: cond.content_final_url ?? existing?.content_final_url,
+            content_final_approved_at: cond.content_final_approved_at ?? existing?.content_final_approved_at,
+            content_revision_requested_at: cond.content_revision_requested_at ?? existing?.content_revision_requested_at,
+        };
+    };
+
     // [NEW] Realtime subscription for brand_proposals and moment_proposals
     // This ensures that when a brand updates conditions, the creator sees the changes immediately
     useEffect(() => {
@@ -478,14 +554,13 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Realtime moment_proposal update:', payload.new.id)
-                    // Update momentProposals local state only (no longer merged into productApplications)
-                    setMomentProposals(prev => prev.map(p =>
-                        p.id === payload.new.id ? { ...p, ...payload.new } : p
-                    ))
-                    // Also update workspace store if this proposal is currently open
+                    setMomentProposals(prev => prev.map(p => {
+                        if (p.id !== payload.new.id) return p;
+                        return remapMomentProposalFromRealtime(payload.new, p);
+                    }))
                     const currentProposal = useWorkspaceStore.getState().proposal
                     if (currentProposal && currentProposal.id === payload.new.id) {
-                        useWorkspaceStore.getState().updateProposal(payload.new)
+                        useWorkspaceStore.getState().updateProposal(remapMomentProposalFromRealtime(payload.new, currentProposal))
                     }
                 }
             )
@@ -556,13 +631,13 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Brand-side moment_proposal update:', payload.new.id)
-                    // Update momentProposals only (no longer merged into productApplications)
-                    setMomentProposals(prev => prev.map(p =>
-                        p.id === payload.new.id ? { ...p, ...payload.new } : p
-                    ))
+                    setMomentProposals(prev => prev.map(p => {
+                        if (p.id !== payload.new.id) return p;
+                        return remapMomentProposalFromRealtime(payload.new, p);
+                    }))
                     const currentProposal = useWorkspaceStore.getState().proposal
                     if (currentProposal && currentProposal.id === payload.new.id) {
-                        useWorkspaceStore.getState().updateProposal(payload.new)
+                        useWorkspaceStore.getState().updateProposal(remapMomentProposalFromRealtime(payload.new, currentProposal))
                     }
                 }
             )
@@ -644,7 +719,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         brand_id: proposal.toId, // [NEW] 직접 저장 — extra query 불필요
                         creator_id: targetCreatorId,
                         creator_team_id: myTeamId,
-                        price_offer: proposal.cost,
+                        price_offer: proposal.price_offer,
                         message: proposal.message,
                         status: 'applied',
                         motivation: proposal.motivation,
@@ -720,7 +795,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                             group: 'moment_proposal',
                             brand_team_id: myTeamId,
                             creator_team_id: null,
-                            price_offer: proposal.cost,
+                            price_offer: proposal.priceOffer || proposal.price_offer,
                             product_name: proposal.productName,
                             product_type: resolvedProductType,
                             video_guide: resolvedVideoGuide,
@@ -813,8 +888,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         channel_subtype: (proposal as any).channel_subtype,
                         insight_screenshot: proposal.insightScreenshot,
                         product_type: 'ad',
-                        price_offer: proposal.cost ?? 0,
-                        compensation_amount: proposal.cost?.toString(),
+                        price_offer: (proposal.priceOffer || proposal.price_offer) ?? 0,
+                        compensation_amount: (proposal.priceOffer || proposal.price_offer)?.toString(),
                         motivation: proposal.motivation,
                         content_plan: proposal.content_plan,
                         portfolio_links: proposal.portfolioLinks,
@@ -925,14 +1000,18 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if ((updates as any).channel_subtype !== undefined) dbUpdates.channel_subtype = (updates as any).channel_subtype
             if ((updates as any).brand_condition_confirmed !== undefined) dbUpdates.brand_condition_confirmed = (updates as any).brand_condition_confirmed
             if ((updates as any).creator_condition_confirmed !== undefined) dbUpdates.creator_condition_confirmed = (updates as any).creator_condition_confirmed
+            if ((updates as any).payment_confirmed_at !== undefined) dbUpdates.payment_confirmed_at = (updates as any).payment_confirmed_at
 
-            const { error } = await supabase
-                .from('campaign_applications')
-                .update(dbUpdates)
-                .eq('id', id)
+            // ── 서버 API 호출 (campaign_applications + workspaces 동시 업데이트, service_role로 RLS 우회) ──
+            const res = await fetch('/api/campaign-applications/update', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, updates: dbUpdates }),
+            })
+            const json = await res.json()
 
-            if (error) {
-                console.error('[ProposalProvider] Update error:', error)
+            if (!res.ok || json.error) {
+                console.error('[ProposalProvider] API update error:', json.error)
                 return false
             }
 
@@ -968,11 +1047,11 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.content_submission_date) dbUpdates.content_submission_date = updates.content_submission_date
             if (updates.content_final_url) dbUpdates.content_final_url = updates.content_final_url
             if (updates.content_clean_url) dbUpdates.content_clean_url = updates.content_clean_url
-            // Video review fields — !== undefined를 써서 null도 저장 가능 (content_revision_requested_at = null 취소 때)
+            // Video review fields — !== undefined를 써서 null도 저장 가능
             if ((updates as any).content_final_approved_at !== undefined) dbUpdates.content_final_approved_at = (updates as any).content_final_approved_at
             if ((updates as any).content_revision_requested_at !== undefined) dbUpdates.content_revision_requested_at = (updates as any).content_revision_requested_at
 
-            // Contract & Signatures — use !== undefined to allow null (undo)
+            // Contract & Signatures
             if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
             if ((updates as any).contract_content !== undefined) dbUpdates.contract_content = (updates as any).contract_content
             if ((updates as any).brand_signature !== undefined) dbUpdates.brand_signature = (updates as any).brand_signature
@@ -1003,13 +1082,16 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if (updates.condition_secondary_usage_period) dbUpdates.condition_secondary_usage_period = updates.condition_secondary_usage_period
             if (updates.secondary_usage_fee !== undefined) dbUpdates.secondary_usage_fee = updates.secondary_usage_fee
 
-            const { error } = await supabase
-                .from('product_applications')
-                .update(dbUpdates)
-                .eq('id', id)
+            // ── 서버 API 호출 (product_applications + workspaces 동시 업데이트, service_role로 RLS 우회) ──
+            const res = await fetch('/api/product-applications/update', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, updates: dbUpdates }),
+            })
+            const json = await res.json()
 
-            if (error) {
-                console.error('[ProposalProvider] Update error:', error)
+            if (!res.ok || json.error) {
+                console.error('[ProposalProvider] API update error:', json.error)
                 return false
             }
 
@@ -1024,6 +1106,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             return false
         }
     }
+
 
     // [NEW] Update Moment Proposal
     const updateMomentProposal = async (id: string | number, updates: Partial<MomentProposal>): Promise<boolean> => {
@@ -1090,16 +1173,28 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if ((updates as any).content_final_approved_at !== undefined) conditionUpdates.content_final_approved_at = (updates as any).content_final_approved_at
             if ((updates as any).content_revision_requested_at !== undefined) conditionUpdates.content_revision_requested_at = (updates as any).content_revision_requested_at
 
+            // workspace_id를 항상 포함해서 workspaces 동기화가 스킵되지 않게 함
+            const existingMoment = momentProposals.find((p: any) => p.id === id)
+            const momentWorkspaceId = existingMoment?.workspace_id
+
             // 클라이언트 RLS 우회: 서버 API로 업데이트
-            const res = await fetch('/api/moment-proposals/update', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, updates: dbUpdates, conditionUpdates }),
-            })
-            const json = await res.json()
+            let res;
+            let json;
+            try {
+                const payloadStr = JSON.stringify({ id, updates: dbUpdates, conditionUpdates, workspaceId: momentWorkspaceId });
+                res = await fetch('/api/moment-proposals/update', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payloadStr,
+                })
+                json = await res.json()
+            } catch (fetchErr) {
+                console.error('[Moment] Network or JSON parse error in fetch:', fetchErr, { dbUpdates, conditionUpdates });
+                return false;
+            }
 
             if (!res.ok || json.error) {
-                console.error('[Moment] API update error:', json.error)
+                console.error('[Moment] API update error:', json?.error || res.statusText)
                 return false
             }
 

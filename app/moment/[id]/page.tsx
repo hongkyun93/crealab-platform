@@ -48,7 +48,7 @@ export default function MomentDetailPage() {
     const [selectedProduct, setSelectedProduct] = useState<any>(null)
     const [productUrl, setProductUrl] = useState("")
     const [productType, setProductType] = useState<"gift" | "loan">("gift")
-    const [compensationAmount, setCompensationAmount] = useState("")
+    const [priceOffer, setPriceOffer] = useState("")
     const [hasIncentive, setHasIncentive] = useState(false)
     const [incentiveDetail, setIncentiveDetail] = useState("")
     const [channelName, setChannelName] = useState("instagram")
@@ -236,7 +236,7 @@ ${u.name}의 담당자입니다.
                 conditions: {
                     product_name: formData.productName,
                     product_type: formData.productType,
-                    compensation_amount: formData.compensationAmount ? String(parseInt(formData.compensationAmount.replace(/[^0-9]/g, ''))) : null,
+                    price_offer: formData.priceOffer ? parseInt(formData.priceOffer.replace(/[^0-9]/g, '')) : null,
                     has_incentive: formData.hasIncentive,
                     incentive_detail: formData.hasIncentive ? formData.incentiveDetail : null,
                     channel_name: formData.channelName,
@@ -288,7 +288,7 @@ ${u.name}의 담당자입니다.
                     // Conditions
                     conditions: proposalData.conditions,
                     product_name: formData.productName,
-                    price_offer: formData.compensationAmount ? parseInt(formData.compensationAmount.replace(/[^0-9]/g, '')) : 0,
+                    price_offer: formData.priceOffer ? parseInt(formData.priceOffer.replace(/[^0-9]/g, '')) : 0,
                     // [Added] Top-level condition fields for immediate UI reflection
                     condition_product_receipt_date: null, // Usually not set on creation
                     condition_draft_submission_date: formData.draftSubmissionDate ? format(formData.draftSubmissionDate, "yyyy-MM-dd") : null,
@@ -606,8 +606,8 @@ ${u.name}의 담당자입니다.
                                                         size="sm"
                                                         className="w-full text-xs h-9 hover:bg-primary/5 hover:text-primary transition-colors border-dashed hover:border-primary/40 mt-1"
                                                         onClick={() => {
-                                                            // Workspace view handling
-                                                            window.location.href = `/creator?view=inbound_list&highlight=${prop.id}`
+                                                            setSelectedProposal(prop);
+                                                            setShowReadonlyDialog(true);
                                                         }}
                                                     >
                                                         제안 상세 보기
@@ -757,7 +757,7 @@ ${u.name}의 담당자입니다.
                         productUrl: "",
                         productType: "gift",
                         videoGuide: "brand_provided",
-                        compensationAmount: "",
+                        priceOffer: "",
                         hasIncentive: false,
                         incentiveDetail: "",
                         channelName: channelName,

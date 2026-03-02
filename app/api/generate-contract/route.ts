@@ -18,7 +18,23 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { messages, proposal, brandName, creatorName, brandProfile, creatorProfile } = body;
+    const { messages, proposal, brandName, creatorName, brandProfile: reqBrandProfile, creatorProfile: reqCreatorProfile } = body;
+
+    // 프로필 자동 조회: 요청에 없으면 DB에서 직접 fetch
+    let brandProfile = reqBrandProfile
+    let creatorProfile = reqCreatorProfile
+
+    const brandId = proposal?.brand_id
+    const creatorId = proposal?.creator_id || proposal?.creatorId
+
+    if (!brandProfile && brandId) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', brandId).single()
+        if (data) brandProfile = data
+    }
+    if (!creatorProfile && creatorId) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', creatorId).single()
+        if (data) creatorProfile = data
+    }
 
     try {
         const apiKey = process.env.GEMINI_API_KEY;
@@ -47,6 +63,7 @@ export async function POST(req: Request) {
         const dateFinal = proposal?.condition_final_submission_date || "미정";
         const dateUpload = proposal?.condition_upload_date || "미정";
         const secondaryUsagePeriod = proposal?.condition_secondary_usage_period || "미정";
+        const maintenancePeriod = proposal?.condition_maintenance_period || "미정";
 
         // MCN 커스텀 계약서 여부 확인
         const creatorId = creatorProfile?.id || proposal?.creator_id || proposal?.creatorId;
@@ -114,6 +131,7 @@ ${customContractTemplate}
 - 최종 제출일: ${dateFinal}
 - 콘텐츠 업로드일: ${dateUpload}
 - 2차 활용 기간: ${secondaryUsagePeriod}${proposal?.secondary_usage_fee ? ` (비용: ${proposal.secondary_usage_fee.toLocaleString()}원)` : ''}
+- 게시 유지 기간: ${maintenancePeriod}
 
 [대화 내용]
 ${historyText || "(대화 내용 없음)"}
@@ -152,8 +170,11 @@ function getFallbackContract(brand: string, creator: string, proposal: any) {
     const incentiveDetail = proposal.incentive_detail || "";
     const dateReceived = proposal.condition_product_receipt_date || "협의 후 결정";
     const dateDraft = proposal.condition_draft_submission_date || "협의 후 결정";
+    const dateFinal = proposal.condition_final_submission_date || "협의 후 결정";
     const dateUpload = proposal.condition_upload_date || "협의 후 결정";
     const secondaryUsage = proposal.condition_secondary_usage_period || "6개월";
+    const maintenancePeriod = proposal.condition_maintenance_period || "협의 후 결정";
+
     const today = new Date().toLocaleDateString();
 
     return `
@@ -179,8 +200,10 @@ ${hasIncentive ? `4. 추가 인센티브: ${incentiveDetail}` : ""}
 **제5조 [일정]**
 1. 제품 수령일: ${dateReceived}
 2. 초안 제출일: ${dateDraft}
-3. 콘텐츠 업로드일: ${dateUpload}
-4. "을"은 위 일정을 준수해야 하며, 불가피한 사유 발생 시 "갑"에게 사전 통보해야 한다.
+3. 최종본 제출일: ${dateFinal}
+4. 콘텐츠 업로드일: ${dateUpload}
+5. 게시 유지 기간: ${maintenancePeriod}
+6. "을"은 위 일정을 준수해야 하며, 불가피한 사유 발생 시 "갑"에게 사전 통보해야 한다.
 
 **제6조 [저작권 및 2차 활용]**
 1. 콘텐츠의 저작권은 "을"에게 있으나, "갑"은 이를 홍보 목적으로 2차 활용할 수 있다.

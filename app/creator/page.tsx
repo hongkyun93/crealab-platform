@@ -760,10 +760,15 @@ function CreatorDashboardContent() {
             let stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete' = 'negotiation';
 
             if (chatProposal.brand_condition_confirmed && chatProposal.creator_condition_confirmed) stage = 'contract';
-            if (chatProposal.contract_status === 'signed') stage = 'contract'; // 계약 서명 완료 → 입금 대기
+
+            // [FIX] Realtime 버그로 인해 DB에 'partial'로 잘못 저장되었을 경우를 대비한 양측 서명 강제 체크
+            const isFullySigned = chatProposal.contract_status === 'signed' || (chatProposal.brand_signature && chatProposal.creator_signature);
+            if (isFullySigned) stage = 'contract'; // 계약 서명 완료 → 입금 대기
             // [입금 확인 게이트] 관리자가 payment_confirmed_at 세팅 후에만 shipping으로 이동
-            if (chatProposal.contract_status === 'signed' && (chatProposal as any).payment_confirmed_at) stage = 'shipping';
-            if (chatProposal.delivery_status === 'shipped' || chatProposal.delivery_status === 'delivered') stage = 'content';
+            if (isFullySigned && (chatProposal as any).payment_confirmed_at) stage = 'shipping';
+
+            if (chatProposal.delivery_status === 'shipped') stage = 'shipping';
+            if (chatProposal.delivery_status === 'delivered') stage = 'content';
             if (chatProposal.content_submission_url || chatProposal.content_submission_file_url) {
                 stage = 'content'; // 초안 제출 → content 단계 유지
             }
@@ -1170,7 +1175,12 @@ function CreatorDashboardContent() {
                                         </div>
                                     </TableCell>
                                     <TableCell>{item.product_name}</TableCell>
-                                    <TableCell className="text-muted-foreground text-xs">{new Date(item.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-muted-foreground text-xs">
+                                        <div className="flex flex-col gap-0.5">
+                                            <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                            <span className="font-mono text-[9px] text-muted-foreground/50">관리번호 : #{String(item.workspace_id || item.id).replace(/-/g, '').slice(-6).toUpperCase()}</span>
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <Badge variant="outline" className={`text-[10px] h-5 px-2 font-medium border-2 rounded-full transition-all bg-background
                                             ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
@@ -1302,7 +1312,10 @@ function CreatorDashboardContent() {
                                 </div>
                             </CardContent>
                             <CardFooter className="pt-0 pb-3 text-[10px] text-muted-foreground flex justify-between items-center">
-                                <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                <div className="flex flex-col gap-0.5">
+                                    <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                    <span className="font-mono text-[9px] text-muted-foreground/40">관리번호 : #{String(item.workspace_id || item.id).replace(/-/g, '').slice(-6).toUpperCase()}</span>
+                                </div>
                                 <div className="flex items-center gap-2">
                                     <FavoriteButton targetId={String(item.id)} targetType="workspace" />
                                     {item.moment_id && (
@@ -1409,10 +1422,11 @@ function CreatorDashboardContent() {
                                                                     '수락 대기중'}
                                             </Badge>
                                         </h3>
-                                        <p className="text-sm text-muted-foreground">
-                                            {proposal.brand_name}
+                                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                            <span>{proposal.brand_name}</span>
+                                            <span className="font-mono text-[9px] text-muted-foreground/40 bg-muted/50 px-1.5 py-0.5 rounded">관리번호 : #{String(proposal.workspace_id || proposal.id).replace(/-/g, '').slice(-6).toUpperCase()}</span>
                                             {proposal.moment_id && proposal.moment_title && (
-                                                <span className="ml-2 text-purple-600 dark:text-purple-400">
+                                                <span className="text-purple-600 dark:text-purple-400">
                                                     → {proposal.moment_title}
                                                 </span>
                                             )}

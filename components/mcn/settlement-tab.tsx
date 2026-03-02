@@ -34,12 +34,14 @@ interface Settlement {
     withholding_rate: number
     withholding_amount: number
     net_creator_amount: number
-    status: 'pending' | 'processing' | 'paid' | 'cancelled'
+    status: 'escrow' | 'void' | 'pending' | 'processing' | 'paid' | 'cancelled'
     paid_at: string | null
     settlement_month: string | null
     statement_number?: string | null
     note: string | null
     created_at: string
+    tax_invoice_status?: string | null
+    tax_invoice_requested_at?: string | null
 }
 
 interface RevenueSplit {
@@ -69,10 +71,12 @@ const PROPOSAL_TYPE_LABELS: Record<string, string> = {
 }
 
 const STATUS_CONFIG = {
+    escrow: { label: '입금 예정 (진행 중)', color: 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400' },
     pending: { label: '지급 대기', color: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400' },
     processing: { label: '처리 중', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400' },
     paid: { label: '지급 완료', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400' },
     cancelled: { label: '취소됨', color: 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400' },
+    void: { label: '무효 처리됨', color: 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400' },
 }
 
 function getMonthOptions() {
@@ -213,6 +217,7 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
                                 gross_amount, split_ratio, creator_amount, mcn_amount,
                                 withholding_rate, withholding_amount, net_creator_amount,
                                 status, paid_at, settlement_month, note, created_at,
+                                tax_invoice_status, tax_invoice_requested_at,
                                 creator:creator_id (display_name, avatar_url),
                                 brand:brand_id (display_name)
                             `)
@@ -319,16 +324,17 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
     }, [settlements, statusFilter, creatorFilter, searchQuery]);
 
     // ─── Aggregates ────────────────────────────────────
-    const totalGross = filteredSettlements.reduce((s, r) => s + r.gross_amount, 0)
-    const totalCreator = filteredSettlements.reduce((s, r) => s + r.creator_amount, 0)
-    const totalMcn = filteredSettlements.reduce((s, r) => s + r.mcn_amount, 0)
-    const totalWithholding = filteredSettlements.reduce((s, r) => s + (r.withholding_amount || Math.round(r.creator_amount * 0.033)), 0)
-    const totalNet = filteredSettlements.reduce((s, r) => s + (r.net_creator_amount || (r.creator_amount - Math.round(r.creator_amount * 0.033))), 0)
-    const pendingCount = filteredSettlements.filter(r => r.status === 'pending').length
-    const paidCount = filteredSettlements.filter(r => r.status === 'paid').length
+    const validSettlements = filteredSettlements.filter(s => s.status !== 'void' && s.status !== 'cancelled')
+    const totalGross = validSettlements.reduce((s, r) => s + r.gross_amount, 0)
+    const totalCreator = validSettlements.reduce((s, r) => s + r.creator_amount, 0)
+    const totalMcn = validSettlements.reduce((s, r) => s + r.mcn_amount, 0)
+    const totalWithholding = validSettlements.reduce((s, r) => s + (r.withholding_amount || Math.round(r.creator_amount * 0.033)), 0)
+    const totalNet = validSettlements.reduce((s, r) => s + (r.net_creator_amount || (r.creator_amount - Math.round(r.creator_amount * 0.033))), 0)
+    const pendingCount = validSettlements.filter(r => r.status === 'pending' || r.status === 'escrow').length
+    const paidCount = validSettlements.filter(r => r.status === 'paid').length
 
     // Group by creator
-    const byCreator = filteredSettlements.reduce<Record<string, { name: string; avatar: string | null; total: number; items: Settlement[] }>>(
+    const byCreator = validSettlements.reduce<Record<string, { name: string; avatar: string | null; total: number; items: Settlement[] }>>(
         (acc, s) => {
             if (!acc[s.creator_id]) {
                 acc[s.creator_id] = { name: s.creator_name, avatar: s.creator_avatar, total: 0, items: [] }
@@ -404,6 +410,26 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
     const handleOpenStatement = (creatorId: string, name: string, avatar: string | null, items: Settlement[]) => {
         const statementNumber = generateStatementNumber(selectedMonth, settlements)
         setStatementCreator({ creatorId, creatorName: name, creatorAvatar: avatar, items, statementNumber })
+    }
+
+    const handleRequestTaxInvoice = async (settlementId: string) => {
+        const { error } = await supabase
+            .from('settlements')
+            .update({
+                tax_invoice_status: 'requested',
+                tax_invoice_requested_at: new Date().toISOString()
+            })
+            .eq('id', settlementId)
+
+        if (error) {
+            toast.error('세금계산서 요청 실패: ' + error.message)
+            return
+        }
+
+        setSettlements(prev => prev.map(s =>
+            s.id === settlementId ? { ...s, tax_invoice_status: 'requested', tax_invoice_requested_at: new Date().toISOString() } : s
+        ))
+        toast.success(`플랫폼에 세금계산서 발행을 요청했습니다.`)
     }
 
     return (
@@ -577,6 +603,7 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
                             splitRatio={revenueSplits[creatorId] ?? 0.70}
                             items={group.items}
                             onPayClick={handlePayClick}
+                            onRequestTaxInvoice={handleRequestTaxInvoice}
                             onEditSplit={() => handleOpenSplitEditor(creatorId, group.name, group.avatar)}
                             onViewStatement={() => handleOpenStatement(creatorId, group.name, group.avatar, group.items)}
                         />
@@ -639,12 +666,13 @@ interface CreatorSettlementGroupProps {
     splitRatio: number
     items: Settlement[]
     onPayClick: (s: Settlement) => void
+    onRequestTaxInvoice: (id: string) => void
     onEditSplit: () => void
     onViewStatement: () => void
 }
 
 function CreatorSettlementGroup({
-    name, avatar, totalNetAmount, splitRatio, items, onPayClick, onEditSplit, onViewStatement
+    name, avatar, totalNetAmount, splitRatio, items, onPayClick, onRequestTaxInvoice, onEditSplit, onViewStatement
 }: CreatorSettlementGroupProps) {
     const [expanded, setExpanded] = useState(true)
     const hasPending = items.some(i => i.status === 'pending')
@@ -712,6 +740,7 @@ function CreatorSettlementGroup({
                                 key={s.id}
                                 settlement={s}
                                 onPayClick={() => onPayClick(s)}
+                                onRequestTaxInvoice={() => onRequestTaxInvoice(s.id)}
                             />
                         ))}
                     </div>
@@ -727,9 +756,10 @@ function CreatorSettlementGroup({
 interface SettlementRowProps {
     settlement: Settlement
     onPayClick: () => void
+    onRequestTaxInvoice: () => void
 }
 
-function SettlementRow({ settlement, onPayClick }: SettlementRowProps) {
+function SettlementRow({ settlement, onPayClick, onRequestTaxInvoice }: SettlementRowProps) {
     const cfg = STATUS_CONFIG[settlement.status]
     const typeLabel = PROPOSAL_TYPE_LABELS[settlement.proposal_type] || settlement.proposal_type
     const withholding = settlement.withholding_amount || Math.round(settlement.creator_amount * 0.033)
@@ -767,22 +797,42 @@ function SettlementRow({ settlement, onPayClick }: SettlementRowProps) {
                     </div>
                 </div>
             </div>
-            {settlement.status === 'pending' && (
-                <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs shrink-0 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition-colors"
-                    onClick={onPayClick}
-                >
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    지급하기
-                </Button>
-            )}
-            {settlement.status === 'paid' && settlement.paid_at && (
-                <span className="text-xs text-emerald-600 shrink-0">
-                    {new Date(settlement.paid_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })} 지급완료
-                </span>
-            )}
+
+            <div className="flex flex-col gap-2 shrink-0 items-end">
+                {settlement.status === 'pending' && (!settlement.tax_invoice_status || settlement.tax_invoice_status === 'none') && (
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-7 text-xs bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                        onClick={onRequestTaxInvoice}
+                    >
+                        <FileText className="h-3 w-3 mr-1" />
+                        세금계산서 발행 요청
+                    </Button>
+                )}
+                {settlement.status === 'pending' && settlement.tax_invoice_status === 'requested' && (
+                    <Badge variant="outline" className="text-[10px] h-6 bg-slate-50 text-slate-500 border-slate-200 flex items-center gap-1 font-medium">
+                        <Clock className="h-3 w-3" />
+                        계산서 요청됨 (입금 대기중)
+                    </Badge>
+                )}
+                {settlement.status === 'pending' && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition-colors w-full"
+                        onClick={onPayClick}
+                    >
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        정산 지급하기
+                    </Button>
+                )}
+                {settlement.status === 'paid' && settlement.paid_at && (
+                    <span className="text-xs text-emerald-600 font-medium">
+                        {new Date(settlement.paid_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })} 지급완료
+                    </span>
+                )}
+            </div>
         </div>
     )
 }

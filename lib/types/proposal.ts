@@ -29,7 +29,7 @@ export interface Proposal {
     brand_name?: string // snake_case alias
     brandAvatar?: string
 
-    cost?: number
+
     commission?: number
     message?: string
 
@@ -123,7 +123,6 @@ export interface Proposal {
 
     // [FIX] Fields used in conditions-panel (missing from original type)
     desired_date?: string // Legacy alias for condition_upload_date
-    compensation_amount?: string // Legacy string amount field
     date_final?: string // Legacy alias for condition_final_submission_date
     has_incentive?: boolean
     incentive_detail?: string
@@ -147,13 +146,12 @@ export interface ProductApplication {
     // Product/Campaign Info
     product_name?: string
     product_type?: string
-    compensation_amount?: string
     has_incentive?: boolean
     incentive_detail?: string
 
     status: string
     message?: string
-    cost?: number
+
     created_at: string
     updated_at: string
 
@@ -277,7 +275,6 @@ export interface MomentProposal {
     incentive_detail?: string
     product_url?: string
     product_type?: string
-    compensation_amount?: string // [Fallback] For legacy data
 
     // [Added] Logistics
     delivery_status?: string

@@ -25,8 +25,11 @@ export function computeWorkspaceStage(proposal: any): WorkspaceStage {
     // 콘텐츠 단계
     if (contentStatus === 'submitted' || contentStatus === 'approved') return 'content';
 
-    // 배송 단계 — 결제 확인 or 배송 시작
-    if (deliveryStatus === 'shipped' || deliveryStatus === 'delivered') return 'shipping';
+    // 배송 완료(수령) 시 콘텐츠 단계로 이동
+    if (deliveryStatus === 'delivered') return 'content';
+
+    // 배송 단계 — 결제 확인 or 배송 중
+    if (deliveryStatus === 'shipped') return 'shipping';
     if (paymentConfirmed) return 'shipping';
 
     // 계약 단계 — 양측 서명 완료 or contract_status='signed'

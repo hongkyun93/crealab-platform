@@ -94,7 +94,7 @@ export function isVideo(fileType: string): boolean {
 }
 
 // Content upload limits (videos + images for content submission)
-const MAX_CONTENT_FILE_SIZE = 500 * 1024 * 1024 // 500MB
+const MAX_CONTENT_FILE_SIZE = 150 * 1024 * 1024 // 150MB
 const CONTENT_ALLOWED_TYPES = [
     'image/jpeg',
     'image/jpg',

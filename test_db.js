@@ -1,8 +1,13 @@
-require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-async function run() {
-  const { data, error } = await supabase.from('notifications').select('content, created_at').ilike('content', '%undefined%').order('created_at', { ascending: false }).limit(5);
-  console.log(data);
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+async function test() {
+    const { data: m } = await supabase.from('moment_proposals').select('*').limit(1).order('created_at', { ascending: false })
+    console.log('moment_proposals:', m ? m[0] : null)
+    const { data: c } = await supabase.from('campaign_applications').select('*').limit(1).order('created_at', { ascending: false })
+    console.log('campaign_applications:', c ? c[0] : null)
 }
-run();
+test()

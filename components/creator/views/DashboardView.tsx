@@ -114,8 +114,13 @@ export const DashboardView = React.memo(function DashboardView({
                         upcomingMoments={myMoments}
                         pastMoments={allCompleted}
                         onSelectMoment={(event) => {
-                            if (event.id) {
-                                router.push(`/moment/${event.id}`)
+                            if (event.type === 'upcoming') {
+                                // 내가 올린 모먼트(모집중) → 모먼트 상세 페이지로 이동
+                                if (event.id) router.push(`/moment/${event.id}`)
+                            } else {
+                                // 수락된 제안 → 워크스페이스 바로 열기
+                                setChatProposal(event)
+                                setIsChatOpen(true)
                             }
                         }}
                     />

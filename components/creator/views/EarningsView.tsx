@@ -19,12 +19,13 @@ interface Settlement {
     withholding_rate: number | null
     withholding_amount: number | null
     net_creator_amount: number | null
-    status: 'pending' | 'processing' | 'paid' | 'cancelled'
+    status: 'escrow' | 'void' | 'pending' | 'processing' | 'paid' | 'cancelled'
     paid_at: string | null
     settlement_month: string | null
     note: string | null
     created_at: string
     brand_name?: string | null
+    tax_invoice_status?: string | null
 }
 
 
@@ -59,10 +60,12 @@ th{background:#f7f7f7;text-align:left;font-weight:600}
 }
 
 const STATUS_CONFIG = {
+    escrow: { label: '입금 예정 (진행 중)', className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' },
     pending: { label: '정산 대기', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
     processing: { label: '처리 중', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
     paid: { label: '지급 완료', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
     cancelled: { label: '취소', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+    void: { label: '무효 처리됨', className: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -134,16 +137,19 @@ export function EarningsView() {
 
     // 요약 수치 계산
     const totalGross = settlements.reduce((s, r) => {
+        if (r.status === 'void' || r.status === 'cancelled') return s
         const wh = r.withholding_amount ?? Math.round((r.creator_amount ?? 0) * 0.033)
         return s + (r.net_creator_amount ?? ((r.creator_amount ?? 0) - wh))
     }, 0)
     const totalPending = settlements
-        .filter(s => s.status === 'pending' || s.status === 'processing')
+        .filter(s => s.status === 'pending' || s.status === 'processing' || s.status === 'escrow')
         .reduce((s, r) => s + (r.net_creator_amount ?? r.creator_amount), 0)
     const totalPaid = settlements
         .filter(s => s.status === 'paid')
         .reduce((s, r) => s + (r.net_creator_amount ?? r.creator_amount), 0)
-    const totalWH = settlements.reduce((s, r) => s + (r.withholding_amount ?? Math.round((r.creator_amount ?? 0) * 0.033)), 0)
+    const totalWH = settlements
+        .filter(s => s.status !== 'void' && s.status !== 'cancelled')
+        .reduce((s, r) => s + (r.withholding_amount ?? Math.round((r.creator_amount ?? 0) * 0.033)), 0)
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 max-w-2xl">

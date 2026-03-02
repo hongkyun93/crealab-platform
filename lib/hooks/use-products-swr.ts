@@ -21,18 +21,21 @@ async function fetchProducts(): Promise<Product[]> {
         .limit(100)
 
     if (error) {
-        // Ignore AbortError (happens when component unmounts during fetch)
-        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        // Ignore transient network/abort errors (not actionable)
+        if (
+            error.name === 'AbortError' ||
+            error.message?.includes('AbortError') ||
+            error.message?.includes('aborted') ||
+            error.message?.includes('Failed to fetch') ||
+            error.message?.includes('NetworkError') ||
+            error.message?.includes('Load failed') ||
+            // Ignore empty error objects (often cancellation artifacts)
+            (Object.keys(error).length === 0 && !error.message)
+        ) {
             return []
         }
 
-        console.error('[useProducts] Fetch error:', error)
-        console.error('[useProducts] Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-        })
+        console.error('[useProducts] Fetch error:', error.message || error.code || JSON.stringify(error))
         if (error.code === '42P01') {
             console.warn('[useProducts] The "brand_products" table is missing - returning empty array')
             return []

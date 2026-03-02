@@ -53,7 +53,7 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
     const [isProposalOpen, setIsProposalOpen] = useState(false)
 
     // Form State
-    const [cost, setCost] = useState("")
+    const [priceOffer, setPriceOffer] = useState("")
     const [commission, setCommission] = useState("")
     const [message, setMessage] = useState("")
 
@@ -81,7 +81,7 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
             type: "creator_apply",
             dealType: "ad",
             productId: product.id,
-            cost: Number(cost),
+            priceOffer: Number(priceOffer),
             commission: Number(commission),
             requestDetails: message,
             status: "applied",
@@ -174,7 +174,7 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
                                             <Label htmlFor="cost" className="text-right text-xs font-bold">광고비</Label>
                                             <div className="col-span-3 relative">
                                                 <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-bold">₩</span>
-                                                <Input id="cost" type="number" placeholder="0" className="pl-9 h-9 text-sm" value={cost} onChange={(e) => setCost(e.target.value)} />
+                                                <Input id="cost" type="number" placeholder="0" className="pl-9 h-9 text-sm" value={priceOffer} onChange={(e) => setPriceOffer(e.target.value)} />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-4 items-center gap-4">

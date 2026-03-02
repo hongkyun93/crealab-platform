@@ -94,7 +94,7 @@ function BrandMobileLayout() {
 
     // 크리에이터의 아바타 및 이름 결정
     const creatorAvatar = proposal?.creatorAvatar || (proposal as any)?.creator_avatar;
-    const creatorName = proposal?.creatorName || 'Creator Name';
+    const creatorName = proposal?.creatorName || (proposal as any)?.creator_name || (proposal as any)?.influencer?.display_name || (proposal as any)?.influencer?.name || '크리에이터';
 
     return (
         <div className="flex flex-col h-[100dvh] w-full bg-background overflow-hidden relative">

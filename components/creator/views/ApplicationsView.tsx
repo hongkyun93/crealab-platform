@@ -74,7 +74,7 @@ export function ApplicationsView({
                                     <div>
                                         <p className="font-medium text-sm">{app.productName || "제품 정보 없음"}</p>
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            희망비용: {app.cost ? `${app.cost.toLocaleString()}원` : '미입력'}
+                                            희망비용: {app.price_offer || app.priceOffer ? `${(app.price_offer || app.priceOffer).toLocaleString()}원` : '미입력'}
                                         </p>
                                     </div>
                                     <Button className="w-full h-8 text-xs" variant="outline">지원서 확인</Button>
