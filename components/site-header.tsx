@@ -50,81 +50,117 @@ export function SiteHeader() {
                         : '관리자'
     }
 
-    const handleNotificationClick = async (n: any) => {
+    const handleNotificationClick = (n: any) => {
+        // markAsRead는 백그라운드에서 실행 — 라우팅을 블로킹하지 않음
         if (!n.is_read) {
-            await markAsRead(n.id)
+            markAsRead(n.id).catch(e => console.warn('markAsRead 실패 (무시):', e))
         }
 
-        // Redirect Logic based on Notification Type
-        if (n.type === 'proposal_received' || n.type === 'proposal_rejected' || n.type === 'condition_confirmed' || n.type === 'contract_signed' || n.type === 'contract_negotiating' || n.type === 'contract_rejected') {
-            if (user?.role === 'creator') {
-                router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
-            } else if (user?.role === 'brand') {
-                router.push(`/brand?view=proposals&workspaceTab=inbound&proposalId=${n.reference_id}`)
-            } else if (user?.role === 'mcn' || user?.role === 'agency') {
-                router.push('/mcn')
-            }
-        } else if (n.type === 'proposal_accepted') {
-            if (user?.role === 'creator') {
-                router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
-            } else if (user?.role === 'brand') {
-                // 크리에이터가 수락 → active 탭으로
-                router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
-            } else if (user?.role === 'mcn' || user?.role === 'agency') {
-                router.push('/mcn')
-            }
-        } else if (n.type === 'application_received') {
-            // Brand received a product/campaign application
-            router.push(`/brand?view=proposals&workspaceTab=inbound&proposalId=${n.reference_id}`)
-        } else if (n.type === 'new_message') {
-            if (user?.role === 'creator') {
-                router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
-            } else if (user?.role === 'brand') {
-                router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
-            } else if (user?.role === 'mcn' || user?.role === 'agency') {
-                router.push('/mcn')
-            }
-        } else if (n.type === 'settlement_paid') {
-            if (user?.role === 'creator') {
-                router.push('/creator?view=settlement')
-            } else if (user?.role === 'mcn' || user?.role === 'agency') {
-                router.push('/mcn')
-            }
-        } else if (n.type === 'shipping_started') {
-            router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
-        } else if (n.type === 'content_revision') {
-            router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
-        } else if (n.type === 'content_approved') {
-            router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
-        } else if (n.type === 'collaboration_complete') {
-            router.push(`/creator?view=settlement&proposalId=${n.reference_id}`)
-        } else if (n.type === 'performance_submitted') {
-            // Brand: 성과 보고서 제출됨 → 브랜드 워크스페이스
-            router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
-        } else if (n.type === 'delivery_confirmed') {
-            // Brand: 배송 수령 확인 → 브랜드 워크스페이스
-            router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
-        } else if (n.type === 'content_submission') {
-            // Brand: 콘텐츠 제출 → 브랜드 워크스페이스
-            router.push(`/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`)
-        } else if (n.type === 'payment_confirmed' || n.type === 'deposit_confirmed') {
-            if (user?.role === 'brand') {
+        console.log('[알림 클릭]', { type: n.type, reference_id: n.reference_id, user_role: user?.role })
+
+        const brandActive = `/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`
+        const brandInbound = `/brand?view=proposals&workspaceTab=inbound&proposalId=${n.reference_id}`
+        // 크리에이터: 알림 type에 따라 탭 결정
+        const creatorInbound = `/creator?view=proposals&workspaceTab=inbound&proposalId=${n.reference_id}`   // 받은 제안
+        const creatorOutbound = `/creator?view=proposals&workspaceTab=outbound&proposalId=${n.reference_id}` // 보낸 제안
+        const creatorActive = `/creator?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`     // 진행중
+
+        switch (n.type) {
+            // ── 공통: 제안 수신/수락/거절/조건/계약 ──
+            case 'proposal_received':
+            case 'moment_proposal':
+                // 브랜드가 크리에이터에게 직접 제안 → 받은제안 탭
+                if (user?.role === 'creator') router.push(creatorInbound)
+                else if (user?.role === 'brand') router.push(brandInbound)
+                break
+
+            case 'proposal_rejected':
+            case 'contract_rejected':
+                // 크리에이터가 지원/계약한 것에 대한 거절 → 보낸제안 탭 (기록용)
+                if (user?.role === 'creator') router.push(creatorOutbound)
+                else if (user?.role === 'brand') router.push(brandInbound)
+                break
+
+            case 'condition_confirmed':
+            case 'contract_negotiating':
+                // 조건/계약 조율 & 확정 → 진행중 탭 (Active)
+                if (user?.role === 'creator') router.push(creatorActive)
+                else if (user?.role === 'brand') router.push(brandActive)
+                break
+
+            case 'contract_signed':
+            case 'proposal_accepted':
+                // 협업 확정 → 진행중 탭
+                if (user?.role === 'creator') router.push(creatorActive)
+                else if (user?.role === 'brand') router.push(brandActive)
+                break
+
+            // ── 브랜드 수신: 크리에이터 지원/업데이트 ──
+            case 'application_received':
+                router.push(brandInbound)
+                break
+
+            case 'application_updated':
+                // 크리에이터가 지원서 수정 → 브랜드가 받는 알림
+                router.push(brandInbound)
+                break
+
+            // ── 브랜드 수신: 협업 진행 중 이벤트 ──
+            case 'shipping_address_saved':
+            case 'delivery_confirmed':
+            case 'content_submission':
+            case 'content_final_uploaded':
+            case 'content_clean_uploaded':
+            case 'performance_submitted':
+                router.push(brandActive)
+                break
+
+            // ── 메시지 ──
+            case 'new_message':
+                if (user?.role === 'creator') {
+                    if (n.reference_id) router.push(`${creatorActive}&proposalId=${n.reference_id}`)
+                    else router.push(creatorActive)
+                } else if (user?.role === 'brand') {
+                    if (n.reference_id) router.push(`${brandActive}&proposalId=${n.reference_id}`)
+                    else router.push(brandActive)
+                }
+                break
+
+            // ── 크리에이터 수신: 브랜드 액션 (진행중) ──
+            case 'shipping_started':
+            case 'content_revision':
+            case 'content_approved':
+            case 'feedback_received':
+            case 'proposal_update':
+                router.push(creatorActive)
+                break
+
+            case 'collaboration_complete':
+            case 'collaboration_final_complete':
+                router.push(`/creator?view=settlement&proposalId=${n.reference_id}`)
+                break
+
+            // ── 정산/입금 ──
+            case 'settlement_paid':
+                if (user?.role === 'creator') router.push('/creator?view=settlement')
+                else if (user?.role === 'mcn' || user?.role === 'agency') router.push('/mcn')
+                break
+
+            case 'payment_confirmed':
+            case 'deposit_confirmed':
+                if (user?.role === 'brand') router.push('/brand?view=deposit')
+                else if (user?.role === 'creator') router.push('/creator?view=settlement')
+                break
+
+            case 'payment_pending':
                 router.push('/brand?view=deposit')
-            } else if (user?.role === 'creator') {
-                router.push('/creator?view=settlement')
-            }
-        } else if (n.type === 'feedback_received') {
-            // Creator: 브랜드가 피드백 남김 → 크리에이터 워크스페이스
-            router.push(`/creator?view=workspace&proposalId=${n.reference_id}`)
-        } else if (n.type === 'proposal_update') {
-            // Creator: 브랜드가 조건 확정 → 크리에이터 제안 뷰
-            router.push(`/creator?view=proposals&proposalId=${n.reference_id}`)
-        } else if (n.type === 'collaboration_final_complete') {
-            // Creator: 협업 최종완료 → 성과 제출 뷰
-            router.push(`/creator?view=settlement&proposalId=${n.reference_id}`)
-        } else if (n.type === 'payment_pending') {
-            // Brand: 계약서 서명 후 결제 대기 → 입금 페이지
-            router.push('/brand?view=deposit')
+                break
+
+            default:
+                // 처리되지 않은 타입: 역할별 기본 페이지로
+                if (user?.role === 'brand') router.push('/brand?view=proposals')
+                else if (user?.role === 'creator') router.push('/creator?view=proposals')
+                break
         }
     }
 
@@ -147,7 +183,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-3 sm:mr-6 flex items-center space-x-2">
                         <Image src="/logo.png" alt="CreadyPick" width={238} height={48} className="h-12 w-auto" priority />
-                        <span className="hidden md:inline-block text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V4.8.3</span>
+                        <span className="hidden md:inline-block text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V5.0.0</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link
@@ -281,7 +317,7 @@ export function SiteHeader() {
                             )}
 
                             {/* Notification Bell */}
-                            <Popover>
+                            <Popover modal={false}>
                                 <PopoverTrigger asChild>
                                     <Button variant="ghost" size="icon" className="relative text-foreground/60 hover:text-foreground">
                                         <Bell className="h-5 w-5" />
