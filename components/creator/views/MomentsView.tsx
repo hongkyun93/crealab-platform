@@ -34,11 +34,11 @@ interface MomentsViewProps {
     myMoments: any[]
     pastMoments: any[]
     upcomingMoments: any[]
-    brandProposals: any[]
+    momentProposals: any[]
     setCurrentView: (view: string) => void
     handleOpenDetails: (moment: any, type: 'moment' | 'campaign') => void
-    deleteEvent: (id: string) => void
-    updateEvent: (id: string, updates: any) => Promise<boolean>
+    deleteMoment: (id: string) => void
+    updateMoment: (id: string, updates: any) => Promise<boolean>
     user: any
 }
 
@@ -47,11 +47,11 @@ export const MomentsView = React.memo(function MomentsView({
     myMoments,
     pastMoments,
     upcomingMoments,
-    brandProposals,
+    momentProposals,
     setCurrentView,
     handleOpenDetails,
-    deleteEvent,
-    updateEvent,
+    deleteMoment,
+    updateMoment,
     user
 }: MomentsViewProps) {
     const router = useRouter()
@@ -74,10 +74,10 @@ export const MomentsView = React.memo(function MomentsView({
     }
 
     const getProposalsForMoment = (momentId: string) =>
-        brandProposals.filter((p: any) => p.event_id === momentId)
+        momentProposals.filter((p: any) => p.moment_id === momentId && p.status !== 'cancelled')
 
     const getActiveProposalCount = (momentId: string) =>
-        brandProposals.filter((p: any) => p.event_id === momentId && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length
+        momentProposals.filter((p: any) => p.moment_id === momentId && p.status !== 'cancelled').length
 
     // ─── Render proposal footer for cards ─────────────────────
     const renderProposalFooter = (momentId: string) => {
@@ -145,7 +145,7 @@ export const MomentsView = React.memo(function MomentsView({
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <Calendar className="h-4 w-4 text-primary" /> 모먼트 일정
                                 </div>
-                                <span className="text-base font-bold text-primary">{formatDateToMonth(selectedMoment.eventDate) || "미정"}</span>
+                                <span className="text-base font-bold text-primary">{formatDateToMonth(selectedMoment.momentDate) || "미정"}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -193,7 +193,7 @@ export const MomentsView = React.memo(function MomentsView({
 
                     {/* ─── COL 2: Title + Description + Guide ─── */}
                     <div className="space-y-5">
-                        <h1 className="text-3xl font-bold tracking-tight leading-tight">{selectedMoment.title || selectedMoment.event}</h1>
+                        <h1 className="text-3xl font-bold tracking-tight leading-tight">{selectedMoment.title}</h1>
 
                         <div className="rounded-xl border bg-card p-6">
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">상세 설명</h3>
@@ -361,11 +361,10 @@ export const MomentsView = React.memo(function MomentsView({
                                         creator={creatorProfile}
                                         isPast={false}
                                         offerCount={getActiveProposalCount(moment.id)}
-                                        onClick={() => setSelectedMoment(moment)}
-                                        onEdit={(id) => router.push(`/creator/moment/${id}`)}
-                                        onDelete={deleteEvent}
-                                        onComplete={(id) => updateEvent(id, { status: 'completed' })}
-                                        renderFooter={() => renderProposalFooter(moment.id)}
+                                        onClick={() => moment.status === 'draft' ? router.push(`/creator/edit/${moment.id}`) : router.push(`/moment/${moment.id}`)}
+                                        onEdit={(id) => router.push(`/creator/edit/${id}`)}
+                                        onDelete={deleteMoment}
+                                        onComplete={(id) => updateMoment(id, { status: 'completed' })}
                                     />
                                 ))
                             ) : (
@@ -378,10 +377,10 @@ export const MomentsView = React.memo(function MomentsView({
                         <MomentTableView
                             items={upcomingMoments}
                             getCreator={() => creatorProfile}
-                            brandProposals={brandProposals}
-                            onClick={(m) => setSelectedMoment(m)}
-                            onEdit={(id) => router.push(`/creator/moment/${id}`)}
-                            onDelete={deleteEvent}
+                            momentProposals={momentProposals}
+                            onClick={(m) => m.status === 'draft' ? router.push(`/creator/edit/${m.id}`) : router.push(`/moment/${m.id}`)}
+                            onEdit={(id) => router.push(`/creator/edit/${id}`)}
+                            onDelete={deleteMoment}
                         />
                     )}
                 </TabsContent>
@@ -397,10 +396,10 @@ export const MomentsView = React.memo(function MomentsView({
                                         item={moment}
                                         creator={creatorProfile}
                                         isPast={true}
-                                        onClick={() => setSelectedMoment(moment)}
-                                        onEdit={(id) => router.push(`/creator/moment/${id}`)}
-                                        onDelete={deleteEvent}
-                                        renderFooter={() => renderProposalFooter(moment.id)}
+                                        offerCount={getActiveProposalCount(moment.id)}
+                                        onClick={() => moment.status === 'draft' ? router.push(`/creator/edit/${moment.id}`) : router.push(`/moment/${moment.id}`)}
+                                        onEdit={(id) => router.push(`/creator/edit/${id}`)}
+                                        onDelete={deleteMoment}
                                     />
                                 ))
                             ) : (
@@ -414,9 +413,9 @@ export const MomentsView = React.memo(function MomentsView({
                             items={pastMoments}
                             getCreator={() => creatorProfile}
                             isPast={true}
-                            onClick={(m) => setSelectedMoment(m)}
-                            onEdit={(id) => router.push(`/creator/moment/${id}`)}
-                            onDelete={deleteEvent}
+                            onClick={(m) => m.status === 'draft' ? router.push(`/creator/edit/${m.id}`) : router.push(`/moment/${m.id}`)}
+                            onEdit={(id) => router.push(`/creator/edit/${id}`)}
+                            onDelete={deleteMoment}
                         />
                     )}
                 </TabsContent>

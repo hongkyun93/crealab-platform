@@ -38,7 +38,7 @@ export function PerformanceSubmitDialog({
     const [igSelectedMedia, setIgSelectedMedia] = useState<any>(null)
     const [igFetching, setIgFetching] = useState(false)
 
-    const proposalType = (proposal?.moment_id || proposal?.event_id)
+    const proposalType = (proposal?.moment_id || proposal?.moment_id)
         ? "moment_proposal"
         : (proposal?.campaign_id || proposal?.campaignId)
             ? "campaign_application"

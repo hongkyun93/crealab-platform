@@ -21,8 +21,8 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
     const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
         if (!proposal?.id) return;
         const updates: any = {
-            influencer_signature: signatureData,
-            influencer_signed_at: new Date().toISOString(),
+            creator_signature: signatureData,
+            creator_signed_at: new Date().toISOString(),
             contract_status: proposal.brand_signature ? 'signed' : 'partial',
         };
         let success = false;
@@ -56,8 +56,8 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
     const handleUndoSign = async (role: 'brand' | 'creator') => {
         if (!proposal?.id) return;
         const updates: any = {
-            influencer_signature: null,
-            influencer_signed_at: null,
+            creator_signature: null,
+            creator_signed_at: null,
             contract_status: proposal.brand_signature ? 'partial' : 'none',
 
         };

@@ -38,7 +38,7 @@ export function MomentGalleryCard({
     onComplete,
     isPast = false
 }: MomentGalleryCardProps) {
-    const offerCount = brandProposals.filter((p: any) => p.event_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
+    const offerCount = brandProposals.filter((p: any) => p.moment_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false)
 
@@ -87,7 +87,7 @@ export function MomentGalleryCard({
                     </div>
                     <div>
                         <h3 className={`text-xl font-bold line-clamp-2 ${isPast ? 'line-through opacity-60' : 'group-hover:underline'}`}>
-                            {moment.title || moment.event}
+                            {moment.title}
                         </h3>
                     </div>
                 </div>
@@ -101,7 +101,7 @@ export function MomentGalleryCard({
                         </div>
                         <div className="space-y-1 border-l">
                             <div className="text-muted-foreground">일정</div>
-                            <div className="font-bold text-[11px]">{formatDateToMonth(moment.eventDate)}</div>
+                            <div className="font-bold text-[11px]">{formatDateToMonth(moment.momentStartDate)}</div>
                         </div>
                         <div className="space-y-1 pt-2 border-t flex flex-col items-center">
                             <div className="text-muted-foreground">예상단가</div>

@@ -113,9 +113,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
     const isMoment = !!(proposal as any)?.moment_id || !!(proposal as any)?.momentId
     const isCampaign = !!(proposal as any)?.campaignId || !!(proposal as any)?.campaign_id
     const proposalId = proposal?.id?.toString()
-
-    const feedbackProposalId = isCampaign ? proposalId : undefined
-    const feedbackBrandProposalId = !isCampaign ? proposalId : undefined
+    const workspaceId = (proposal as any)?.workspace_id?.toString()
 
     const [videoTab, setVideoTab] = useState<'draft' | 'final' | 'clean'>('draft')
 
@@ -143,11 +141,11 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
 
     // ── INITIAL FETCH on mount ──
     useEffect(() => {
-        if (!proposalId) return
-        fetchSubmissionFeedback(feedbackProposalId, feedbackBrandProposalId).then((result: SubmissionFeedback[]) => {
+        if (!workspaceId) return
+        fetchSubmissionFeedback(workspaceId).then((result: SubmissionFeedback[]) => {
             if (result && Array.isArray(result)) setLocalFeedbacks(result)
         })
-    }, [proposalId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [workspaceId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── prefill final/clean urls ──
     useEffect(() => {
@@ -229,19 +227,18 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
     // ─── send feedback ────────────────────────────────────────────────────────
 
     const handleSendFeedback = async () => {
-        if (!proposalId || !feedbackInput.trim() || isSendingFeedback) return
+        if (!workspaceId || !feedbackInput.trim() || isSendingFeedback) return
         setIsSendingFeedback(true)
         try {
             await sendSubmissionFeedback(
-                feedbackProposalId,
-                feedbackBrandProposalId,
+                workspaceId,
                 feedbackInput.trim(),
                 pendingTimestamp ?? null
             )
             setFeedbackInput('')
             setPendingTimestamp(null)
             // [FIX] fetchSubmissionFeedback의 return value로 직접 로컴 state 업데이트
-            const result: SubmissionFeedback[] = await fetchSubmissionFeedback(feedbackProposalId, feedbackBrandProposalId)
+            const result: SubmissionFeedback[] = await fetchSubmissionFeedback(workspaceId)
             if (result && Array.isArray(result)) setLocalFeedbacks(result)
         } catch (e) {
             console.error('[VideoReviewPanel] send feedback error:', e)
@@ -266,7 +263,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
             if (error) {
                 console.error('[VideoReviewPanel] delete feedback error:', error)
                 // 실패 시 원복
-                const result: SubmissionFeedback[] = await fetchSubmissionFeedback(feedbackProposalId, feedbackBrandProposalId)
+                const result: SubmissionFeedback[] = await fetchSubmissionFeedback(workspaceId)
                 if (result && Array.isArray(result)) setLocalFeedbacks(result)
                 toast.error('삭제에 실패했습니다.')
             }
@@ -605,7 +602,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
 
                 // ── 정산 자동 생성 ─────────────────────────────────────────
                 try {
-                    const creatorId = (proposal as any)?.influencer_id
+                    const creatorId = (proposal as any)?.creator_id
                     const brandId = (proposal as any)?.brand_id
                     const grossAmount = (proposal as any)?.price_offer ?? 0
                     const proposalType = isMoment ? 'moment_proposal' : isCampaign ? 'campaign_application' : 'product_application'
@@ -777,8 +774,8 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                         {feedbacks.map(fb => {
                             // ── sender 역할 분류 ──────────────────────────────────
                             const brandId = (proposal as any)?.brand_id
-                            const influencerId = (proposal as any)?.influencer_id
-                            const isCreator = fb.sender_id === influencerId
+                            const creatorId = (proposal as any)?.creator_id
+                            const isCreator = fb.sender_id === creatorId
                             const isBrand = fb.sender_id === brandId
                             // MCN = brand도 creator도 아닌 sender (proxy mode)
                             const isMcn = !isCreator && !isBrand
@@ -1236,7 +1233,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                             useWorkspaceStore.getState().setCurrentStage('settlement');
                                             refreshData();
                                             toast.success('협업 완료 및 정산 승인되었습니다. 크리에이터가 성과를 제출합니다. 🎉');
-                                            const creatorId = (proposal as any)?.influencer_id || (proposal as any)?.creator_id;
+                                            const creatorId = (proposal as any)?.creator_id || (proposal as any)?.creator_id;
                                             if (creatorId) {
                                                 sendNotification(creatorId, '협업이 완료되었습니다! 인사이트 성과를 제출해주세요.', 'collaboration_complete', proposalId);
                                             }

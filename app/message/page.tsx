@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuth } from "@/components/providers/auth-provider"
-import { MOCK_INFLUENCER_USER } from "@/components/providers/legacy-platform-hook"
+import { MOCK_CREATOR_USER } from "@/components/providers/legacy-platform-hook"
 import { useTeam } from "@/components/providers/team-provider"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
@@ -37,7 +37,7 @@ export default function MessagePage() {
     const [chatSearchOpen, setChatSearchOpen] = useState(false)
     const [chatSearchQuery, setChatSearchQuery] = useState('')
 
-    const displayUser = user || MOCK_INFLUENCER_USER
+    const displayUser = user || MOCK_CREATOR_USER
 
     // Determine if user is MCN or creator in a team
     const isMCN = user?.role === 'mcn'

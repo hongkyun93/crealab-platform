@@ -13,7 +13,7 @@ export interface Campaign {
     product_image_url?: string // Legacy/Fallback image field
     matchScore?: number
     date: string
-    eventDate?: string
+    momentDate?: string
     postingDate?: string
     targetProduct?: string
     status?: 'active' | 'completed' | 'paused' | 'closed'
@@ -41,7 +41,7 @@ export interface CampaignFormData {
     budget: string
     target: string
     description: string
-    eventDate: string
+    momentDate: string
     postingDate: string
     tags: string
     image?: string

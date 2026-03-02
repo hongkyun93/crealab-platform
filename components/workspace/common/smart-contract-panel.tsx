@@ -206,7 +206,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
 
     const p = proposal as any;
     const brandId = p.brand_id || p.brandId;
-    const influencerId = p.influencer_id || p.influencerId;
+    const creatorId = p.creator_id || p.creatorId;
 
     useEffect(() => {
         const fetchProfiles = async () => {
@@ -221,7 +221,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                 'creator_business_number', 'bank_name', 'account_number', 'account_holder',
             ].join(',');
 
-            const ids = [brandId, influencerId].filter(Boolean);
+            const ids = [brandId, creatorId].filter(Boolean);
             if (!ids.length) return;
 
             const { data } = await supabase
@@ -231,24 +231,24 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
 
             if (data) {
                 const bProfile = data.find((d: any) => d.id === brandId);
-                const cProfile = data.find((d: any) => d.id === influencerId);
+                const cProfile = data.find((d: any) => d.id === creatorId);
                 if (bProfile) setBrandProfile(bProfile);
                 if (cProfile) setCreatorProfile(cProfile);
             }
         };
         fetchProfiles();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [brandId, influencerId]);
+    }, [brandId, creatorId]);
 
     // Status Logic
     const isBrandSigned = !!proposal.brand_signature;
-    const isInfluencerSigned = !!proposal.influencer_signature;
-    const isFullySigned = isBrandSigned && isInfluencerSigned;
-    const isAnySigned = isBrandSigned || isInfluencerSigned;
+    const isCreatorSigned = !!proposal.creator_signature;
+    const isFullySigned = isBrandSigned && isCreatorSigned;
+    const isAnySigned = isBrandSigned || isCreatorSigned;
     const canEdit = userType === 'brand' && !isAnySigned;
 
     const brandName = brandProfile?.display_name || (proposal as any).brandName || (proposal as any).brand_name || "브랜드(갑)";
-    const influencerName = creatorProfile?.legal_name || creatorProfile?.display_name || (proposal as any).influencerName || "크리에이터(을)";
+    const creatorName = creatorProfile?.legal_name || creatorProfile?.display_name || (proposal as any).creatorName || "크리에이터(을)";
 
     // Format date/time in KST
     const formatKST = (dateStr: string | null | undefined) => {
@@ -352,6 +352,22 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
 
             updateProposal({ payment_confirmed_at: new Date().toISOString() } as any);
             setDepositBalance(newBalance);
+
+            // 🔔 크리에이터에게 입금 확인 알림
+            try {
+                if (creatorId) {
+                    await supabase.from('notifications').insert({
+                        recipient_id: creatorId,
+                        sender_id: brandId,
+                        type: 'payment_confirmed',
+                        content: `광고비 입금이 확인되었습니다. 배송 단계가 활성화되었습니다.`,
+                        reference_id: (proposal as any).workspace_id?.toString() || proposal.id?.toString(),
+                        is_read: false,
+                    });
+                }
+            } catch (notifErr) {
+                console.warn('입금 확인 알림 실패 (무시):', notifErr);
+            }
         } catch (err) {
             console.error('[SmartContractPanel] deposit payment failed:', err);
         } finally {
@@ -388,7 +404,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                 recipient_id: brandId, // 관리자 알림은 별도 channel이 없으므로 brand 측에 확인 안내
                 type: 'payment_pending',
                 content: `입금 완료 알림이 접수되었습니다. 관리자가 확인 후 다음 단계가 활성화됩니다. (금액: ${totalWithVat.toLocaleString()}원)`,
-                reference_id: proposal.id as string,
+                reference_id: (proposal as any).workspace_id?.toString() || proposal.id as string,
             });
 
             setTransferNotified(true);
@@ -409,7 +425,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
                 body: JSON.stringify({
                     proposal,
                     brandName,
-                    influencerName,
+                    creatorName,
                     messages: [],
                     brandProfile: brandProfile || null,
                     creatorProfile: creatorProfile || null,
@@ -445,7 +461,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             formData.append('file', file);
             formData.append('proposal', JSON.stringify(proposal));
             formData.append('brandName', brandName);
-            formData.append('influencerName', influencerName);
+            formData.append('creatorName', creatorName);
             formData.append('brandProfile', JSON.stringify(brandProfile || {}));
             formData.append('creatorProfile', JSON.stringify(creatorProfile || {}));
 
@@ -744,15 +760,15 @@ body { background: #fff !important; color: #111 !important; }
                                     </div>
                                     {/* Creator signature box (blue border) */}
                                     <div className="shrink-0 w-[140px] h-[70px] border-2 border-blue-400 rounded-lg flex flex-col items-center justify-center bg-white dark:bg-zinc-900 overflow-hidden">
-                                        {isInfluencerSigned && proposal.influencer_signature?.startsWith('data:image') ? (
+                                        {isCreatorSigned && proposal.creator_signature?.startsWith('data:image') ? (
                                             <>
-                                                <img src={proposal.influencer_signature} alt="을 서명" className="h-8 w-auto" />
-                                                <p className="text-[8px] text-muted-foreground mt-0.5">을(크리에이터) · {formatKST(proposal.influencer_signed_at)}</p>
+                                                <img src={proposal.creator_signature} alt="을 서명" className="h-8 w-auto" />
+                                                <p className="text-[8px] text-muted-foreground mt-0.5">을(크리에이터) · {formatKST(proposal.creator_signed_at)}</p>
                                             </>
-                                        ) : isInfluencerSigned ? (
+                                        ) : isCreatorSigned ? (
                                             <>
-                                                <p className="font-bold text-xs text-indigo-700">{proposal.influencer_signature || influencerName}</p>
-                                                <p className="text-[8px] text-muted-foreground mt-0.5">{formatKST(proposal.influencer_signed_at)}</p>
+                                                <p className="font-bold text-xs text-indigo-700">{proposal.creator_signature || creatorName}</p>
+                                                <p className="text-[8px] text-muted-foreground mt-0.5">{formatKST(proposal.creator_signed_at)}</p>
                                             </>
                                         ) : (
                                             <p className="text-[9px] text-muted-foreground">을(크리에이터) 서명란</p>
@@ -765,7 +781,7 @@ body { background: #fff !important; color: #111 !important; }
                                     dangerouslySetInnerHTML={{ __html: renderMarkdown(contractContent.split('\n').slice(1).join('\n')) }}
                                 />
                                 {/* Signature section for PDF */}
-                                {(isBrandSigned || isInfluencerSigned) && (
+                                {(isBrandSigned || isCreatorSigned) && (
                                     <div className="mt-8 pt-6 border-t grid grid-cols-2 gap-6">
                                         <div className="text-center p-4 border rounded-lg">
                                             <p className="text-xs text-muted-foreground mb-2">"갑" (브랜드)</p>
@@ -782,15 +798,15 @@ body { background: #fff !important; color: #111 !important; }
                                         </div>
                                         <div className="text-center p-4 border rounded-lg">
                                             <p className="text-xs text-muted-foreground mb-2">"을" (크리에이터)</p>
-                                            {isInfluencerSigned && proposal.influencer_signature?.startsWith('data:image') ? (
-                                                <img src={proposal.influencer_signature} alt="크리에이터 서명" className="h-12 mx-auto" />
-                                            ) : isInfluencerSigned ? (
-                                                <p className="font-bold text-indigo-700">{proposal.influencer_signature || influencerName}</p>
+                                            {isCreatorSigned && proposal.creator_signature?.startsWith('data:image') ? (
+                                                <img src={proposal.creator_signature} alt="크리에이터 서명" className="h-12 mx-auto" />
+                                            ) : isCreatorSigned ? (
+                                                <p className="font-bold text-indigo-700">{proposal.creator_signature || creatorName}</p>
                                             ) : (
                                                 <p className="text-muted-foreground text-xs">서명 대기 중</p>
                                             )}
-                                            {proposal.influencer_signed_at && (
-                                                <p className="text-[10px] text-muted-foreground mt-1">{formatKST(proposal.influencer_signed_at)}</p>
+                                            {proposal.creator_signed_at && (
+                                                <p className="text-[10px] text-muted-foreground mt-1">{formatKST(proposal.creator_signed_at)}</p>
                                             )}
                                         </div>
                                     </div>
@@ -1015,8 +1031,8 @@ body { background: #fff !important; color: #111 !important; }
                                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", isBrandSigned ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" : "bg-muted text-muted-foreground")}>
                                     {isBrandSigned ? "✅ 갑" : "⬜ 갑"}
                                 </span>
-                                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", isInfluencerSigned ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" : "bg-muted text-muted-foreground")}>
-                                    {isInfluencerSigned ? "✅ 을" : "⬜ 을"}
+                                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", isCreatorSigned ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" : "bg-muted text-muted-foreground")}>
+                                    {isCreatorSigned ? "✅ 을" : "⬜ 을"}
                                 </span>
                             </div>
                         </div>
@@ -1045,9 +1061,9 @@ body { background: #fff !important; color: #111 !important; }
                                 <SignatureCanvas
                                     onSign={async (data) => { await onSign('creator', data); }}
                                     onUndo={onUndoSign ? () => onUndoSign('creator') : undefined}
-                                    existingSignature={proposal.influencer_signature}
-                                    signedAt={proposal.influencer_signed_at}
-                                    signerName={influencerName}
+                                    existingSignature={proposal.creator_signature}
+                                    signedAt={proposal.creator_signed_at}
+                                    signerName={creatorName}
                                     label={`"을" 크리에이터 서명`}
                                     disabled={userType !== 'creator'}
                                     isOwner={userType === 'creator'}

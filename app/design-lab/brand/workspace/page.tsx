@@ -122,7 +122,7 @@ export default function WorkspaceArchivePage() {
             case 3: return <ChatInterfaceStyle />;
             case 4: return <CompactStatusLine />;
             case 5: return <DetailedFolderStyle />;
-            case 6: return <CalendarEventStyle />;
+            case 6: return <CalendarMomentStyle />;
             case 7: return <VisualGridStyle />;
             case 8: return <InvoiceContractStyle />;
             case 9: return <MinimalistBadgeStyle />;
@@ -187,7 +187,7 @@ export default function WorkspaceArchivePage() {
                                     case 3: return <ChatInterfaceStyle />;
                                     case 4: return <CompactStatusLine />;
                                     case 5: return <DetailedFolderStyle />;
-                                    case 6: return <CalendarEventStyle />;
+                                    case 6: return <CalendarMomentStyle />;
                                     case 7: return <VisualGridStyle />;
                                     case 8: return <InvoiceContractStyle />;
                                     case 9: return <MinimalistBadgeStyle />;
@@ -366,7 +366,7 @@ function DetailedFolderStyle() {
 }
 
 // 6. Calendar Event Style
-function CalendarEventStyle() {
+function CalendarMomentStyle() {
     const data = getRandomProjects()
     return (
         <div className="space-y-3 bg-white p-6 border rounded-xl">

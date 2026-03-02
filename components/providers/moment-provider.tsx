@@ -1,21 +1,21 @@
 "use client"
 
-import { eventMutations, usePublicEvents, useUserEvents } from "@/lib/hooks/use-events-swr"
+import { eventMutations, usePublicMoments, useUserMoments } from "@/lib/hooks/use-moments-swr"
 import { SWR_KEYS } from '@/lib/swr-config'
-import type { InfluencerEvent } from "@/lib/types"
+import type { CreatorMoment } from "@/lib/types"
 import React, { createContext, useContext, useEffect } from "react"
 import { mutate } from 'swr'
 import { useAuth } from "./auth-provider"
 
 interface EventContextType {
-    events: InfluencerEvent[]
-    allEvents: InfluencerEvent[]
+    moments: CreatorMoment[]
+    allMoments: CreatorMoment[]
     isLoading: boolean
-    addEvent: (event: Omit<InfluencerEvent, "id" | "influencer" | "creator" | "handle" | "avatar" | "verified" | "followers">) => Promise<boolean>
-    updateEvent: (id: string, updates: Partial<InfluencerEvent>) => Promise<boolean>
-    deleteEvent: (id: string) => Promise<boolean>
-    refreshEvents: (userId?: string) => Promise<void>
-    fetchAllEvents: () => Promise<void>
+    addMoment: (event: Omit<CreatorMoment, "id" | "influencer" | "creator" | "handle" | "avatar" | "verified" | "followers">) => Promise<boolean>
+    updateMoment: (id: string, updates: Partial<CreatorMoment>) => Promise<boolean>
+    deleteMoment: (id: string) => Promise<boolean>
+    refreshMoments: (userId?: string) => Promise<void>
+    fetchAllMoments: () => Promise<void>
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined)
@@ -31,15 +31,15 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
     const { supabase } = useAuth()
 
     // Determine fetch mode:
-    // - isProxyMode === true: MCN Proxy acting as Creator -> 'user' mode (fetch by influencer_id)
-    // - userType === 'influencer': Direct Creator login -> 'user' mode (fetch by influencer_id)
+    // - isProxyMode === true: MCN Proxy acting as Creator -> 'user' mode (fetch by creator_id)
+    // - userType === 'creator': Direct Creator login -> 'user' mode (fetch by creator_id)
     // - Otherwise (MCN Manager, Brand): 'team' mode (fetch by team_id)
     // This ensures parity: Creators see their own data whether logged in directly or via MCN proxy
-    const fetchMode = (isProxyMode || userType === 'influencer') ? 'user' : 'team'
+    const fetchMode = (isProxyMode || userType === 'creator') ? 'user' : 'team'
 
     // Use SWR hooks for data fetching (Team-based or User-based)
-    const { events: userEvents, isLoading: isUserLoading, revalidate: revalidateUser } = useUserEvents(teamId, userId, fetchMode)
-    const { events: publicEvents, isLoading: isPublicLoading, revalidate: revalidatePublic } = usePublicEvents(publicEventsEnabled)
+    const { moments: userEvents, isLoading: isUserLoading, revalidate: revalidateUser } = useUserMoments(teamId, userId, fetchMode)
+    const { moments: publicEvents, isLoading: isPublicLoading, revalidate: revalidatePublic } = usePublicMoments(publicEventsEnabled)
 
     const isLoading = isUserLoading || isPublicLoading
 
@@ -81,7 +81,7 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
     }, [teamId, userId])
 
     // Wrapper functions to maintain API compatibility
-    const addEvent = async (newEvent: Omit<InfluencerEvent, "id" | "influencer" | "creator" | "handle" | "avatar" | "verified" | "followers">): Promise<boolean> => {
+    const addMoment = async (newEvent: Omit<CreatorMoment, "id" | "influencer" | "creator" | "handle" | "avatar" | "verified" | "followers">): Promise<boolean> => {
         if (!teamId && !userId) {
             console.error('[EventProvider] Team ID or User ID required to create event')
             return false
@@ -91,26 +91,26 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
         // Ideally, we should fetch the creator's team_id, but for now, null is safer than invalid UUID.
         const effectiveTeamId = teamId === 'ALL' ? undefined : teamId
 
-        return eventMutations.addEvent(effectiveTeamId, userId!, newEvent)
+        return eventMutations.addMoment(effectiveTeamId, userId!, newEvent)
     }
 
-    const updateEvent = async (id: string, updates: Partial<InfluencerEvent>): Promise<boolean> => {
+    const updateMoment = async (id: string, updates: Partial<CreatorMoment>): Promise<boolean> => {
         if (!teamId && !userId) {
             console.error('[EventProvider] Team ID or User ID required to update event')
             return false
         }
         const effectiveTeamId = teamId === 'ALL' ? undefined : teamId
-        return eventMutations.updateEvent(effectiveTeamId, userId, id, updates)
+        return eventMutations.updateMoment(effectiveTeamId, userId, id, updates)
     }
 
-    const deleteEvent = async (id: string): Promise<boolean> => {
+    const deleteMoment = async (id: string): Promise<boolean> => {
         if (!teamId && !userId) {
             console.error('[EventProvider] Team ID or User ID required to delete event')
             return false
         }
         const effectiveTeamId = teamId === 'ALL' ? undefined : teamId
         try {
-            return await eventMutations.deleteEvent(effectiveTeamId, userId, id)
+            return await eventMutations.deleteMoment(effectiveTeamId, userId, id)
         } catch (error: any) {
             console.error('[EventProvider] Delete failed:', error)
             // Error will propagate to caller for toast display
@@ -118,26 +118,26 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
         }
     }
 
-    const refreshEvents = async (targetUserId?: string) => {
+    const refreshMoments = async (targetUserId?: string) => {
         if (teamId || userId) {
             await revalidateUser()
         }
     }
 
-    const fetchAllEvents = async () => {
+    const fetchAllMoments = async () => {
         await revalidatePublic()
     }
 
     return (
         <EventContext.Provider value={{
-            events: userEvents,
-            allEvents: publicEvents,
+            moments: userEvents,
+            allMoments: publicEvents,
             isLoading,
-            addEvent,
-            updateEvent,
-            deleteEvent,
-            refreshEvents,
-            fetchAllEvents
+            addMoment,
+            updateMoment,
+            deleteMoment,
+            refreshMoments,
+            fetchAllMoments
         }}>
             {children}
         </EventContext.Provider>

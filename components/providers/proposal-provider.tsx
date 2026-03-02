@@ -72,14 +72,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '캠페인 제안 데이터 불러오는 중...', type: 'loading' } }))
 
             // 1. Query for Influencer (My applications)
-            const influencerQuery = supabase
+            const creatorQuery = supabase
                 .from('campaign_applications')
                 .select(`
                     *,
-                    campaigns(id, title, product_name, category, budget, brand_id, profiles(display_name, avatar_url)),
-                    profiles!influencer_id(display_name, avatar_url)
+                    campaigns(id, title, product_name, product_image_url, category, budget, brand_id, profiles(display_name, avatar_url)),
+                    profiles!creator_id(display_name, avatar_url)
                 `)
-                .eq('influencer_id', id)
+                .eq('creator_id', id)
                 .order('created_at', { ascending: false })
                 .abortSignal(signal || null as any)
 
@@ -88,29 +88,29 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 .from('campaign_applications')
                 .select(`
                     *,
-                    campaigns!inner(id, title, product_name, category, budget, brand_id, profiles(display_name, avatar_url)),
-                    profiles!influencer_id(display_name, avatar_url)
+                    campaigns!inner(id, title, product_name, product_image_url, category, budget, brand_id, profiles(display_name, avatar_url)),
+                    profiles!creator_id(display_name, avatar_url)
                 `)
                 .eq('campaigns.brand_id', id)
                 .order('created_at', { ascending: false })
                 .abortSignal(signal || null as any)
 
-            const [influencerRes, brandRes] = await Promise.all([influencerQuery, brandQuery])
+            const [creatorRes, brandRes] = await Promise.all([creatorQuery, brandQuery])
 
             // Handle errors
-            if (influencerRes.error && !isIgnorableError(influencerRes.error)) {
-                console.error('[ProposalProvider] Influencer campaign query error:', influencerRes.error)
+            if (creatorRes.error && !isIgnorableError(creatorRes.error)) {
+                console.error('[ProposalProvider] Influencer campaign query error:', creatorRes.error)
             }
             if (brandRes.error && !isIgnorableError(brandRes.error)) {
                 console.error('[ProposalProvider] Brand campaign query error:', brandRes.error)
             }
 
-            const influencerData = influencerRes.data || []
+            const creatorData = creatorRes.data || []
             const brandData = brandRes.data || []
 
             // Deduplicate by ID
             const allDataMap = new Map()
-            influencerData.forEach((p: any) => allDataMap.set(p.id, p))
+            creatorData.forEach((p: any) => allDataMap.set(p.id, p))
             brandData.forEach((p: any) => allDataMap.set(p.id, p))
             const mergedData = Array.from(allDataMap.values()).sort((a: any, b: any) =>
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -126,23 +126,23 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         campaignId: p.campaign_id,
                         campaignName: p.campaigns?.title || p.campaigns?.product_name,
                         productName: p.campaigns?.product_name,
-                        influencerId: p.influencer_id,
+                        creatorId: p.creator_id,
                         // If I am brand, influencer info is in p.profiles
-                        influencerName: p.profiles?.display_name,
-                        influencerAvatar: p.profiles?.avatar_url,
+                        creatorName: p.profiles?.display_name,
+                        creatorAvatar: p.profiles?.avatar_url,
                         brandId: p.campaigns?.brand_id,
                         brandName: p.campaigns?.profiles?.display_name,
-                        brandAvatar: p.campaigns?.profiles?.avatar_url,
+                        brandAvatar: p.campaigns?.profiles?.avatar_url || p.campaigns?.product_image_url,
                         // Compatibility with UI components
                         brand_name: p.campaigns?.profiles?.display_name,
                         product_name: p.campaigns?.product_name,
-                        brand_avatar: p.campaigns?.profiles?.avatar_url,
+                        brand_avatar: p.campaigns?.profiles?.avatar_url || p.campaigns?.product_image_url,
                         cost: p.price_offer,
                         // [FIX] Condition fields were missing from campaign_applications mapping
                         price_offer: p.price_offer,
                         special_terms: p.special_terms,
                         brand_condition_confirmed: p.brand_condition_confirmed,
-                        influencer_condition_confirmed: p.influencer_condition_confirmed,
+                        creator_condition_confirmed: p.creator_condition_confirmed,
                         condition_product_receipt_date: p.condition_product_receipt_date,
                         condition_draft_submission_date: p.condition_draft_submission_date,
                         condition_final_submission_date: p.condition_final_submission_date,
@@ -168,9 +168,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         contract_content: p.contract_content,
                         contract_status: p.contract_status,
                         brand_signature: p.brand_signature,
-                        influencer_signature: p.influencer_signature,
+                        creator_signature: p.creator_signature,
                         brand_signed_at: p.brand_signed_at,           // [FIX] Bug 4
-                        influencer_signed_at: p.influencer_signed_at, // [FIX] Bug 4
+                        creator_signed_at: p.creator_signed_at, // [FIX] Bug 4
                         receiver_name: p.receiver_name,
                         shipping_phone: p.shipping_phone,
                         shipping_address: p.shipping_address,
@@ -216,10 +216,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .select(`
                         *,
                         brand:profiles!brand_id(display_name, avatar_url),
-                        influencer:profiles!influencer_id(display_name, avatar_url),
+                        influencer:profiles!creator_id(display_name, avatar_url),
                         products:brand_products(name, image_url)
                     `)
-                    .or(`brand_id.eq.${id},influencer_id.eq.${id}`)
+                    // [SECURITY] 브랜드한테는 본인이 받은 타인의 draft가 보이지 않아야 하고, 
+                    // 크리에이터한테는 본인이 작성한 draft가 보여야 함.
+                    .or(`and(brand_id.eq.${id},status.neq.draft),creator_id.eq.${id}`)
                     .order('created_at', { ascending: false })
                     .abortSignal(signal || null as any),
                 supabase
@@ -227,10 +229,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .select(`
                         *,
                         brand:profiles!brand_id(display_name, avatar_url),
-                        influencer:profiles!influencer_id(display_name, avatar_url),
-                        moment:life_moments(title, event_date, channels)
+                        influencer:profiles!creator_id(display_name, avatar_url),
+                        moment:life_moments(title, moment_start_date, channels)
                     `)
-                    .or(`brand_id.eq.${id},influencer_id.eq.${id}`)
+                    // [SECURITY] 모먼트 제안의 경우 브랜드가 보내는 것이므로 반대. 
+                    // 임시저장은 발신자(브랜드)만 볼 수 있고, 수신자(크리에이터)는 볼 수 없어야 함.
+                    .or(`and(creator_id.eq.${id},status.neq.draft),brand_id.eq.${id}`)
                     .order('created_at', { ascending: false })
                     .abortSignal(signal || null as any)
             ])
@@ -264,8 +268,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 id: p.id,
                 type: 'brand_offer',
                 brand_id: p.brand_id,
-                influencer_id: p.influencer_id,
-                event_id: p.event_id,
+                creator_id: p.creator_id,
+                moment_id: p.moment_id,
                 product_id: p.product_id,
                 product_name: p.product_name || p.products?.name,
                 product_type: p.product_type,
@@ -286,18 +290,18 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 updated_at: p.updated_at,
                 brand_name: p.brand?.display_name,
                 brandAvatar: p.brand?.avatar_url,
-                influencer_name: p.influencer?.display_name,
-                influencerName: p.influencer?.display_name,
-                influencer_avatar: p.influencer?.avatar_url,
-                influencerAvatar: p.influencer?.avatar_url,
+                creator_name: p.influencer?.display_name,
+                creatorName: p.influencer?.display_name,
+                creator_avatar: p.influencer?.avatar_url,
+                creatorAvatar: p.influencer?.avatar_url,
                 contract_content: p.contract_content,
                 contract_status: p.contract_status,
                 brand_signature: p.brand_signature,
-                influencer_signature: p.influencer_signature,
+                creator_signature: p.creator_signature,
 
                 delivery_status: p.delivery_status,
                 brand_condition_confirmed: p.brand_condition_confirmed,
-                influencer_condition_confirmed: p.influencer_condition_confirmed,
+                creator_condition_confirmed: p.creator_condition_confirmed,
                 // [FIX] Condition fields were missing from mappedBrand
                 price_offer: p.price_offer,
                 special_terms: p.special_terms,
@@ -322,30 +326,36 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 payment_confirmed_at: p.payment_confirmed_at // [입금 확인 게이트]
             }))
 
-            const mappedMoment: ProductApplication[] = momentData.map((p: any) => ({
+            // [NEW] Separate Moment Proposals State Population
+            const rawMomentProposals: MomentProposal[] = momentData.map((p: any) => ({
                 id: p.id,
-                type: 'brand_offer', // Treated same as brand offer for now
+                type: 'moment_offer', // [FIX] 추가 (다이얼로그 분기에 사용)
                 brand_id: p.brand_id,
-                influencer_id: p.influencer_id,
-                moment_id: p.moment_id, // Specific to moment
-                event_id: p.moment_id, // [FIX] Map moment_id to event_id for UI compatibility
+                creator_id: p.creator_id,
+                moment_id: p.moment_id,
                 product_id: p.product_id,
-                // Map Moment Columns (Priority to direct columns, fallback to conditions if exists)
+                status: p.status,
+                price_offer: p.price_offer,
+                message: p.message,
+                created_at: p.created_at,
+                updated_at: p.updated_at,
+                brand_name: p.brand?.display_name,
+                brand_avatar: p.brand?.avatar_url,
+                creator_name: p.influencer?.display_name,
+                creator_avatar: p.influencer?.avatar_url,
+                moment_title: p.moment?.title || p.moment?.title,
+                conditions: p.conditions,
+
+                // [FIX] mappedMoment에서 가져온 누락된 필드 추가
                 product_name: p.product_name || p.conditions?.product_name || "협업 제안",
                 product_type: p.product_type || p.conditions?.product_type,
                 compensation_amount: p.compensation_amount || (p.price_offer ? String(p.price_offer) : undefined),
                 has_incentive: p.has_incentive || p.conditions?.has_incentive,
                 incentive_detail: p.incentive_detail || p.conditions?.incentive_detail,
-
-                status: p.status,
-                message: p.message,
-
-                // Map Conditions
                 desired_date: p.desired_date || p.conditions?.desired_date,
                 date_flexible: p.date_flexible || p.conditions?.date_flexible,
                 video_guide: p.video_guide || p.conditions?.video_guide,
-                // [FIX] price_offer and condition fields were missing from mappedMoment
-                price_offer: p.price_offer,
+
                 special_terms: p.special_terms || p.conditions?.special_terms,
                 condition_product_receipt_date: p.condition_product_receipt_date || p.conditions?.condition_product_receipt_date,
                 condition_draft_submission_date: p.condition_draft_submission_date || p.conditions?.condition_draft_submission_date,
@@ -354,60 +364,19 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 condition_secondary_usage_period: p.condition_secondary_usage_period || p.conditions?.condition_secondary_usage_period,
                 secondary_usage_fee: p.secondary_usage_fee || p.conditions?.secondary_usage_fee,
                 brand_condition_confirmed: p.brand_condition_confirmed,
-                influencer_condition_confirmed: p.influencer_condition_confirmed,
-                // Contract
+                creator_condition_confirmed: p.creator_condition_confirmed,
+
                 contract_content: p.contract_content,
                 contract_status: p.contract_status,
                 brand_signature: p.brand_signature,
-                influencer_signature: p.influencer_signature,
-                delivery_status: p.delivery_status,
-                content_submission_url: p.content_submission_url,
-                content_submission_file_url: p.content_submission_file_url,
-                content_submission_status: p.content_submission_status,
-                content_submission_version: p.content_submission_version,
-                content_submission_date: p.content_submission_date,
-                content_final_url: p.content_final_url,
-                content_clean_url: p.content_clean_url,
-                content_final_approved_at: p.content_final_approved_at,
-                content_revision_requested_at: p.content_revision_requested_at,
+                creator_signature: p.creator_signature,
 
-                created_at: p.created_at,
-                updated_at: p.updated_at,
-                brand_name: p.brand?.display_name,
-                brandAvatar: p.brand?.avatar_url,
-                influencer_name: p.influencer?.display_name,
-                influencerName: p.influencer?.display_name,
-                influencer_avatar: p.influencer?.avatar_url,
-                influencerAvatar: p.influencer?.avatar_url,
-
-                // Moment Specific Context
-                product_url: p.moment?.title ? `모먼트: ${p.moment.title}` : undefined,
-                // [NEW] 모먼트의 채널 정보를 서브타입으로 매핑 (여러 채널 모두 포함)
                 channel_subtype: (p.moment?.channels && p.moment.channels.length > 0)
-                    ? p.moment.channels.join(',')   // e.g. "instagram_reels,youtube_shorts"
+                    ? p.moment.channels.join(',')
                     : null,
                 channel_name: p.moment?.channels?.[0]?.split('_')[0] || null,
-                workspace_id: p.workspace_id, // [Workspaces]
-                payment_confirmed_at: p.payment_confirmed_at // [입금 확인 게이트]
-            }))
+                product_url: (p.moment?.title || p.moment?.title) ? `모먼트: ${p.moment?.title || p.moment?.title}` : undefined,
 
-            // [NEW] Separate Moment Proposals State Population
-            const rawMomentProposals: MomentProposal[] = momentData.map((p: any) => ({
-                id: p.id,
-                brand_id: p.brand_id,
-                influencer_id: p.influencer_id,
-                moment_id: p.moment_id,
-                status: p.status,
-                price_offer: p.price_offer,
-                message: p.message,
-                created_at: p.created_at,
-                updated_at: p.updated_at,
-                brand_name: p.brand?.display_name,
-                brand_avatar: p.brand?.avatar_url,
-                influencer_name: p.influencer?.display_name,
-                influencer_avatar: p.influencer?.avatar_url,
-                moment_title: p.moment?.title,
-                conditions: p.conditions,
                 content_submission_url: p.content_submission_url,
                 content_submission_file_url: p.content_submission_file_url,
                 content_submission_status: p.content_submission_status,
@@ -417,9 +386,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 content_clean_url: p.content_clean_url,
                 content_final_approved_at: p.content_final_approved_at,
                 content_revision_requested_at: p.content_revision_requested_at,
-                workspace_id: p.workspace_id, // [Workspaces]
-                payment_confirmed_at: p.payment_confirmed_at, // [입금 확인 게이트]
-                // [FIX] 배송/물류 필드 — 없으면 brand sync useEffect에서 undefined로 덮어씌워짐
+                workspace_id: p.workspace_id,
+                payment_confirmed_at: p.payment_confirmed_at,
                 receiver_name: p.receiver_name,
                 shipping_phone: p.shipping_phone,
                 shipping_address: p.shipping_address,
@@ -430,14 +398,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             setMomentProposals(rawMomentProposals)
             console.log('[ProposalProvider] Loaded raw moment proposals:', rawMomentProposals.length)
 
-            const finalBrand = [...mappedBrand, ...mappedMoment].sort((a, b) =>
+            const finalBrand = [...mappedBrand].sort((a, b) =>
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             )
 
             setProductApplications(finalBrand)
             console.log('[ProposalProvider] Loaded proposals:', {
                 brand: mappedBrand.length,
-                moment: mappedMoment.length
+                moment: rawMomentProposals.length
             })
 
         } catch (err) {
@@ -485,7 +453,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'product_applications',
-                    filter: `influencer_id=eq.${userId}`
+                    filter: `creator_id=eq.${userId}`
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Realtime brand_proposal update:', payload.new.id)
@@ -506,7 +474,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'moment_proposals',
-                    filter: `influencer_id=eq.${userId}`
+                    filter: `creator_id=eq.${userId}`
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Realtime moment_proposal update:', payload.new.id)
@@ -527,7 +495,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'campaign_applications',
-                    filter: `influencer_id=eq.${userId}`
+                    filter: `creator_id=eq.${userId}`
                 },
                 (payload: any) => {
                     console.log('[ProposalProvider] Realtime campaign_application update:', payload.new.id)
@@ -551,8 +519,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         }
     }, [userId])
 
-    // [NEW] Realtime subscription for brand-side: when creator updates influencer_condition_confirmed etc.
-    // The existing subscription uses influencer_id=eq.userId (creator's perspective).
+    // [NEW] Realtime subscription for brand-side: when creator updates creator_condition_confirmed etc.
+    // The existing subscription uses creator_id=eq.userId (creator's perspective).
     // This subscription uses brand_id=eq.userId so brands see creator updates in real-time.
     useEffect(() => {
         if (!userId) return
@@ -649,14 +617,14 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     }
 
     // Add proposal
-    const addProposal = async (proposal: Partial<Proposal> & { influencerId?: string }) => {
+    const addProposal = async (proposal: Partial<Proposal> & { creatorId?: string }) => {
         if (!userId) {
             throw new Error('User ID required')
         }
 
         try {
             console.log('[ProposalProvider] Creating proposal:', proposal)
-            const targetInfluencerId = proposal.influencerId || userId
+            const targetCreatorId = proposal.creatorId || userId
 
             // [AUDIT FIX] Fetch team_id for relevant user to ensure visibility
             const { data: teamMember } = await supabase
@@ -673,9 +641,10 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .from('campaign_applications')
                     .insert({
                         campaign_id: proposal.campaignId,
-                        influencer_id: targetInfluencerId,
-                        influencer_team_id: myTeamId,
-                        price_offer: (proposal as any).priceOffer ?? proposal.cost,
+                        brand_id: proposal.toId, // [NEW] 직접 저장 — extra query 불필요
+                        creator_id: targetCreatorId,
+                        creator_team_id: myTeamId,
+                        price_offer: proposal.cost,
                         message: proposal.message,
                         status: 'applied',
                         motivation: proposal.motivation,
@@ -691,56 +660,47 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
                 if (error) throw error
 
-                // 🔔 캠페인 브랜드에게 지원 알림
+                // 🔔 캠페인 브랜드에게 지원 알림 및 [Workspaces] 생성 (proposal.toId = brand_id)
                 try {
-                    const { data: campaign } = await supabase
-                        .from('campaigns')
-                        .select('brand_id')
-                        .eq('id', proposal.campaignId!)
-                        .single()
-                    if (campaign?.brand_id && data?.id) {
+                    if (proposal.toId && data?.id) {
+                        const [creatorRes, campaignRes] = await Promise.all([
+                            supabase.from('profiles').select('display_name').eq('id', userId).single(),
+                            supabase.from('campaigns').select('title, product').eq('id', proposal.campaignId!).single()
+                        ])
+                        const creatorName = creatorRes.data?.display_name || '크리에이터'
+                        const campaignTitle = campaignRes.data?.title || campaignRes.data?.product || '캠페인'
+
+                        // 1. 알림 전송
                         await supabase.from('notifications').insert({
-                            recipient_id: campaign.brand_id,
+                            recipient_id: proposal.toId,
                             sender_id: userId,
                             type: 'application_received',
-                            content: `캠페인에 새로운 크리에이터가 지원했습니다. 확인해보세요!`,
+                            content: `${creatorName}님이 '${campaignTitle}' 캠페인에 지원했습니다.`,
                             reference_id: data.id.toString(),
                             is_read: false
                         })
-                    }
-                } catch (notifErr) {
-                    console.warn('알림 발송 실패 (무시):', notifErr)
-                }
 
-                // [Workspaces] workspace row 생성 (campaign_applications에는 brand_id 없으므로 campaigns join 필요)
-                try {
-                    if (data?.id) {
-                        const { data: campaign } = await supabase
-                            .from('campaigns')
-                            .select('brand_id')
-                            .eq('id', proposal.campaignId!)
+                        // 2. 워크스페이스 로우 생성
+                        const { data: ws } = await supabase
+                            .from('workspaces')
+                            .insert({
+                                brand_id: proposal.toId,
+                                creator_id: targetCreatorId,
+                                original_proposal_type: 'campaign_application',
+                                original_proposal_id: data.id.toString(),
+                                project_title: campaignTitle || '캠페인 협업'
+                            })
+                            .select('id')
                             .single()
-                        if (campaign?.brand_id) {
-                            const { data: ws } = await supabase
-                                .from('workspaces')
-                                .insert({
-                                    brand_id: campaign.brand_id,
-                                    influencer_id: targetInfluencerId,
-                                    proposal_type: 'campaign_application',
-                                    proposal_id: data.id.toString()
-                                })
-                                .select('id')
-                                .single()
-                            if (ws?.id) {
-                                await supabase
-                                    .from('campaign_applications')
-                                    .update({ workspace_id: ws.id })
-                                    .eq('id', data.id)
-                            }
+                        if (ws?.id) {
+                            await supabase
+                                .from('campaign_applications')
+                                .update({ workspace_id: ws.id })
+                                .eq('id', data.id)
                         }
                     }
-                } catch (wsErr) {
-                    console.warn('[ProposalProvider] workspace 생성 실패 (무시):', wsErr)
+                } catch (err) {
+                    console.warn('알림 발송 및 워크스페이스 생성 실패 (무시):', err)
                 }
 
             } else if (proposal.momentId) {
@@ -752,17 +712,15 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .from('moment_proposals')
                     .insert({
                         brand_id: userId,
-                        brand_team_id: myTeamId,
-                        influencer_id: proposal.toId || proposal.influencerId,
-                        influencer_team_id: null,
+                        creator_id: proposal.toId || proposal.creatorId,
                         moment_id: proposal.momentId,
                         message: proposal.message,
-                        price_offer: proposal.cost,
                         status: 'offered',
-                        product_type: resolvedProductType,
-                        video_guide: resolvedVideoGuide,
                         conditions: {
                             group: 'moment_proposal',
+                            brand_team_id: myTeamId,
+                            creator_team_id: null,
+                            price_offer: proposal.cost,
                             product_name: proposal.productName,
                             product_type: resolvedProductType,
                             video_guide: resolvedVideoGuide,
@@ -785,13 +743,22 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
                 // 🔔 크리에이터에게 모먼트 제안 알림
                 try {
-                    const recipientId = proposal.toId || proposal.influencerId
+                    const recipientId = proposal.toId || proposal.creatorId
                     if (recipientId && data?.id) {
+                        // 브랜드 이름 + 모먼트명 가져오기
+                        const [brandRes, momentRes] = await Promise.all([
+                            supabase.from('profiles').select('display_name').eq('id', userId).single(),
+                            supabase.from('life_moments').select('title, event').eq('id', proposal.momentId!).single()
+                        ])
+                        const brandName = brandRes.data?.display_name || '브랜드'
+                        const momentTitle = momentRes.data?.title || momentRes.data?.event || (proposal as any).momentTitle || '모먼트'
+                        const productName = (proposal as any).productName || (proposal as any).product_name
+                        const contentDesc = productName ? `'${productName}' 제품으로` : ''
                         await supabase.from('notifications').insert({
                             recipient_id: recipientId,
                             sender_id: userId,
                             type: 'proposal_received',
-                            content: `브랜드에서 새 협업 제안이 도착했습니다. 확인해보세요!`,
+                            content: `${brandName}님이 '​${momentTitle}' 모먼트에 ${contentDesc} 협업을 제안했습니다.`,
                             reference_id: data.id.toString(),
                             is_read: false
                         })
@@ -802,15 +769,16 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
                 // [Workspaces] workspace row 생성
                 try {
-                    const recipientId = proposal.toId || proposal.influencerId
+                    const recipientId = proposal.toId || proposal.creatorId
                     if (data?.id && recipientId) {
                         const { data: ws } = await supabase
                             .from('workspaces')
                             .insert({
                                 brand_id: userId,
-                                influencer_id: recipientId,
-                                proposal_type: 'moment_proposal',
-                                proposal_id: data.id.toString()
+                                creator_id: recipientId,
+                                original_proposal_type: 'moment_proposal',
+                                original_proposal_id: data.id.toString(),
+                                project_title: (proposal as any).productName || '모먼트 협업'
                             })
                             .select('id')
                             .single()
@@ -833,8 +801,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 const { data, error } = await supabase
                     .from('product_applications')
                     .insert({
-                        influencer_id: userId,
-                        influencer_team_id: myTeamId,
+                        creator_id: userId,
+                        creator_team_id: myTeamId,
                         brand_id: proposal.toId,
                         product_id: proposal.productId,
                         product_name: (proposal as any).productName || "Brand Product",
@@ -856,32 +824,36 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
                 if (error) throw error
 
-                // 🔔 브랜드에게 제품 지원 알림
+                // 🔔 브랜드에게 제품 지원 알림 및 [Workspaces] 생성
                 try {
                     if (proposal.toId && data?.id) {
+                        const { data: creatorProfile } = await supabase
+                            .from('profiles')
+                            .select('display_name')
+                            .eq('id', userId)
+                            .single()
+                        const creatorName = creatorProfile?.display_name || '크리에이터'
+                        const productName = (proposal as any).productName || '제품'
+
+                        // 1. 알림 전송
                         await supabase.from('notifications').insert({
                             recipient_id: proposal.toId,
                             sender_id: userId,
                             type: 'application_received',
-                            content: `브랜드 제품에 새로운 크리에이터가 지원했습니다.`,
+                            content: `${creatorName}님이 '${productName}'에 지원했습니다. 확인해보세요.`,
                             reference_id: data.id.toString(),
                             is_read: false
                         })
-                    }
-                } catch (notifErr) {
-                    console.warn('알림 발송 실패 (무시):', notifErr)
-                }
 
-                // [Workspaces] workspace row 생성
-                try {
-                    if (data?.id && proposal.toId) {
+                        // 2. 워크스페이스 로우 생성
                         const { data: ws } = await supabase
                             .from('workspaces')
                             .insert({
                                 brand_id: proposal.toId,
-                                influencer_id: userId,
-                                proposal_type: 'product_application',
-                                proposal_id: data.id.toString()
+                                creator_id: userId,
+                                original_proposal_type: 'product_application',
+                                original_proposal_id: data.id.toString(),
+                                project_title: productName
                             })
                             .select('id')
                             .single()
@@ -892,8 +864,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                                 .eq('id', data.id)
                         }
                     }
-                } catch (wsErr) {
-                    console.warn('[ProposalProvider] workspace 생성 실패 (무시):', wsErr)
+                } catch (err) {
+                    console.warn('알림 발송 및 워크스페이스 생성 실패 (무시):', err)
                 }
             } // end else if (proposal.productId)
 
@@ -936,9 +908,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
             if ((updates as any).contract_content !== undefined) dbUpdates.contract_content = (updates as any).contract_content
             if ((updates as any).brand_signature !== undefined) dbUpdates.brand_signature = (updates as any).brand_signature
-            if ((updates as any).influencer_signature !== undefined) dbUpdates.influencer_signature = (updates as any).influencer_signature
+            if ((updates as any).creator_signature !== undefined) dbUpdates.creator_signature = (updates as any).creator_signature
             if ((updates as any).brand_signed_at !== undefined) dbUpdates.brand_signed_at = (updates as any).brand_signed_at
-            if ((updates as any).influencer_signed_at !== undefined) dbUpdates.influencer_signed_at = (updates as any).influencer_signed_at
+            if ((updates as any).creator_signed_at !== undefined) dbUpdates.creator_signed_at = (updates as any).creator_signed_at
 
             // Condition fields
             if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
@@ -952,7 +924,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if ((updates as any).channel_name) dbUpdates.channel_name = (updates as any).channel_name
             if ((updates as any).channel_subtype !== undefined) dbUpdates.channel_subtype = (updates as any).channel_subtype
             if ((updates as any).brand_condition_confirmed !== undefined) dbUpdates.brand_condition_confirmed = (updates as any).brand_condition_confirmed
-            if ((updates as any).influencer_condition_confirmed !== undefined) dbUpdates.influencer_condition_confirmed = (updates as any).influencer_condition_confirmed
+            if ((updates as any).creator_condition_confirmed !== undefined) dbUpdates.creator_condition_confirmed = (updates as any).creator_condition_confirmed
 
             const { error } = await supabase
                 .from('campaign_applications')
@@ -1004,13 +976,13 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
             if ((updates as any).contract_content !== undefined) dbUpdates.contract_content = (updates as any).contract_content
             if ((updates as any).brand_signature !== undefined) dbUpdates.brand_signature = (updates as any).brand_signature
-            if ((updates as any).influencer_signature !== undefined) dbUpdates.influencer_signature = (updates as any).influencer_signature
+            if ((updates as any).creator_signature !== undefined) dbUpdates.creator_signature = (updates as any).creator_signature
             if ((updates as any).brand_signed_at !== undefined) dbUpdates.brand_signed_at = (updates as any).brand_signed_at
-            if ((updates as any).influencer_signed_at !== undefined) dbUpdates.influencer_signed_at = (updates as any).influencer_signed_at
+            if ((updates as any).creator_signed_at !== undefined) dbUpdates.creator_signed_at = (updates as any).creator_signed_at
 
             // Confirmations
             if (updates.brand_condition_confirmed !== undefined) dbUpdates.brand_condition_confirmed = updates.brand_condition_confirmed
-            if (updates.influencer_condition_confirmed !== undefined) dbUpdates.influencer_condition_confirmed = updates.influencer_condition_confirmed
+            if (updates.creator_condition_confirmed !== undefined) dbUpdates.creator_condition_confirmed = updates.creator_condition_confirmed
 
             // Conditions
             if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
@@ -1059,65 +1031,70 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             console.log('[ProposalProvider] Updating moment proposal:', id, updates)
 
             const dbUpdates: any = {}
+            const conditionUpdates: any = {}
+
             // Status & Logistics
             if (updates.status) dbUpdates.status = updates.status
-            if (updates.delivery_status) dbUpdates.delivery_status = updates.delivery_status
-            if (updates.receiver_name) dbUpdates.receiver_name = updates.receiver_name
-            if (updates.tracking_number) dbUpdates.tracking_number = updates.tracking_number
-            if (updates.shipping_address) dbUpdates.shipping_address = updates.shipping_address
-            if (updates.shipping_phone) dbUpdates.shipping_phone = updates.shipping_phone
+            if (updates.message) dbUpdates.message = updates.message
+            if (updates.workspace_id) dbUpdates.workspace_id = updates.workspace_id
+
+            if (updates.delivery_status) conditionUpdates.delivery_status = updates.delivery_status
+            if (updates.receiver_name) conditionUpdates.receiver_name = updates.receiver_name
+            if (updates.tracking_number) conditionUpdates.tracking_number = updates.tracking_number
+            if (updates.shipping_address) conditionUpdates.shipping_address = updates.shipping_address
+            if (updates.shipping_phone) conditionUpdates.shipping_phone = updates.shipping_phone
 
             // Contract & Signatures — use !== undefined to allow null (undo)
-            if ((updates as any).contract_status !== undefined) dbUpdates.contract_status = (updates as any).contract_status
-            if ((updates as any).contract_content !== undefined) dbUpdates.contract_content = (updates as any).contract_content
-            if ((updates as any).brand_signature !== undefined) dbUpdates.brand_signature = (updates as any).brand_signature
-            if ((updates as any).influencer_signature !== undefined) dbUpdates.influencer_signature = (updates as any).influencer_signature
-            if ((updates as any).brand_signed_at !== undefined) dbUpdates.brand_signed_at = (updates as any).brand_signed_at
-            if ((updates as any).influencer_signed_at !== undefined) dbUpdates.influencer_signed_at = (updates as any).influencer_signed_at
+            if ((updates as any).contract_status !== undefined) conditionUpdates.contract_status = (updates as any).contract_status
+            if ((updates as any).contract_content !== undefined) conditionUpdates.contract_content = (updates as any).contract_content
+            if ((updates as any).brand_signature !== undefined) conditionUpdates.brand_signature = (updates as any).brand_signature
+            if ((updates as any).creator_signature !== undefined) conditionUpdates.creator_signature = (updates as any).creator_signature
+            if ((updates as any).brand_signed_at !== undefined) conditionUpdates.brand_signed_at = (updates as any).brand_signed_at
+            if ((updates as any).creator_signed_at !== undefined) conditionUpdates.creator_signed_at = (updates as any).creator_signed_at
 
             // Conditions
-            if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
-            if (updates.compensation_amount !== undefined) dbUpdates.compensation_amount = updates.compensation_amount
-            if (updates.product_name) dbUpdates.product_name = updates.product_name
-            if (updates.product_type) dbUpdates.product_type = updates.product_type
-            if ((updates as any).video_guide !== undefined) dbUpdates.video_guide = (updates as any).video_guide
-            if (updates.has_incentive !== undefined) dbUpdates.has_incentive = updates.has_incentive
-            if (updates.incentive_detail !== undefined) dbUpdates.incentive_detail = updates.incentive_detail
-            if ((updates as any).channel_name) dbUpdates.channel_name = (updates as any).channel_name
-            if ((updates as any).channel_subtype !== undefined) dbUpdates.channel_subtype = (updates as any).channel_subtype
+            if (updates.price_offer !== undefined) conditionUpdates.price_offer = updates.price_offer
+            if (updates.compensation_amount !== undefined) conditionUpdates.compensation_amount = updates.compensation_amount
+            if (updates.product_name) conditionUpdates.product_name = updates.product_name
+            if (updates.product_type) conditionUpdates.product_type = updates.product_type
+            if ((updates as any).video_guide !== undefined) conditionUpdates.video_guide = (updates as any).video_guide
+            if (updates.has_incentive !== undefined) conditionUpdates.has_incentive = updates.has_incentive
+            if (updates.incentive_detail !== undefined) conditionUpdates.incentive_detail = updates.incentive_detail
+            if ((updates as any).channel_name) conditionUpdates.channel_name = (updates as any).channel_name
+            if ((updates as any).channel_subtype !== undefined) conditionUpdates.channel_subtype = (updates as any).channel_subtype
             if (updates.message) dbUpdates.message = updates.message
-            if (updates.special_terms !== undefined) dbUpdates.special_terms = updates.special_terms
+            if (updates.special_terms !== undefined) conditionUpdates.special_terms = updates.special_terms
 
             // Dates
-            if (updates.condition_product_receipt_date) dbUpdates.condition_product_receipt_date = updates.condition_product_receipt_date
-            if (updates.condition_draft_submission_date) dbUpdates.condition_draft_submission_date = updates.condition_draft_submission_date
-            if (updates.condition_final_submission_date) dbUpdates.condition_final_submission_date = updates.condition_final_submission_date
-            if (updates.condition_upload_date) dbUpdates.condition_upload_date = updates.condition_upload_date
-            if (updates.condition_secondary_usage_period) dbUpdates.condition_secondary_usage_period = updates.condition_secondary_usage_period
-            if (updates.secondary_usage_fee !== undefined) dbUpdates.secondary_usage_fee = updates.secondary_usage_fee
-            if (updates.condition_maintenance_period) dbUpdates.condition_maintenance_period = updates.condition_maintenance_period
+            if (updates.condition_product_receipt_date) conditionUpdates.condition_product_receipt_date = updates.condition_product_receipt_date
+            if (updates.condition_draft_submission_date) conditionUpdates.condition_draft_submission_date = updates.condition_draft_submission_date
+            if (updates.condition_final_submission_date) conditionUpdates.condition_final_submission_date = updates.condition_final_submission_date
+            if (updates.condition_upload_date) conditionUpdates.condition_upload_date = updates.condition_upload_date
+            if (updates.condition_secondary_usage_period) conditionUpdates.condition_secondary_usage_period = updates.condition_secondary_usage_period
+            if (updates.secondary_usage_fee !== undefined) conditionUpdates.secondary_usage_fee = updates.secondary_usage_fee
+            if (updates.condition_maintenance_period) conditionUpdates.condition_maintenance_period = updates.condition_maintenance_period
 
             // Confirmations
-            if (updates.brand_condition_confirmed !== undefined) dbUpdates.brand_condition_confirmed = updates.brand_condition_confirmed
-            if (updates.influencer_condition_confirmed !== undefined) dbUpdates.influencer_condition_confirmed = updates.influencer_condition_confirmed
+            if (updates.brand_condition_confirmed !== undefined) conditionUpdates.brand_condition_confirmed = updates.brand_condition_confirmed
+            if (updates.creator_condition_confirmed !== undefined) conditionUpdates.creator_condition_confirmed = updates.creator_condition_confirmed
 
             // Submissions
-            if (updates.content_submission_url) dbUpdates.content_submission_url = updates.content_submission_url
-            if ((updates as any).content_submission_file_url) dbUpdates.content_submission_file_url = (updates as any).content_submission_file_url
-            if (updates.content_submission_status) dbUpdates.content_submission_status = updates.content_submission_status
-            if ((updates as any).content_submission_version) dbUpdates.content_submission_version = (updates as any).content_submission_version
-            if ((updates as any).content_submission_date) dbUpdates.content_submission_date = (updates as any).content_submission_date
-            if ((updates as any).content_final_url) dbUpdates.content_final_url = (updates as any).content_final_url
-            if ((updates as any).content_clean_url) dbUpdates.content_clean_url = (updates as any).content_clean_url
+            if (updates.content_submission_url) conditionUpdates.content_submission_url = updates.content_submission_url
+            if ((updates as any).content_submission_file_url) conditionUpdates.content_submission_file_url = (updates as any).content_submission_file_url
+            if (updates.content_submission_status) conditionUpdates.content_submission_status = updates.content_submission_status
+            if ((updates as any).content_submission_version) conditionUpdates.content_submission_version = (updates as any).content_submission_version
+            if ((updates as any).content_submission_date) conditionUpdates.content_submission_date = (updates as any).content_submission_date
+            if ((updates as any).content_final_url) conditionUpdates.content_final_url = (updates as any).content_final_url
+            if ((updates as any).content_clean_url) conditionUpdates.content_clean_url = (updates as any).content_clean_url
             // Video review fields
-            if ((updates as any).content_final_approved_at !== undefined) dbUpdates.content_final_approved_at = (updates as any).content_final_approved_at
-            if ((updates as any).content_revision_requested_at !== undefined) dbUpdates.content_revision_requested_at = (updates as any).content_revision_requested_at
+            if ((updates as any).content_final_approved_at !== undefined) conditionUpdates.content_final_approved_at = (updates as any).content_final_approved_at
+            if ((updates as any).content_revision_requested_at !== undefined) conditionUpdates.content_revision_requested_at = (updates as any).content_revision_requested_at
 
             // 클라이언트 RLS 우회: 서버 API로 업데이트
             const res = await fetch('/api/moment-proposals/update', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, updates: dbUpdates }),
+                body: JSON.stringify({ id, updates: dbUpdates, conditionUpdates }),
             })
             const json = await res.json()
 
@@ -1203,8 +1180,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             // Inject team_id based on role
             if (userId && payload.brand_id === userId) {
                 payload.brand_team_id = myTeamId
-            } else if (userId && payload.influencer_id === userId) {
-                payload.influencer_team_id = myTeamId
+            } else if (userId && payload.creator_id === userId) {
+                payload.creator_team_id = myTeamId
             }
 
             const { data, error } = await supabase
@@ -1219,15 +1196,16 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             try {
                 if (data?.id) {
                     const brandId = payload.brand_id
-                    const influencerId = payload.influencer_id
-                    if (brandId && influencerId) {
+                    const creatorId = payload.creator_id
+                    if (brandId && creatorId) {
                         const { data: ws } = await supabase
                             .from('workspaces')
                             .insert({
                                 brand_id: brandId,
-                                influencer_id: influencerId,
-                                proposal_type: 'product_application',
-                                proposal_id: data.id.toString()
+                                creator_id: creatorId,
+                                original_proposal_type: 'product_application',
+                                original_proposal_id: data.id.toString(),
+                                project_title: payload.product_name || '브랜드 제안'
                             })
                             .select('id')
                             .single()
@@ -1268,8 +1246,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             // Inject team_id based on role
             if (userId && payload.brand_id === userId) {
                 payload.brand_team_id = myTeamId
-            } else if (userId && payload.influencer_id === userId) {
-                payload.influencer_team_id = myTeamId
+            } else if (userId && payload.creator_id === userId) {
+                payload.creator_team_id = myTeamId
             }
 
             const { data, error } = await supabase
@@ -1284,15 +1262,16 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             try {
                 if (data?.id) {
                     const brandId = payload.brand_id
-                    const influencerId = payload.influencer_id
-                    if (brandId && influencerId) {
+                    const creatorId = payload.creator_id
+                    if (brandId && creatorId) {
                         const { data: ws } = await supabase
                             .from('workspaces')
                             .insert({
                                 brand_id: brandId,
-                                influencer_id: influencerId,
-                                proposal_type: 'moment_proposal',
-                                proposal_id: data.id.toString()
+                                creator_id: creatorId,
+                                original_proposal_type: 'moment_proposal',
+                                original_proposal_id: data.id.toString(),
+                                project_title: payload.product_name || payload.moment_title || payload.moment_name || '모먼트 제안'
                             })
                             .select('id')
                             .single()

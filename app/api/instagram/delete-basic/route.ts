@@ -100,9 +100,9 @@ export async function POST(req: NextRequest) {
         .eq('user_id', supabaseUserId)
         .eq('ig_user_id', facebookUserId)
 
-      // 3. influencer_details의 Instagram 관련 필드 초기화
+      // 3. creator_details의 Instagram 관련 필드 초기화
       await adminClient
-        .from('influencer_details')
+        .from('creator_details')
         .update({
           instagram_handle: null,
           instagram_followers: null,

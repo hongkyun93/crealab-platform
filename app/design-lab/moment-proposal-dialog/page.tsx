@@ -442,7 +442,7 @@ export default function MomentProposalDialogDesignLab() {
                         <div className="space-y-2">
                             <p className="text-xs font-semibold text-emerald-600">📄 상세 페이지 (최종 의사결정)</p>
                             <ul className="text-xs text-muted-foreground space-y-1.5">
-                                <li className="flex items-center gap-1.5">✅ 모먼트 상세 /event/[id] — 제안 확인</li>
+                                <li className="flex items-center gap-1.5">✅ 모먼트 상세 /moment/[id] — 제안 확인</li>
                                 <li className="flex items-center gap-1.5">🆕 크리에이터 아카이브 상세뷰 — 3컬럼 내</li>
                                 <li className="flex items-center gap-1.5">🆕 협업 워크스페이스 — 원래 조건 확인</li>
                             </ul>

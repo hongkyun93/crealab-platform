@@ -11,21 +11,21 @@ export async function POST(req: Request) {
     }
 
     // req.json()은 한 번만 호출 (catch 블록에서 재호출 불가)
-    let body: { messages?: any[]; proposal?: any; brandName?: string; influencerName?: string; brandProfile?: any; creatorProfile?: any } = {};
+    let body: { messages?: any[]; proposal?: any; brandName?: string; creatorName?: string; brandProfile?: any; creatorProfile?: any } = {};
     try {
         body = await req.json();
     } catch {
         return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { messages, proposal, brandName, influencerName, brandProfile, creatorProfile } = body;
+    const { messages, proposal, brandName, creatorName, brandProfile, creatorProfile } = body;
 
     try {
         const apiKey = process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
             console.warn("API Key missing, using fallback contract.");
-            return NextResponse.json({ result: getFallbackContract(brandName ?? "광고주", influencerName ?? "크리에이터", proposal ?? {}) });
+            return NextResponse.json({ result: getFallbackContract(brandName ?? "광고주", creatorName ?? "크리에이터", proposal ?? {}) });
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
         const secondaryUsagePeriod = proposal?.condition_secondary_usage_period || "미정";
 
         // MCN 커스텀 계약서 여부 확인
-        const creatorId = creatorProfile?.id || proposal?.influencer_id || proposal?.influencerId;
+        const creatorId = creatorProfile?.id || proposal?.creator_id || proposal?.creatorId;
         let customContractTemplate: string | null = null;
 
         if (creatorId) {
@@ -90,8 +90,8 @@ ${customContractTemplate}
   - 회사 전화번호: ${brandProfile?.company_phone || brandProfile?.phone || '미입력'}
   - 담당자: ${brandProfile?.contact_person_name || '미입력'} (${brandProfile?.contact_person_phone || ''} / ${brandProfile?.contact_person_email || ''})
   - 세금계산서 이메일: ${brandProfile?.tax_email || '미입력'}
-- 을(크리에이터): ${influencerName}
-  - 실명: ${creatorProfile?.legal_name || creatorProfile?.display_name || influencerName}
+- 을(크리에이터): ${creatorName}
+  - 실명: ${creatorProfile?.legal_name || creatorProfile?.display_name || creatorName}
   - 생년월일: ${creatorProfile?.birth_date || '미입력'}
   - 주소: ${creatorProfile?.legal_address || creatorProfile?.shipping_address || '미입력'}
   - 연락처: ${creatorProfile?.phone || '미입력'}
@@ -139,7 +139,7 @@ ${historyText || "(대화 내용 없음)"}
 
     } catch (error: any) {
         console.error("Contract Generation Failed (Using Fallback):", error);
-        return NextResponse.json({ result: getFallbackContract(brandName ?? "광고주", influencerName ?? "크리에이터", proposal ?? {}) });
+        return NextResponse.json({ result: getFallbackContract(brandName ?? "광고주", creatorName ?? "크리에이터", proposal ?? {}) });
     }
 }
 

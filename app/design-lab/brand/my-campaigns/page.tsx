@@ -102,7 +102,7 @@ export default function MyCampaignsDesignLab() {
             case 4: return <VisualCoverCard />;
             case 5: return <StatusTimelineStyle />;
             case 6: return <BudgetFocusCard />;
-            case 7: return <InfluencerGridStyle />;
+            case 7: return <CreatorGridStyle />;
             case 8: return <MinimalListStyle />;
             case 9: return <AnalyticsDashboardStyle />;
             case 10: return <DetailedAccordionStyle />;
@@ -196,7 +196,7 @@ export default function MyCampaignsDesignLab() {
                                     case 4: return <VisualCoverCard />;
                                     case 5: return <StatusTimelineStyle />;
                                     case 6: return <BudgetFocusCard />;
-                                    case 7: return <InfluencerGridStyle />;
+                                    case 7: return <CreatorGridStyle />;
                                     case 8: return <MinimalListStyle />;
                                     case 9: return <AnalyticsDashboardStyle />;
                                     case 10: return <DetailedAccordionStyle />;
@@ -402,7 +402,7 @@ function BudgetFocusCard() {
 }
 
 // 7. Influencer Grid
-function InfluencerGridStyle() {
+function CreatorGridStyle() {
     return (
         <div className="space-y-4">
             {MY_CAMPAIGNS.slice(1, 3).map((c, i) => (

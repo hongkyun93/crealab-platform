@@ -18,7 +18,7 @@ interface AdminMoment {
     title: string
     category: string
     created_at: string
-    influencer_id: string
+    creator_id: string
     creator?: { display_name: string }
 }
 
@@ -37,7 +37,7 @@ interface AdminPaymentPending {
     id: string
     type: 'product_application' | 'moment_proposal' | 'campaign_application'
     brand_id?: string
-    influencer_id?: string
+    creator_id?: string
     price_offer?: number
     contract_status?: string
     payment_confirmed_at?: string | null
@@ -98,7 +98,7 @@ export default function AdminPage() {
         try {
             const { data, error } = await supabase
                 .from('life_moments')
-                .select('id, title, category, created_at, influencer_id, profiles(display_name, avatar_url)')
+                .select('id, title, category, created_at, creator_id, profiles(display_name, avatar_url)')
                 .order('created_at', { ascending: false })
                 .limit(200)
             if (error) console.error('[Admin] moments error:', error)
@@ -113,7 +113,7 @@ export default function AdminPage() {
             // brand_proposals
             const { data: bp, error: bpErr } = await supabase
                 .from('product_applications')
-                .select('id, price_offer, status, content_submission_status, created_at, brand_id, influencer_id, brand:profiles!product_applications_brand_id_fkey(display_name), creator:profiles!product_applications_influencer_id_fkey(display_name)')
+                .select('id, price_offer, status, content_submission_status, created_at, brand_id, creator_id, brand:profiles!product_applications_brand_id_fkey(display_name), creator:profiles!product_applications_creator_id_fkey(display_name)')
 
                 .order('created_at', { ascending: false })
                 .limit(100)
@@ -122,7 +122,7 @@ export default function AdminPage() {
             // moment_proposals
             const { data: mp, error: mpErr } = await supabase
                 .from('moment_proposals')
-                .select('id, price_offer, status, content_submission_status, created_at, brand_id, influencer_id, brand:profiles!moment_proposals_brand_id_fkey(display_name), creator:profiles!moment_proposals_influencer_id_fkey(display_name)')
+                .select('id, price_offer, status, content_submission_status, created_at, brand_id, creator_id, brand:profiles!moment_proposals_brand_id_fkey(display_name), creator:profiles!moment_proposals_creator_id_fkey(display_name)')
                 .order('created_at', { ascending: false })
                 .limit(100)
             if (mpErr) console.error('[Admin] moment_proposals error:', mpErr)
@@ -130,7 +130,7 @@ export default function AdminPage() {
             // campaign_applications
             const { data: ca, error: caErr } = await supabase
                 .from('campaign_applications')
-                .select('id, status, created_at, influencer_id')
+                .select('id, status, created_at, creator_id')
                 .order('created_at', { ascending: false })
                 .limit(100)
             // caErr는 RLS 차단 시 {} 로 오는 경우 있음 — admin_rls_bypass.sql 마이그레이션 실행 후 해결
@@ -140,7 +140,7 @@ export default function AdminPage() {
                 ...(bp ?? []).map((p: any) => ({
                     id: p.id, type: 'product_application' as const,
                     brand_name: p.brand?.display_name || p.brand_id?.slice(0, 8) || '-',
-                    creator_name: p.creator?.display_name || p.influencer_id?.slice(0, 8) || '-',
+                    creator_name: p.creator?.display_name || p.creator_id?.slice(0, 8) || '-',
                     price_offer: p.price_offer,
                     status: p.status,
                     content_submission_status: p.content_submission_status,
@@ -149,7 +149,7 @@ export default function AdminPage() {
                 ...(mp ?? []).map((p: any) => ({
                     id: p.id, type: 'moment_proposal' as const,
                     brand_name: p.brand?.display_name || p.brand_id?.slice(0, 8) || '-',
-                    creator_name: p.creator?.display_name || p.influencer_id?.slice(0, 8) || '-',
+                    creator_name: p.creator?.display_name || p.creator_id?.slice(0, 8) || '-',
                     price_offer: p.price_offer,
                     status: p.status,
                     content_submission_status: p.content_submission_status,
@@ -157,7 +157,7 @@ export default function AdminPage() {
                 })),
                 ...(ca ?? []).map((p: any) => ({
                     id: p.id, type: 'campaign_application' as const,
-                    creator_name: p.influencer_id?.slice(0, 8) || '-',
+                    creator_name: p.creator_id?.slice(0, 8) || '-',
                     status: p.status,
                     created_at: p.created_at,
                 })),
@@ -173,7 +173,7 @@ export default function AdminPage() {
         try {
             const { data, error } = await supabase
                 .from('workspaces')
-                .select('id, brand_id, influencer_id, status, type, created_at')
+                .select('id, brand_id, creator_id, status, type, created_at')
                 .order('created_at', { ascending: false })
                 .limit(200)
             if (error && Object.keys(error).length > 0) console.error('[Admin] workspaces error:', error)
@@ -185,7 +185,7 @@ export default function AdminPage() {
     const fetchPendingPayments = useCallback(async () => {
         setLoadingPayments(true)
         try {
-            const fields = 'id, price_offer, contract_status, payment_confirmed_at, created_at, brand_id, influencer_id'
+            const fields = 'id, price_offer, contract_status, payment_confirmed_at, created_at, brand_id, creator_id'
 
             const [{ data: pa }, { data: mp }, { data: ca }] = await Promise.all([
                 supabase.from('product_applications')
@@ -231,7 +231,7 @@ export default function AdminPage() {
     const fetchConfirmedPayments = useCallback(async () => {
         setLoadingConfirmed(true)
         try {
-            const fields = 'id, price_offer, contract_status, payment_confirmed_at, created_at, brand_id, influencer_id'
+            const fields = 'id, price_offer, contract_status, payment_confirmed_at, created_at, brand_id, creator_id'
             const [{ data: pa }, { data: mp }, { data: ca }] = await Promise.all([
                 supabase.from('product_applications')
                     .select(fields)
@@ -325,9 +325,9 @@ export default function AdminPage() {
                 })
             }
             // 크리에이터 알림
-            if (item.influencer_id) {
+            if (item.creator_id) {
                 await supabase.from('notifications').insert({
-                    recipient_id: item.influencer_id,
+                    recipient_id: item.creator_id,
                     type: 'payment_confirmed',
                     content: '브랜드 광고비 입금이 확인되었습니다. 배송 준비 중입니다.',
                     reference_id: item.id,
@@ -343,10 +343,10 @@ export default function AdminPage() {
     const handleMarkPaid = async (settlementId: string) => {
         setPayingId(settlementId)
 
-        // Fetch influencer_id before updating
+        // Fetch creator_id before updating
         const { data: settlement } = await supabase
             .from('settlements')
-            .select('influencer_id, amount')
+            .select('creator_id, amount')
             .eq('id', settlementId)
             .single()
 
@@ -361,11 +361,11 @@ export default function AdminPage() {
             fetchSettlements()
 
             // 🔔 크리에이터에게 정산 완료 알림
-            if (settlement?.influencer_id) {
+            if (settlement?.creator_id) {
                 try {
                     const amountText = settlement.amount ? `${Number(settlement.amount).toLocaleString()}원` : '정산금'
                     await supabase.from('notifications').insert({
-                        recipient_id: settlement.influencer_id,
+                        recipient_id: settlement.creator_id,
                         sender_id: null,
                         content: `${amountText}이 정산 지급되었습니다. 확인해보세요!`,
                         type: 'settlement_paid',
@@ -620,7 +620,7 @@ export default function AdminPage() {
                                                 </span>
                                                 <Badge className="bg-emerald-500 text-[10px] h-5">입금완료</Badge>
                                             </div>
-                                            <p className="text-sm font-bold">{p.brand_id?.slice(0, 8) ?? '브랜드'} → {p.influencer_id?.slice(0, 8) ?? '크리에이터'}</p>
+                                            <p className="text-sm font-bold">{p.brand_id?.slice(0, 8) ?? '브랜드'} → {p.creator_id?.slice(0, 8) ?? '크리에이터'}</p>
                                             <p className="text-xs text-muted-foreground">
                                                 금액: <span className="font-mono font-bold text-foreground">{(p.price_offer ?? 0).toLocaleString()}원</span>
                                                 {' '}(+VAT {Math.round((p.price_offer ?? 0) * 0.1).toLocaleString()}원)

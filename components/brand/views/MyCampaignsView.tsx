@@ -184,10 +184,10 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold overflow-hidden">
-                                                            {p.influencerAvatar ? <img src={p.influencerAvatar} alt="" className="w-full h-full object-cover" /> : p.influencerName?.[0]}
+                                                            {p.creatorAvatar ? <img src={p.creatorAvatar} alt="" className="w-full h-full object-cover" /> : p.creatorName?.[0]}
                                                         </div>
                                                         <div>
-                                                            <div className="font-bold text-sm">{p.influencerName}</div>
+                                                            <div className="font-bold text-sm">{p.creatorName}</div>
                                                             <div className="text-[10px] text-muted-foreground">{new Date(p.date).toLocaleDateString()}</div>
                                                         </div>
                                                     </div>
@@ -235,8 +235,11 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                     onConfirm={async () => {
                         if (confirmAcceptId) {
                             try {
-                                const { updateApplicationStatus } = await import('@/app/actions/proposal')
-                                await updateApplicationStatus(confirmAcceptId, 'accepted')
+                                const { error } = await supabase
+                                    .from('campaign_applications')
+                                    .update({ status: 'accepted' })
+                                    .eq('id', confirmAcceptId)
+                                if (error) throw error
                                 toast.success('수락되었습니다')
                                 window.location.reload()
                             } catch (e) {
@@ -367,8 +370,8 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <Badge variant="outline" className="hidden md:inline-flex text-xs font-normal bg-muted/50">{c.category}</Badge>
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.status === 'active' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'text-muted-foreground bg-muted border-border'}`}>
-                                                        {c.status === 'active' ? '● 모집중' : '● 마감됨'}
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.status === 'active' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : c.status === 'draft' ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-muted-foreground bg-muted border-border'}`}>
+                                                        {c.status === 'active' ? '● 모집중' : c.status === 'draft' ? '● 임시저장' : '● 마감됨'}
                                                     </span>
                                                     {(() => {
                                                         if (!c.recruitment_deadline) return null;
@@ -465,7 +468,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                     setConfirmStatusData({ id: c.id, currentStatus: c.status })
                                                 }}
                                             >
-                                                {c.status === 'active' ? '마감하기' : '재진행'}
+                                                {c.status === 'active' ? '마감하기' : c.status === 'draft' ? '공개하기' : '재진행'}
                                             </Button>
                                             <Button
                                                 variant="ghost"
@@ -495,8 +498,11 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                 onConfirm={async () => {
                     if (confirmAcceptId) {
                         try {
-                            const { updateApplicationStatus } = await import('@/app/actions/proposal')
-                            await updateApplicationStatus(confirmAcceptId, 'accepted')
+                            const { error } = await supabase
+                                .from('campaign_applications')
+                                .update({ status: 'accepted' })
+                                .eq('id', confirmAcceptId)
+                            if (error) throw error
                             toast.success('수락되었습니다')
                             window.location.reload()
                         } catch (e) {
@@ -510,15 +516,15 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
             <ConfirmDialog
                 open={!!confirmStatusData}
                 onOpenChange={(open) => !open && setConfirmStatusData(null)}
-                title={confirmStatusData?.currentStatus === 'active' ? "캠페인 마감" : "캠페인 재진행"}
-                description={confirmStatusData?.currentStatus === 'active' ? "캠페인을 마감하시겠습니까?" : "캠페인을 다시 진행하시겠습니까?"}
+                title={confirmStatusData?.currentStatus === 'active' ? "캠페인 마감" : confirmStatusData?.currentStatus === 'draft' ? "캠페인 공개" : "캠페인 재진행"}
+                description={confirmStatusData?.currentStatus === 'active' ? "캠페인을 마감하시겠습니까?" : confirmStatusData?.currentStatus === 'draft' ? "캠페인을 제출하고 공개하시겠습니까?" : "캠페인을 다시 진행하시겠습니까?"}
                 onConfirm={() => {
                     if (confirmStatusData) {
                         updateCampaignStatus(confirmStatusData.id.toString(), confirmStatusData.currentStatus === 'active' ? 'closed' : 'active')
                         setConfirmStatusData(null)
                     }
                 }}
-                confirmText={confirmStatusData?.currentStatus === 'active' ? "마감" : "진행"}
+                confirmText={confirmStatusData?.currentStatus === 'active' ? "마감" : "공개/진행"}
             />
 
             <ConfirmDialog

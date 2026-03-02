@@ -98,14 +98,21 @@ export function ChatArea({ className }: ChatAreaProps) {
     const proposalIdStr = p?.id?.toString();
     const workspaceId: string | undefined = p?.workspace_id;
 
+    const projectName = useMemo(() => {
+        if (!p) return '';
+        if (isCampaignProposal) return p.campaignName || p.productName || p.campaign?.title || '캠페인';
+        if (isMomentProposal) return p.title || p.moment?.title || '모먼트';
+        return p.product_name || p.productName || '제품 제안';
+    }, [p, isCampaignProposal, isMomentProposal]);
+
     // 상대방 user ID
     const otherId: string | undefined = useMemo(() => {
         if (!p || !user?.id) return undefined;
         const brandUserId: string | undefined = p.brand_id || p.brandId || p.campaign?.brand_id;
-        const influencerUserId: string | undefined = p.influencer_id || p.influencerId;
-        if (user.id === brandUserId) return influencerUserId;
-        if (user.id === influencerUserId) return brandUserId;
-        if (user.role === 'brand') return influencerUserId;
+        const creatorUserId: string | undefined = p.creator_id || p.creatorId;
+        if (user.id === brandUserId) return creatorUserId;
+        if (user.id === creatorUserId) return brandUserId;
+        if (user.role === 'brand') return creatorUserId;
         return brandUserId;
     }, [p, user?.id, user?.role]);
 
@@ -254,9 +261,7 @@ export function ChatArea({ className }: ChatAreaProps) {
 
         setIsSending(true);
         try {
-            // product_application만 proposal_id FK 전달, moment/campaign은 null (FK 위반 방지)
-            const sendProposalId = (!isCampaignProposal && !isMomentProposal) ? proposalIdStr : undefined;
-            await sendMessage(otherId, msgContent, uploadedFile, sendProposalId, undefined, workspaceId);
+            await sendMessage(otherId, msgContent, uploadedFile, workspaceId, projectName);
             // 전송 후 로컬 메시지 갱신
             await fetchLocalMessages();
         } catch (e) {

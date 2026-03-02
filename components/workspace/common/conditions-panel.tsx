@@ -200,7 +200,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
 
     // 브랜드만 편집 가능, readonly 아닐 때, 그리고 둘 중 하나라도 수락하면 편집 불가
     const canEdit = userRole === 'brand' && !readonly &&
-        !proposal?.brand_condition_confirmed && !proposal?.influencer_condition_confirmed;
+        !proposal?.brand_condition_confirmed && !proposal?.creator_condition_confirmed;
 
     if (isEditing) {
         return (
@@ -570,8 +570,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                         />
                         <StatusChip
                             label="크리에이터"
-                            status={proposal?.influencer_condition_confirmed ? "confirmed" : "waiting"}
-                            text={proposal?.influencer_condition_confirmed ? "✅ 수락함" : "⏳ 대기중"}
+                            status={proposal?.creator_condition_confirmed ? "confirmed" : "waiting"}
+                            text={proposal?.creator_condition_confirmed ? "✅ 수락함" : "⏳ 대기중"}
                         />
                     </>
                 ) : (
@@ -583,11 +583,11 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                         />
                         <StatusChip
                             label="크리에이터 (나)"
-                            status={proposal?.influencer_condition_confirmed ? "confirmed" : "action_needed"}
-                            text={proposal?.influencer_condition_confirmed ? "✅ 수락함" : "⚠️ 확인 필요"}
-                            active={!proposal?.influencer_condition_confirmed}
+                            status={proposal?.creator_condition_confirmed ? "confirmed" : "action_needed"}
+                            text={proposal?.creator_condition_confirmed ? "✅ 수락함" : "⚠️ 확인 필요"}
+                            active={!proposal?.creator_condition_confirmed}
                             onClick={onToggleConfirm
-                                ? () => onToggleConfirm('creator', !!proposal?.influencer_condition_confirmed)
+                                ? () => onToggleConfirm('creator', !!proposal?.creator_condition_confirmed)
                                 : undefined
                             }
                         />
@@ -598,7 +598,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
             {/* Hint text (UX Idea B) */}
             {(() => {
                 const brandOk = !!proposal?.brand_condition_confirmed;
-                const creatorOk = !!proposal?.influencer_condition_confirmed;
+                const creatorOk = !!proposal?.creator_condition_confirmed;
                 const bothConfirmed = brandOk && creatorOk;
                 if (bothConfirmed) return null; // 둘 다 완료 → 힌트 불필요
 

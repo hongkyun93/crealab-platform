@@ -134,7 +134,7 @@ export function MomentGridCard({
                     className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
                     onClick={(e) => {
                         e.preventDefault(); e.stopPropagation();
-                        toggleFavorite(item.id, 'event');
+                        toggleFavorite(item.id, 'moment');
                     }}
                 >
                     <Star
@@ -161,24 +161,29 @@ export function MomentGridCard({
                             완료된 모먼트
                         </span>
                     )}
-                    {item.isPrivate && (
+                    {item.status === 'draft' && (
+                        <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-300 flex items-center gap-1 shadow-sm">
+                            📝 임시저장
+                        </span>
+                    )}
+                    {item.isPrivate && item.status !== 'draft' && (
                         <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 flex items-center gap-0.5">
                             <Lock className="h-2.5 w-2.5" /> 비공개
                         </span>
                     )}
-                    {!isPast && offerCount > 0 && (
-                        <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full animate-pulse">
-                            📥 {offerCount}개 제안
+                    {offerCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-white bg-indigo-600 px-3 py-1 rounded-full shadow-sm">
+                            📥 받은 제안 {offerCount}건
                         </span>
                     )}
                 </div>
             )}
 
-            <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
+            <CardHeader className="pt-8 pb-3 flex-row gap-3 items-start space-y-0">
                 {/* Avatar */}
                 {showProfileCard ? (
                     <CreatorProfileCard
-                        creatorId={creator.id || item.influencerId || item.id}
+                        creatorId={creator.id || item.creatorId || item.id}
                         trigger={
                             <div
                                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all"
@@ -205,7 +210,7 @@ export function MomentGridCard({
                     <div className="flex items-center justify-between gap-2">
                         {showProfileCard ? (
                             <CreatorProfileCard
-                                creatorId={creator.id || item.influencerId || item.id}
+                                creatorId={creator.id || item.creatorId || item.id}
                                 trigger={
                                     <h4
                                         className="font-bold truncate cursor-pointer hover:text-primary transition-colors"
@@ -292,7 +297,7 @@ export function MomentGridCard({
             </CardHeader>
 
             <CardContent className="space-y-3 flex-1 relative">
-                <h3 className="font-bold text-base line-clamp-2 h-14 mb-2">{item.title || item.event}</h3>
+                <h3 className="font-bold text-base line-clamp-2 h-14 mb-2">{item.title}</h3>
 
                 <div className={`flex flex-col gap-2 text-xs mb-3 bg-muted/30 p-3 rounded-lg border border-border/50 ${isPast ? 'opacity-80' : ''}`}>
                     <div className="pb-2 border-b border-border/50">
@@ -314,7 +319,7 @@ export function MomentGridCard({
                             <span className="text-[10px] text-muted-foreground block mb-0.5">모먼트 일정</span>
                             <div className="flex items-center gap-1.5 font-medium text-foreground min-w-0">
                                 <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                <span className="truncate">{formatDateToMonth(item.eventDate) || "미정"}</span>
+                                <span className="truncate">{formatDateToMonth(item.momentStartDate) || "미정"}</span>
                             </div>
                         </div>
                         <div>
@@ -324,7 +329,7 @@ export function MomentGridCard({
                                 {item.dateFlexible ? (
                                     <span className="text-emerald-600 truncate">협의 가능</span>
                                 ) : (
-                                    <span className="truncate">{formatDateToMonth(item.postingDate)}</span>
+                                    <span className="truncate">{formatDateToMonth(item.postingDateExact)}</span>
                                 )}
                             </div>
                         </div>
@@ -384,7 +389,7 @@ export function MomentGridCard({
                 )}
             </CardContent>
             {renderFooter && renderFooter()}
-            <div className="pb-4"></div>
+
         </Card>
     )
 

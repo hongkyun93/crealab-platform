@@ -26,7 +26,7 @@ const MOCK = {
 평소 피부 관리에 관심이 많은 팔로워분들이 많아서, 시술 후기와 함께 추천 제품을 자연스럽게 소개할 수 있습니다.
 
 특히 시술 직후부터 2주간의 회복 과정을 브이로그로 담아 리얼한 후기를 전달할 예정이며, 사용하는 스킨케어 제품들의 효과를 직접 보여드릴 수 있습니다.`,
-    eventDate: "2026년 3월",
+    momentDate: "2026년 3월",
     postingDate: "2026년 4월",
     dateFlexible: false,
     targetProduct: "더마 화장품, 선크림, 시술 후 진정 크림, 재생 패치",
@@ -112,7 +112,7 @@ export default function DesignERefinedPage() {
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <Calendar className="h-4 w-4 text-primary" /> 모먼트 일정
                                 </div>
-                                <span className="text-base font-bold text-primary">{MOCK.eventDate}</span>
+                                <span className="text-base font-bold text-primary">{MOCK.momentDate}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

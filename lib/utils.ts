@@ -11,8 +11,8 @@ export function formatDateToMonth(dateStr: string | Date | undefined | null): st
     const date = new Date(dateStr)
     if (isNaN(date.getTime())) return String(dateStr) // Return original if invalid
     const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    return `${year}.${month}`
+    const month = date.getMonth() + 1
+    return `${year}년 ${month}월`
   } catch (e) {
     return String(dateStr)
   }
@@ -61,28 +61,28 @@ export function formatDateRange(
 /**
  * 뷰 context에 따라 올바른 이벤트 날짜 표시.
  * showExact = true: 크리에이터 본인 / MCN 관리 → 정확한 날짜
- * showExact = false: 브랜드 탐색 → 년-월만
+ * showExact = false: 브랜드 탐색 → 년-월만 (마스킹)
  */
 export function displayEventDate(
-  item: { eventDate?: string; eventStartDate?: string; eventEndDate?: string },
+  item: { momentStartDate?: string; momentEndDate?: string },
   showExact: boolean
 ): string {
-  if (showExact && item.eventStartDate) {
-    return formatDateRange(item.eventStartDate, item.eventEndDate)
+  if (showExact && item.momentStartDate) {
+    return formatDateRange(item.momentStartDate, item.momentEndDate)
   }
-  return formatDateToMonth(item.eventDate) || "미정"
+  return formatDateToMonth(item.momentStartDate) || "미정"
 }
 
 /**
  * 뷰 context에 따라 올바른 업로드 일정 표시.
  */
 export function displayPostingDate(
-  item: { postingDate?: string; postingDateExact?: string; dateFlexible?: boolean },
+  item: { postingDateExact?: string; dateFlexible?: boolean },
   showExact: boolean
 ): string {
   if (item.dateFlexible) return "협의 가능"
   if (showExact && item.postingDateExact) return formatExactDate(item.postingDateExact)
-  return formatDateToMonth(item.postingDate) || "미정"
+  return formatDateToMonth(item.postingDateExact) || "미정"
 }
 
 /**

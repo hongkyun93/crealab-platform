@@ -42,7 +42,11 @@ export function MomentCard({
     onComplete,
     isPast = false
 }: MomentCardProps) {
-    const offerCount = brandProposals.filter((p: any) => p.event_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
+    const offerCount = brandProposals.filter((p: any) =>
+        p.moment_id === moment.id &&
+        (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending') &&
+        p.status !== 'cancelled'
+    ).length;
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false)
 
@@ -79,8 +83,16 @@ export function MomentCard({
                         </span>
                     )}
                     {!isPast && offerCount > 0 && (
-                        <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full animate-pulse">
-                            📥 {offerCount}개 제안
+                        <span
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-white px-2.5 py-1 shadow-md"
+                            style={{
+                                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                                clipPath: 'polygon(0 0, 100% 0, 100% 75%, 87% 100%, 0 100%)',
+                                borderRadius: '4px 0 0 4px',
+                                letterSpacing: '0.02em',
+                            }}
+                        >
+                            📥 {offerCount}건
                         </span>
                     )}
                 </div>
@@ -127,7 +139,7 @@ export function MomentCard({
 
                 <CardContent className="space-y-3 flex-1 relative">
                     <h3 className={`font-bold text-base line-clamp-2 h-14 mb-2 ${isPast ? 'text-muted-foreground' : ''}`}>
-                        {moment.title || moment.event}
+                        {moment.title}
                     </h3>
 
                     <div className={`flex flex-col gap-2 text-xs mb-3 bg-muted/30 p-3 rounded-lg border border-border/50 ${isPast ? 'opacity-80' : ''}`}>
@@ -150,7 +162,7 @@ export function MomentCard({
                                 <span className="text-[10px] text-muted-foreground block mb-0.5">모먼트 일정</span>
                                 <div className="flex items-center gap-1.5 font-medium text-foreground min-w-0">
                                     <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span className="truncate">{formatDateToMonth(moment.eventDate) || "미정"}</span>
+                                    <span className="truncate">{formatDateToMonth(moment.momentStartDate) || "미정"}</span>
                                 </div>
                             </div>
                             <div>
@@ -160,7 +172,7 @@ export function MomentCard({
                                     {moment.dateFlexible ? (
                                         <span className="text-emerald-600 truncate">협의 가능</span>
                                     ) : (
-                                        <span className="truncate">{formatDateToMonth(moment.postingDate)}</span>
+                                        <span className="truncate">{formatDateToMonth(moment.postingDateExact)}</span>
                                     )}
                                 </div>
                             </div>
@@ -211,7 +223,7 @@ export function MomentCard({
                         </div>
                     )}
                 </CardContent>
-                <div className="pb-4"></div>
+
             </Card>
 
             {/* DELETE ALERT DIALOG */}

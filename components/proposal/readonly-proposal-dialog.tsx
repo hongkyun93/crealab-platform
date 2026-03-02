@@ -61,10 +61,20 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
         const rawAmount = c.compensation_amount || proposal.compensation_amount || proposal.price_offer || proposal.cost || 0
         const amount = typeof rawAmount === 'string' ? parseInt(rawAmount.replace(/[^0-9]/g, '')) || 0 : rawAmount
 
+        const isBrandView = currentUserId && (currentUserId === proposal.brand_id || currentUserId === proposal.sender_id)
+
+        const display_name = isBrandView
+            ? (proposal.creator_name || proposal.creatorName || proposal.creator?.name || '크리에이터')
+            : (proposal.brand_name || proposal.brand?.display_name || proposal.brand?.name || 'Brand')
+
+        const display_avatar = isBrandView
+            ? (proposal.creator_avatar || proposal.creatorAvatar || proposal.creator?.avatar_url)
+            : (proposal.brand_avatar || proposal.brandAvatar || proposal.brand?.avatar_url)
+
         return {
             // Meta
-            brand_name: proposal.brand_name || proposal.brand?.display_name || proposal.brand?.name || 'Brand',
-            brand_avatar: proposal.brand_avatar || proposal.brandAvatar || proposal.brand?.avatar_url,
+            display_name,
+            display_avatar,
             created_at: proposal.created_at,
             status: proposal.status,
             message: proposal.message,
@@ -126,14 +136,14 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3.5">
                             <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-violet-100 to-pink-100 ring-1 ring-violet-200/40 flex items-center justify-center text-sm font-black text-violet-600 shrink-0 overflow-hidden">
-                                {data.brand_avatar ? (
-                                    <img src={data.brand_avatar} alt="" className="h-full w-full object-cover" />
+                                {data.display_avatar ? (
+                                    <img src={data.display_avatar} alt="" className="h-full w-full object-cover" />
                                 ) : (
-                                    data.brand_name?.substring(0, 1) || 'B'
+                                    data.display_name?.substring(0, 1) || 'U'
                                 )}
                             </div>
                             <div>
-                                <DialogTitle className="text-base font-bold tracking-tight">{data.brand_name}</DialogTitle>
+                                <DialogTitle className="text-base font-bold tracking-tight">{data.display_name}</DialogTitle>
                                 <DialogDescription className="text-xs mt-0.5">
                                     {fmtDate(data.created_at)}
                                     {data.moment_title && ` · ${data.moment_title}`}
@@ -366,7 +376,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                     ) :
                         /* Receiver (Creator) — Accept / Reject */
                         (proposal?.status === 'offered' || proposal?.status === 'pending' || !proposal?.status) &&
-                            currentUserId && proposal?.influencer_id === currentUserId ? (
+                            currentUserId && proposal?.creator_id === currentUserId ? (
                             <div className="flex w-full gap-2">
                                 <Button
                                     variant="outline"

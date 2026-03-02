@@ -87,7 +87,7 @@ export function PerformanceDialog({
             }
 
             // 크리에이터 알림
-            const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
+            const creatorId = (proposal as any).creator_id || (proposal as any).creator_id;
             if (creatorId) {
                 sendNotification(
                     creatorId,
@@ -109,7 +109,7 @@ export function PerformanceDialog({
         }
     };
 
-    const creatorName = proposal?.influencerName || '크리에이터';
+    const creatorName = proposal?.creatorName || '크리에이터';
 
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>

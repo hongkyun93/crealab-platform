@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation'
+import { MomentForm } from "@/components/forms/MomentForm"
 
-export default async function RedirectToEditMomentRoute({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditMomentPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
-    redirect(`/creator/moment/${id}`)
+    return <MomentForm mode="edit" eventId={id} />
 }

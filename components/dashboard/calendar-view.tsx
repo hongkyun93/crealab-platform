@@ -6,13 +6,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useState } from "react"
 
-export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMoments = [], onSelectEvent }: { activeMoments?: any[], upcomingMoments?: any[], pastMoments?: any[], onSelectEvent?: (event: any) => void }) {
+export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMoments = [], onSelectMoment }: { activeMoments?: any[], upcomingMoments?: any[], pastMoments?: any[], onSelectMoment?: (event: any) => void }) {
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list')
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'upcoming' | 'completed'>('all')
 
     // Combine all relevant moments for the calendar
-    const allEvents = [
+    const allMoments = [
         ...activeMoments.map(m => ({ ...m, type: 'active' })),
         ...upcomingMoments.map(m => ({ ...m, type: 'upcoming' })),
         ...pastMoments.map(m => ({ ...m, type: 'completed' }))
@@ -22,12 +22,12 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
     }))
 
     // Filter Logic
-    const filteredEvents = allEvents.filter(event => {
+    const filteredEvents = allMoments.filter(event => {
         if (statusFilter !== 'all' && event.type !== statusFilter) return false
         return true
     })
 
-    const selectedDateEvents = allEvents.filter(event =>
+    const selectedDateEvents = allMoments.filter(event =>
         date && event.date === date.toISOString().split('T')[0]
     )
 
@@ -42,7 +42,7 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                         onSelect={setDate}
                         className="rounded-md border"
                         modifiers={{
-                            event: allEvents.map(e => new Date(e.date))
+                            event: allMoments.map(e => new Date(e.date))
                         }}
                         modifiersStyles={{
                             event: { fontWeight: 'bold', textDecoration: 'underline', color: 'var(--primary)' }
@@ -128,14 +128,14 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                         <TableRow
                                             key={idx}
                                             className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                            onClick={() => onSelectEvent?.(event)}
+                                            onClick={() => onSelectMoment?.(event)}
                                         >
                                             <TableCell className="font-medium">
                                                 {event.brand_name || event.brandName || event.campaign?.brand_name || (event.type === 'upcoming' ? '-' : '미정')}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium truncate">{event.product_name || event.productName || event.title || event.event || "제목 없음"}</span>
+                                                    <span className="font-medium truncate">{event.product_name || event.productName || event.title || "제목 없음"}</span>
 
                                                 </div>
                                             </TableCell>
@@ -163,7 +163,31 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                                 {event.type === 'upcoming' ? '-' : (event.condition_final_submission_date || '-')}
                                             </TableCell>
                                             <TableCell className="text-center text-xs font-semibold text-foreground">
-                                                {event.type === 'upcoming' ? '-' : (event.condition_upload_date || event.date || '-')}
+                                                {event.type === 'upcoming' ? '-' : (
+                                                    // Determine the date string to show
+                                                    (() => {
+                                                        const singleDate = event.condition_upload_date || event.date;
+                                                        // Prefer start/end date from unified model if available
+                                                        const startDate = event.momentStartDate || event.moment_start_date;
+                                                        const endDate = event.momentEndDate || event.moment_end_date;
+
+                                                        if (!startDate) return singleDate || '-';
+
+                                                        const s = new Date(startDate);
+                                                        const sStr = `${s.getMonth() + 1}/${s.getDate()}`;
+
+                                                        if (endDate && startDate !== endDate) {
+                                                            const e = new Date(endDate);
+                                                            if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) {
+                                                                return `${sStr} ~ ${e.getDate()}`;
+                                                            } else {
+                                                                return `${sStr} ~ ${e.getMonth() + 1}/${e.getDate()}`;
+                                                            }
+                                                        }
+
+                                                        return sStr || singleDate || '-';
+                                                    })()
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 {(() => {
@@ -197,7 +221,7 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                 <Card
                                     key={idx}
                                     className="cursor-pointer hover:shadow-md transition-shadow"
-                                    onClick={() => onSelectEvent?.(event)}
+                                    onClick={() => onSelectMoment?.(event)}
                                 >
                                     <CardContent className="p-4 space-y-3">
                                         {/* Header: Brand + Status */}
@@ -207,7 +231,7 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                                     {event.brand_name || event.brandName || event.campaign?.brand_name || (event.type === 'upcoming' ? '-' : '미정')}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground mt-0.5">
-                                                    {event.product_name || event.productName || event.title || event.event || "제목 없음"}
+                                                    {event.product_name || event.productName || event.title || "제목 없음"}
                                                 </div>
                                             </div>
                                             <div className="ml-2">
@@ -239,7 +263,29 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                                 </div>
                                                 <div>
                                                     <span className="text-muted-foreground">업로드:</span>
-                                                    <div className="font-medium">{event.condition_upload_date || event.date || '-'}</div>
+                                                    <div className="font-medium">
+                                                        {(() => {
+                                                            const singleDate = event.condition_upload_date || event.date;
+                                                            const startDate = event.momentStartDate || event.moment_start_date;
+                                                            const endDate = event.momentEndDate || event.moment_end_date;
+
+                                                            if (!startDate) return singleDate || '-';
+
+                                                            const s = new Date(startDate);
+                                                            const sStr = `${s.getMonth() + 1}/${s.getDate()}`;
+
+                                                            if (endDate && startDate !== endDate) {
+                                                                const e = new Date(endDate);
+                                                                if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) {
+                                                                    return `${sStr} ~ ${e.getDate()}`;
+                                                                } else {
+                                                                    return `${sStr} ~ ${e.getMonth() + 1}/${e.getDate()}`;
+                                                                }
+                                                            }
+
+                                                            return sStr || singleDate || '-';
+                                                        })()}
+                                                    </div>
                                                 </div>
                                                 {event.condition_draft_submission_date && (
                                                     <div>
@@ -266,6 +312,6 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }

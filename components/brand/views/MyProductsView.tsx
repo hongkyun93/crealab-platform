@@ -95,6 +95,11 @@ export function MyProductsView({
                             <EyeOff className="h-2.5 w-2.5" /> 비공개
                         </Badge>
                     )}
+                    {p.is_draft && (
+                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 backdrop-blur-sm shadow-sm text-[10px]">
+                            임시저장
+                        </Badge>
+                    )}
                 </div>
             </div>
 
@@ -291,6 +296,11 @@ export function MyProductsView({
                                     {activeTab === 'hidden' && (
                                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 shrink-0">
                                             <EyeOff className="h-2.5 w-2.5" /> 비공개
+                                        </Badge>
+                                    )}
+                                    {p.is_draft && (
+                                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] px-1.5 py-0 h-4 shrink-0">
+                                            임시저장
                                         </Badge>
                                     )}
                                 </div>

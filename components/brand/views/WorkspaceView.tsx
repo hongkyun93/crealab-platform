@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { PerformanceDialog } from "@/components/workspace/brand/performance-dialog"
+import { MomentProposalDialog, MomentProposalFormData } from "@/components/dialogs/MomentProposalDialog"
 import { FavoriteButton } from "@/components/ui/favorite-button"
 import { BarChart3, Ban, ChevronRight, FileText, LayoutGrid, List, Pencil, Search, Star, Table2, AlertTriangle } from "lucide-react"
 import Link from "next/link"
@@ -23,6 +24,7 @@ import { toast } from "sonner"
 interface WorkspaceViewProps {
     campaignProposals: any[]
     brandProposals: any[]
+    momentProposals?: any[]
     workspaceTab: string
     setWorkspaceTab: (tab: string) => void
     setChatProposal: (proposal: any) => void
@@ -42,6 +44,7 @@ interface ConfirmDialogState {
 export const WorkspaceView = React.memo(function WorkspaceView({
     campaignProposals,
     brandProposals,
+    momentProposals = [],
     workspaceTab,
     setWorkspaceTab,
     setChatProposal,
@@ -62,7 +65,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         if (!searchQuery.trim()) return items
         const q = searchQuery.toLowerCase()
         return items.filter(item =>
-            (item.influencerName || item.influencer_name || '').toLowerCase().includes(q) ||
+            (item.creatorName || item.creator_name || '').toLowerCase().includes(q) ||
             (item.product_name || item.productName || '').toLowerCase().includes(q)
         )
     }
@@ -85,18 +88,16 @@ export const WorkspaceView = React.memo(function WorkspaceView({
         return day > 0 ? `${day}일 전` : h > 0 ? `${h}시간 전` : m > 0 ? `${m}분 전` : '방금 전'
     }
     const getUpdaterBrand = (item: any) => {
-        if (item.content_submission_status === 'submitted') return item.influencerName || item.influencer_name || '크리에이터'
+        if (item.content_submission_status === 'submitted') return item.creatorName || item.creator_name || '크리에이터'
         if (item.payment_confirmed_at) return '나'
         if (item.delivery_status === 'shipped' || item.delivery_status === 'delivered') return '나'
-        if (item.status === 'applied') return item.influencerName || item.influencer_name || '크리에이터'
+        if (item.status === 'applied') return item.creatorName || item.creator_name || '크리에이터'
         if (item.status === 'offered') return '나'
         return null
     }
 
     // G2: Edit proposal state
     const [editingProposal, setEditingProposal] = useState<any>(null)
-    const [editMessage, setEditMessage] = useState('')
-    const [editCompensation, setEditCompensation] = useState('')
     const [isSavingEdit, setIsSavingEdit] = useState(false)
 
     // === 정산서 / 인보이스 발급 ===
@@ -130,7 +131,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
             </div>
             <table>
                 <tr><th style="width:30%">브랜드</th><td>${item.brand_name || 'Creadypick 브랜드'}</td></tr>
-                <tr><th>크리에이터</th><td>${item.influencer_name || item.influencerName || '-'}</td></tr>
+                <tr><th>크리에이터</th><td>${item.creator_name || item.creatorName || '-'}</td></tr>
                 <tr><th>협업 유형</th><td>${item.campaign_id || item.campaignId ? '캠페인 협업' : item.moment_id ? '모먼트 협업' : '브랜드 직접 제안'}</td></tr>
                 <tr><th>제품/서비스</th><td>${item.product_name || item.productName || item.campaign_title || '-'}</td></tr>
                 <tr><th>협업 시작일</th><td>${item.created_at ? new Date(item.created_at).toLocaleDateString('ko-KR') : '-'}</td></tr>
@@ -186,7 +187,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 </tr>
                 <tr>
                     <td>${item.brand_name || 'Creadypick 브랜드'}</td>
-                    <td>${item.influencer_name || item.influencerName || '-'}</td>
+                    <td>${item.creator_name || item.creatorName || '-'}</td>
                     <td>${item.completed_at ? new Date(item.completed_at).toLocaleDateString('ko-KR') : today}</td>
                     <td>완료</td>
                 </tr>
@@ -219,20 +220,38 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     const handleOpenEditProposal = (e: React.MouseEvent, item: any) => {
         e.stopPropagation()
         setEditingProposal(item)
-        setEditMessage(item.message || '')
-        setEditCompensation(item.compensation || item.product_name || '')
     }
 
-    const handleSaveEditProposal = async () => {
+    const handleSaveEditProposal = async (data: MomentProposalFormData) => {
         if (!editingProposal) return
         setIsSavingEdit(true)
         try {
+            const updatePayload = {
+                message: data.proposalMessage,
+                product_id: data.selectedProductId || editingProposal.product_id, // keep existing if not changed
+                conditions: {
+                    product_name: data.productName,
+                    product_type: data.productType,
+                    compensation_amount: data.compensationAmount ? String(parseInt(data.compensationAmount.replace(/[^0-9]/g, ''))) : null,
+                    has_incentive: data.hasIncentive,
+                    incentive_detail: data.hasIncentive ? data.incentiveDetail : null,
+                    channel_name: data.channelName,
+                    channel_subtype: data.channelSubtype || null,
+                    desired_date: data.desiredDate ? new Date(data.desiredDate).toISOString().split('T')[0] : null,
+                    condition_draft_submission_date: data.draftSubmissionDate ? new Date(data.draftSubmissionDate).toISOString().split('T')[0] : null,
+                    condition_final_submission_date: data.finalSubmissionDate ? new Date(data.finalSubmissionDate).toISOString().split('T')[0] : null,
+                    condition_upload_date: data.desiredDate ? new Date(data.desiredDate).toISOString().split('T')[0] : null,
+                    condition_secondary_usage_period: data.secondaryUsagePeriod || "불가",
+                    secondary_usage_fee: data.secondaryUsageFee ? parseInt(data.secondaryUsageFee.replace(/[^0-9]/g, '')) : 0,
+                    date_flexible: data.dateFlexible,
+                    video_guide: data.videoGuide,
+                    product_url: data.productUrl || null,
+                }
+            }
+
             const { error } = await supabase
                 .from('moment_proposals')
-                .update({
-                    message: editMessage,
-                    compensation_amount: editCompensation,
-                })
+                .update(updatePayload)
                 .eq('id', editingProposal.id)
             if (error) throw error
             toast.success('제안이 수정되었습니다.')
@@ -299,12 +318,16 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
                     // 2. 크리에이터에게 알림 발송
                     try {
+                        const creatorName = proposal.creatorName || proposal.creator_name || '크리에이터'
+                        const brandDisplayName = user?.email?.split('@')[0] || '브랜드'
+                        const itemName = proposal.product_name || proposal.productName || proposal.campaign_title || '제안'
+                        const proposalType = proposal.campaign_id || proposal.campaignId ? '캠페인' : '제품'
                         await supabase.from('notifications').insert({
-                            recipient_id: proposal.influencer_id,
-                            sender_id: proposal.brand_id,
+                            recipient_id: proposal.creator_id,
+                            sender_id: proposal.brand_id || user?.id,
                             type: 'proposal_accepted',
-                            content: `"${proposal.product_name || '제안'}"이 수락되었습니다. 협업을 시작하세요!`,
-                            reference_id: proposal.id
+                            content: `${brandDisplayName}님이 ${creatorName}님의 '${itemName}' ${proposalType} 지원서를 수락했습니다. 협업을 시작하세요!`,
+                            reference_id: proposal.workspace_id?.toString() || proposal.id?.toString()
                         })
                     } catch (notifErr) {
                         console.warn('알림 발송 실패 (무시):', notifErr)
@@ -378,9 +401,14 @@ export const WorkspaceView = React.memo(function WorkspaceView({
             variant: 'destructive',
             onConfirm: async () => {
                 try {
-                    // Outbound for brand = moment_proposals (in brandProposals array)
+                    // Find proposal type (moment vs brand)
+                    const proposal = [...brandProposals, ...momentProposals].find((p: any) => p.id === proposalId)
+                    const isMomentProposal = proposal?.moment_id || proposal?.momentId
+
+                    const tableToUpdate = isMomentProposal ? 'moment_proposals' : 'product_applications'
+
                     const { error } = await supabase
-                        .from('moment_proposals')
+                        .from(tableToUpdate)
                         .update({ status: 'cancelled' })
                         .eq('id', proposalId)
 
@@ -392,7 +420,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                     await refreshData()
                     toast.success('제안을 취소했습니다.')
                 } catch (error: any) {
-                    console.error('Cancel error:', error)
+                    console.error('Cancel error:', error, error?.message, error?.details)
                 }
             }
         })
@@ -401,7 +429,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     // MEMOIZED DATA FILTERING
 
     // 1. Inbound (Received from Creators) - campaign_applications + brand_proposals
-    // brand_proposals: 크리에이터가 브랜드 제품 보고 제안 (influencer_id = 크리에이터, brand_id = 브랜드)
+    // brand_proposals: 크리에이터가 브랜드 제품 보고 제안 (creator_id = 크리에이터, brand_id = 브랜드)
     // campaign_applications: 크리에이터가 브랜드 캠페인에 지원
     const inboundApplications = useMemo(
         () => [
@@ -415,10 +443,9 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     )
 
     // 2. Outbound (Sent by Brand to Creators) - moment_proposals only
-    // moment_proposals: 브랜드가 크리에이터 모먼트 보고 제안 (brand_id = 브랜드, influencer_id = 크리에이터)
-    const outboundOffers = useMemo(
-        () => brandProposals?.filter(p =>
-            p.moment_id &&
+    // moment_proposals: 브랜드가 크리에이터 모먼트 보고 제안 (brand_id = 브랜드, creator_id = 크리에이터)
+    const outboundOffers = useMemo(() => [
+        ...(brandProposals?.filter(p =>
             p.status !== 'rejected' &&
             p.status !== 'cancelled' &&
             p.status !== 'completed' &&
@@ -431,9 +458,16 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 p.status === 'negotiating' ||
                 !p.brand_condition_confirmed
             )
-        ) || [],
-        [brandProposals]
-    )
+        ) || []),
+        ...(momentProposals?.filter(p =>
+            p.status !== 'rejected' &&
+            p.status !== 'cancelled' &&
+            p.status !== 'completed' &&
+            p.status !== 'accepted' &&
+            p.status !== 'signed' &&
+            p.status !== 'confirmed'
+        ) || [])
+    ], [brandProposals, momentProposals])
 
     // 3. Active (In Progress) — settlement/final_complete도 진행중으로 분류
     const ACTIVE_STATUSES = ['accepted', 'signed', 'confirmed', 'settlement', 'final_complete']
@@ -443,8 +477,11 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     )
 
     const activeOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => ACTIVE_STATUSES.includes(p.status)) || [],
-        [brandProposals]
+        () => [
+            ...(brandProposals?.filter((p: any) => ACTIVE_STATUSES.includes(p.status)) || []),
+            ...(momentProposals?.filter((p: any) => ACTIVE_STATUSES.includes(p.status)) || [])
+        ],
+        [brandProposals, momentProposals]
     )
 
     const allActive = useMemo(
@@ -461,8 +498,11 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     )
 
     const completedOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => p.status === 'completed') || [],
-        [brandProposals]
+        () => [
+            ...(brandProposals?.filter((p: any) => p.status === 'completed' || p.status === 'cancelled') || []),
+            ...(momentProposals?.filter((p: any) => p.status === 'completed' || p.status === 'cancelled') || [])
+        ],
+        [brandProposals, momentProposals]
     )
 
     const allCompleted = useMemo(
@@ -479,8 +519,11 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     )
 
     const rejectedOutbound = useMemo(
-        () => brandProposals?.filter((p: any) => p.status === 'rejected' || p.status === 'cancelled') || [],
-        [brandProposals]
+        () => [
+            ...(brandProposals?.filter((p: any) => p.status === 'rejected') || []),
+            ...(momentProposals?.filter((p: any) => p.status === 'rejected') || [])
+        ],
+        [brandProposals, momentProposals]
     )
 
     const allRejected = useMemo(
@@ -611,16 +654,35 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                 <TableRow
                                     key={item.id}
                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                    onClick={() => { setChatProposal(item); setIsChatOpen(true); }}
+                                    onClick={() => {
+                                        if (tabType === 'active' || item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed') {
+                                            setChatProposal(item);
+                                            setIsChatOpen(true);
+                                        } else {
+                                            if (item.moment_id && onViewProposal) {
+                                                onViewProposal(item);
+                                            } else if (!item.moment_id && (item.status === 'pending' || item.status === 'applied')) {
+                                                // 지원서/제안서 보기 (브랜드가 받은 제안)
+                                                if (onViewProposal) onViewProposal(item);
+                                            } else {
+                                                // 그 외 보낸 제안 등 (수정 또는 단순 열람)
+                                                if (onViewProposal) onViewProposal(item);
+                                                else {
+                                                    setChatProposal(item);
+                                                    setIsChatOpen(true);
+                                                }
+                                            }
+                                        }
+                                    }}
                                 >
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] overflow-hidden">
-                                                {(item.influencerAvatar || item.influencer_avatar)
-                                                    ? <img src={item.influencerAvatar || item.influencer_avatar} alt="Profile" className="h-full w-full object-cover" />
-                                                    : (item.influencerName?.[0] || item.influencer_name?.[0] || "C")}
+                                                {(item.creatorAvatar || item.creator_avatar)
+                                                    ? <img src={item.creatorAvatar || item.creator_avatar} alt="Profile" className="h-full w-full object-cover" />
+                                                    : (item.creatorName?.[0] || item.creator_name?.[0] || "C")}
                                             </div>
-                                            {item.influencerName || item.influencer_name}
+                                            {item.creatorName || item.creator_name}
                                         </div>
                                     </TableCell>
                                     <TableCell>{item.product_name || item.productName}</TableCell>
@@ -630,9 +692,10 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                             ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
                                                 item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_10px_rgba(148,163,184,0.3)]' :
                                                     item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
-                                                        'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
+                                                        item.status === 'cancelled' ? 'text-zinc-500 dark:text-zinc-400 border-zinc-500/50 bg-zinc-100 dark:bg-zinc-800' :
+                                                            'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
                                         `}>
-                                            {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'settlement' ? '성과 대기' : item.status === 'final_complete' ? '완료 대기' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
+                                            {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'settlement' ? '성과 대기' : item.status === 'final_complete' ? '완료 대기' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : item.status === 'cancelled' ? '취소됨' : '수락 대기중'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
@@ -666,31 +729,43 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                         tabType === 'rejected' ? 'border-l-red-500' :
                                             tabType === 'completed' ? 'border-l-slate-400' :
                                                 item.status === 'accepted' || item.status === 'signed' ? 'border-l-emerald-500' :
-                                                    item.status === 'completed' ? 'border-l-slate-400' :
+                                                    item.status === 'completed' || item.status === 'cancelled' ? 'border-l-slate-400' :
                                                         item.status === 'rejected' ? 'border-l-red-500' :
                                                             (item.campaign_id || item.campaignId) ? 'border-l-blue-500' : 'border-l-purple-500'}
-                        `} onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
+                        `} onClick={() => {
+                                if (tabType === 'active' || item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed') {
+                                    setChatProposal(item);
+                                    setIsChatOpen(true);
+                                } else {
+                                    if (onViewProposal) onViewProposal(item);
+                                    else {
+                                        setChatProposal(item);
+                                        setIsChatOpen(true);
+                                    }
+                                }
+                            }}>
                             <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
                                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border overflow-hidden
                                     ${item.status === 'accepted' || item.status === 'signed' ? 'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:border-emerald-800' :
                                         item.status === 'completed' ? 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700' :
                                             'bg-blue-50 border-blue-100 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800'}
                                 `}>
-                                    {(item.influencerAvatar || item.influencer_avatar)
-                                        ? <img src={item.influencerAvatar || item.influencer_avatar} alt="Profile" className="h-full w-full object-cover" />
-                                        : (item.influencerName?.[0] || item.influencer_name?.[0] || "C")}
+                                    {(item.creatorAvatar || item.creator_avatar)
+                                        ? <img src={item.creatorAvatar || item.creator_avatar} alt="Profile" className="h-full w-full object-cover" />
+                                        : (item.creatorName?.[0] || item.creator_name?.[0] || "C")}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold truncate text-sm">{item.influencerName || item.influencer_name}</h4>
+                                    <h4 className="font-bold truncate text-sm">{item.creatorName || item.creator_name}</h4>
                                     <p className="text-xs text-muted-foreground truncate">{item.product_name || item.productName}</p>
                                 </div>
                                 <Badge variant="outline" className={`text-[10px] h-5 px-2 font-medium shrink-0 border-2 rounded-full transition-all bg-background
                                     ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
                                         item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_10px_rgba(148,163,184,0.3)]' :
                                             item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]' :
-                                                'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
+                                                item.status === 'cancelled' ? 'text-zinc-500 dark:text-zinc-400 border-zinc-500/50 bg-zinc-100 dark:bg-zinc-800' :
+                                                    'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]'}
                                 `}>
-                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'settlement' ? '성과 대기' : item.status === 'final_complete' ? '완료 대기' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : '수락 대기중'}
+                                    {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' : item.status === 'settlement' ? '성과 대기' : item.status === 'final_complete' ? '완료 대기' : item.status === 'completed' ? '완료' : item.status === 'rejected' ? '거절' : item.status === 'cancelled' ? '취소됨' : '수락 대기중'}
                                 </Badge>
                             </CardHeader>
                             <CardContent className="pb-3 text-xs space-y-2">
@@ -734,10 +809,10 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                     const isInbound = tabType === 'inbound' || (
                         tabType === 'all' && (
                             item.campaign_id || item.campaignId || // [FIX] campaign_applications
-                            (!item.moment_id && !item.event_id && !item.campaign_id && !item.campaignId) // [FIX] brand_proposals
+                            (!item.moment_id && !item.moment_id && !item.campaign_id && !item.campaignId) // [FIX] brand_proposals
                         )
                     )
-                    const isOutbound = tabType === 'outbound' || (tabType === 'all' && (item.moment_id || item.event_id))
+                    const isOutbound = tabType === 'outbound' || (tabType === 'all' && (item.moment_id || item.moment_id))
 
                     return (
                         <Card key={item.id} className={`relative px-6 pt-6 pb-3.5 border-l-4 bg-card hover:bg-accent/5 cursor-pointer hover:shadow-md transition-all overflow-hidden
@@ -747,36 +822,49 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                         tabType === 'rejected' ? 'border-l-red-500' :
                                             tabType === 'completed' ? 'border-l-slate-400' :
                                                 item.status === 'accepted' || item.status === 'signed' ? 'border-l-emerald-500' :
-                                                    item.status === 'completed' ? 'border-l-slate-400' :
+                                                    item.status === 'completed' || item.status === 'cancelled' ? 'border-l-slate-400' :
                                                         item.status === 'rejected' ? 'border-l-red-500' :
                                                             (item.campaign_id || item.campaignId) ? 'border-l-blue-500' : 'border-l-purple-500'}
-                        `} onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
+                        `} onClick={() => {
+                                if (tabType === 'active' || item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed') {
+                                    setChatProposal(item);
+                                    setIsChatOpen(true);
+                                } else {
+                                    if (onViewProposal) onViewProposal(item);
+                                    else {
+                                        setChatProposal(item);
+                                        setIsChatOpen(true);
+                                    }
+                                }
+                            }}>
                             {/* 모바일: 우상단 즐겨찾기 버튼 */}
                             <div className="absolute top-3 right-3 sm:hidden">
                                 <FavoriteButton targetId={String(item.id)} targetType="workspace" />
                             </div>
                             <div className="flex gap-4 md:gap-6">
                                 <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xl shrink-0 overflow-hidden">
-                                    {item.influencerAvatar ? <img src={item.influencerAvatar} alt="Profile" className="h-full w-full object-cover" /> : (item.influencerName?.[0] || item.influencer_name?.[0] || "C")}
+                                    {(item.creatorAvatar || item.creator_avatar) ? <img src={item.creatorAvatar || item.creator_avatar} alt="Profile" className="h-full w-full object-cover" /> : (item.creatorName?.[0] || item.creator_name?.[0] || "C")}
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <h3 className="font-bold text-base md:text-xl flex flex-wrap items-center gap-2">
-                                                {item.influencerName || item.influencer_name}
+                                                {item.creatorName || item.creator_name}
                                                 <Badge variant="outline" className={`text-[10px] md:text-xs font-medium border-2 rounded-full px-2 py-0.5 transition-all bg-background hidden md:inline-flex
                                                         ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
                                                         item.status === 'settlement' || item.status === 'final_complete' ? 'text-amber-600 dark:text-amber-400 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]' :
                                                             item.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
                                                                 item.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
-                                                                    'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.3)]'}
+                                                                    item.status === 'cancelled' ? 'text-zinc-500 dark:text-zinc-400 border-zinc-500/50 bg-zinc-100 dark:bg-zinc-800' :
+                                                                        'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.3)]'}
                                                     `}>
                                                     {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' :
                                                         item.status === 'settlement' ? '성과 대기' :
                                                             item.status === 'final_complete' ? '완료 대기' :
                                                                 item.status === 'completed' ? '완료됨' :
                                                                     item.status === 'rejected' ? '거절됨' :
-                                                                        '수락 대기중'}
+                                                                        item.status === 'cancelled' ? '취소됨' :
+                                                                            '수락 대기중'}
                                                 </Badge>
                                             </h3>
                                             <p className="text-sm text-muted-foreground mt-1">{item.product_name || item.productName || "제품 협찬"}</p>
@@ -889,7 +977,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             {/* Missing Info Callout for Contracts */}
-            {user?.role === 'brand' && (!(user as any)?.profile?.business_number || !(user as any)?.profile?.legal_name || !(user as any)?.profile?.representative_name) && (
+            {user?.role === 'brand' && (!user?.businessNumber || !user?.legalName || !user?.representativeName) && (
                 <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-amber-400"></div>
                     <div className="flex items-start gap-3">
@@ -1037,7 +1125,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                     onClose={() => { setPerfDialogOpen(false); setPerfDialogProposal(null) }}
                     proposal={perfDialogProposal}
                     proposalType={
-                        perfDialogProposal.moment_id || perfDialogProposal.event_id
+                        perfDialogProposal.moment_id || perfDialogProposal.moment_id
                             ? 'moment_proposal'
                             : perfDialogProposal.campaign_id || perfDialogProposal.campaignId
                                 ? 'campaign_application'
@@ -1050,42 +1138,32 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                 />
             )}
 
-            {/* G2: Edit Proposal Dialog */}
-            <Dialog open={!!editingProposal} onOpenChange={(open) => !open && setEditingProposal(null)}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>제안 수정</DialogTitle>
-                        <DialogDescription>
-                            {editingProposal?.influencerName || editingProposal?.influencer_name}님에게 보낸 제안을 수정합니다.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-2">
-                        <div className="space-y-2">
-                            <Label>원고료 / 제안 조건</Label>
-                            <Input
-                                value={editCompensation}
-                                onChange={(e) => setEditCompensation(e.target.value)}
-                                placeholder="예: 200,000원"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>전달 메시지</Label>
-                            <Textarea
-                                value={editMessage}
-                                onChange={(e) => setEditMessage(e.target.value)}
-                                className="min-h-[120px]"
-                                placeholder="크리에이터에게 전달할 메시지를 수정하세요."
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingProposal(null)}>취소</Button>
-                        <Button onClick={handleSaveEditProposal} disabled={isSavingEdit}>
-                            {isSavingEdit ? '저장 중...' : '저장'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* G2: Edit Proposal Dialog via shared component */}
+            {editingProposal && (
+                <MomentProposalDialog
+                    open={!!editingProposal}
+                    onOpenChange={(open) => !open && setEditingProposal(null)}
+                    targetMomentTitle={editingProposal.moment_title || "모먼트 제안"}
+                    targetInfluencer={editingProposal.creatorName || editingProposal.creator_name || "크리에이터"}
+                    onSubmit={handleSaveEditProposal}
+                    isSubmitting={isSavingEdit}
+                    initialData={{
+                        productName: editingProposal.conditions?.product_name || editingProposal.product_name || "",
+                        productUrl: editingProposal.conditions?.product_url || editingProposal.product_url || "",
+                        productType: editingProposal.conditions?.product_type || "gift",
+                        videoGuide: editingProposal.conditions?.video_guide || "brand_provided",
+                        compensationAmount: editingProposal.conditions?.compensation_amount || "",
+                        hasIncentive: editingProposal.conditions?.has_incentive || false,
+                        incentiveDetail: editingProposal.conditions?.incentive_detail || "",
+                        channelName: editingProposal.conditions?.channel_name || "instagram",
+                        channelSubtype: editingProposal.conditions?.channel_subtype || "",
+                        dateFlexible: editingProposal.conditions?.date_flexible || false,
+                        secondaryUsagePeriod: editingProposal.conditions?.condition_secondary_usage_period || "",
+                        secondaryUsageFee: editingProposal.conditions?.secondary_usage_fee ? String(editingProposal.conditions.secondary_usage_fee) : "",
+                        proposalMessage: editingProposal.message || "",
+                    }}
+                />
+            )}
         </div>
     )
 })

@@ -19,7 +19,7 @@ export async function createCampaign(formData: FormData) {
     const budget = formData.get('budget') as string
     const target = formData.get('target') as string
     const descriptionRaw = formData.get('description') as string
-    const eventDate = formData.get('eventDate') as string
+    const momentDate = formData.get('momentDate') as string
     const postingDate = formData.get('postingDate') as string
     const tags = formData.get('tags') as string
     const image = formData.get('image') as string
@@ -38,8 +38,8 @@ export async function createCampaign(formData: FormData) {
             target: target,
             description: descriptionRaw,
             image: image,
-            status: 'active',
-            event_date: eventDate,
+            status: (formData.get('status') as string) || 'active',
+            moment_date: momentDate,
             posting_date: postingDate,
             tags: (tags || "").split(',').map(tag => tag.trim()).filter(Boolean),
             // New Fields
@@ -80,7 +80,7 @@ export async function updateCampaign(id: string, formData: FormData) {
     const budget = formData.get('budget') as string
     const target = formData.get('target') as string
     const descriptionRaw = formData.get('description') as string
-    const eventDate = formData.get('eventDate') as string
+    const momentDate = formData.get('momentDate') as string
     const postingDate = formData.get('postingDate') as string
     const tags = formData.get('tags') as string
     const image = formData.get('image') as string
@@ -96,7 +96,8 @@ export async function updateCampaign(id: string, formData: FormData) {
             target: target,
             description: descriptionRaw,
             image: image,
-            event_date: eventDate,
+            ...(formData.get('status') ? { status: formData.get('status') as string } : {}),
+            moment_date: momentDate,
             posting_date: postingDate,
             tags: (tags || "").split(',').map(tag => tag.trim()).filter(Boolean),
             // New Fields

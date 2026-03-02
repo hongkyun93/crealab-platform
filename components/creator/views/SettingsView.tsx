@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
 import { cn } from "@/lib/utils"
-import { BookOpen, Instagram, Loader2, Lock, Music2, Plus, Save, Trash2, TrendingUp, Youtube, ChevronDown } from "lucide-react"
+import { BookOpen, Instagram, Loader2, Lock, Music2, Plus, Save, Trash2, TrendingUp, Youtube, ChevronDown, Copy } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -1001,9 +1001,25 @@ export function SettingsView() {
 
 
                     <Card>
-                        <CardHeader>
-                            <CardTitle>연락처 & 배송 정보</CardTitle>
-                            <CardDescription>캠페인 진행 시 제품 수령을 위해 사용되는 정보입니다.</CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <div>
+                                <CardTitle>연락처 & 배송 정보</CardTitle>
+                                <CardDescription>캠페인 진행 시 제품 수령을 위해 사용되는 정보입니다.</CardDescription>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-2 text-xs"
+                                onClick={() => {
+                                    if (legalName) setShippingName(legalName);
+                                    if (phone) setShippingPhone(phone); // Use base phone number as legal phone doesn't exist separately
+                                    if (legalAddress) setShippingAddress(legalAddress);
+                                    if (legalDetailAddress) setShippingDetailAddress(legalDetailAddress);
+                                }}
+                            >
+                                <Copy className="h-3 w-3" />
+                                법적 정보와 동일
+                            </Button>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

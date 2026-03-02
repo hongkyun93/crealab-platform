@@ -91,7 +91,7 @@ export function CreatorInfoPanel() {
     // settlement 단계 진입 시 기존 성과 데이터 조회
     useEffect(() => {
         if (currentStage !== 'settlement' || !proposal?.id) return;
-        const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+        const proposalType = (proposal as any).moment_id || (proposal as any).moment_id
             ? 'moment_proposal'
             : (proposal as any).campaignId || (proposal as any).campaign_id
                 ? 'campaign_application'
@@ -135,7 +135,7 @@ export function CreatorInfoPanel() {
         if (!igSelectedMedia || !proposal?.id || !user?.id) return;
         setIgFetchingInsights(true);
         try {
-            const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+            const proposalType = (proposal as any).moment_id || (proposal as any).moment_id
                 ? 'moment_proposal'
                 : (proposal as any).campaignId || (proposal as any).campaign_id
                     ? 'campaign_application'
@@ -227,7 +227,7 @@ export function CreatorInfoPanel() {
             const cpe = totalEngagement > 0 ? parseFloat((priceOffer / totalEngagement).toFixed(2)) : null;
             const cpr = reach > 0 ? parseFloat((priceOffer / reach).toFixed(2)) : null;
 
-            const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+            const proposalType = (proposal as any).moment_id || (proposal as any).moment_id
                 ? 'moment_proposal'
                 : (proposal as any).campaignId || (proposal as any).campaign_id
                     ? 'campaign_application'
@@ -328,7 +328,7 @@ export function CreatorInfoPanel() {
     const handleToggleConfirm = async (role: 'brand' | 'creator', currentValue: boolean) => {
         if (!proposal?.id) return;
         const newValue = !currentValue;
-        const updates: any = { influencer_condition_confirmed: newValue };
+        const updates: any = { creator_condition_confirmed: newValue };
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).momentId) {
             success = await updateMomentProposal(proposal.id, updates);
@@ -373,8 +373,8 @@ export function CreatorInfoPanel() {
         if (!proposal?.id) return;
 
         const updates: any = {
-            influencer_signature: signatureData,
-            influencer_signed_at: new Date().toISOString(),
+            creator_signature: signatureData,
+            creator_signed_at: new Date().toISOString(),
         };
 
         // If brand already signed, mark as fully signed
@@ -404,6 +404,24 @@ export function CreatorInfoPanel() {
                 } else {
                     useWorkspaceStore.getState().setCurrentStage('contract'); // 입금 대기
                 }
+
+                // 🔔 브랜드에게 크리에이터 서명 완료 알림
+                try {
+                    const brandId = (proposal as any)?.brand_id ||
+                        (proposal as any)?.brandId ||
+                        (proposal as any)?.campaign?.brand_id;
+                    const creatorName = user?.name || '크리에이터';
+                    if (brandId) {
+                        await sendNotification(
+                            brandId,
+                            `${creatorName}님이 계약서에 서명했습니다. 계약이 완료되었습니다.`,
+                            'contract_signed',
+                            proposal.id?.toString()
+                        );
+                    }
+                } catch (notifErr) {
+                    console.warn('계약 서명 알림 실패 (무시):', notifErr);
+                }
             }
             refreshData(); // Sync archive cards + cross-user data
         }
@@ -426,8 +444,8 @@ export function CreatorInfoPanel() {
     const handleUndoSign = async (role: 'brand' | 'creator') => {
         if (!proposal?.id) return;
         const updates: any = {
-            influencer_signature: null,
-            influencer_signed_at: null,
+            creator_signature: null,
+            creator_signed_at: null,
             contract_status: proposal.brand_signature ? 'partial' : 'none',
 
         };
@@ -512,11 +530,11 @@ export function CreatorInfoPanel() {
                         isActive={currentStage === 'contract'}
                         isCompleted={getStageStatus('contract') === 'completed'}
                         summary={
-                            proposal?.brand_signature && proposal?.influencer_signature
+                            proposal?.brand_signature && proposal?.creator_signature
                                 ? '✅ 양측 서명 완료'
                                 : proposal?.brand_signature
                                     ? '✍️ 브랜드 서명 완료 · 크리에이터 대기 중'
-                                    : proposal?.influencer_signature
+                                    : proposal?.creator_signature
                                         ? '✍️ 크리에이터 서명 완료 · 브랜드 대기 중'
                                         : '표준 광고 계약서 서명'
                         }
@@ -528,9 +546,9 @@ export function CreatorInfoPanel() {
                                     {proposal?.brand_signature ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border-2 border-current inline-block" />}
                                     브랜드 {proposal?.brand_signature ? '서명완료' : '미서명'}
                                 </div>
-                                <div className={`flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2.5 rounded-lg border cursor-default ${proposal?.influencer_signature ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/40' : 'bg-muted/50 text-muted-foreground border-border'}`}>
-                                    {proposal?.influencer_signature ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border-2 border-current inline-block" />}
-                                    크리에이터 {proposal?.influencer_signature ? '서명완료' : '미서명'}
+                                <div className={`flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2.5 rounded-lg border cursor-default ${proposal?.creator_signature ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/40' : 'bg-muted/50 text-muted-foreground border-border'}`}>
+                                    {proposal?.creator_signature ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border-2 border-current inline-block" />}
+                                    크리에이터 {proposal?.creator_signature ? '서명완료' : '미서명'}
                                 </div>
                             </div>
                             {/* Toggle button to open contract in main area */}
@@ -633,6 +651,24 @@ export function CreatorInfoPanel() {
                                                             toast.success('배송지가 저장되었습니다.');
                                                             setIsEditing(false);
                                                             refreshData(); // Sync archive cards + brand sees shipping
+
+                                                            // 🔔 브랜드에게 배송지 저장 알림
+                                                            try {
+                                                                const brandId = (proposal as any).brand_id ||
+                                                                    (proposal as any).brandId ||
+                                                                    (proposal as any).campaign?.brand_id;
+                                                                const creatorName = user?.name || '크리에이터';
+                                                                if (brandId) {
+                                                                    await sendNotification(
+                                                                        brandId,
+                                                                        `${creatorName}님이 배송지 정보를 등록했습니다. 이제 제품을 발송해주세요.`,
+                                                                        'shipping_address_saved',
+                                                                        proposal.id?.toString()
+                                                                    );
+                                                                }
+                                                            } catch (notifErr) {
+                                                                console.warn('배송지 알림 실패 (무시):', notifErr);
+                                                            }
                                                         }
                                                     } catch (e) {
                                                         console.error('Shipping save failed:', e);
@@ -960,7 +996,15 @@ export function CreatorInfoPanel() {
                                                             if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                             else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
                                                             else success = await updateBrandProposal(proposal.id, updates);
-                                                            if (success) { useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('최종본 업로드 완료!'); }
+                                                            if (success) {
+                                                                useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('최종본 업로드 완료!');
+                                                                // 🔔 브랜드에게 최종본 업로드 알림
+                                                                try {
+                                                                    const brandId = (proposal as any).brand_id || (proposal as any).brandId;
+                                                                    const creatorName = user?.name || '크리에이터';
+                                                                    if (brandId) sendNotification(brandId, `${creatorName}님이 최종본을 업로드했습니다. 확인해보세요.`, 'content_final_uploaded', proposal.id?.toString());
+                                                                } catch (notifErr) { console.warn('최종본 알림 실패:', notifErr); }
+                                                            }
                                                         } catch (err: any) { toast.error(err.message || '업로드 실패'); }
                                                         finally { setIsUploading(false); setUploadProgress(0); if (finalInputRef.current) finalInputRef.current.value = ''; }
                                                     }}
@@ -1030,7 +1074,15 @@ export function CreatorInfoPanel() {
                                                             if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                             else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
                                                             else success = await updateBrandProposal(proposal.id, updates);
-                                                            if (success) { useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('클린본 업로드 완료!'); }
+                                                            if (success) {
+                                                                useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('클린본 업로드 완료!');
+                                                                // 🔔 브랜드에게 클린본 업로드 알림
+                                                                try {
+                                                                    const brandId = (proposal as any).brand_id || (proposal as any).brandId;
+                                                                    const creatorName = user?.name || '크리에이터';
+                                                                    if (brandId) sendNotification(brandId, `${creatorName}님이 클린본(2차 활용 원본)을 업로드했습니다. 확인해보세요.`, 'content_clean_uploaded', proposal.id?.toString());
+                                                                } catch (notifErr) { console.warn('클린본 알림 실패:', notifErr); }
+                                                            }
                                                         } catch (err: any) { toast.error(err.message || '업로드 실패'); }
                                                         finally { setIsUploading(false); setUploadProgress(0); if (cleanInputRef.current) cleanInputRef.current.value = ''; }
                                                     }}

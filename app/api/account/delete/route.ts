@@ -51,10 +51,10 @@ export async function POST(request: Request) {
         }).eq('id', userId)
 
         // Remove influencer details
-        await adminClient.from('influencer_details').delete().eq('id', userId)
+        await adminClient.from('creator_details').delete().eq('id', userId)
 
         // Remove influencer events (moments)
-        await adminClient.from('influencer_events').delete().eq('influencer_id', userId)
+        await adminClient.from('influencer_events').delete().eq('creator_id', userId)
 
 
         // 5. Delete the auth user (requires Service Role)

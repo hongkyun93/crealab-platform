@@ -13,7 +13,7 @@ export interface Message {
     senderAvatar?: string
     receiverName?: string
     receiverAvatar?: string
-    influencer_avatar?: string
+    creator_avatar?: string
     isMock?: boolean
     // File attachment fields
     fileUrl?: string

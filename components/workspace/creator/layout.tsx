@@ -39,12 +39,12 @@ function CreatorMobileLayout() {
     const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
         if (!proposal?.id) return;
         const updates: any = {
-            influencer_signature: signatureData,
-            influencer_signed_at: new Date().toISOString(),
+            creator_signature: signatureData,
+            creator_signed_at: new Date().toISOString(),
             contract_status: proposal.brand_signature ? 'signed' : 'partial',
         };
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
@@ -60,12 +60,12 @@ function CreatorMobileLayout() {
     const handleUndoSign = async (role: 'brand' | 'creator') => {
         if (!proposal?.id) return;
         const updates: any = {
-            influencer_signature: null,
-            influencer_signed_at: null,
+            creator_signature: null,
+            creator_signed_at: null,
             contract_status: proposal.brand_signature ? 'partial' : 'none',
         };
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);

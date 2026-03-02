@@ -51,24 +51,14 @@ export function FileSharePanel() {
 
     // 파일 목록 조회
     const fetchFiles = useCallback(async () => {
-        if (!proposalId) return
+        if (!proposalId || !workspaceId) return
         setIsLoading(true)
         try {
             let query = supabase
                 .from('workspace_files')
                 .select('*')
+                .eq('workspace_id', workspaceId)
                 .order('created_at', { ascending: false })
-
-            if (workspaceId) {
-                query = query.eq('workspace_id', workspaceId)
-            } else if (isMomentProposal) {
-                query = query.eq('moment_proposal_id', proposalId)
-            } else if (isCampaignProposal) {
-                query = query.eq('proposal_id', proposalId)
-            } else {
-                // product_application
-                query = query.eq('product_application_id', proposalId)
-            }
 
             const { data, error } = await query
             if (error) {
@@ -112,20 +102,19 @@ export function FileSharePanel() {
             const publicUrl = await uploadFileViaAPI(file, 'workspace-files', folder)
 
             // workspace_files 테이블에 기록
+            if (!workspaceId) {
+                toast.error('협업 공간이 생성되지 않아 파일을 업로드할 수 없습니다.')
+                setIsUploading(false)
+                return
+            }
+
             const insertData: any = {
-                workspace_id: workspaceId || null,
+                workspace_id: workspaceId,
                 uploader_id: user.id,
                 file_name: file.name,
                 file_url: publicUrl,
                 file_size: file.size,
                 file_type: file.type,
-            }
-            if (isMomentProposal) {
-                insertData.moment_proposal_id = proposalId
-            } else if (isCampaignProposal) {
-                insertData.proposal_id = proposalId
-            } else {
-                insertData.product_application_id = proposalId
             }
 
             const { error: dbError } = await supabase

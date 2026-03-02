@@ -16,7 +16,7 @@ export function MagicLinkGeneratorModal() {
     const [isLoading, setIsLoading] = useState(false)
 
     // Form state
-    const [influencerId, setInfluencerId] = useState<string>("")
+    const [creatorId, setCreatorId] = useState<string>("")
     const [brandName, setBrandName] = useState<string>("")
     const [priceOffer, setPriceOffer] = useState<string>("")
     const [message, setMessage] = useState<string>("")
@@ -32,7 +32,7 @@ export function MagicLinkGeneratorModal() {
             setTimeout(() => {
                 setMagicLink(null)
                 setIsCopied(false)
-                setInfluencerId("")
+                setCreatorId("")
                 setBrandName("")
                 setPriceOffer("")
                 setMessage("")
@@ -41,7 +41,7 @@ export function MagicLinkGeneratorModal() {
     }
 
     const handleGenerate = async () => {
-        if (!influencerId) {
+        if (!creatorId) {
             toast.error("매칭할 크리에이터를 선택해주세요.")
             return
         }
@@ -54,7 +54,7 @@ export function MagicLinkGeneratorModal() {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    influencerId,
+                    creatorId,
                     brandName,
                     priceOffer,
                     message
@@ -108,7 +108,7 @@ export function MagicLinkGeneratorModal() {
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
                             <Label htmlFor="influencer">매칭할 크리에이터 <span className="text-red-500">*</span></Label>
-                            <Select value={influencerId} onValueChange={setInfluencerId}>
+                            <Select value={creatorId} onValueChange={setCreatorId}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="소속 크리에이터 선택" />
                                 </SelectTrigger>
@@ -197,7 +197,7 @@ export function MagicLinkGeneratorModal() {
                     {!magicLink ? (
                         <Button
                             type="button"
-                            disabled={isLoading || !influencerId}
+                            disabled={isLoading || !creatorId}
                             onClick={handleGenerate}
                             className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700"
                         >

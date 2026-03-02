@@ -43,7 +43,7 @@ interface MomentFormProps {
 
 export function MomentForm({ mode, eventId }: MomentFormProps) {
     const router = useRouter()
-    const { user, addEvent, updateEvent, deleteEvent, supabase, currentTeam, events, refreshEvents } = useUnifiedProvider()
+    const { user, addMoment, updateMoment, deleteMoment, supabase, currentTeam, moments, refreshMoments } = useUnifiedProvider()
     const { effectiveUserId, isProxyMode, effectiveUser } = useEffectiveUser()
 
     // MCN/Agency specific
@@ -53,8 +53,8 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
     // Form states
     const [title, setTitle] = useState("")
     // Exact dates — stored as ISO strings "YYYY-MM-DD"
-    const [eventStartDate, setEventStartDate] = useState("")
-    const [eventEndDate, setEventEndDate] = useState("")
+    const [momentStartDate, setEventStartDate] = useState("")
+    const [momentEndDate, setEventEndDate] = useState("")
     const [isMultiDay, setIsMultiDay] = useState(false)
     const [postingDateExact, setPostingDateExact] = useState("")
     const [isDateFlexible, setIsDateFlexible] = useState(false)
@@ -62,6 +62,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
     const [guide, setGuide] = useState("")
     const [targetProduct, setTargetProduct] = useState("")
     const [isPrivate, setIsPrivate] = useState(false)
+    const [isDraftStatus, setIsDraftStatus] = useState(false)
     const [selectedTags, setSelectedTags] = useState<string[]>([])
     const [selectedChannels, setSelectedChannels] = useState<string[]>([])
     const [schedule, setSchedule] = useState({
@@ -116,8 +117,8 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
 
     // Load event data for edit mode
     useEffect(() => {
-        if (mode === 'edit' && eventId && events.length > 0) {
-            const event = events.find(e => String(e.id) === eventId)
+        if (mode === 'edit' && eventId && moments.length > 0) {
+            const event = moments.find(e => String(e.id) === eventId)
 
             if (!event) {
                 toast.error("모먼트를 찾을 수 없습니다")
@@ -127,9 +128,9 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
 
             // Check permission
             if (user) {
-                const isOwner = event.influencerId === user.id || event.influencerId === effectiveUserId
+                const isOwner = event.creatorId === user.id || event.creatorId === effectiveUserId
                 if (!isOwner && user.role !== 'admin') {
-                    console.warn("[MomentForm] Permission denied: ownerId", event.influencerId, "currentUserId", user.id, "effectiveUserId", effectiveUserId)
+                    console.warn("[MomentForm] Permission denied: ownerId", event.creatorId, "currentUserId", user.id, "effectiveUserId", effectiveUserId)
                     toast.error("수정 권한이 없습니다.")
                     router.push("/creator")
                     return
@@ -140,10 +141,11 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
 
 
             // Populate form fields
-            setTitle(event.event)
+            setTitle(event.title)
             setDescription(event.description)
             setGuide(event.guide || "")
             setIsPrivate(event.isPrivate || false)
+            setIsDraftStatus((event.status as string) === 'draft')
             setTargetProduct(event.targetProduct || "")
             setSelectedTags(event.tags || [])
             setSelectedChannels(event.channels || [])
@@ -154,14 +156,14 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
             }
 
             // Load exact dates first; fall back to TEXT dates for legacy data
-            if (event.eventStartDate) {
-                setEventStartDate(event.eventStartDate)
-            } else if (event.eventDate && event.eventDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                setEventStartDate(event.eventDate)
+            if (event.momentStartDate) {
+                setEventStartDate(event.momentStartDate)
+            } else if (event.momentDate && event.momentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                setEventStartDate(event.momentDate)
             }
 
-            if (event.eventEndDate) {
-                setEventEndDate(event.eventEndDate)
+            if (event.momentEndDate) {
+                setEventEndDate(event.momentEndDate)
                 setIsMultiDay(true)
             }
 
@@ -177,7 +179,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                 setPostingDateExact(event.postingDate)
             }
         }
-    }, [mode, eventId, events, user, router])
+    }, [mode, eventId, moments, user, router])
 
     const handleGenerateAI = async () => {
         if (!title && !selectedTags.length) {
@@ -228,7 +230,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
             toast.error("모먼트 제목을 입력해주세요.")
             return false
         }
-        if (!eventStartDate) {
+        if (!momentStartDate) {
             toast.error("모먼트 이벤트 날짜를 선택해주세요.")
             return false
         }
@@ -252,43 +254,111 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
         return true
     }
 
+    const handleSaveDraft = async () => {
+        if (!user) {
+            toast.error("로그인이 필요합니다. 새로고침 후 다시 시도해주세요.")
+            return
+        }
+
+        if (!title) {
+            toast.error("임시저장을 위해 최소한 '모먼트 제목'은 입력해주세요.")
+            return
+        }
+
+        const tags = [...selectedTags]
+
+        // 임시저장용 데이터 (나머지는 비어있어도 허용)
+        const draftData = {
+            category: selectedTags[0] || "기타",
+            title: title,
+            date: momentStartDate || new Date().toISOString().split('T')[0],
+            description: description || "",
+            guide: guide || "",
+            tags: tags,
+            targetProduct: targetProduct || "미정",
+            momentStartDate: momentStartDate,
+            momentEndDate: isMultiDay && momentEndDate ? momentEndDate : undefined,
+            postingDateExact: isDateFlexible ? undefined : postingDateExact,
+            dateFlexible: isDateFlexible,
+            isPrivate: true, // Draft는 기본적으로 무조건 Private 처리
+            channels: selectedChannels,
+            schedule: schedule,
+            status: 'draft' // status 컬럼/속성 부여
+        } as any
+
+        if (mode === 'edit' && eventId) {
+            try {
+                const success = await updateMoment(eventId, draftData)
+                if (success) {
+                    await refreshMoments()
+                    toast.success("✓ 모먼트가 임시저장되었습니다.")
+                    router.push("/creator")
+                }
+            } catch (error) {
+                console.error("Failed to update draft event:", error)
+                toast.error("임시저장에 실패했습니다.")
+            }
+        } else {
+            let finalCreatorId = user!.id
+            if (isProxyMode) {
+                finalCreatorId = effectiveUserId || user!.id
+            } else if (user!.role === 'agency' || user!.role === 'mcn') {
+                if (!targetCreatorId) {
+                    toast.error("모먼트를 등록할 크리에이터를 선택해주세요.")
+                    return
+                }
+                finalCreatorId = targetCreatorId
+            }
+
+            try {
+                const success = await addMoment({
+                    ...draftData,
+                    creatorId: finalCreatorId
+                })
+                if (success) {
+                    await refreshMoments()
+                    toast.success("✓ 모먼트가 임시저장되었습니다.")
+                    router.push('/creator')
+                } else {
+                    toast.error("임시저장에 실패했습니다. 다시 시도해주세요.")
+                }
+            } catch (error) {
+                console.error("Failed to create draft event:", error)
+                toast.error("임시저장에 실패했습니다.")
+            }
+        }
+    }
+
     const handleSubmit = async () => {
         if (!validate()) return
 
         const tags = [...selectedTags]
 
-        // Derive year-month TEXT for brand display from the exact start date
-        const toYearMonthISO = (isoDate: string) => {
-            if (!isoDate) return ''
-            const [year, month] = isoDate.split('-')
-            return `${year}-${month}-01`
-        }
+
 
         if (mode === 'edit' && eventId) {
             // UPDATE
             try {
-                const success = await updateEvent(eventId, {
+                const success = await updateMoment(eventId, {
                     category: selectedTags[0] || "기타",
-                    event: title,
-                    date: eventStartDate,
+                    title: title,
+                    date: momentStartDate,
                     description: description,
                     guide: guide,
                     tags: tags,
                     targetProduct: targetProduct || "미정",
                     // Exact dates (private)
-                    eventStartDate: eventStartDate,
-                    eventEndDate: isMultiDay && eventEndDate ? eventEndDate : undefined,
+                    momentStartDate: momentStartDate,
+                    momentEndDate: isMultiDay && momentEndDate ? momentEndDate : undefined,
                     postingDateExact: isDateFlexible ? undefined : postingDateExact,
-                    // Year-month for brand display
-                    eventDate: toYearMonthISO(eventStartDate),
-                    postingDate: isDateFlexible ? '' : toYearMonthISO(postingDateExact),
                     dateFlexible: isDateFlexible,
-                    isPrivate: isPrivate,
+                    isPrivate: isDraftStatus ? false : isPrivate, // 임시저장 본 제출 시 자동으로 공개 전환
+                    status: isDraftStatus ? 'active' : undefined, // 임시저장 본 제출 시 draft 상태 해제
                     channels: selectedChannels
                 })
 
                 if (success) {
-                    await refreshEvents()
+                    await refreshMoments()
                     toast.success("✓ 모먼트가 수정되었습니다", { description: "아카이브에 반영됐습니다." })
                     router.push("/creator")
                 }
@@ -299,42 +369,39 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
         } else {
             // CREATE
             // Determine effective creator ID
-            let finalInfluencerId = user!.id
+            let finalCreatorId = user!.id
 
             if (isProxyMode) {
-                finalInfluencerId = effectiveUserId || user!.id
+                finalCreatorId = effectiveUserId || user!.id
             } else if (user!.role === 'agency' || user!.role === 'mcn') {
                 if (!targetCreatorId) {
                     toast.error("모먼트를 등록할 크리에이터를 선택해주세요.")
                     return
                 }
-                finalInfluencerId = targetCreatorId
+                finalCreatorId = targetCreatorId
             }
 
-            const success = await addEvent({
+            const success = await addMoment({
                 category: selectedTags[0] || "기타",
-                event: title,
-                date: eventStartDate,
+                title: title,
+                date: momentStartDate,
                 description: description,
                 guide: guide,
                 tags: tags,
                 targetProduct: targetProduct || "미정",
                 // Exact dates (private)
-                eventStartDate: eventStartDate,
-                eventEndDate: isMultiDay && eventEndDate ? eventEndDate : undefined,
+                momentStartDate: momentStartDate,
+                momentEndDate: isMultiDay && momentEndDate ? momentEndDate : undefined,
                 postingDateExact: isDateFlexible ? undefined : postingDateExact,
-                // Year-month for brand display
-                eventDate: toYearMonthISO(eventStartDate),
-                postingDate: isDateFlexible ? '' : toYearMonthISO(postingDateExact),
                 isPrivate: isPrivate,
                 dateFlexible: isDateFlexible,
                 channels: selectedChannels,
                 schedule: schedule,
-                influencerId: finalInfluencerId
+                creatorId: finalCreatorId
             })
 
             if (success) {
-                await refreshEvents()
+                await refreshMoments()
                 toast.success("✓ 모먼트가 등록되었습니다", { description: "아카이브에 바로 반영됐습니다." })
                 router.push('/creator')
             } else {
@@ -349,7 +416,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
 
     const confirmDelete = async () => {
         if (eventId) {
-            const success = await deleteEvent(eventId)
+            const success = await deleteMoment(eventId)
             if (success) {
                 toast.success("모먼트가 삭제되었습니다.")
                 router.push("/creator")
@@ -492,7 +559,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                                 </Label>
                                 <Input
                                     type="date"
-                                    value={eventStartDate}
+                                    value={momentStartDate}
                                     onChange={e => setEventStartDate(e.target.value)}
                                     className="h-10"
                                     min="2024-01-01"
@@ -516,10 +583,10 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                                         <Label className="text-xs text-muted-foreground">종료일</Label>
                                         <Input
                                             type="date"
-                                            value={eventEndDate}
+                                            value={momentEndDate}
                                             onChange={e => setEventEndDate(e.target.value)}
                                             className="h-10"
-                                            min={eventStartDate || "2024-01-01"}
+                                            min={momentStartDate || "2024-01-01"}
                                             max="2030-12-31"
                                         />
                                     </div>
@@ -680,17 +747,29 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                             <Button variant="outline" asChild type="button">
                                 <Link href="/creator">취소</Link>
                             </Button>
+
+                            <Button variant="secondary" onClick={handleSaveDraft} type="button" className="border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hidden sm:flex">
+                                <Save className="mr-2 h-4 w-4" /> 임시저장
+                            </Button>
+
                             <Button
                                 size="lg"
-                                className="w-full md:w-auto cursor-pointer"
+                                className="w-full sm:w-auto cursor-pointer"
                                 onClick={handleSubmit}
                                 type="button"
                             >
-                                {mode === 'edit' ? (
+                                {mode === 'edit' && !isDraftStatus ? (
                                     <><Save className="mr-2 h-4 w-4" /> 변경사항 저장</>
                                 ) : (
                                     <><Plus className="mr-2 h-4 w-4" /> 모먼트 등록하기</>
                                 )}
+                            </Button>
+                        </div>
+
+                        {/* Mobile view Save Draft button below main buttons */}
+                        <div className="sm:hidden pt-2">
+                            <Button variant="ghost" onClick={handleSaveDraft} type="button" className="w-full text-indigo-600">
+                                임시저장
                             </Button>
                         </div>
                     </div>

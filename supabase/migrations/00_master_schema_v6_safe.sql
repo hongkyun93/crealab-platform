@@ -46,7 +46,7 @@ SET row_security = off;
 DO $$ BEGIN
     CREATE TYPE public.user_role AS ENUM (
     'brand',
-    'influencer',
+    'creator',
     'admin'
 );
 EXCEPTION
@@ -211,7 +211,7 @@ BEGIN
     IF v_uid IS NULL THEN RETURN false; END IF;
 
     -- 1) product_applications 에서 찾기
-    SELECT brand_id, influencer_id
+    SELECT brand_id, creator_id
     INTO   v_brand_id, v_creator_id
     FROM   public.product_applications
     WHERE  id = p_proposal_id
@@ -219,7 +219,7 @@ BEGIN
 
     -- 2) moment_proposals 에서 찾기 (없으면)
     IF v_brand_id IS NULL THEN
-        SELECT brand_id, influencer_id
+        SELECT brand_id, creator_id
         INTO   v_brand_id, v_creator_id
         FROM   public.moment_proposals
         WHERE  id = p_proposal_id
@@ -228,7 +228,7 @@ BEGIN
 
     -- 3) campaign_applications 에서 찾기 (없으면)
     IF v_brand_id IS NULL THEN
-        SELECT c.brand_id, ca.influencer_id
+        SELECT c.brand_id, ca.creator_id
         INTO   v_brand_id, v_creator_id
         FROM   public.campaign_applications ca
         JOIN   public.campaigns c ON c.id = ca.campaign_id
@@ -431,19 +431,19 @@ BEGIN
   IF NEW.status != 'completed' OR OLD.status = 'completed' THEN RETURN NEW; END IF;
 
   IF TG_TABLE_NAME = 'product_applications' THEN
-    v_creator_id  := NEW.influencer_id;
+    v_creator_id  := NEW.creator_id;
     v_brand_id    := NEW.brand_id;
     v_price_offer := COALESCE(NEW.price_offer, 0);
     v_prop_type   := 'product_application';
     v_prop_id     := NEW.id::text;
   ELSIF TG_TABLE_NAME = 'moment_proposals' THEN
-    v_creator_id  := NEW.influencer_id;
+    v_creator_id  := NEW.creator_id;
     v_brand_id    := NEW.brand_id;
     v_price_offer := COALESCE(NEW.price_offer, 0);
     v_prop_type   := 'moment_proposal';
     v_prop_id     := NEW.id::text;
   ELSIF TG_TABLE_NAME = 'campaign_applications' THEN
-    v_creator_id  := NEW.influencer_id;
+    v_creator_id  := NEW.creator_id;
     v_price_offer := COALESCE(NEW.price_offer, 0);
     v_prop_type   := 'campaign_application';
     v_prop_id     := NEW.id::text;
@@ -845,27 +845,27 @@ BEGIN
     JOIN public.profiles p ON p.id = tm.user_id
     LEFT JOIN LATERAL (
       SELECT COUNT(*) total_moments, COUNT(*) FILTER (WHERE lm.status='recruiting') active_moments
-      FROM public.life_moments lm WHERE lm.influencer_id=tm.user_id
+      FROM public.life_moments lm WHERE lm.creator_id=tm.user_id
     ) ms ON true
     LEFT JOIN LATERAL (
       SELECT COUNT(*) total_proposals,
         COUNT(*) FILTER (WHERE a.status='offered') pending_proposals,
         COUNT(*) FILTER (WHERE a.status IN ('accepted','active','in_progress')) active_proposals,
         COALESCE(SUM(a.price_offer) FILTER (WHERE a.status IN ('accepted','active','in_progress','completed')),0) total_revenue
-      FROM public.product_applications a WHERE a.influencer_id=tm.user_id
+      FROM public.product_applications a WHERE a.creator_id=tm.user_id
     ) pa ON true
     LEFT JOIN LATERAL (
       SELECT COUNT(*) total_proposals,
         COUNT(*) FILTER (WHERE m.status='offered') pending_proposals,
         COUNT(*) FILTER (WHERE m.status IN ('accepted','active','in_progress')) active_proposals,
         COALESCE(SUM(m.price_offer) FILTER (WHERE m.status IN ('accepted','active','in_progress','completed')),0) total_revenue
-      FROM public.moment_proposals m WHERE m.influencer_id=tm.user_id
+      FROM public.moment_proposals m WHERE m.creator_id=tm.user_id
     ) mp ON true
     LEFT JOIN LATERAL (
       SELECT COUNT(*) total_applications,
         COUNT(*) FILTER (WHERE c.status='pending') pending_applications,
         COUNT(*) FILTER (WHERE c.status IN ('accepted','active','in_progress')) active_applications
-      FROM public.campaign_applications c WHERE c.influencer_id=tm.user_id
+      FROM public.campaign_applications c WHERE c.creator_id=tm.user_id
     ) ca ON true
     WHERE tm.team_id=target_team_id AND tm.user_id != caller_id
     ORDER BY p.display_name
@@ -892,33 +892,33 @@ BEGIN
 
   SELECT json_agg(row ORDER BY row.created_at DESC) INTO result FROM (
     SELECT pa.id,'product_application'::text AS proposal_type,pa.status,pa.product_name,pa.price_offer,
-      pa.message,pa.created_at,pa.influencer_id,
+      pa.message,pa.created_at,pa.creator_id,
       inf.display_name AS creator_name, inf.avatar_url AS creator_avatar,
       br.display_name AS brand_name, br.avatar_url AS brand_avatar,
-      pa.content_type,pa.brand_condition_confirmed,pa.influencer_condition_confirmed,pa.contract_status,pa.delivery_status
+      pa.content_type,pa.brand_condition_confirmed,pa.creator_condition_confirmed,pa.contract_status,pa.delivery_status
     FROM public.product_applications pa
-    JOIN public.profiles inf ON inf.id=pa.influencer_id
+    JOIN public.profiles inf ON inf.id=pa.creator_id
     JOIN public.profiles br ON br.id=pa.brand_id
-    WHERE pa.influencer_id IN (SELECT user_id FROM public.team_members WHERE team_id=target_team_id AND user_id!=caller_id)
+    WHERE pa.creator_id IN (SELECT user_id FROM public.team_members WHERE team_id=target_team_id AND user_id!=caller_id)
     UNION ALL
     SELECT mp.id,'moment_proposal'::text,mp.status,mp.product_name,mp.price_offer,
-      mp.message,mp.created_at,mp.influencer_id,
+      mp.message,mp.created_at,mp.creator_id,
       inf.display_name,inf.avatar_url,br.display_name,br.avatar_url,
-      mp.content_type,mp.brand_condition_confirmed,mp.influencer_condition_confirmed,mp.contract_status,mp.delivery_status
+      mp.content_type,mp.brand_condition_confirmed,mp.creator_condition_confirmed,mp.contract_status,mp.delivery_status
     FROM public.moment_proposals mp
-    JOIN public.profiles inf ON inf.id=mp.influencer_id
+    JOIN public.profiles inf ON inf.id=mp.creator_id
     JOIN public.profiles br ON br.id=mp.brand_id
-    WHERE mp.influencer_id IN (SELECT user_id FROM public.team_members WHERE team_id=target_team_id AND user_id!=caller_id)
+    WHERE mp.creator_id IN (SELECT user_id FROM public.team_members WHERE team_id=target_team_id AND user_id!=caller_id)
     UNION ALL
     SELECT ca.id,'campaign_application'::text,ca.status,c.product_name,ca.price_offer,
-      ca.message,ca.created_at,ca.influencer_id,
+      ca.message,ca.created_at,ca.creator_id,
       inf.display_name,inf.avatar_url,br.display_name,br.avatar_url,
       NULL,NULL::boolean,NULL::boolean,NULL,NULL
     FROM public.campaign_applications ca
     JOIN public.campaigns c ON c.id=ca.campaign_id
-    JOIN public.profiles inf ON inf.id=ca.influencer_id
+    JOIN public.profiles inf ON inf.id=ca.creator_id
     JOIN public.profiles br ON br.id=c.brand_id
-    WHERE ca.influencer_id IN (SELECT user_id FROM public.team_members WHERE team_id=target_team_id AND user_id!=caller_id)
+    WHERE ca.creator_id IN (SELECT user_id FROM public.team_members WHERE team_id=target_team_id AND user_id!=caller_id)
   ) row;
   RETURN COALESCE(result, '[]'::json);
 END;
@@ -1246,20 +1246,20 @@ CREATE OR REPLACE FUNCTION public.notify_brand_on_campaign_application() RETURNS
 DECLARE
     campaign_name TEXT;
     brand_user_id UUID;
-    influencer_name TEXT;
+    creator_name TEXT;
 BEGIN
     SELECT title, brand_id INTO campaign_name, brand_user_id
     FROM campaigns WHERE id = NEW.campaign_id;
     
-    SELECT display_name INTO influencer_name
-    FROM profiles WHERE id = NEW.influencer_id;
+    SELECT display_name INTO creator_name
+    FROM profiles WHERE id = NEW.creator_id;
     
     INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
     VALUES (
         brand_user_id,
-        NEW.influencer_id,
+        NEW.creator_id,
         'campaign_application',
-        COALESCE(influencer_name, '크리에이터') || '님이 "' || COALESCE(campaign_name, '캠페인') || '" 캠페인에 지원했습니다.',
+        COALESCE(creator_name, '크리에이터') || '님이 "' || COALESCE(campaign_name, '캠페인') || '" 캠페인에 지원했습니다.',
         NEW.id::text
     );
     
@@ -1280,18 +1280,18 @@ CREATE OR REPLACE FUNCTION public.notify_brand_on_product_application() RETURNS 
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
-    influencer_name TEXT;
+    creator_name TEXT;
 BEGIN
     IF NEW.status IN ('applied', 'pending') THEN
-        SELECT display_name INTO influencer_name
-        FROM profiles WHERE id = NEW.influencer_id;
+        SELECT display_name INTO creator_name
+        FROM profiles WHERE id = NEW.creator_id;
         
         INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
         VALUES (
             NEW.brand_id,
-            NEW.influencer_id,
+            NEW.creator_id,
             'product_application',
-            COALESCE(influencer_name, '크리에이터') || '님이 "' || COALESCE(NEW.product_name, '제품') || '" 제품에 신청했습니다.',
+            COALESCE(creator_name, '크리에이터') || '님이 "' || COALESCE(NEW.product_name, '제품') || '" 제품에 신청했습니다.',
             NEW.id::text
         );
     END IF;
@@ -1321,7 +1321,7 @@ BEGIN
         
         INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
         VALUES (
-            NEW.influencer_id,
+            NEW.creator_id,
             NEW.brand_id,
             'brand_offer',
             COALESCE(brand_name, '브랜드') || '님이 "' || COALESCE(NEW.product_name, '제품') || '" 협업을 제안했습니다.',
@@ -1357,7 +1357,7 @@ BEGIN
     
     INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
     VALUES (
-        NEW.influencer_id,
+        NEW.creator_id,
         NEW.brand_id,
         'moment_proposal',
         COALESCE(brand_name, '브랜드') || '님이 "' || COALESCE(moment_title, '모먼트') || '" 모먼트에 제안했습니다.',
@@ -1481,24 +1481,24 @@ CREATE OR REPLACE FUNCTION public.set_proposal_team_ids() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 BEGIN
-    -- 1. Campaign Proposals (Target: influencer_team_id)
+    -- 1. Campaign Proposals (Target: creator_team_id)
     IF TG_TABLE_NAME = 'campaign_proposals' THEN
-        IF NEW.influencer_id IS NOT NULL AND NEW.influencer_team_id IS NULL THEN
+        IF NEW.creator_id IS NOT NULL AND NEW.creator_team_id IS NULL THEN
             -- A. Common Team (Agency Mode)
-            NEW.influencer_team_id := (
+            NEW.creator_team_id := (
                 SELECT tm.team_id
                 FROM public.team_members tm
                 JOIN public.team_members agent_tm ON tm.team_id = agent_tm.team_id
-                WHERE tm.user_id = NEW.influencer_id
+                WHERE tm.user_id = NEW.creator_id
                 AND agent_tm.user_id = auth.uid()
                 LIMIT 1
             );
 
             -- B. Fallback: any team of influencer
-            IF NEW.influencer_team_id IS NULL THEN
-                NEW.influencer_team_id := (
+            IF NEW.creator_team_id IS NULL THEN
+                NEW.creator_team_id := (
                     SELECT team_id FROM public.team_members
-                    WHERE user_id = NEW.influencer_id
+                    WHERE user_id = NEW.creator_id
                     LIMIT 1
                 );
             END IF;
@@ -1513,7 +1513,7 @@ BEGIN
                 SELECT tm.team_id
                 FROM public.team_members tm
                 JOIN public.team_members agent_tm ON tm.team_id = agent_tm.team_id
-                WHERE tm.user_id = NEW.influencer_id
+                WHERE tm.user_id = NEW.creator_id
                 AND agent_tm.user_id = auth.uid()
                 LIMIT 1
             );
@@ -1522,7 +1522,7 @@ BEGIN
             IF NEW.team_id IS NULL THEN
                 NEW.team_id := (
                     SELECT team_id FROM public.team_members
-                    WHERE user_id = NEW.influencer_id
+                    WHERE user_id = NEW.creator_id
                     AND role = 'owner'
                     LIMIT 1
                 );
@@ -1532,7 +1532,7 @@ BEGIN
             IF NEW.team_id IS NULL THEN
                 NEW.team_id := (
                     SELECT team_id FROM public.team_members
-                    WHERE user_id = NEW.influencer_id
+                    WHERE user_id = NEW.creator_id
                     LIMIT 1
                 );
             END IF;
@@ -1674,7 +1674,7 @@ CREATE TABLE IF NOT EXISTS public.brand_deposits (
 CREATE TABLE IF NOT EXISTS public.brand_products (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     brand_id uuid NOT NULL,
-    name text NOT NULL,
+    name text,
     description text,
     image_url text,
     price integer DEFAULT 0,
@@ -1701,7 +1701,7 @@ CREATE TABLE IF NOT EXISTS public.brand_products (
 CREATE TABLE IF NOT EXISTS public.campaign_applications (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     campaign_id uuid NOT NULL,
-    influencer_id uuid NOT NULL,
+    creator_id uuid NOT NULL,
     message text,
     price_offer integer,
     status text DEFAULT 'pending'::text,
@@ -1718,9 +1718,9 @@ CREATE TABLE IF NOT EXISTS public.campaign_applications (
     contract_content text,
     contract_status text DEFAULT 'none'::text,
     brand_signature text,
-    influencer_signature text,
+    creator_signature text,
     brand_signed_at timestamp with time zone,
-    influencer_signed_at timestamp with time zone,
+    creator_signed_at timestamp with time zone,
     condition_product_receipt_date text,
     condition_plan_sharing_date text,
     condition_draft_submission_date text,
@@ -1729,7 +1729,7 @@ CREATE TABLE IF NOT EXISTS public.campaign_applications (
     condition_maintenance_period text,
     condition_secondary_usage_period text,
     brand_condition_confirmed boolean DEFAULT false,
-    influencer_condition_confirmed boolean DEFAULT false,
+    creator_condition_confirmed boolean DEFAULT false,
     special_terms text,
     content_submission_url text,
     content_submission_file_url text,
@@ -1746,7 +1746,7 @@ CREATE TABLE IF NOT EXISTS public.campaign_applications (
     incentive_detail text,
     content_type text,
     moment_id uuid,
-    influencer_team_id uuid,
+    creator_team_id uuid,
     product_name text,
     product_type text DEFAULT 'gift'::text,
     channel_name text,
@@ -1822,7 +1822,7 @@ CREATE TABLE IF NOT EXISTS public.campaigns (
     target_moment_id uuid,
     status text DEFAULT 'active'::text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-    event_date text,
+    moment_date text,
     posting_date text,
     category text,
     budget text,
@@ -1858,32 +1858,14 @@ CREATE TABLE IF NOT EXISTS public.favorites (
 
 
 --
--- Name: instagram_accounts; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE IF NOT EXISTS public.instagram_accounts (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid,
-    instagram_user_id text NOT NULL,
-    access_token text NOT NULL,
-    page_id text,
-    username text,
-    profile_picture_url text,
-    follower_count integer,
-    updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
-
---
 -- Name: life_moments; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE IF NOT EXISTS public.life_moments (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
-    icon text,
     description text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-    influencer_id uuid,
+    creator_id uuid,
     title text DEFAULT ''::text NOT NULL,
     tags text[] DEFAULT '{}'::text[],
     target_product text,
@@ -1892,18 +1874,16 @@ CREATE TABLE IF NOT EXISTS public.life_moments (
     is_private boolean DEFAULT false,
     schedule jsonb DEFAULT '{}'::jsonb,
     updated_at timestamp with time zone DEFAULT now(),
-    name text,
-    event_date text,
+    moment_date text,
     category text,
     is_verified boolean DEFAULT false,
     is_mock boolean DEFAULT false,
     guide text,
-    price_video integer,
     date_flexible boolean DEFAULT false,
     team_id uuid,
     channels text[] DEFAULT '{}'::text[],
-    event_start_date date,
-    event_end_date date,
+    moment_start_date date,
+    moment_end_date date,
     posting_date_exact date
 );
 
@@ -1954,7 +1934,7 @@ CREATE TABLE IF NOT EXISTS public.moment_proposals (
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     brand_id uuid NOT NULL,
-    influencer_id uuid NOT NULL,
+    creator_id uuid NOT NULL,
     moment_id uuid NOT NULL,
     product_id uuid,
     message text,
@@ -1965,7 +1945,7 @@ CREATE TABLE IF NOT EXISTS public.moment_proposals (
     delivery_status text DEFAULT 'none'::text,
     content_submission_status text DEFAULT 'none'::text,
     brand_signature text,
-    influencer_signature text,
+    creator_signature text,
     product_name text,
     product_type text DEFAULT 'gift'::text,
     compensation_amount text,
@@ -1975,7 +1955,7 @@ CREATE TABLE IF NOT EXISTS public.moment_proposals (
     is_mock boolean DEFAULT false,
     contract_content text,
     brand_signed_at timestamp with time zone,
-    influencer_signed_at timestamp with time zone,
+    creator_signed_at timestamp with time zone,
     shipping_name text,
     shipping_phone text,
     shipping_address text,
@@ -1992,7 +1972,7 @@ CREATE TABLE IF NOT EXISTS public.moment_proposals (
     condition_maintenance_period text,
     condition_secondary_usage_period text,
     brand_condition_confirmed boolean DEFAULT false,
-    influencer_condition_confirmed boolean DEFAULT false,
+    creator_condition_confirmed boolean DEFAULT false,
     content_submission_url text,
     content_submission_file_url text,
     content_submission_date timestamp with time zone,
@@ -2009,7 +1989,7 @@ CREATE TABLE IF NOT EXISTS public.moment_proposals (
     insight_screenshot text,
     special_terms text,
     brand_team_id uuid,
-    influencer_team_id uuid,
+    creator_team_id uuid,
     workspace_id uuid,
     receiver_name text,
     content_final_url text,
@@ -2061,7 +2041,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 CREATE TABLE IF NOT EXISTS public.product_applications (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     brand_id uuid NOT NULL,
-    influencer_id uuid NOT NULL,
+    creator_id uuid NOT NULL,
     product_name text NOT NULL,
     product_type text DEFAULT 'gift'::text,
     compensation_amount text,
@@ -2071,16 +2051,16 @@ CREATE TABLE IF NOT EXISTS public.product_applications (
     message text,
     status text DEFAULT 'offered'::text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-    event_id uuid,
+    moment_id uuid,
     product_id uuid,
     contract_content text,
     contract_status text DEFAULT 'none'::text,
     completed_at timestamp with time zone,
     brand_signed_at timestamp with time zone,
-    influencer_signed_at timestamp with time zone,
+    creator_signed_at timestamp with time zone,
     is_mock boolean DEFAULT false,
     brand_signature text,
-    influencer_signature text,
+    creator_signature text,
     shipping_name text,
     shipping_phone text,
     shipping_address text,
@@ -2092,7 +2072,7 @@ CREATE TABLE IF NOT EXISTS public.product_applications (
     content_submission_date timestamp with time zone,
     content_submission_version numeric(3,1) DEFAULT 1.0,
     brand_condition_confirmed boolean DEFAULT false,
-    influencer_condition_confirmed boolean DEFAULT false,
+    creator_condition_confirmed boolean DEFAULT false,
     product_url text,
     date_flexible boolean DEFAULT false,
     desired_date date,
@@ -2118,7 +2098,7 @@ CREATE TABLE IF NOT EXISTS public.product_applications (
     special_terms text,
     price_offer bigint,
     brand_team_id uuid,
-    influencer_team_id uuid,
+    creator_team_id uuid,
     channel_name text,
     channel_url text,
     workspace_id uuid,
@@ -2154,7 +2134,7 @@ COMMENT ON COLUMN public.product_applications.content_revision_requested_at IS '
 CREATE TABLE IF NOT EXISTS public.profiles (
     id uuid NOT NULL,
     email text,
-    role text DEFAULT 'influencer'::public.user_role,
+    role text DEFAULT 'creator'::public.user_role,
     display_name text,
     avatar_url text,
     bio text,
@@ -2434,7 +2414,6 @@ CREATE TABLE IF NOT EXISTS public.team_members (
 
 CREATE TABLE IF NOT EXISTS public.teams (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
-    name text NOT NULL,
     slug text NOT NULL,
     logo_url text,
     website text,
@@ -2474,7 +2453,7 @@ CREATE TABLE IF NOT EXISTS public.workspace_files (
 CREATE TABLE IF NOT EXISTS public.workspaces (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     brand_id uuid NOT NULL,
-    influencer_id uuid NOT NULL,
+    creator_id uuid NOT NULL,
     proposal_type text NOT NULL,
     proposal_id text NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
@@ -3008,24 +2987,24 @@ CREATE INDEX IF NOT EXISTS idx_brand_proposals_contract_status ON public.product
 
 
 --
--- Name: idx_brand_proposals_influencer_team_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_brand_proposals_creator_team_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX IF NOT EXISTS idx_brand_proposals_influencer_team_id ON public.product_applications USING btree (influencer_team_id);
+CREATE INDEX IF NOT EXISTS idx_brand_proposals_creator_team_id ON public.product_applications USING btree (creator_team_id);
 
 
 --
 -- Name: idx_brand_proposals_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX IF NOT EXISTS idx_brand_proposals_lookup ON public.product_applications USING btree (brand_id, influencer_id, status) WHERE (status = ANY (ARRAY['offered'::text, 'pending'::text, 'accepted'::text, 'confirmed'::text]));
+CREATE INDEX IF NOT EXISTS idx_brand_proposals_lookup ON public.product_applications USING btree (brand_id, creator_id, status) WHERE (status = ANY (ARRAY['offered'::text, 'pending'::text, 'accepted'::text, 'confirmed'::text]));
 
 
 --
 -- Name: INDEX idx_brand_proposals_lookup; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON INDEX public.idx_brand_proposals_lookup IS 'Optimizes brand proposal queries by brand_id, influencer_id, and status';
+COMMENT ON INDEX public.idx_brand_proposals_lookup IS 'Optimizes brand proposal queries by brand_id, creator_id, and status';
 
 
 --
@@ -3036,10 +3015,10 @@ CREATE INDEX IF NOT EXISTS idx_brand_proposals_payment ON public.product_applica
 
 
 --
--- Name: idx_campaign_applications_influencer_team_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_campaign_applications_creator_team_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX IF NOT EXISTS idx_campaign_applications_influencer_team_id ON public.campaign_applications USING btree (influencer_team_id);
+CREATE INDEX IF NOT EXISTS idx_campaign_applications_creator_team_id ON public.campaign_applications USING btree (creator_team_id);
 
 
 --
@@ -3092,10 +3071,10 @@ CREATE INDEX IF NOT EXISTS idx_life_moments_created_at ON public.life_moments US
 
 
 --
--- Name: idx_life_moments_influencer_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_life_moments_creator_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX IF NOT EXISTS idx_life_moments_influencer_id ON public.life_moments USING btree (influencer_id);
+CREATE INDEX IF NOT EXISTS idx_life_moments_creator_id ON public.life_moments USING btree (creator_id);
 
 
 --
@@ -3109,7 +3088,7 @@ CREATE INDEX IF NOT EXISTS idx_life_moments_is_private ON public.life_moments US
 -- Name: idx_life_moments_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX IF NOT EXISTS idx_life_moments_lookup ON public.life_moments USING btree (influencer_id, event_date);
+CREATE INDEX IF NOT EXISTS idx_life_moments_lookup ON public.life_moments USING btree (creator_id, moment_date);
 
 
 --
@@ -3144,14 +3123,14 @@ CREATE INDEX IF NOT EXISTS idx_moment_proposals_brand_team_id ON public.moment_p
 -- Name: idx_moment_proposals_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX IF NOT EXISTS idx_moment_proposals_lookup ON public.moment_proposals USING btree (brand_id, influencer_id, status);
+CREATE INDEX IF NOT EXISTS idx_moment_proposals_lookup ON public.moment_proposals USING btree (brand_id, creator_id, status);
 
 
 --
 -- Name: INDEX idx_moment_proposals_lookup; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON INDEX public.idx_moment_proposals_lookup IS 'Optimizes moment proposal queries by brand_id, influencer_id, and status';
+COMMENT ON INDEX public.idx_moment_proposals_lookup IS 'Optimizes moment proposal queries by brand_id, creator_id, and status';
 
 
 --
@@ -3517,12 +3496,12 @@ END $$;
 
 
 --
--- Name: product_applications brand_proposals_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_applications brand_proposals_moment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 DO $$ BEGIN
     ALTER TABLE ONLY public.product_applications
-    ADD CONSTRAINT brand_proposals_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.life_moments(id) ON DELETE CASCADE;
+    ADD CONSTRAINT brand_proposals_moment_id_fkey FOREIGN KEY (event_id) REFERENCES public.life_moments(id) ON DELETE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
     WHEN duplicate_table THEN null;
@@ -3531,12 +3510,12 @@ END $$;
 
 
 --
--- Name: product_applications brand_proposals_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_applications brand_proposals_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 DO $$ BEGIN
     ALTER TABLE ONLY public.product_applications
-    ADD CONSTRAINT brand_proposals_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.profiles(id);
+    ADD CONSTRAINT brand_proposals_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.profiles(id);
 EXCEPTION
     WHEN duplicate_object THEN null;
     WHEN duplicate_table THEN null;
@@ -3545,12 +3524,12 @@ END $$;
 
 
 --
--- Name: product_applications brand_proposals_influencer_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_applications brand_proposals_creator_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 DO $$ BEGIN
     ALTER TABLE ONLY public.product_applications
-    ADD CONSTRAINT brand_proposals_influencer_team_id_fkey FOREIGN KEY (influencer_team_id) REFERENCES public.teams(id);
+    ADD CONSTRAINT brand_proposals_creator_team_id_fkey FOREIGN KEY (creator_team_id) REFERENCES public.teams(id);
 EXCEPTION
     WHEN duplicate_object THEN null;
     WHEN duplicate_table THEN null;
@@ -3601,12 +3580,12 @@ END $$;
 
 
 --
--- Name: campaign_applications campaign_applications_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: campaign_applications campaign_applications_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 DO $$ BEGIN
     ALTER TABLE ONLY public.campaign_applications
-    ADD CONSTRAINT campaign_applications_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.profiles(id);
+    ADD CONSTRAINT campaign_applications_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.profiles(id);
 EXCEPTION
     WHEN duplicate_object THEN null;
     WHEN duplicate_table THEN null;
@@ -3615,12 +3594,12 @@ END $$;
 
 
 --
--- Name: campaign_applications campaign_applications_influencer_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: campaign_applications campaign_applications_creator_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 DO $$ BEGIN
     ALTER TABLE ONLY public.campaign_applications
-    ADD CONSTRAINT campaign_applications_influencer_team_id_fkey FOREIGN KEY (influencer_team_id) REFERENCES public.teams(id);
+    ADD CONSTRAINT campaign_applications_creator_team_id_fkey FOREIGN KEY (creator_team_id) REFERENCES public.teams(id);
 EXCEPTION
     WHEN duplicate_object THEN null;
     WHEN duplicate_table THEN null;
@@ -3755,12 +3734,12 @@ END $$;
 
 
 --
--- Name: life_moments life_moments_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: life_moments life_moments_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 DO $$ BEGIN
     ALTER TABLE ONLY public.life_moments
-    ADD CONSTRAINT life_moments_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    ADD CONSTRAINT life_moments_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
     WHEN duplicate_table THEN null;
@@ -3867,12 +3846,12 @@ END $$;
 
 
 --
--- Name: moment_proposals moment_proposals_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: moment_proposals moment_proposals_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 DO $$ BEGIN
     ALTER TABLE ONLY public.moment_proposals
-    ADD CONSTRAINT moment_proposals_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.profiles(id);
+    ADD CONSTRAINT moment_proposals_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.profiles(id);
 EXCEPTION
     WHEN duplicate_object THEN null;
     WHEN duplicate_table THEN null;
@@ -3881,12 +3860,12 @@ END $$;
 
 
 --
--- Name: moment_proposals moment_proposals_influencer_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: moment_proposals moment_proposals_creator_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 DO $$ BEGIN
     ALTER TABLE ONLY public.moment_proposals
-    ADD CONSTRAINT moment_proposals_influencer_team_id_fkey FOREIGN KEY (influencer_team_id) REFERENCES public.teams(id);
+    ADD CONSTRAINT moment_proposals_creator_team_id_fkey FOREIGN KEY (creator_team_id) REFERENCES public.teams(id);
 EXCEPTION
     WHEN duplicate_object THEN null;
     WHEN duplicate_table THEN null;
@@ -4189,12 +4168,12 @@ END $$;
 
 
 --
--- Name: workspaces workspaces_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: workspaces workspaces_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 DO $$ BEGIN
     ALTER TABLE ONLY public.workspaces
-    ADD CONSTRAINT workspaces_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT workspaces_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id);
 EXCEPTION
     WHEN duplicate_object THEN null;
     WHEN duplicate_table THEN null;
@@ -4411,7 +4390,7 @@ CREATE POLICY brand_proposals_insert ON public.product_applications FOR INSERT T
 --
 
 DROP POLICY IF EXISTS brand_proposals_select ON public.product_applications;
-CREATE POLICY brand_proposals_select ON public.product_applications FOR SELECT TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY brand_proposals_select ON public.product_applications FOR SELECT TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (creator_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4419,7 +4398,7 @@ CREATE POLICY brand_proposals_select ON public.product_applications FOR SELECT T
 --
 
 DROP POLICY IF EXISTS brand_proposals_update ON public.product_applications;
-CREATE POLICY brand_proposals_update ON public.product_applications FOR UPDATE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY brand_proposals_update ON public.product_applications FOR UPDATE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (creator_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4449,7 +4428,7 @@ ALTER TABLE public.campaign_applications ENABLE ROW LEVEL SECURITY;
 --
 
 DROP POLICY IF EXISTS campaign_apps_delete ON public.campaign_applications;
-CREATE POLICY campaign_apps_delete ON public.campaign_applications FOR DELETE TO authenticated USING (((auth.uid() = influencer_id) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY campaign_apps_delete ON public.campaign_applications FOR DELETE TO authenticated USING (((auth.uid() = creator_id) OR (creator_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4457,7 +4436,7 @@ CREATE POLICY campaign_apps_delete ON public.campaign_applications FOR DELETE TO
 --
 
 DROP POLICY IF EXISTS campaign_apps_insert ON public.campaign_applications;
-CREATE POLICY campaign_apps_insert ON public.campaign_applications FOR INSERT TO authenticated WITH CHECK (((auth.uid() = influencer_id) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY campaign_apps_insert ON public.campaign_applications FOR INSERT TO authenticated WITH CHECK (((auth.uid() = creator_id) OR (creator_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4465,7 +4444,7 @@ CREATE POLICY campaign_apps_insert ON public.campaign_applications FOR INSERT TO
 --
 
 DROP POLICY IF EXISTS campaign_apps_select ON public.campaign_applications;
-CREATE POLICY campaign_apps_select ON public.campaign_applications FOR SELECT TO authenticated USING (((auth.uid() = influencer_id) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (EXISTS ( SELECT 1
+CREATE POLICY campaign_apps_select ON public.campaign_applications FOR SELECT TO authenticated USING (((auth.uid() = creator_id) OR (creator_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (EXISTS ( SELECT 1
    FROM public.campaigns c
   WHERE ((c.id = campaign_applications.campaign_id) AND ((c.brand_id = auth.uid()) OR (c.team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))))))));
 
@@ -4475,7 +4454,7 @@ CREATE POLICY campaign_apps_select ON public.campaign_applications FOR SELECT TO
 --
 
 DROP POLICY IF EXISTS campaign_apps_update ON public.campaign_applications;
-CREATE POLICY campaign_apps_update ON public.campaign_applications FOR UPDATE TO authenticated USING (((auth.uid() = influencer_id) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (EXISTS ( SELECT 1
+CREATE POLICY campaign_apps_update ON public.campaign_applications FOR UPDATE TO authenticated USING (((auth.uid() = creator_id) OR (creator_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (EXISTS ( SELECT 1
    FROM public.campaigns c
   WHERE ((c.id = campaign_applications.campaign_id) AND ((c.brand_id = auth.uid()) OR (c.team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))))))));
 
@@ -4567,7 +4546,7 @@ CREATE POLICY favorites_select ON public.favorites FOR SELECT TO authenticated U
 --
 
 DROP POLICY IF EXISTS influencer_update_moment_proposals ON public.moment_proposals;
-CREATE POLICY influencer_update_moment_proposals ON public.moment_proposals FOR UPDATE USING ((influencer_id = auth.uid())) WITH CHECK ((influencer_id = auth.uid()));
+CREATE POLICY influencer_update_moment_proposals ON public.moment_proposals FOR UPDATE USING ((creator_id = auth.uid())) WITH CHECK ((creator_id = auth.uid()));
 
 
 --
@@ -4643,7 +4622,7 @@ ALTER TABLE public.life_moments ENABLE ROW LEVEL SECURITY;
 --
 
 DROP POLICY IF EXISTS life_moments_delete ON public.life_moments;
-CREATE POLICY life_moments_delete ON public.life_moments FOR DELETE USING (((influencer_id = auth.uid()) OR public.is_admin()));
+CREATE POLICY life_moments_delete ON public.life_moments FOR DELETE USING (((creator_id = auth.uid()) OR public.is_admin()));
 
 
 --
@@ -4651,7 +4630,7 @@ CREATE POLICY life_moments_delete ON public.life_moments FOR DELETE USING (((inf
 --
 
 DROP POLICY IF EXISTS life_moments_insert ON public.life_moments;
-CREATE POLICY life_moments_insert ON public.life_moments FOR INSERT WITH CHECK (((influencer_id = auth.uid()) OR public.is_admin()));
+CREATE POLICY life_moments_insert ON public.life_moments FOR INSERT WITH CHECK (((creator_id = auth.uid()) OR public.is_admin()));
 
 
 --
@@ -4659,10 +4638,10 @@ CREATE POLICY life_moments_insert ON public.life_moments FOR INSERT WITH CHECK (
 --
 
 DROP POLICY IF EXISTS life_moments_select ON public.life_moments;
-CREATE POLICY life_moments_select ON public.life_moments FOR SELECT USING (((is_private = false) OR (influencer_id = auth.uid()) OR public.is_admin() OR (EXISTS ( SELECT 1
+CREATE POLICY life_moments_select ON public.life_moments FOR SELECT USING (((is_private = false) OR (creator_id = auth.uid()) OR public.is_admin() OR (EXISTS ( SELECT 1
    FROM (public.team_members tm_viewer
      JOIN public.team_members tm_owner ON ((tm_owner.team_id = tm_viewer.team_id)))
-  WHERE ((tm_viewer.user_id = auth.uid()) AND (tm_owner.user_id = life_moments.influencer_id))))));
+  WHERE ((tm_viewer.user_id = auth.uid()) AND (tm_owner.user_id = life_moments.creator_id))))));
 
 
 --
@@ -4670,10 +4649,10 @@ CREATE POLICY life_moments_select ON public.life_moments FOR SELECT USING (((is_
 --
 
 DROP POLICY IF EXISTS life_moments_update ON public.life_moments;
-CREATE POLICY life_moments_update ON public.life_moments FOR UPDATE USING (((influencer_id = auth.uid()) OR public.is_admin() OR (EXISTS ( SELECT 1
+CREATE POLICY life_moments_update ON public.life_moments FOR UPDATE USING (((creator_id = auth.uid()) OR public.is_admin() OR (EXISTS ( SELECT 1
    FROM (public.team_members tm_viewer
      JOIN public.team_members tm_owner ON ((tm_owner.team_id = tm_viewer.team_id)))
-  WHERE ((tm_viewer.user_id = auth.uid()) AND (tm_viewer.role = ANY (ARRAY['owner'::text, 'admin'::text])) AND (tm_owner.user_id = life_moments.influencer_id))))));
+  WHERE ((tm_viewer.user_id = auth.uid()) AND (tm_viewer.role = ANY (ARRAY['owner'::text, 'admin'::text])) AND (tm_owner.user_id = life_moments.creator_id))))));
 
 
 --
@@ -4777,7 +4756,7 @@ ALTER TABLE public.moment_proposals ENABLE ROW LEVEL SECURITY;
 --
 
 DROP POLICY IF EXISTS moment_proposals_delete ON public.moment_proposals;
-CREATE POLICY moment_proposals_delete ON public.moment_proposals FOR DELETE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moment_proposals_delete ON public.moment_proposals FOR DELETE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (creator_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4793,7 +4772,7 @@ CREATE POLICY moment_proposals_insert ON public.moment_proposals FOR INSERT TO a
 --
 
 DROP POLICY IF EXISTS moment_proposals_select ON public.moment_proposals;
-CREATE POLICY moment_proposals_select ON public.moment_proposals FOR SELECT TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moment_proposals_select ON public.moment_proposals FOR SELECT TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (creator_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4801,7 +4780,7 @@ CREATE POLICY moment_proposals_select ON public.moment_proposals FOR SELECT TO a
 --
 
 DROP POLICY IF EXISTS moment_proposals_update ON public.moment_proposals;
-CREATE POLICY moment_proposals_update ON public.moment_proposals FOR UPDATE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moment_proposals_update ON public.moment_proposals FOR UPDATE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (creator_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4809,7 +4788,7 @@ CREATE POLICY moment_proposals_update ON public.moment_proposals FOR UPDATE TO a
 --
 
 DROP POLICY IF EXISTS moments_delete ON public.life_moments;
-CREATE POLICY moments_delete ON public.life_moments FOR DELETE TO authenticated USING (((auth.uid() = influencer_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moments_delete ON public.life_moments FOR DELETE TO authenticated USING (((auth.uid() = creator_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4817,7 +4796,7 @@ CREATE POLICY moments_delete ON public.life_moments FOR DELETE TO authenticated 
 --
 
 DROP POLICY IF EXISTS moments_insert ON public.life_moments;
-CREATE POLICY moments_insert ON public.life_moments FOR INSERT TO authenticated WITH CHECK (((auth.uid() = influencer_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moments_insert ON public.life_moments FOR INSERT TO authenticated WITH CHECK (((auth.uid() = creator_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4825,7 +4804,7 @@ CREATE POLICY moments_insert ON public.life_moments FOR INSERT TO authenticated 
 --
 
 DROP POLICY IF EXISTS moments_select ON public.life_moments;
-CREATE POLICY moments_select ON public.life_moments FOR SELECT TO authenticated USING (((is_private = false) OR (auth.uid() = influencer_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moments_select ON public.life_moments FOR SELECT TO authenticated USING (((is_private = false) OR (auth.uid() = creator_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4833,7 +4812,7 @@ CREATE POLICY moments_select ON public.life_moments FOR SELECT TO authenticated 
 --
 
 DROP POLICY IF EXISTS moments_update ON public.life_moments;
-CREATE POLICY moments_update ON public.life_moments FOR UPDATE TO authenticated USING (((auth.uid() = influencer_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moments_update ON public.life_moments FOR UPDATE TO authenticated USING (((auth.uid() = creator_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4871,7 +4850,7 @@ CREATE POLICY notifications_update ON public.notifications FOR UPDATE TO authent
 --
 
 DROP POLICY IF EXISTS participants_select_moment_proposals ON public.moment_proposals;
-CREATE POLICY participants_select_moment_proposals ON public.moment_proposals FOR SELECT USING (((influencer_id = auth.uid()) OR (brand_id = auth.uid()) OR public.is_admin()));
+CREATE POLICY participants_select_moment_proposals ON public.moment_proposals FOR SELECT USING (((creator_id = auth.uid()) OR (brand_id = auth.uid()) OR public.is_admin()));
 
 
 --
@@ -5134,7 +5113,7 @@ CREATE POLICY view_team_members ON public.team_members FOR SELECT USING ((team_i
 --
 
 DROP POLICY IF EXISTS "workspace members can insert" ON public.workspaces;
-CREATE POLICY "workspace members can insert" ON public.workspaces FOR INSERT WITH CHECK (((brand_id = auth.uid()) OR (influencer_id = auth.uid())));
+CREATE POLICY "workspace members can insert" ON public.workspaces FOR INSERT WITH CHECK (((brand_id = auth.uid()) OR (creator_id = auth.uid())));
 
 
 --
@@ -5142,7 +5121,7 @@ CREATE POLICY "workspace members can insert" ON public.workspaces FOR INSERT WIT
 --
 
 DROP POLICY IF EXISTS "workspace members can view" ON public.workspaces;
-CREATE POLICY "workspace members can view" ON public.workspaces FOR SELECT USING (((brand_id = auth.uid()) OR (influencer_id = auth.uid())));
+CREATE POLICY "workspace members can view" ON public.workspaces FOR SELECT USING (((brand_id = auth.uid()) OR (creator_id = auth.uid())));
 
 
 --

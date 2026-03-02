@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/client'
 import { SWR_KEYS } from '@/lib/swr-config'
-import type { InfluencerEvent } from '@/lib/types'
+import type { CreatorMoment } from '@/lib/types'
 import useSWR, { mutate } from 'swr'
 
 /**
- * Helper to map DB result to InfluencerEvent
+ * Helper to map DB result to CreatorMoment
  */
-const mapEvents = (data: any[]): InfluencerEvent[] => {
+const mapMoments = (data: any[]): CreatorMoment[] => {
     return data.map((e: any) => {
         const profile = e.profiles || {}
         const socialChannels: any[] = profile.social_channels || []
@@ -15,7 +15,7 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
         return {
             id: e.id,
             influencer: profile.display_name || 'Creator',
-            influencerId: e.influencer_id,
+            creatorId: e.creator_id,
             handle: profile.instagram_handle || profile.handle || '@creator',
             avatar: profile.avatar_url || '',
             priceVideo: profile.price_video || undefined,
@@ -24,16 +24,16 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
             usageRightsMonth: profile.usage_rights_month || undefined,
             autoDmPrice: profile.auto_dm_price || undefined,
             autoDmMonth: profile.auto_dm_month || undefined,
-            event: e.title,
-            date: e.event_date || new Date(e.created_at).toISOString().split('T')[0],
+            title: e.title,
+            date: e.moment_start_date || new Date(e.created_at).toISOString().split('T')[0],
             description: e.description || '',
             tags: e.tags || [],
             verified: socialChannels.some((c: any) => (c.channel_type || c.platform) === 'instagram'),
             followers: primaryChannel?.followers_count ?? profile.followers_count ?? 0,
             category: e.category || '',
             targetProduct: e.target_product || '',
-            eventDate: e.event_date || '',
-            postingDate: e.posting_date,
+            momentDate: e.moment_start_date || '',
+            postingDate: e.posting_date_exact || '',
             guide: e.guide,
             status: e.status || 'active',
             isPrivate: e.is_private || false,
@@ -53,8 +53,8 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
                 handle: primaryChannel.handle || ''
             } : null,
             // Exact dates (private — creator/MCN only)
-            eventStartDate: e.event_start_date || null,
-            eventEndDate: e.event_end_date || null,
+            momentStartDate: e.moment_start_date || null,
+            momentEndDate: e.moment_end_date || null,
             postingDateExact: e.posting_date_exact || null,
         }
     })
@@ -66,7 +66,7 @@ const mapEvents = (data: any[]): InfluencerEvent[] => {
 /**
  * Fetcher for user-specific events (Team-based or User-based)
  */
-async function fetchUserEvents(teamId?: string, userId?: string, fetchMode: 'team' | 'user' = 'team'): Promise<InfluencerEvent[]> {
+async function fetchUserMoments(teamId?: string, userId?: string, fetchMode: 'team' | 'user' = 'team'): Promise<CreatorMoment[]> {
     const supabase = createClient()
     console.log('[useEvents] Fetching events. Team:', teamId, 'User:', userId, 'Mode:', fetchMode)
 
@@ -85,7 +85,7 @@ async function fetchUserEvents(teamId?: string, userId?: string, fetchMode: 'tea
     // [Creator/Proxy Support] If mode is 'user', Strictly filter by User ID (Own Data)
     // This allows creators/proxies to see "My Moments" regardless of which team "owns" them (or if team_id is null)
     else if (fetchMode === 'user' && userId) {
-        query = query.eq('influencer_id', userId)
+        query = query.eq('creator_id', userId)
     }
     // [Team Support] Filter by Team ID if present (Default MCN View)
     else if (teamId) {
@@ -93,7 +93,7 @@ async function fetchUserEvents(teamId?: string, userId?: string, fetchMode: 'tea
     }
     // [Fallback] Filter by User ID
     else if (userId) {
-        query = query.eq('influencer_id', userId)
+        query = query.eq('creator_id', userId)
     }
     else {
         // No context provided, return empty
@@ -131,7 +131,7 @@ async function fetchUserEvents(teamId?: string, userId?: string, fetchMode: 'tea
         return []
     }
 
-    const mapped = mapEvents(data || [])
+    const mapped = mapMoments(data || [])
     console.log('[useEvents] Loaded user events:', mapped.length)
     return mapped
 }
@@ -139,7 +139,7 @@ async function fetchUserEvents(teamId?: string, userId?: string, fetchMode: 'tea
 /**
  * Fetcher for all public events
  */
-async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
+async function fetchPublicMoments(): Promise<CreatorMoment[]> {
     const supabase = createClient()
     console.log('[useEvents] Fetching ALL public events...')
 
@@ -185,7 +185,7 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
         return []
     }
 
-    const mapped = mapEvents(data || [])
+    const mapped = mapMoments(data || [])
     console.log('[useEvents] Loaded ALL public events:', mapped.length)
     return mapped
 }
@@ -193,7 +193,7 @@ async function fetchPublicEvents(): Promise<InfluencerEvent[]> {
 /**
  * Custom hook for user-specific events with SWR (Team-based or User-based)
  */
-export function useUserEvents(teamId?: string, userId?: string, fetchMode: 'team' | 'user' = 'team') {
+export function useUserMoments(teamId?: string, userId?: string, fetchMode: 'team' | 'user' = 'team') {
     // Determine key based on context (Team > User) AND Mode
     const keyId = teamId || userId
     // Include fetchMode in SWR key to separate cache
@@ -201,7 +201,7 @@ export function useUserEvents(teamId?: string, userId?: string, fetchMode: 'team
 
     const { data, error, isLoading, mutate: revalidate } = useSWR(
         swrKey,
-        () => fetchUserEvents(teamId, userId, fetchMode),
+        () => fetchUserMoments(teamId, userId, fetchMode),
         {
             revalidateOnFocus: true,
             revalidateOnReconnect: true,
@@ -210,7 +210,7 @@ export function useUserEvents(teamId?: string, userId?: string, fetchMode: 'team
     )
 
     return {
-        events: data || [],
+        moments: data || [],
         error,
         isLoading,
         revalidate,
@@ -221,10 +221,10 @@ export function useUserEvents(teamId?: string, userId?: string, fetchMode: 'team
  * Custom hook for all public events with SWR
  * enabled=false일 때 fetch를 완전히 비활성화 (SWR conditional fetching)
  */
-export function usePublicEvents(enabled: boolean = false) {
+export function usePublicMoments(enabled: boolean = false) {
     const { data, error, isLoading, mutate: revalidate } = useSWR(
         enabled ? SWR_KEYS.EVENTS_PUBLIC : null,  // null key = no fetch
-        fetchPublicEvents,
+        fetchPublicMoments,
         {
             revalidateOnFocus: false,  // public 데이터는 focus 시 재조회 불필요
             revalidateOnReconnect: true,
@@ -233,7 +233,7 @@ export function usePublicEvents(enabled: boolean = false) {
     )
 
     return {
-        events: data || [],
+        moments: data || [],
         error,
         isLoading,
         revalidate,
@@ -248,14 +248,14 @@ export const eventMutations = {
     /**
      * Add a new event (Team-based or User-based)
      */
-    async addEvent(
+    async addMoment(
         teamId: string | undefined, // Team can be undefined now
         userId: string,             // User ID is mandatory for ownership (default)
-        newEvent: Omit<InfluencerEvent, "id" | "influencer" | "creator" | "handle" | "avatar" | "verified" | "followers">
+        newEvent: Omit<CreatorMoment, "id" | "influencer" | "creator" | "handle" | "avatar" | "verified" | "followers" | "date" | "momentDate" | "postingDate">
     ): Promise<boolean> {
         try {
             const supabase = createClient()
-            console.log('[eventMutations] Creating event. Team:', teamId, 'User:', userId, 'Target:', newEvent.influencerId)
+            console.log('[eventMutations] Creating event. Team:', teamId, 'User:', userId, 'Target:', newEvent.creatorId)
 
             if (!teamId && !userId) {
                 console.error('[eventMutations] Cannot create event: No context (Team or User) provided')
@@ -266,13 +266,11 @@ export const eventMutations = {
                 .from('life_moments')
                 .insert({
                     team_id: teamId || null,        // Allow null team_id
-                    influencer_id: newEvent.influencerId || userId,          // Allow override with specific influencerId
-                    title: newEvent.event,
+                    creator_id: newEvent.creatorId || userId,          // Allow override with specific creatorId
+                    title: newEvent.title,
                     description: newEvent.description,
                     tags: newEvent.tags,
                     target_product: newEvent.targetProduct,
-                    event_date: newEvent.eventDate,
-                    posting_date: newEvent.postingDate,
                     category: newEvent.category,
                     guide: newEvent.guide,
                     date_flexible: newEvent.dateFlexible || false,
@@ -281,8 +279,8 @@ export const eventMutations = {
                     schedule: newEvent.schedule,
                     channels: newEvent.channels || [],
                     // Exact dates (private)
-                    event_start_date: newEvent.eventStartDate || null,
-                    event_end_date: newEvent.eventEndDate || null,
+                    moment_start_date: newEvent.momentStartDate || null,
+                    moment_end_date: newEvent.momentEndDate || null,
                     posting_date_exact: newEvent.postingDateExact || null,
                 })
                 .select()
@@ -313,23 +311,21 @@ export const eventMutations = {
     /**
      * Update an existing event (Team-based or User-based)
      */
-    async updateEvent(
+    async updateMoment(
         teamId: string | undefined,
         userId: string | undefined, // Needed for cache invalidation fallback
         id: string,
-        updates: Partial<InfluencerEvent>
+        updates: Partial<Omit<CreatorMoment, "id" | "influencer" | "creator" | "handle" | "avatar" | "verified" | "followers" | "date" | "momentDate" | "postingDate">>
     ): Promise<boolean> {
         try {
             const supabase = createClient()
             console.log('[eventMutations] Updating event:', id)
 
             const dbUpdates: any = {}
-            if (updates.event) dbUpdates.title = updates.event
+            if (updates.title) dbUpdates.title = updates.title
             if (updates.description !== undefined) dbUpdates.description = updates.description
             if (updates.tags) dbUpdates.tags = updates.tags
             if (updates.targetProduct !== undefined) dbUpdates.target_product = updates.targetProduct
-            if (updates.eventDate !== undefined) dbUpdates.event_date = updates.eventDate
-            if (updates.postingDate !== undefined) dbUpdates.posting_date = updates.postingDate
             if (updates.dateFlexible !== undefined) dbUpdates.date_flexible = updates.dateFlexible
             if (updates.guide !== undefined) dbUpdates.guide = updates.guide
             if (updates.category !== undefined) dbUpdates.category = updates.category
@@ -338,8 +334,8 @@ export const eventMutations = {
             if (updates.schedule) dbUpdates.schedule = updates.schedule
             if (updates.channels !== undefined) dbUpdates.channels = updates.channels
             // Exact dates (private)
-            if (updates.eventStartDate !== undefined) dbUpdates.event_start_date = updates.eventStartDate || null
-            if (updates.eventEndDate !== undefined) dbUpdates.event_end_date = updates.eventEndDate || null
+            if (updates.momentStartDate !== undefined) dbUpdates.moment_start_date = updates.momentStartDate || null
+            if (updates.momentEndDate !== undefined) dbUpdates.moment_end_date = updates.momentEndDate || null
             if (updates.postingDateExact !== undefined) dbUpdates.posting_date_exact = updates.postingDateExact || null
 
             const { error } = await supabase
@@ -369,7 +365,7 @@ export const eventMutations = {
     /**
      * Delete an event (Team-based or User-based)
      */
-    async deleteEvent(
+    async deleteMoment(
         teamId: string | undefined,
         userId: string | undefined,
         id: string

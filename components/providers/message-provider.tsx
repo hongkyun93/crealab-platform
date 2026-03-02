@@ -9,10 +9,10 @@ interface MessageContextType {
     notifications: Notification[]
     submissionFeedback: SubmissionFeedback[]
     isLoading: boolean
-    sendMessage: (receiverId: string, content: string, file?: { url: string; name: string; size: number; type: string }, proposalId?: string, brandProposalId?: string, workspaceId?: string) => Promise<void>
+    sendMessage: (receiverId: string, content: string, file?: { url: string; name: string; size: number; type: string }, workspaceId?: string, projectName?: string) => Promise<void>
     sendNotification: (recipientId: string, content: string, type: string, referenceId?: string) => Promise<void>
-    sendSubmissionFeedback: (proposalId: string | undefined, brandProposalId: string | undefined, content: string, videoTimestamp?: number | null) => Promise<void>
-    fetchSubmissionFeedback: (proposalId?: string, brandProposalId?: string) => Promise<SubmissionFeedback[]>
+    sendSubmissionFeedback: (workspaceId: string | undefined, content: string, videoTimestamp?: number | null) => Promise<void>
+    fetchSubmissionFeedback: (workspaceId?: string) => Promise<SubmissionFeedback[]>
     markAsRead: (notificationId: string) => Promise<void>
     refreshMessages: (userId?: string) => Promise<void>
     refreshNotifications: (userId?: string) => Promise<void>
@@ -83,8 +83,6 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     id: msg.id.toString(),
                     senderId: msg.sender_id,
                     receiverId: msg.receiver_id,
-                    proposalId: msg.proposal_id,
-                    productApplicationId: msg.product_application_id,
                     workspaceId: msg.workspace_id,
                     content: msg.content || '',
                     timestamp: msg.created_at,
@@ -261,23 +259,21 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         receiverId: string,
         content: string,
         file?: { url: string; name: string; size: number; type: string },
-        proposalId?: string,
-        brandProposalId?: string,
-        workspaceId?: string
+        workspaceId?: string,
+        projectName?: string
     ) => {
         if (!userId) {
             throw new Error('User ID required')
         }
 
         try {
-            console.log('[MessageProvider] Sending message:', { receiverId, proposalId, brandProposalId, hasFile: !!file })
+            console.log('[MessageProvider] Sending message:', { receiverId, workspaceId, hasFile: !!file })
 
             const { error, status, statusText } = await supabase
                 .from('messages')
                 .insert({
                     sender_id: userId,
                     receiver_id: receiverId,
-                    proposal_id: proposalId || brandProposalId || null,
                     workspace_id: workspaceId || null,
                     content: content || '',
                     file_url: file?.url ?? null,
@@ -293,6 +289,9 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 throw new Error(detail)
             }
 
+            // 🔔 new_message 알림은 DB 트리거(notify_user_on_message)에서 자동 발송 처리됨.
+            // (클라이언트 수동 발송 시 중복 생성 문제가 있어 제거됨)
+
             await fetchMessages(userId)
             console.log('[MessageProvider] Message sent OK')
         } catch (error: any) {
@@ -301,6 +300,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         }
 
     }
+
 
     // Send notification
     const sendNotification = async (recipientId: string, content: string, type: string, referenceId?: string) => {
@@ -331,28 +331,24 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
     }
 
     // Send submission feedback
-    const sendSubmissionFeedback = async (proposalId: string | undefined, brandProposalId: string | undefined, content: string, videoTimestamp?: number | null) => {
+    const sendSubmissionFeedback = async (workspaceId: string | undefined, content: string, videoTimestamp?: number | null) => {
         if (!userId) {
             throw new Error('User ID required')
         }
 
         try {
-            console.log('[MessageProvider] Sending feedback:', { proposalId, brandProposalId, videoTimestamp })
+            console.log('[MessageProvider] Sending feedback:', { workspaceId, videoTimestamp })
 
             // 10초 타임아웃: Supabase 연결 불가 시 promise가 영원히 pending 되는 현상 방지
             const makeTimeout = () => new Promise<never>((_, reject) =>
                 setTimeout(() => reject(new Error('피드백 전송 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.')), 10000)
             )
 
-            // [FIX] video_timestamp_seconds 컬럼이 migration 미적용으로 없을 때를 대비해
-            // null인 경우에는 아예 필드를 보내지 않고, 있는 경우에만 포함시킨다.
-            // 42703 에러(column not found) 시에도 타임스탬프 없이 재시도해 plain text는 항상 저장됨.
             const basePayload: any = {
                 sender_id: userId,
                 content,
             }
-            if (proposalId) basePayload.proposal_id = proposalId;
-            if (brandProposalId) basePayload.product_application_id = brandProposalId;
+            if (workspaceId) basePayload.workspace_id = workspaceId;
 
             // videoTimestamp가 실제 값이 있는 경우에만 컬럼 포함
             const payloadWithTs = videoTimestamp != null
@@ -394,9 +390,9 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
     }
 
     // Fetch submission feedback
-    const fetchSubmissionFeedback = async (proposalId?: string, brandProposalId?: string): Promise<SubmissionFeedback[]> => {
+    const fetchSubmissionFeedback = async (workspaceId?: string): Promise<SubmissionFeedback[]> => {
         try {
-            console.log('[MessageProvider] Fetching feedback:', { proposalId, brandProposalId })
+            console.log('[MessageProvider] Fetching feedback:', { workspaceId })
 
             let query = supabase
                 .from('submission_feedback')
@@ -406,40 +402,35 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 `)
                 .order('created_at', { ascending: true })
 
-            if (!proposalId && !brandProposalId) {
-                console.warn('[MessageProvider] Missing both proposalId and brandProposalId for feedback fetch')
+            if (!workspaceId) {
+                console.warn('[MessageProvider] Missing workspaceId for feedback fetch')
                 return []
             }
 
-            if (proposalId) {
-                query = query.eq('proposal_id', proposalId)
-            } else if (brandProposalId) {
-                query = query.eq('product_application_id', brandProposalId)
-            }
+            query = query.eq('workspace_id', workspaceId)
 
             const { data, error } = await query
 
             if (error) {
                 // Ignore AbortError or network failure during unmount/reload
                 if (error.code === undefined && (error.message === 'Failed to fetch' || error.message === 'Load failed')) {
-                    console.warn('[MessageProvider] Network error fetching feedback (likely transient)')
                     return []
                 }
 
-                // Ignore empty error objects (often happens with aborted requests or specific Supabase edge cases)
-                if (Object.keys(error).length === 0) {
+                // Ignore empty or codeless error objects (aborted/cancelled Supabase requests)
+                if (Object.keys(error).length === 0 || (!error.code && !error.message)) {
+                    // Suppress empty object error logs `[MessageProvider] Feedback fetch error: {}`
                     return []
                 }
 
-                console.error('[MessageProvider] Feedback fetch error:', error)
+                console.error('[MessageProvider] Feedback fetch error:', JSON.stringify(error))
                 return []
             }
 
             if (data) {
                 const feedback: SubmissionFeedback[] = data.map((f: any) => ({
                     id: f.id,
-                    proposal_id: f.proposal_id,
-                    product_application_id: f.product_application_id,
+                    workspace_id: f.workspace_id,
                     sender_id: f.sender_id,
                     content: f.content,
                     created_at: f.created_at,

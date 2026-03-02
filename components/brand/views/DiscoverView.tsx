@@ -37,7 +37,7 @@ interface DiscoverViewProps {
     POPULAR_TAGS: readonly string[]
     PRICE_FILTER_RANGES: any[]
     user: any
-    deleteEvent: (id: string) => Promise<void>
+    deleteMoment: (id: string) => Promise<void>
     channelFilter?: string[]
     setChannelFilter?: (filter: string[] | ((prev: string[]) => string[])) => void
     sentMomentIds?: Set<string>
@@ -62,7 +62,7 @@ export const DiscoverView = React.memo(function DiscoverView({
     POPULAR_TAGS,
     PRICE_FILTER_RANGES,
     user,
-    deleteEvent,
+    deleteMoment,
     channelFilter,
     setChannelFilter,
     sentMomentIds,
@@ -81,7 +81,7 @@ export const DiscoverView = React.memo(function DiscoverView({
             (item.category || "").toLowerCase().includes(q) ||
             (item.tags || []).some((t: string) => t.toLowerCase().includes(q))
         const matchesFav = !favoritesOnly ||
-            favorites.some((f: any) => f.target_id === item.id && f.target_type === 'event')
+            favorites.some((f: any) => f.target_id === item.id && f.target_type === 'moment')
         return matchesSearch && matchesFav
     })
 
@@ -205,7 +205,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                     followers_high: "팔로워 많은순",
                                     followers_low: "팔로워 적은순",
                                     verified: "인증 크리에이터",
-                                    event_date_asc: "이벤트 임박순",
+                                    moment_date_asc: "이벤트 임박순",
                                     posting_date_asc: "업로드 임박순",
                                     price_low: "단가 낮은순",
                                     price_high: "단가 높은순",
@@ -225,7 +225,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                 <DropdownMenuRadioItem value="followers_low">팔로워 적은순 (마이크로)</DropdownMenuRadioItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuLabel className="text-xs text-muted-foreground font-normal px-2">일정</DropdownMenuLabel>
-                                <DropdownMenuRadioItem value="event_date_asc">📅 이벤트 임박순</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="moment_date_asc">📅 이벤트 임박순</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="posting_date_asc">📅 업로드 임박순</DropdownMenuRadioItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuLabel className="text-xs text-muted-foreground font-normal px-2">단가</DropdownMenuLabel>
@@ -405,19 +405,19 @@ export const DiscoverView = React.memo(function DiscoverView({
             {viewMode === 'grid' ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {displayedEvents.slice(0, pageSize).map((item) => {
-                        const isFavorite = favorites.some(f => f.target_id === item.id && f.target_type === 'event')
+                        const isFavorite = favorites.some(f => f.target_id === item.id && f.target_type === 'moment')
                         return (
                             <MomentGridCard
                                 key={item.id}
                                 item={item}
                                 creator={{
-                                    id: item.influencerId || item.id,
+                                    id: item.creatorId || item.id,
                                     name: item.influencer,
                                     avatar: item.avatar,
                                     followers: item.followers,
                                     primaryChannel: (item as any).primaryChannel,
                                 }}
-                                href={`/event/${item.id}`}
+                                href={`/moment/${item.id}`}
                                 isFavorite={isFavorite}
                                 toggleFavorite={toggleFavorite}
                                 showProfileCard={true}
@@ -440,7 +440,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                     })}
                     favorites={favorites}
                     toggleFavorite={toggleFavorite}
-                    linkToEvent={true}
+                    linkToMoment={true}
                 />
             )}
 
@@ -452,7 +452,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                 onConfirm={async () => {
                     if (confirmDeleteId) {
                         try {
-                            await deleteEvent(confirmDeleteId)
+                            await deleteMoment(confirmDeleteId)
                         } catch (error) {
                             toast.error("삭제에 실패했습니다.")
                         }

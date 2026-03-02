@@ -28,7 +28,7 @@ const MOMENT_DATA = {
     category: "뷰티/패션",
     tags: ["#성수동", "#팝업스토어", "#핫플레이스", "#OOTD", "#주말나들이"],
     isPrivate: false,
-    eventDate: "2024-05-25",
+    momentDate: "2024-05-25",
     postingDate: "2024-05-28", // 3 days after event
     dateFlexible: true,
     schedule: {
@@ -115,7 +115,7 @@ export default function MomentSearchDialogsPage() {
                             <Card>
                                 <CardHeader className="pb-2"><CardTitle className="text-sm">일정</CardTitle></CardHeader>
                                 <CardContent className="text-sm space-y-1">
-                                    <div className="flex justify-between"><span>이벤트</span> <span className="font-medium">{MOMENT_DATA.eventDate}</span></div>
+                                    <div className="flex justify-between"><span>이벤트</span> <span className="font-medium">{MOMENT_DATA.momentDate}</span></div>
                                     <div className="flex justify-between"><span>업로드</span> <span className="font-medium">{MOMENT_DATA.postingDate}</span></div>
                                 </CardContent>
                             </Card>
@@ -266,7 +266,7 @@ export default function MomentSearchDialogsPage() {
                                 <div className="grid grid-cols-3 gap-4 text-center border-t border-b py-4 mb-4">
                                     <div>
                                         <div className="text-xs text-slate-500 mb-1">D-Day</div>
-                                        <div className="font-bold text-slate-900">{MOMENT_DATA.eventDate}</div>
+                                        <div className="font-bold text-slate-900">{MOMENT_DATA.momentDate}</div>
                                     </div>
                                     <div>
                                         <div className="text-xs text-slate-500 mb-1">Platform</div>
@@ -306,7 +306,7 @@ export default function MomentSearchDialogsPage() {
                                     </div>
                                     <div>
                                         <span className="text-xs text-slate-400 block">DATE</span>
-                                        <span className="font-bold">{MOMENT_DATA.eventDate}</span>
+                                        <span className="font-bold">{MOMENT_DATA.momentDate}</span>
                                     </div>
                                     <div>
                                         <span className="text-xs text-slate-400 block">DESTINATION</span>
@@ -415,7 +415,7 @@ export default function MomentSearchDialogsPage() {
                             <h2 className="text-3xl font-black tracking-tight mb-2">CREATIVE BRIEF</h2>
                             <div className="flex justify-between text-xs font-sans uppercase tracking-widest text-slate-500">
                                 <span>Ref: {MOMENT_DATA.id}</span>
-                                <span>Date: {MOMENT_DATA.eventDate}</span>
+                                <span>Date: {MOMENT_DATA.momentDate}</span>
                             </div>
                         </div>
 
@@ -461,7 +461,7 @@ export default function MomentSearchDialogsPage() {
 
                         <div className="grid grid-cols-2 gap-4 mb-6">
                             <div className="bg-slate-900 border border-slate-800 p-4 rounded">
-                                <span className="text-xs text-slate-500 block mb-2">INFLUENCER_NODE</span>
+                                <span className="text-xs text-slate-500 block mb-2">CREATOR_NODE</span>
                                 <div className="flex items-center gap-2">
                                     <div className="h-8 w-8 bg-slate-800 rounded-full" />
                                     <span className="font-bold text-sm">{MOMENT_DATA.influencer.handle}</span>
@@ -524,7 +524,7 @@ export default function MomentSearchDialogsPage() {
                                 {MOMENT_DATA.tags.map(t => <span key={t} className="mr-1">{t}</span>)}
                             </div>
                             <div className="text-xs text-slate-400 uppercase">
-                                {MOMENT_DATA.eventDate}
+                                {MOMENT_DATA.momentDate}
                             </div>
                         </div>
                     </div>
@@ -636,7 +636,7 @@ export default function MomentSearchDialogsPage() {
                                 </Avatar>
                                 <div className="bg-white p-3 rounded-2xl rounded-bl-none shadow-sm max-w-[85%] text-sm">
                                     <p className="font-bold mb-1">Hi Brand! 👋</p>
-                                    <p>I'm planning a visit to Seongsu pop-ups this weekend ({MOMENT_DATA.eventDate}).</p>
+                                    <p>I'm planning a visit to Seongsu pop-ups this weekend ({MOMENT_DATA.momentDate}).</p>
                                     <p className="mt-2 text-slate-600 italic">"{MOMENT_DATA.title}"</p>
                                 </div>
                             </div>
@@ -734,7 +734,7 @@ export default function MomentSearchDialogsPage() {
                                         </tr>
                                         <tr className="border-b border-slate-300">
                                             <th className="py-2 w-1/3 text-slate-500">LAUNCH DATE</th>
-                                            <td className="py-2">{MOMENT_DATA.eventDate}</td>
+                                            <td className="py-2">{MOMENT_DATA.momentDate}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -785,7 +785,7 @@ export default function MomentSearchDialogsPage() {
                             <div className="border-2 border-slate-800 rounded-lg p-3 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="font-bold uppercase text-xs">Schedule</span>
-                                    <span className="text-xs">{MOMENT_DATA.eventDate}</span>
+                                    <span className="text-xs">{MOMENT_DATA.momentDate}</span>
                                 </div>
                                 <div className="flex items-center gap-1 text-xs">
                                     <div className="flex-1 h-2 bg-slate-200 rounded-full" />
@@ -860,7 +860,7 @@ export default function MomentSearchDialogsPage() {
                             <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
                             <h2 className="font-bold text-lg mb-1">{MOMENT_DATA.title}</h2>
                             <div className="flex items-center gap-1 text-sm text-slate-500 mb-4">
-                                <MapPin className="h-4 w-4" /> 3.2km away • {MOMENT_DATA.eventDate}
+                                <MapPin className="h-4 w-4" /> 3.2km away • {MOMENT_DATA.momentDate}
                             </div>
 
                             <div className="space-y-3">

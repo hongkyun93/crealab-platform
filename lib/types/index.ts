@@ -5,7 +5,7 @@
 // Campaign
 export type { Campaign, CampaignFormData } from './campaign'
 // Event (Moment)
-export type { EventFormData, EventSchedule, InfluencerEvent } from './event'
+export type { MomentFormData, MomentSchedule, CreatorMoment } from './moment'
 // Favorite
 export type {
     Favorite,

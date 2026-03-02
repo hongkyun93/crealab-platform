@@ -90,7 +90,7 @@ export interface MomentTableViewProps {
     favorites?: any[]
     toggleFavorite?: (id: string, type: string) => void
     /** Link to event detail page (brand side) */
-    linkToEvent?: boolean
+    linkToMoment?: boolean
     /** Click handler (creator side) */
     onClick?: (item: any) => void
     /** Delete handler */
@@ -99,8 +99,8 @@ export interface MomentTableViewProps {
     onEdit?: (id: string) => void
     /** Is past tab? */
     isPast?: boolean
-    /** Brand proposals for offer count */
-    brandProposals?: any[]
+    /** Moment proposals for offer count */
+    momentProposals?: any[]
     /** Empty message */
     emptyMessage?: string
 }
@@ -108,16 +108,16 @@ export interface MomentTableViewProps {
 export function MomentTableView({
     items, getCreator,
     favorites, toggleFavorite,
-    linkToEvent = false,
+    linkToMoment = false,
     onClick,
     onDelete,
     onEdit,
     isPast = false,
-    brandProposals = [],
+    momentProposals = [],
     emptyMessage = "모먼트가 없습니다."
 }: MomentTableViewProps) {
     const hasFavorites = !!favorites && !!toggleFavorite
-    const hasOfferCount = !isPast && brandProposals.length > 0
+    const hasOfferCount = !isPast && momentProposals.length > 0
 
     return (
         <div className="rounded-md border bg-card">
@@ -140,7 +140,7 @@ export function MomentTableView({
                     {items.length > 0 ? (
                         items.map((item) => {
                             const creator = getCreator(item)
-                            const isFavorite = favorites?.some(f => f.target_id === item.id && f.target_type === 'event')
+                            const isFavorite = favorites?.some(f => f.target_id === item.id && f.target_type === 'moment')
 
                             // 채널 목록: 모먼트의 channels 배열 또는 크리에이터 채널 사용
                             // [FIX] instagram_reels → instagram, youtube_shorts → youtube 등 base channel로 normalize
@@ -165,7 +165,7 @@ export function MomentTableView({
                                 return platforms.length > 0 ? platforms : []
                             })()
 
-                            const offerCount = brandProposals.filter((p: any) => p.event_id === item.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length
+                            const offerCount = momentProposals.filter((p: any) => p.moment_id === item.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length
 
                             return (
                                 <TableRow
@@ -178,7 +178,7 @@ export function MomentTableView({
                                             <Button
                                                 variant="ghost" size="icon"
                                                 className="h-8 w-8 text-muted-foreground hover:text-yellow-500"
-                                                onClick={(e) => { e.stopPropagation(); toggleFavorite!(item.id, 'event'); }}
+                                                onClick={(e) => { e.stopPropagation(); toggleFavorite!(item.id, 'moment'); }}
                                             >
                                                 <Star
                                                     className={`h-4 w-4 transition-colors ${isFavorite ? 'text-yellow-500' : ''}`}
@@ -203,13 +203,13 @@ export function MomentTableView({
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-2">
-                                        {linkToEvent ? (
-                                            <Link href={`/event/${item.id}`} className="hover:underline flex items-center gap-1.5 group-hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                <span className="font-medium truncate max-w-[260px] block">{item.title || item.event}</span>
+                                        {linkToMoment ? (
+                                            <Link href={`/moment/${item.id}`} className="hover:underline flex items-center gap-1.5 group-hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                <span className="font-medium truncate max-w-[260px] block">{item.title}</span>
                                                 <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-50 shrink-0" />
                                             </Link>
                                         ) : (
-                                            <span className="font-medium truncate max-w-[260px] block">{item.title || item.event}</span>
+                                            <span className="font-medium truncate max-w-[260px] block">{item.title}</span>
                                         )}
                                     </TableCell>
                                     <TableCell className="py-2">
@@ -239,8 +239,8 @@ export function MomentTableView({
                                     </TableCell>
                                     <TableCell className="py-2 text-center">
                                         <div className="text-xs text-muted-foreground leading-relaxed">
-                                            <div>{formatDateToMonth(item.eventDate)} (이벤트)</div>
-                                            <div>{item.dateFlexible ? '협의가능' : formatDateToMonth(item.postingDate)} (업로드)</div>
+                                            <div>{formatDateToMonth(item.momentStartDate)} (이벤트)</div>
+                                            <div>{item.dateFlexible ? '협의가능' : formatDateToMonth(item.postingDateExact)} (업로드)</div>
                                         </div>
                                     </TableCell>
                                     {hasOfferCount && (

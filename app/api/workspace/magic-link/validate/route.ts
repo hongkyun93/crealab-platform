@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
         // 4. Find valid Proposal (RLS bypass)
         const { data: proposal, error: fetchError } = await supabaseAdmin
             .from('moment_proposals')
-            .select('id, direct_invite_expires_at, brand_id, influencer_id, message')
+            .select('id, direct_invite_expires_at, brand_id, creator_id, message')
             .eq('direct_invite_token', token)
             .single()
 
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
         await supabaseAdmin
             .from('notifications')
             .insert({
-                recipient_id: proposal.influencer_id,
+                recipient_id: proposal.creator_id,
                 sender_id: user.id,
                 content: `${brandName}님이 매직 링크 초대를 수락하고 워크스페이스에 참여했습니다.`,
                 type: 'proposal_accepted',

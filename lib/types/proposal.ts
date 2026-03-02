@@ -21,9 +21,9 @@ export interface Proposal {
     campaignName?: string
     productName?: string
     product_name?: string // snake_case alias
-    influencerId?: string
-    influencerName?: string
-    influencerAvatar?: string
+    creatorId?: string
+    creatorName?: string
+    creatorAvatar?: string
     brandId?: string
     brandName?: string
     brand_name?: string // snake_case alias
@@ -61,9 +61,9 @@ export interface Proposal {
     contract_content?: string
     contract_status?: ContractStatus
     brand_signature?: string
-    influencer_signature?: string
+    creator_signature?: string
     brand_signed_at?: string
-    influencer_signed_at?: string
+    creator_signed_at?: string
 
     // Schedule Dates
     date_received?: string // 제품 수령일
@@ -89,7 +89,7 @@ export interface Proposal {
     delivery_status?: string
     payout_status?: string
     brand_condition_confirmed?: boolean
-    influencer_condition_confirmed?: boolean
+    creator_condition_confirmed?: boolean
 
     // Content Submission
     content_submission_url?: string
@@ -136,9 +136,9 @@ export interface ProductApplication {
     id: string
     brand_id: string
     brandId?: string // camelCase alias
-    influencer_id: string
-    influencerId?: string // camelCase alias
-    event_id?: string
+    creator_id: string
+    creatorId?: string // camelCase alias
+    moment_id?: string
     product_id?: string
     productId?: string // camelCase alias
     campaign_id?: string
@@ -160,9 +160,9 @@ export interface ProductApplication {
     // Names and Avatars (from joins)
     brand_name?: string
     brandName?: string // camelCase alias
-    influencer_name?: string
-    influencerAvatar?: string
-    influencer_avatar?: string // snake_case duplicate for consistency
+    creator_name?: string
+    creatorAvatar?: string
+    creator_avatar?: string // snake_case duplicate for consistency
     brandAvatar?: string
     brand_avatar?: string // snake_case for consistency with MomentProposal
 
@@ -173,9 +173,9 @@ export interface ProductApplication {
     contract_content?: string
     contract_status?: ContractStatus
     brand_signature?: string
-    influencer_signature?: string
+    creator_signature?: string
     brand_signed_at?: string
-    influencer_signed_at?: string
+    creator_signed_at?: string
 
     // Application Fields (New)
     motivation?: string
@@ -193,7 +193,7 @@ export interface ProductApplication {
     shipping_address?: string
     tracking_number?: string
     brand_condition_confirmed?: boolean
-    influencer_condition_confirmed?: boolean
+    creator_condition_confirmed?: boolean
 
     // Condition Fields
     price_offer?: number
@@ -234,7 +234,7 @@ export interface ProductApplication {
 export interface MomentProposal {
     id: string
     brand_id: string
-    influencer_id: string
+    creator_id: string
     moment_id: string
     workspace_id?: string // [Workspaces] FK to workspaces table
 
@@ -250,15 +250,14 @@ export interface MomentProposal {
     // Joins
     brand_name?: string
     brand_avatar?: string
-    influencer_name?: string
-    influencer_avatar?: string
+    creator_name?: string
+    creator_avatar?: string
     moment_title?: string
 
     // Conditions
     conditions?: any
 
     // Compatibility Fields (for UI merged views)
-    event_id?: string
     // brand_avatar is already defined above in "Joins"
     product?: any
     product_name?: string
@@ -289,7 +288,7 @@ export interface MomentProposal {
 
     // [Added] Confirmations
     brand_condition_confirmed?: boolean
-    influencer_condition_confirmed?: boolean
+    creator_condition_confirmed?: boolean
     special_terms?: string
 
     content_submission_url?: string

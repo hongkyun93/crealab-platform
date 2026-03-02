@@ -50,17 +50,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             console.log('[AuthProvider] Fetching user profile via RPC...')
 
-            // Use RPC for atomic, fast, RLS-bypassed fetch
-            const { data: userData, error } = await supabase.rpc('get_current_user_info')
+            // Fetch directly from profiles table instead of missing RPC
+            const { data: userData, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', sessionUser.id)
+                .maybeSingle()
 
             if (error) {
-                console.error('[AuthProvider] RPC error:', error)
-                throw error
+                console.error('[AuthProvider] Fetch error:', error)
+                // If it's PGRST116 (0 rows), we don't throw, just fallback
+                if (error.code !== 'PGRST116') {
+                    throw error
+                }
             }
 
             if (userData) {
-                console.log('[AuthProvider] RPC success:', userData.role)
-                return userData as User
+                console.log('[AuthProvider] Profile fetch success:', userData.role)
+                return {
+                    id: userData.id,
+                    name: userData.display_name || userData.full_name || sessionUser.user_metadata?.name || 'User',
+                    email: userData.email || sessionUser.email,
+                    role: userData.role,
+                    avatar: userData.avatar_url || sessionUser.user_metadata?.avatar_url,
+                    bio: userData.description,
+                    tags: userData.tags || [],
+                    onboardingCompleted: userData.onboarding_completed || false,
+
+                    // New: Primary Region
+                    primaryRegion: userData.primary_region,
+
+                    // Base / General Info
+                    phone: userData.phone,
+                    address: userData.address,
+                    website: userData.website,
+
+                    // Bank Info
+                    bankName: userData.bank_name,
+                    accountNumber: userData.account_number,
+                    accountHolder: userData.account_holder,
+
+                    // Shipping Info
+                    shippingName: userData.shipping_name,
+                    shippingPhone: userData.shipping_phone,
+                    shippingAddress: userData.shipping_address,
+
+                    // Rate Card Fields (for influencers)
+                    priceVideo: userData.price_video,
+                    priceFeed: userData.price_feed,
+                    priceStory: userData.price_story,
+                    priceUsageRights: userData.price_usage_rights,
+                    priceAutoDm: userData.price_auto_dm,
+                    secondaryRights: userData.secondary_rights,
+                    usageRightsMonth: userData.usage_rights_month,
+                    usageRightsPrice: userData.usage_rights_price,
+                    autoDmMonth: userData.auto_dm_month,
+                    autoDmPrice: userData.auto_dm_price,
+
+                    // Creator Legal/Tax Info
+                    legalName: userData.legal_name,
+                    birthDate: userData.birth_date,
+                    legalAddress: userData.legal_address,
+                    isBusinessRegistered: userData.is_business_registered,
+                    creatorBusinessNumber: userData.creator_business_number,
+
+                    // Brand Business Info
+                    representativeName: userData.representative_name,
+                    businessNumber: userData.business_number,
+                    companyAddress: userData.company_address,
+                    companyPhone: userData.company_phone,
+                    taxEmail: userData.tax_email,
+                    businessCategory: userData.business_category,
+                    businessType: userData.business_type,
+                    contactPersonName: userData.contact_person_name,
+                    contactPersonPhone: userData.contact_person_phone,
+                    contactPersonEmail: userData.contact_person_email,
+                    settlementBank: userData.settlement_bank,
+                } as User
             }
         } catch (e: any) {
             // Detect AbortError (React StrictMode double-mount cancels in-flight requests)
@@ -77,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return fetchUserProfile(sessionUser, retryCount + 1)
             }
 
-            console.error("[AuthProvider] Exception:", e)
+            console.error("[AuthProvider] Exception:", e instanceof Error ? e.message : e)
         }
 
         // Fallback: DB fetch failed, use session metadata
@@ -408,13 +474,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (data.bio !== undefined) updates.description = data.bio  // profiles 테이블의 description 컬럼 = bio
             if (data.avatar !== undefined) updates.avatar_url = data.avatar
             if (data.phone !== undefined) updates.phone = data.phone
-            if (data.address !== undefined) updates.shipping_address = data.address
+            if (data.address !== undefined) updates.address = data.address
+
+            // Shipping Info
+            if (data.shippingName !== undefined) updates.shipping_name = data.shippingName
+            if (data.shippingPhone !== undefined) updates.shipping_phone = data.shippingPhone
+            if (data.shippingAddress !== undefined) updates.shipping_address = data.shippingAddress
             if (data.website !== undefined) updates.website = data.website
 
             // NEW: Primary Region
             if (data.primaryRegion !== undefined) updates.primary_region = data.primaryRegion
 
             // Brand Business fields
+            if (data.legalName !== undefined) updates.legal_name = data.legalName
             if (data.representativeName !== undefined) updates.representative_name = data.representativeName
             if (data.businessNumber !== undefined) updates.business_number = data.businessNumber
             if (data.companyAddress !== undefined) updates.company_address = data.companyAddress
@@ -466,7 +538,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (data.autoDmPrice !== undefined) updates.auto_dm_price = data.autoDmPrice
 
                 // Creator Legal/Tax fields
-                if (data.legalName !== undefined) updates.legal_name = data.legalName
                 if (data.birthDate !== undefined) updates.birth_date = data.birthDate
                 if (data.legalAddress !== undefined) updates.legal_address = data.legalAddress
                 if (data.isBusinessRegistered !== undefined) updates.is_business_registered = data.isBusinessRegistered

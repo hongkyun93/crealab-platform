@@ -25,11 +25,11 @@ const MOCK_CREATOR = {
     priceFeed: 200000,
     priceStory: 80000,
     moments: [
-        { id: "m1", event: "여름 선크림 비교 리뷰 🌞", eventDate: "2026-07", targetProduct: "선크림/자외선차단제", status: "upcoming", description: "국내외 선크림 10종을 직접 비교해봅니다" },
-        { id: "m2", event: "다이어트 보조제 체험 후기", eventDate: "2026-08", targetProduct: "건강보조식품", status: "upcoming", description: "2주간 직접 먹어보고 후기를 남깁니다" },
-        { id: "m3", event: "봄 신상 립스틱 컬러 추천", eventDate: "2026-03", targetProduct: "립스틱", status: "completed", description: "2026 S/S 신상 립스틱 TOP 5" },
-        { id: "m4", event: "피부 고민별 스킨케어 루틴 🧴", eventDate: "2026-09", targetProduct: "스킨케어 세트", status: "upcoming", description: "건성/지성/복합성 피부별 맞춤 루틴" },
-        { id: "m5", event: "겨울 보습 파운데이션 리뷰", eventDate: "2026-12", targetProduct: "파운데이션", status: "upcoming", description: "건조한 겨울에도 촉촉한 파운데이션 TOP 7" },
+        { id: "m1", title: "여름 선크림 비교 리뷰 🌞", momentDate: "2026-07", targetProduct: "선크림/자외선차단제", status: "upcoming", description: "국내외 선크림 10종을 직접 비교해봅니다" },
+        { id: "m2", title: "다이어트 보조제 체험 후기", momentDate: "2026-08", targetProduct: "건강보조식품", status: "upcoming", description: "2주간 직접 먹어보고 후기를 남깁니다" },
+        { id: "m3", title: "봄 신상 립스틱 컬러 추천", momentDate: "2026-03", targetProduct: "립스틱", status: "completed", description: "2026 S/S 신상 립스틱 TOP 5" },
+        { id: "m4", title: "피부 고민별 스킨케어 루틴 🧴", momentDate: "2026-09", targetProduct: "스킨케어 세트", status: "upcoming", description: "건성/지성/복합성 피부별 맞춤 루틴" },
+        { id: "m5", title: "겨울 보습 파운데이션 리뷰", momentDate: "2026-12", targetProduct: "파운데이션", status: "upcoming", description: "건조한 겨울에도 촉촉한 파운데이션 TOP 7" },
     ],
 }
 
@@ -128,9 +128,9 @@ function DesignA() {
                         <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer group">
                             <div className={`h-2 w-2 rounded-full shrink-0 ${m.status === 'upcoming' ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                             <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium truncate">{m.event}</div>
+                                <div className="text-sm font-medium truncate">{m.title}</div>
                                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
-                                    <Calendar className="h-3 w-3" /><span>{m.eventDate}</span>
+                                    <Calendar className="h-3 w-3" /><span>{m.momentDate}</span>
                                     <span className="text-border">·</span>
                                     <Gift className="h-3 w-3" /><span>{m.targetProduct}</span>
                                 </div>
@@ -225,9 +225,9 @@ function DesignB() {
                                 {m.status === 'upcoming' ? '🟢' : '✓'}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium truncate">{m.event}</div>
+                                <div className="text-sm font-medium truncate">{m.title}</div>
                                 <div className="flex items-center gap-2 text-[10px] text-white/40 mt-0.5">
-                                    <Calendar className="h-2.5 w-2.5" /><span>{m.eventDate}</span>
+                                    <Calendar className="h-2.5 w-2.5" /><span>{m.momentDate}</span>
                                     <span className="text-white/20">·</span>
                                     <Gift className="h-2.5 w-2.5" /><span className="truncate">{m.targetProduct}</span>
                                 </div>
@@ -330,12 +330,12 @@ function DesignC() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                             <div className={`h-2 w-2 rounded-full shrink-0 ${m.status === 'upcoming' ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-                                            <h4 className="text-sm font-bold truncate">{m.event}</h4>
+                                            <h4 className="text-sm font-bold truncate">{m.title}</h4>
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1">{m.description}</p>
                                         <div className="flex items-center gap-3 mt-2.5">
                                             <div className="flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md">
-                                                <Calendar className="h-3 w-3" /><span>{m.eventDate}</span>
+                                                <Calendar className="h-3 w-3" /><span>{m.momentDate}</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md">
                                                 <Gift className="h-3 w-3" /><span>{m.targetProduct}</span>

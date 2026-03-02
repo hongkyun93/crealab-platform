@@ -21,14 +21,14 @@ interface TeamProposal {
     price_offer: number | null
     message: string | null
     created_at: string
-    influencer_id: string
+    creator_id: string
     creator_name: string
     creator_avatar: string | null
     brand_name: string
     brand_avatar: string | null
     content_type?: string | null
     brand_condition_confirmed?: boolean | null
-    influencer_condition_confirmed?: boolean | null
+    creator_condition_confirmed?: boolean | null
     contract_status?: string | null
     delivery_status?: string | null
 }
@@ -63,7 +63,7 @@ function getProgressStage(p: TeamProposal): { stage: number; label: string; paym
         const paid = !!(p as any).payment_confirmed_at
         return { stage: 3, label: '계약서', paymentPending: !paid }
     }
-    if (p.brand_condition_confirmed && p.influencer_condition_confirmed) return { stage: 2, label: '조건확정', paymentPending: false }
+    if (p.brand_condition_confirmed && p.creator_condition_confirmed) return { stage: 2, label: '조건확정', paymentPending: false }
     if (p.status === 'accepted' || p.brand_condition_confirmed) return { stage: 1, label: '협의중', paymentPending: false }
     return { stage: 0, label: '제안', paymentPending: false }
 }
@@ -134,7 +134,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
 
     // Get unique creators for filter
     const uniqueCreators = useMemo(() => Array.from(
-        new Map(proposals.map(p => [p.influencer_id, { id: p.influencer_id, name: p.creator_name }])).values()
+        new Map(proposals.map(p => [p.creator_id, { id: p.creator_id, name: p.creator_name }])).values()
     ), [proposals])
 
     // Counts per type
@@ -149,7 +149,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
     const filteredProposals = useMemo(() => proposals
         .filter(p => typeFilter === 'all' || p.proposal_type === typeFilter)
         .filter(p => statusFilter === 'all' || p.status === statusFilter)
-        .filter(p => creatorFilter === 'all' || p.influencer_id === creatorFilter)
+        .filter(p => creatorFilter === 'all' || p.creator_id === creatorFilter)
         .sort((a, b) => {
             if (sortBy === 'price') {
                 return (b.price_offer || 0) - (a.price_offer || 0)
@@ -159,7 +159,7 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
         , [proposals, typeFilter, statusFilter, creatorFilter, sortBy])
 
     const handleRowClick = (proposal: TeamProposal) => {
-        switchToMember(proposal.influencer_id)
+        switchToMember(proposal.creator_id)
         window.location.href = '/creator?view=workspace'
     }
 

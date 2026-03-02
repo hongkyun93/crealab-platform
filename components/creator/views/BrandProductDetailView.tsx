@@ -1,4 +1,4 @@
-import { CreatorProposalDialog, type CreatorProposalFormData } from "@/components/dialogs/CreatorProposalDialog"
+import { CreatorProposalDialog } from "@/components/dialogs/CreatorProposalDialog"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,7 +41,6 @@ interface BrandProductDetailViewProps {
 export function BrandProductDetailView({ productId, onBack }: BrandProductDetailViewProps) {
     const { products, user, addProposal } = useUnifiedProvider()
     const [isOpen, setIsOpen] = useState(false)
-    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const product = products.find(p => String(p.id) === productId)
 
@@ -105,67 +104,6 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
     }
 
 
-    const handlePropose = async (formData: CreatorProposalFormData) => {
-        if (!user) {
-            alert("로그인이 필요합니다.")
-            return
-        }
-        if (!product?.brandId) {
-            alert("제품 정보에 브랜드 ID가 누락되었습니다.")
-            return
-        }
-
-        const effectiveCreatorId = (user?.role === 'agency' || user?.role === 'mcn')
-            ? formData.targetCreatorId
-            : user?.id
-
-        setIsSubmitting(true)
-        try {
-            // Upload Insight File if exists
-            let insightUrl: string | null = null
-            if (formData.insightFile) {
-                const supabase = createClient()
-                const fileExt = formData.insightFile.name.split('.').pop()
-                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-                const filePath = `insights/${fileName}`
-                const { error: uploadError } = await supabase.storage
-                    .from('campaigns')
-                    .upload(filePath, formData.insightFile)
-                if (!uploadError) {
-                    const { data } = supabase.storage.from('campaigns').getPublicUrl(filePath)
-                    insightUrl = data.publicUrl
-                }
-            }
-
-            await addProposal({
-                type: "creator_apply",
-                dealType: "ad",
-                productId: product.id,
-                productName: product.name,
-                cost: formData.desiredCost ? Number(formData.desiredCost.replace(/[^0-9]/g, '')) : 0,
-                commission: 0,
-                message: formData.appealMessage || undefined,
-                status: "applied",
-                fromId: effectiveCreatorId,
-                toId: product.brandId,
-                motivation: formData.motivation,
-                content_plan: formData.contentPlan,
-                portfolioLinks: formData.portfolioLinks ? [formData.portfolioLinks] : [],
-                channel_name: formData.channelName,
-                channel_url: formData.channelUrl,
-                insightScreenshot: insightUrl || undefined,
-            })
-
-            setIsOpen(false)
-            alert("제안서가 성공적으로 전송되었습니다.")
-            onBack()
-        } catch (error) {
-            console.error("Proposal Error:", error)
-            alert("제안서 전송 중 오류가 발생했습니다.")
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
 
     return (
         <div className="min-h-screen bg-muted/30 -mx-6 md:-mx-8 -my-8 p-6 md:p-8">
@@ -239,15 +177,39 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
                                     target={product ? {
                                         brandName: product.brandName || "브랜드",
                                         targetName: product.name,
+                                        productId: String(product.id),
+                                        brandId: product.brandId,
                                         productName: product.name,
                                         sellingPoints: product.points,
                                         category: product.category,
                                         requiredShots: product.shots,
                                     } : null}
-                                    onSubmit={handlePropose}
-                                    isSubmitting={isSubmitting}
                                     teamMembers={teamMembers}
                                     prefillHandle={user?.handle || ""}
+                                    onSubmit={async (data) => {
+                                        if (!product || !user) return;
+                                        await addProposal({
+                                            toId: product.brandId,
+                                            creatorId: user.id,
+                                            productId: String(product.id),
+                                            productName: product.name,
+                                            message: data.appealMessage || data.motivation,
+                                            status: 'applied',
+                                            instagramHandle: data.channelUrl,
+                                            channel_name: data.channelName,
+                                            channel_subtype: data.channelSubtype,
+                                            channel_url: data.channelUrl,
+                                            product_type: 'ad',
+                                            cost: data.desiredCost ? parseInt(data.desiredCost) : 0,
+                                            motivation: data.motivation,
+                                            content_plan: data.contentPlan,
+                                            portfolioLinks: data.portfolioLinks ? data.portfolioLinks.split("\n").map(l => l.trim()).filter(Boolean) : [],
+                                            insightScreenshot: undefined,
+                                        });
+                                        // onSuccess logic
+                                        setIsOpen(false);
+                                        onBack();
+                                    }}
                                 />
 
                                 {product.link && (

@@ -45,7 +45,7 @@ export function DetailsModal({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         {type === 'moment' ? <Rocket className="h-5 w-5 text-blue-500" /> : <Megaphone className="h-5 w-5 text-purple-500" />}
-                        {type === 'moment' ? data.title || data.event : data.productName || data.product}
+                        {type === 'moment' ? data.title : data.productName || data.product}
                     </DialogTitle>
                     <DialogDescription>
                         {type === 'moment' ? '등록된 모먼트 상세 정보 및 제안 현황' : '지원한 캠페인 상세 정보 및 제안 현황'}

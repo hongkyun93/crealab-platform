@@ -48,8 +48,8 @@ export function WorkspaceCompactRow({ item, onClick }: WorkspaceCompactRowProps)
     }
     const sc = statusConfig[item.status] ?? { label: item.status ?? "-", className: "bg-secondary text-secondary-foreground" }
     const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString("ko-KR") : "-"
-    const avatarSrc = item.influencerAvatar || item.influencer_avatar
-    const name = item.influencer_name || "크리에이터"
+    const avatarSrc = item.creatorAvatar || item.creator_avatar
+    const name = item.creator_name || "크리에이터"
     const initial = name[0] ?? "C"
 
     return (

@@ -1,5 +1,5 @@
-﻿import { redirect } from 'next/navigation'
+import { MomentForm } from "@/components/forms/MomentForm"
 
-export default function RedirectToNewMomentRoute() {
-    redirect('/creator/moment/new')
+export default function NewMomentPage() {
+    return <MomentForm mode="create" />
 }

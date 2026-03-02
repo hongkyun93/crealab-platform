@@ -1,7 +1,7 @@
 "use client"
 
 import InsightAnalyzer from "@/components/creator/InsightAnalyzer"
-import { type Campaign, type InfluencerEvent } from "@/lib/types"
+import { type Campaign, type CreatorMoment } from "@/lib/types"
 import { useTeam } from "@/components/providers/team-provider"
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { CampaignApplicationDialog } from "@/components/dialogs/CampaignApplicationDialog"
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
@@ -130,16 +131,17 @@ function AIPlanModal({ isOpen, onOpenChange, planContent }: { isOpen: boolean; o
     );
 }
 
-function InfluencerDashboardContent() {
+function CreatorDashboardContent() {
     const {
-        user, updateUser, campaigns, events, isLoading, notifications,
+        user, updateUser, campaigns, moments, isLoading, notifications,
         brandProposals, momentProposals, updateBrandProposal, // [NEW] Added momentProposals
         sendNotification,
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
         messages, sendMessage,
-        deleteEvent, campaignProposals, updateProposal, addProposal,
-        products, switchRole, updateEvent, supabase,
-        favorites, toggleFavorite, isInitialized, isAuthLoading, refreshData
+        deleteMoment, campaignProposals, updateProposal, addProposal,
+        products, switchRole, updateMoment, supabase,
+        favorites, toggleFavorite, isInitialized, isAuthLoading, refreshData,
+        markAsRead, // [딥링크] 알림 센터 읽음 처리용
     } = useUnifiedProvider()
 
     // MCN Proxy Mode Support
@@ -158,7 +160,7 @@ function InfluencerDashboardContent() {
 
     // State definitions moved up to avoid ReferenceError
     const [currentView, setCurrentView] = useState(initialView)
-    const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
+
     const [chatProposal, setChatProposal] = useState<any>(null)
     const [isChatOpen, setIsChatOpen] = useState(false)
     // Performance Submit Dialog (settlement 단계 성과 제출)
@@ -168,7 +170,7 @@ function InfluencerDashboardContent() {
     // ... (rest of state definitions)
     const [generatedContract, setGeneratedContract] = useState("")
     const [isGeneratingContract, setIsGeneratingContract] = useState(false)
-    const [isAddEventOpen, setIsAddEventOpen] = useState(false)
+    const [isAddMomentOpen, setIsAddMomentOpen] = useState(false)
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
     const [favoritesOnly, setFavoritesOnly] = useState(false)
     const { isOpen: isMobileSidebarOpen, setIsOpen: setIsMobileSidebarOpen } = useMobileSidebar()
@@ -217,7 +219,7 @@ function InfluencerDashboardContent() {
     const [isSubmittingContent, setIsSubmittingContent] = useState(false)
     const [uploadProgress, setUploadProgress] = useState(0)
     const [isReuploading, setIsReuploading] = useState(false)
-    const [isApplying, setIsApplying] = useState(false) // [New] Application Loading State
+
 
     // Details Modal State
     const [selectedItemDetails, setSelectedItemDetails] = useState<any>(null)
@@ -261,9 +263,25 @@ function InfluencerDashboardContent() {
         }
     }, [brandProposals, campaignProposals, momentProposals, messages, user?.id])
 
-    // ReadonlyProposalDialog State
-    const [showReadonlyDialog, setShowReadonlyDialog] = useState(false)
+    // 지원서 수정 모달
+    const [editingApplication, setEditingApplication] = useState<any>(null)
+    const [editAppealMessage, setEditAppealMessage] = useState('')
+    const [editDesiredCost, setEditDesiredCost] = useState('')
+    const [isSavingApplication, setIsSavingApplication] = useState(false)
+
+    // 지원서 작성/수정 모달 등 (Outbound Application / Campaign Application)
+    const [isProposalOpen, setIsProposalOpen] = useState(false);
+    const [proposalTarget, setProposalTarget] = useState<any>(null);
+    const [isCampaignApplyOpen, setIsCampaignApplyOpen] = useState(false);
+    const [editApplicationParams, setEditApplicationParams] = useState<any>(null);
+
+    // ReadonlyProposalDialog    // 읽기 전용 다이얼로그
+    const [showReadonlyDialog, setShowReadonlyDialog] = useState(false);
     const [selectedProposal, setSelectedProposal] = useState<any>(null)
+
+    // 캠페인 모달
+    const [isCampaignDetailOpen, setIsCampaignDetailOpen] = useState(false);
+    const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
 
     // AI Planner State
     const [isAIPlanning, setIsAIPlanning] = useState(false)
@@ -290,33 +308,86 @@ function InfluencerDashboardContent() {
         }
     }, [])
 
-    // → 새로고침해도 아래 auto-open 로직이 proposalId를 읽어 dialog 복원
+    // [URL Sync] workspace에 chatProposal 열릴 때 URL에 proposalId 기록, 닫힐 때 제거
+    // 추가로 currentView와 workspaceTab 상태도 URL과 함께 동기화하여 뒤로가기/닫기 시 유지
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString())
-        if (currentView === 'workspace' && chatProposal?.id) {
-            params.set('proposalId', chatProposal.id.toString())
+        let changed = false;
+
+        // Sync proposalId
+        const activeModalId = (() => {
+            if (currentView !== 'proposals') return null;
+            if (isChatOpen && chatProposal?.id) return chatProposal.workspace_id?.toString() || chatProposal.id.toString();
+            if (showReadonlyDialog && selectedProposal?.id) return selectedProposal.workspace_id?.toString() || selectedProposal.id.toString();
+            return null;
+        })();
+
+        if (activeModalId) {
+            if (params.get('proposalId') !== activeModalId) {
+                params.set('proposalId', activeModalId)
+                changed = true;
+            }
         } else {
-            params.delete('proposalId')
+            if (params.has('proposalId')) {
+                params.delete('proposalId')
+                changed = true;
+            }
         }
-        const newUrl = `${window.location.pathname}?${params.toString()}`
-        router.replace(newUrl, { scroll: false })
-    }, [currentView, chatProposal?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+        // Sync view
+        if (params.get('view') !== currentView) {
+            params.set('view', currentView)
+            changed = true;
+        }
+
+        // Sync workspaceTab (only if we are in proposals view)
+        if (currentView === 'proposals' && params.get('workspaceTab') !== workspaceTab) {
+            params.set('workspaceTab', workspaceTab)
+            changed = true;
+        }
+
+        if (changed) {
+            const newUrl = `${window.location.pathname}?${params.toString()}`
+            router.replace(newUrl, { scroll: false })
+        }
+    }, [currentView, isChatOpen, chatProposal?.id, showReadonlyDialog, selectedProposal?.id, workspaceTab, searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // [URL Auto-open] 새로고침 시 URL proposalId 기반 workspace 자동 복원
     useEffect(() => {
         const proposalId = searchParams.get('proposalId')
         if (!proposalId || isAuthLoading) return
-        if (chatProposal) return // 이미 열려있으면 무시
+
+        // 이미 해당 모달이 화면에 떠있는 상태라면 무시 (닫혀있을 때는 재오픈 허용)
+        if (isChatOpen && (chatProposal?.workspace_id?.toString() === proposalId || chatProposal?.id?.toString() === proposalId)) return
+        if (showReadonlyDialog && (selectedProposal?.workspace_id?.toString() === proposalId || selectedProposal?.id?.toString() === proposalId)) return
 
         const allProposals = [
             ...(brandProposals || []),
             ...(campaignProposals || []),
             ...(momentProposals as any[] || []),
         ]
-        const target = allProposals.find((p: any) => p.id === proposalId || p.id?.toString() === proposalId)
+        const target = allProposals.find((p: any) => p.workspace_id?.toString() === proposalId || p.id?.toString() === proposalId)
         if (target) {
-            setChatProposal((prev: any) => prev?.id?.toString() === target.id.toString() ? prev : target)
-            setCurrentView('workspace')
+            setChatProposal((prev: any) => (prev?.workspace_id?.toString() === target.workspace_id?.toString() || prev?.id?.toString() === target.id?.toString()) ? prev : target)
+
+            const targetView = searchParams.get('view')
+            if (targetView === 'settlement' || target.status === 'settlement' || target.status === 'final_complete') {
+                // 이미 정산 뷰인 경우 모달을 띄우는 대신 정산 뷰를 유지
+                setCurrentView('settlement')
+                setIsChatOpen(false)
+                setShowReadonlyDialog(false)
+            } else {
+                setCurrentView('proposals')
+                // active, inbound, outbound, completed 등 상태에 따라 적절한 모달 선택
+                if (target.status === 'active' || target.status === 'accepted' || target.status === 'confirmed' || target.status === 'in_progress' || target.status === 'signed' || target.status === 'started') {
+                    setShowReadonlyDialog(false) // 👈 기존의 읽기전용 창이 열려있다면 닫아줌
+                    setIsChatOpen(true)
+                } else {
+                    setIsChatOpen(false) // 👈 기존의 워크스페이스(대화창)가 열려있다면 닫아줌
+                    setSelectedProposal(target)
+                    setShowReadonlyDialog(true)
+                }
+            }
         }
     }, [searchParams, brandProposals, campaignProposals, momentProposals, isAuthLoading]) // Removed chatProposal from deps to prevent loop
 
@@ -391,6 +462,7 @@ function InfluencerDashboardContent() {
         setIsDetailsModalOpen(false);
 
         const proposal = brandProposals.find((p: any) => p.id === proposalId) ||
+            momentProposals.find((p: any) => p.id === proposalId) ||
             campaignProposals.find((p: any) => p.id === proposalId);
 
         if (proposal) {
@@ -413,7 +485,9 @@ function InfluencerDashboardContent() {
             onConfirm: async () => {
                 try {
                     // Find the proposal to determine its type
-                    const proposal = brandProposals.find((p: any) => p.id === proposalId)
+                    const proposal = brandProposals.find((p: any) => p.id === proposalId) ||
+                        momentProposals.find((p: any) => p.id === proposalId) ||
+                        campaignProposals.find((p: any) => p.id === proposalId)
 
                     if (!proposal) {
                         toast.error('제안을 찾을 수 없습니다.')
@@ -421,6 +495,7 @@ function InfluencerDashboardContent() {
                     }
 
                     let error = null
+                    let updatedWorkspaceId: string | null = null;
 
                     // Update the correct table based on proposal type
                     if ((proposal as any).moment_id) {
@@ -429,31 +504,45 @@ function InfluencerDashboardContent() {
                             .from('moment_proposals')
                             .update({ status: 'accepted' })
                             .eq('id', proposalId)
+                            .select('workspace_id')
+                            .single()
                         error = result.error
-                    } else if (proposal.campaign_id) {
+                        if (result.data) updatedWorkspaceId = result.data.workspace_id
+                    } else if ((proposal as any).campaign_id) {
                         // Campaign application
                         const result = await supabase
                             .from('campaign_applications')
                             .update({ status: 'accepted' })
                             .eq('id', proposalId)
+                            .select('workspace_id')
+                            .single()
                         error = result.error
+                        if (result.data) updatedWorkspaceId = result.data.workspace_id
                     } else {
                         // Brand proposal (default)
                         const result = await supabase
                             .from('product_applications')
                             .update({ status: 'accepted' })
                             .eq('id', proposalId)
+                            .select('workspace_id')
+                            .single()
                         error = result.error
+                        if (result.data) updatedWorkspaceId = result.data.workspace_id
                     }
 
                     if (error) {
-                        toast.error('수락 실패: ' + error.message)
-                        throw error
+                        console.error('Update error details:', JSON.stringify(error));
+                        toast.error('수락 실패: ' + (error.message || '알 수 없는 오류'));
+                        throw error;
                     }
 
-                    // 1. 워크스페이스 자동 오픈
-                    setChatProposal(proposal)
-                    setCurrentView('workspace')
+                    // 1. 워크스페이스 자동 오픈 (DB에서 받아온 새 workspace_id 병합)
+                    const newProposalData = updatedWorkspaceId
+                        ? { ...proposal, workspace_id: updatedWorkspaceId, status: 'accepted' }
+                        : { ...proposal, status: 'accepted' };
+
+                    setChatProposal(newProposalData)
+                    setCurrentView('proposals')
 
                     // 2. 브랜드에게 알림 발송
                     try {
@@ -475,7 +564,8 @@ function InfluencerDashboardContent() {
                     await refreshData() // Refresh proposal list
                     toast.success('제안을 수락했습니다!')
                 } catch (error: any) {
-                    console.error('Accept error:', error)
+                    console.error('Accept error:', error?.message || error, JSON.stringify(error, Object.getOwnPropertyNames(error)))
+                    toast.error('오류 발생: 콘솔을 확인해주세요.')
                 }
             }
         })
@@ -619,6 +709,7 @@ function InfluencerDashboardContent() {
     }, [brandProposals, campaignProposals, momentProposals]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Reset sub-tab when main tab changes
+    // Reset sub-tab when main tab changes
     useEffect(() => {
         setWorkspaceSubTab('all')
     }, [workspaceTab])
@@ -635,14 +726,8 @@ function InfluencerDashboardContent() {
 
     // Fetch Feedback History when Chat Opens (Data Sync Fix)
     useEffect(() => {
-        if (chatProposal) {
-            const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
-            const pId = chatProposal.id.toString()
-            if (isCampaign) {
-                fetchSubmissionFeedback(pId, undefined)
-            } else {
-                fetchSubmissionFeedback(undefined, pId)
-            }
+        if (chatProposal?.workspace_id) {
+            fetchSubmissionFeedback(chatProposal.workspace_id.toString())
         }
     }, [chatProposal, isChatOpen])
     const workFeedbackChatRef = useRef<HTMLDivElement>(null)
@@ -674,7 +759,7 @@ function InfluencerDashboardContent() {
             // 2. Determine Current Stage
             let stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete' = 'negotiation';
 
-            if (chatProposal.brand_condition_confirmed && chatProposal.influencer_condition_confirmed) stage = 'contract';
+            if (chatProposal.brand_condition_confirmed && chatProposal.creator_condition_confirmed) stage = 'contract';
             if (chatProposal.contract_status === 'signed') stage = 'contract'; // 계약 서명 완료 → 입금 대기
             // [입금 확인 게이트] 관리자가 payment_confirmed_at 세팅 후에만 shipping으로 이동
             if (chatProposal.contract_status === 'signed' && (chatProposal as any).payment_confirmed_at) stage = 'shipping';
@@ -729,7 +814,10 @@ function InfluencerDashboardContent() {
         if (type === 'moment') {
             // Filter moment proposals that target this specific moment event
             if (item && item.id) {
-                related = (momentProposals as any[]).filter((p: any) => p.moment_id === item.id || p.event_id === item.id);
+                related = (momentProposals as any[]).filter((p: any) =>
+                    (p.moment_id === item.id || p.moment_id === item.id) &&
+                    p.status !== 'cancelled'
+                );
             } else {
                 related = [];
             }
@@ -747,15 +835,15 @@ function InfluencerDashboardContent() {
 
 
     // Filter events (Admins see all, users see theirs)
-    const { displayEvents, activeMoments, myMoments, pastMoments, myEvents, upcomingMoments } = useMemo(() => {
-        const display = (displayUser as any)?.type === 'admin' ? events : events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
+    const { displayMoments, activeMoments, myMoments, pastMoments, allMyMoments, upcomingMoments } = useMemo(() => {
+        const display = (displayUser as any)?.type === 'admin' ? moments : moments.filter((e: any) => e.creatorId === displayUser?.id || e.handle === displayUser?.handle)
 
         // Date-based filtering for refined UI
         const today = new Date()
         today.setHours(0, 0, 0, 0)
 
         // Date-based filtering with robust parsing
-        const parseEventDate = (dateStr: string) => {
+        const parseMomentDate = (dateStr: string) => {
             if (!dateStr) return new Date(0); // Return epoch if invalid
             // Handle "YYYY년 M월" format
             if (dateStr.includes('년') && dateStr.includes('월')) {
@@ -768,33 +856,33 @@ function InfluencerDashboardContent() {
         }
 
         const active = display.filter((e: any) => {
-            const eventDate = parseEventDate(e.eventDate)
-            eventDate.setHours(0, 0, 0, 0)
-            return eventDate < today && e.status !== 'completed'
+            const momentDate = parseMomentDate(e.momentDate)
+            momentDate.setHours(0, 0, 0, 0)
+            return momentDate < today && e.status !== 'completed'
         })
 
         const my = display.filter((e: any) => {
-            const eventDate = parseEventDate(e.eventDate)
-            eventDate.setHours(0, 0, 0, 0)
-            return eventDate >= today && e.status !== 'completed'
+            const momentDate = parseMomentDate(e.momentDate)
+            momentDate.setHours(0, 0, 0, 0)
+            return momentDate >= today && e.status !== 'completed'
         })
 
         const past = display.filter((e: any) => e.status === 'completed')
 
-        const mine = events.filter((e: any) => e.influencerId === displayUser?.id || e.handle === displayUser?.handle)
+        const mine = moments.filter((e: any) => e.creatorId === displayUser?.id || e.handle === displayUser?.handle)
 
         // Compatibility for upstream code using upcomingMoments
         const upcoming = [...active, ...my];
 
         return {
-            displayEvents: display,
+            displayMoments: display,
             activeMoments: active,
             myMoments: my,
             pastMoments: past,
-            myEvents: mine,
+            allMyMoments: mine,
             upcomingMoments: upcoming
         }
-    }, [displayUser, events])
+    }, [displayUser, moments])
 
     // Helper function to deduplicate proposals by ID
     const deduplicateById = useMemo(() => (items: any[]) => {
@@ -809,37 +897,40 @@ function InfluencerDashboardContent() {
     const allInboundProposals = useMemo(() => {
         // brandProposals = pure brand_proposals table data
         // momentProposals = pure moment_proposals table data
-        // Both are now separate — merge explicitly here for inbound view
+        // Both are now separate — merge explicitly here for inbound view, but exclude cancelled proposals
         return deduplicateById([
-            ...(brandProposals || []),
-            ...(momentProposals || []),
+            ...(brandProposals?.filter((p: any) => p.status !== 'cancelled') || []),
+            ...(momentProposals?.filter((p: any) => p.status !== 'cancelled') || []),
         ]).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
     }, [brandProposals, momentProposals, deduplicateById])
 
-    const filteredProposalsByMoment = selectedMomentId
-        ? (allInboundProposals.filter((p: any) => p.event_id === selectedMomentId) || [])
-        : []
+
 
     // --- SHARED DATA LOGIC (Lifted for Dashboard & Proposals View) ---
 
     // Outbound Applications: creator applied to brand products (has motivation/content_plan)
     // 'offered' is excluded here — if brand counter-offers, it becomes an inbound offer (brandOffers)
     const brandApplications = brandProposals?.filter((p: any) =>
-        (p.motivation || p.content_plan) &&
-        (p.status === 'offered' || p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')
+        (p.motivation || p.content_plan || p.status === 'draft') &&
+        (p.status === 'draft' || p.status === 'offered' || p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')
     ) || []
 
-    // Brand Offers are those WITHOUT motivation (pure offers from brand)
-    const brandOffers = brandProposals?.filter((p: any) => !p.motivation && !p.content_plan) || []
+    // Brand Offers are those WITHOUT motivation (pure offers from brand, excluding drafts since brand creates them)
+    const brandOffers = brandProposals?.filter((p: any) => !p.motivation && !p.content_plan && p.status !== 'draft') || []
 
     // 2. Outbound (Applied to Campaigns + Brand Products) - Waiting
-    const campaignApplications = campaignProposals?.filter((p: any) => p.type === 'creator_apply' && (p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')) || []
+    const campaignApplications = campaignProposals?.filter((p: any) => p.type === 'creator_apply' && (p.status === 'draft' || p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')) || []
 
     // Combine Campaign Applications + Brand Applications
     const outboundApplications = [
         ...campaignApplications,
         ...brandApplications
-    ].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    ].sort((a, b) => {
+        // [NEW] draft 상태가 항상 맨 위로 오도록 정렬
+        if (a.status === 'draft' && b.status !== 'draft') return -1
+        if (a.status !== 'draft' && b.status === 'draft') return 1
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    })
 
     // 3. Active (In Progress) - Both sources (deduplicated)
     const CREATOR_ACTIVE_STATUSES = ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete']
@@ -847,10 +938,18 @@ function InfluencerDashboardContent() {
     const activeOutbound = campaignProposals?.filter((p: any) => CREATOR_ACTIVE_STATUSES.includes(p.status)) || []
     const allActive = deduplicateById([...activeInbound, ...activeOutbound]).sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
 
-    // Inbound (Waiting for Action): pure brand offers without motivation (brand→creator)
-    // moment proposals are included via allInboundProposals → brandOffers filters them out since they have no motivation
-    const inboundProposals = brandOffers
-        .filter((p: any) => !p.status || p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')
+    // [FIX] Inbound (Waiting for Action): pure brand offers (brand→creator) + moment proposals (brand→creator)
+    // previously only took from brandOffers, missing pure momentProposals
+    const inboundProposals = allInboundProposals
+        .filter((p: any) => {
+            // Include if it's a moment proposal OR if it's a brand proposal without creator motivation
+            const isMoment = !!p.moment_id;
+            const isPureBrandOffer = !p.motivation && !p.content_plan;
+            const isWaitingStatus = !p.status || p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending';
+
+            // Draft 상태는 브랜드가 작성 중인 것이므로 제외
+            return isWaitingStatus && p.status !== 'draft' && (isMoment || isPureBrandOffer);
+        })
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
 
     // New Rejected List - Both Inbound (Brand Offers) and Outbound (Campaign Apps) (deduplicated)
@@ -893,7 +992,7 @@ function InfluencerDashboardContent() {
             (item.brand_name || '').toLowerCase().includes(q) ||
             (item.product_name || '').toLowerCase().includes(q) ||
             (item.campaign_title || item.title || '').toLowerCase().includes(q) ||
-            (item.moment_title || item.event || '').toLowerCase().includes(q) ||
+            (item.moment_title || item.title || '').toLowerCase().includes(q) ||
             (item.message || '').toLowerCase().includes(q)
         )
     }
@@ -1016,7 +1115,36 @@ function InfluencerDashboardContent() {
                         </TableHeader>
                         <TableBody>
                             {items.map((item) => (
-                                <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
+                                <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => {
+                                    if (type === 'active') {
+                                        setChatProposal(item);
+                                        setIsChatOpen(true);
+                                    } else {
+                                        if (item.status === 'draft' && type === 'outbound') {
+                                            if (item.type === 'campaign_apply') {
+                                                setEditApplicationParams({
+                                                    brandId: item.brand_id,
+                                                    campaignId: item.campaign_id,
+                                                    existingData: item
+                                                })
+                                                setIsCampaignApplyOpen(true)
+                                            } else {
+                                                setProposalTarget({
+                                                    brandName: item.brand_name || '브랜드',
+                                                    targetName: item.product_name || '제품 제안',
+                                                    productId: item.product_id,
+                                                    brandId: item.brand_id,
+                                                    productName: item.product_name,
+                                                })
+                                                setEditApplicationParams({ existingData: item })
+                                                setIsProposalOpen(true)
+                                            }
+                                        } else {
+                                            setSelectedProposal(item);
+                                            setShowReadonlyDialog(true);
+                                        }
+                                    }
+                                }}>
                                     <TableCell>
                                         <Badge variant="outline" className={`
                                             ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30' :
@@ -1100,7 +1228,40 @@ function InfluencerDashboardContent() {
                                                 : type === 'completed'
                                                     ? 'border-l-slate-400'
                                                     : 'border-l-emerald-500'}
-                        `} onClick={() => { setChatProposal(item); setIsChatOpen(true); }}>
+                        `} onClick={() => {
+                                if (type === 'active') {
+                                    setChatProposal(item);
+                                    setIsChatOpen(true);
+                                } else {
+                                    // [NEW] draft 상태의 보낸 제안이면 수정 모달 열기
+                                    if (item.status === 'draft' && type === 'outbound') {
+                                        if (item.type === 'campaign_apply') {
+                                            setEditApplicationParams({
+                                                brandId: item.brand_id,
+                                                campaignId: item.campaign_id,
+                                                // existingData에 item 원본 객체 전체를 전달
+                                                existingData: item
+                                            })
+                                            setIsCampaignApplyOpen(true)
+                                        } else {
+                                            // 일반 제품 지원서
+                                            setProposalTarget({
+                                                brandName: item.brand_name || '브랜드',
+                                                targetName: item.product_name || '제품 제안',
+                                                productId: item.product_id,
+                                                brandId: item.brand_id,
+                                                productName: item.product_name,
+                                            })
+                                            setEditApplicationParams({ existingData: item })
+                                            setIsProposalOpen(true)
+                                        }
+                                    } else {
+                                        // 일반 읽기 전용 뷰
+                                        setSelectedProposal(item);
+                                        setShowReadonlyDialog(true);
+                                    }
+                                }
+                            }}>
                             <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
                                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border overflow-hidden
                                     ${item.status === 'accepted' || item.status === 'signed' ? 'bg-blue-50 border-blue-100 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800' :
@@ -1190,8 +1351,33 @@ function InfluencerDashboardContent() {
                                 setChatProposal(proposal);
                                 setIsChatOpen(true);
                             } else {
-                                setSelectedProposal(proposal);
-                                setShowReadonlyDialog(true);
+                                // [NEW] draft 상태의 보낸 제안이면 수정 모달 열기
+                                if (proposal.status === 'draft' && type === 'outbound') {
+                                    if (proposal.type === 'campaign_apply') {
+                                        setEditApplicationParams({
+                                            brandId: proposal.brand_id,
+                                            campaignId: proposal.campaign_id,
+                                            // existingData에 proposal 원본 객체 전체를 전달
+                                            existingData: proposal
+                                        })
+                                        setIsCampaignApplyOpen(true)
+                                    } else {
+                                        // 일반 제품 지원서
+                                        setProposalTarget({
+                                            brandName: proposal.brand_name || '브랜드',
+                                            targetName: proposal.product_name || '제품 제안',
+                                            productId: proposal.product_id,
+                                            brandId: proposal.brand_id,
+                                            productName: proposal.product_name,
+                                        })
+                                        setEditApplicationParams({ existingData: proposal })
+                                        setIsProposalOpen(true)
+                                    }
+                                } else {
+                                    // 일반 읽기 전용 뷰
+                                    setSelectedProposal(proposal);
+                                    setShowReadonlyDialog(true);
+                                }
                             }
                         }}>
                         {/* 모바일: 우상단 즐겨찾기 버튼 */}
@@ -1241,7 +1427,7 @@ function InfluencerDashboardContent() {
                                                 setSelectedProposal(proposal);
                                                 setShowReadonlyDialog(true);
                                             }}>
-                                                <FileText className="mr-1 h-3 w-3" /> 제안서 보기
+                                                <FileText className="mr-1 h-3 w-3" /> 제안서
                                             </Button>
                                         )}
                                         {/* Contextual Actions based on type/status */}
@@ -1355,8 +1541,8 @@ function InfluencerDashboardContent() {
                 // Only include signature if provided (and status is signed)
                 const updateData: any = { contract_status: status }
                 if (signatureData) {
-                    updateData.influencer_signature = signatureData
-                    updateData.influencer_signed_at = new Date().toISOString()
+                    updateData.creator_signature = signatureData
+                    updateData.creator_signed_at = new Date().toISOString()
                 }
 
                 await updateProposal(proposalId, updateData)
@@ -1364,15 +1550,15 @@ function InfluencerDashboardContent() {
                 // For Brand Offer -> brand_proposals table
                 const updateData: any = { contract_status: status }
                 if (signatureData) {
-                    updateData.influencer_signature = signatureData
-                    updateData.influencer_signed_at = new Date().toISOString()
+                    updateData.creator_signature = signatureData
+                    updateData.creator_signed_at = new Date().toISOString()
                 }
 
                 await updateBrandProposal(proposalId, updateData)
             }
 
             // Local update
-            setChatProposal((prev: any) => ({ ...prev, contract_status: status, influencer_signature: signatureData }))
+            setChatProposal((prev: any) => ({ ...prev, contract_status: status, creator_signature: signatureData }))
 
             // Notify brand
             const msg = status === 'signed' ? "✅ 계약서에 서명했습니다! 콘텐츠 제작을 시작하겠습니다." :
@@ -1380,12 +1566,7 @@ function InfluencerDashboardContent() {
                     "❌ 계약 제안을 거절했습니다."
 
             // Send message with correct IDs
-            if (isCampaignProposal) {
-                // (to, content, proposalId, productApplicationId)
-                await sendMessage(brandId, msg, proposalId, undefined)
-            } else {
-                await sendMessage(brandId, msg, undefined, proposalId)
-            }
+            await sendMessage(brandId, msg, undefined, chatProposal.workspace_id?.toString())
 
             // 🔔 브랜드에게 계약 관련 알림 발송
             if (brandId) {
@@ -1398,7 +1579,7 @@ function InfluencerDashboardContent() {
                     const notifType = status === 'signed' ? 'contract_signed'
                         : status === 'negotiating' ? 'contract_negotiating'
                             : 'contract_rejected'
-                    await sendNotification(brandId, notifContent, notifType, proposalId)
+                    await sendNotification(brandId, notifContent, notifType, chatProposal?.workspace_id?.toString() || proposalId)
                 } catch (notifErr) {
                     console.warn('알림 발송 실패 (무시):', notifErr)
                 }
@@ -1470,9 +1651,7 @@ function InfluencerDashboardContent() {
                         await updateBrandProposal(proposalId, updateData)
                     }
 
-                    setChatProposal((prev: any) => ({ ...prev, ...updateData }))
-
-                    await sendMessage(brandId, "📦 [자동 알림] 크리에이터가 제품 수령을 완료했습니다.", isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
+                    await sendMessage(brandId, "📦 [자동 알림] 크리에이터가 제품 수령을 완료했습니다.", undefined, chatProposal.workspace_id?.toString())
 
                     toast.success("제품 수령이 확인되었습니다. 이제 작업물을 제출할 수 있습니다.")
                 } catch (e) {
@@ -1512,7 +1691,7 @@ function InfluencerDashboardContent() {
             setChatProposal((prev: any) => ({ ...prev, ...updateData }))
 
             // Notify Brand
-            await sendMessage(brandId, "🚚 배송지 정보를 입력했습니다. 제품 발송 부탁드립니다!", isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
+            await sendMessage(brandId, "🚚 배송지 정보를 입력했습니다. 제품 발송 부탁드립니다!", undefined, chatProposal.workspace_id?.toString())
 
             toast.success("배송지 정보가 저장되었습니다.")
         } catch (e) {
@@ -1529,8 +1708,6 @@ function InfluencerDashboardContent() {
     const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false)
     const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
     const [selectedBrandProduct, setSelectedBrandProduct] = useState<any>(null) // New state for Brand Detail View
-    const [selectedCampaign, setSelectedCampaign] = useState<any>(null)
-    const [isCampaignDetailOpen, setIsCampaignDetailOpen] = useState(false)
     const [appealMessage, setAppealMessage] = useState("")
     const [desiredCost, setDesiredCost] = useState("")
 
@@ -1586,11 +1763,9 @@ function InfluencerDashboardContent() {
         if (!chatProposal) return
 
         const loadFeedback = async () => {
-            const isCampaign = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
-            await fetchSubmissionFeedback(
-                isCampaign ? chatProposal.id.toString() : undefined,
-                !isCampaign ? chatProposal.id.toString() : undefined
-            )
+            if (chatProposal.workspace_id) {
+                await fetchSubmissionFeedback(chatProposal.workspace_id.toString())
+            }
         }
         loadFeedback()
     }, [chatProposal, fetchSubmissionFeedback])
@@ -1684,27 +1859,25 @@ function InfluencerDashboardContent() {
                 : `✅ 새로운 작업물(v${nextVersion})이 제출되었습니다.`
 
             await sendSubmissionFeedback(
-                isCampaignProposal ? proposalId : undefined,
-                !isCampaignProposal ? proposalId : undefined,
+                chatProposal.workspace_id?.toString(),
                 notificationContent
             )
 
             // Also send global message for brand visibility
-            await sendMessage(brandId, notificationContent, isCampaignProposal ? proposalId : undefined, isCampaignProposal ? undefined : proposalId)
+            await sendMessage(brandId, notificationContent, undefined, chatProposal.workspace_id?.toString())
 
             // 🔔 Send notification to brand
             await sendNotification(
                 brandId,
                 `${displayUser?.name}님이 콘텐츠를 제출했습니다.`,
                 'content_submission',
-                proposalId
+                chatProposal?.workspace_id?.toString() || proposalId
             )
 
             // Refresh feedback list
-            await fetchSubmissionFeedback(
-                isCampaignProposal ? proposalId : undefined,
-                !isCampaignProposal ? proposalId : undefined
-            )
+            if (chatProposal.workspace_id) {
+                await fetchSubmissionFeedback(chatProposal.workspace_id.toString())
+            }
 
             toast.success(`작업물(v${nextVersion})이 제출되었습니다.`)
             setSubmissionUrl("")
@@ -1724,20 +1897,15 @@ function InfluencerDashboardContent() {
 
         setIsSendingFeedback(true)
         try {
-            const isCampaign = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
-            const isBrandProposal = !isCampaign
-
             await sendSubmissionFeedback(
-                isCampaign ? chatProposal.id.toString() : undefined,
-                isBrandProposal ? chatProposal.id.toString() : undefined,
+                chatProposal.workspace_id?.toString(),
                 feedbackInput.trim()
             )
             // [FIX] sendSubmissionFeedback returns void, no truthiness check needed
             setFeedbackInput("")
-            await fetchSubmissionFeedback(
-                isCampaign ? chatProposal.id.toString() : undefined,
-                isBrandProposal ? chatProposal.id.toString() : undefined
-            )
+            if (chatProposal.workspace_id) {
+                await fetchSubmissionFeedback(chatProposal.workspace_id.toString())
+            }
         } catch (e) {
             console.error("Failed to send feedback:", e)
         } finally {
@@ -1754,16 +1922,16 @@ function InfluencerDashboardContent() {
         setIsGeneratingContract(true)
         try {
             const proposalId = chatProposal.id?.toString()
-            const influencerMessages = messages.filter((m: any) => m.proposalId === chatProposal.id?.toString() || m.productApplicationId === chatProposal.id?.toString())
+            const creatorMessages = messages.filter((m: any) => m.proposalId === chatProposal.id?.toString() || m.productApplicationId === chatProposal.id?.toString())
 
             const response = await fetch('/api/generate-contract', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: influencerMessages,
+                    messages: creatorMessages,
                     proposal: chatProposal,
                     brandName: chatProposal.brand_name || "브랜드",
-                    influencerName: displayUser?.name || "크리에이터"
+                    creatorName: displayUser?.name || "크리에이터"
                 })
             })
 
@@ -1834,8 +2002,8 @@ function InfluencerDashboardContent() {
         }
     }
 
-    const getFilteredAndSortedEvents = () => {
-        let result = [...events]
+    const getFilteredAndSortedMoments = () => {
+        let result = [...moments]
         if (discoverTag) {
             result = result.filter(e =>
                 e.category === discoverTag ||
@@ -1855,11 +2023,11 @@ function InfluencerDashboardContent() {
         return result
     }
 
-    const discoverEvents = getFilteredAndSortedEvents()
+    const discoverMoments = getFilteredAndSortedMoments()
 
 
     // ... existing state ...
-    const [selectedMoment, setSelectedMoment] = useState<InfluencerEvent | null>(null)
+
 
     // ... existing useEffects ...
 
@@ -1911,7 +2079,7 @@ function InfluencerDashboardContent() {
                         key={moment.id}
                         moment={moment}
                         brandProposals={brandProposals}
-                        onClick={setSelectedMoment}
+                        onClick={(moment) => router.push(`/moment/${moment.id}`)}
                     />
                 ))}
             </div>
@@ -1965,7 +2133,7 @@ function InfluencerDashboardContent() {
     useEffect(() => {
         if (!isAuthLoading && !user) {
             router.push('/')
-        } else if (user && user.role === 'brand' && user.id !== 'guest_influencer') {
+        } else if (user && user.role === 'brand' && user.id !== 'guest_creator') {
             router.push('/brand')
         }
     }, [isAuthLoading, user, router])
@@ -2017,7 +2185,22 @@ function InfluencerDashboardContent() {
                     // Send notification/message to brand
                     if (newStatus === 'accepted') {
                         // Pass proposal.id as 4th argument (productApplicationId)
-                        await sendMessage(proposal.brand_id, `✅ [시스템 알림] 크리에이터가 협업 제안을 수락했습니다! 대화를 시작해보세요.`, undefined, proposal.id)
+                        await sendMessage(proposal.brand_id, `✅ [시스템 알림] 크리에이터가 협업 제안을 수락했습니다! 대화를 시작해보세요.`, undefined, proposal.workspace_id?.toString())
+
+                        // 🔔 브랜드에게 제안 수락 알림
+                        try {
+                            const creatorName = (displayUser as any)?.display_name || displayUser?.name || '크리에이터'
+                            if (proposal.brand_id) {
+                                await sendNotification(
+                                    proposal.brand_id,
+                                    `${creatorName}님이 '${proposal.product_name || '협업 제안'}'을 수락했습니다! 지금 대화를 시작해보세요.`,
+                                    'proposal_accepted',
+                                    proposal.workspace_id?.toString() || proposal.id.toString()
+                                )
+                            }
+                        } catch (notifErr) {
+                            console.warn('알림 발송 실패 (무시):', notifErr)
+                        }
 
                         // Force refresh so the list updates (moving from inbound to active)
                         await refreshData()
@@ -2043,8 +2226,8 @@ function InfluencerDashboardContent() {
                                 const brandName = proposal.brand_name || '브랜드';
                                 const greetingMsg = `안녕하세요 '${brandName}'님. 좋은 협업 제안 요청주셔서 감사합니다.\n아래에 저의 예상단가를 보내드립니다.`;
                                 try {
-                                    await sendMessage(proposal.brand_id, greetingMsg, undefined, proposal.id);
-                                    await sendMessage(proposal.brand_id, rateCardMsg, undefined, proposal.id)
+                                    await sendMessage(proposal.brand_id, greetingMsg, undefined, proposal.workspace_id?.toString());
+                                    await sendMessage(proposal.brand_id, rateCardMsg, undefined, proposal.workspace_id?.toString())
                                 } catch (e) {
                                     console.error("Failed to auto-send rate card:", e);
                                 }
@@ -2053,7 +2236,7 @@ function InfluencerDashboardContent() {
 
                         toast.success("제안을 수락했습니다. 이제 워크스페이스에서 브랜드와 대화할 수 있습니다.")
                     } else if (newStatus === 'pending') {
-                        await sendMessage(proposal.brand_id, `⏳ [시스템 알림] 크리에이터가 제안을 확인했으며, 현재 검토(보류) 중입니다.`, undefined, proposal.id)
+                        await sendMessage(proposal.brand_id, `⏳ [시스템 알림] 크리에이터가 제안을 확인했으며, 현재 검토(보류) 중입니다.`, undefined, proposal.workspace_id?.toString())
                         toast.success("제안을 보류 처리했습니다. 나중에 다시 수락할 수 있습니다.")
                     }
                 }
@@ -2086,7 +2269,7 @@ function InfluencerDashboardContent() {
                     setChatProposal((prev: any) => prev ? { ...prev, status: 'rejected' } : prev)
 
                     // Send polite rejection message
-                    await sendMessage(proposal.brand_id, `안녕하세요 ${proposal.brand_name}님, 제안 주셔서 감사합니다.\n아쉽게도 현재 제 일정 및 상황상 참여가 어려울 것 같습니다. 😢\n다음에 더 좋은 기회로 뵙기를 희망합니다!`, undefined, proposal.id)
+                    await sendMessage(proposal.brand_id, `안녕하세요 ${proposal.brand_name}님, 제안 주셔서 감사합니다.\n아쉽게도 현재 제 일정 및 상황상 참여가 어려울 것 같습니다. 😢\n다음에 더 좋은 기회로 뵙기를 희망합니다!`, undefined, proposal.workspace_id?.toString())
 
                     // 🔔 브랜드에게 거절 알림
                     try {
@@ -2096,7 +2279,7 @@ function InfluencerDashboardContent() {
                                 proposal.brand_id,
                                 `${creatorName}님이 '${proposal.product_name || '제안'}'을 거절했습니다.`,
                                 'proposal_rejected',
-                                proposal.id
+                                proposal.workspace_id?.toString() || proposal.id.toString()
                             )
                         }
                     } catch (notifErr) {
@@ -2117,10 +2300,7 @@ function InfluencerDashboardContent() {
     }
 
     // G3: Edit outbound (creator→brand) application
-    const [editingApplication, setEditingApplication] = useState<any>(null)
-    const [editAppealMessage, setEditAppealMessage] = useState('')
-    const [editDesiredCost, setEditDesiredCost] = useState('')
-    const [isSavingApplication, setIsSavingApplication] = useState(false)
+    // State declarations moved to top level to avoid duplicate block-scope variables
 
     const handleOpenEditApplication = (proposal: any) => {
         setEditingApplication(proposal)
@@ -2146,6 +2326,23 @@ function InfluencerDashboardContent() {
                     .eq('id', editingApplication.id)
                 if (error) throw error
             }
+
+            // 🔔 브랜드에게 지원서 수정 알림
+            try {
+                const creatorName = (displayUser as any)?.display_name || displayUser?.name || '크리에이터'
+                const brandId = editingApplication.brand_id || editingApplication.campaign?.brand_id
+                if (brandId) {
+                    await sendNotification(
+                        brandId,
+                        `${creatorName}님이 지원서를 수정했습니다. 변경 내용을 확인해보세요.`,
+                        'application_updated',
+                        editingApplication.id
+                    )
+                }
+            } catch (notifErr) {
+                console.warn('알림 발송 실패 (무시):', notifErr)
+            }
+
             toast.success('지원서가 수정되었습니다.')
             setEditingApplication(null)
             await refreshData()
@@ -2243,12 +2440,8 @@ function InfluencerDashboardContent() {
             // Determine if it's a Campaign Application (proposals table) or Direct Offer (brand_proposals table)
             const isCampaignProposal = !!chatProposal.campaignId || chatProposal.type === 'creator_apply'
 
-            // sendMessage signature: (receiverId, content, file?, proposalId?, productApplicationId?)
-            if (isCampaignProposal) {
-                await sendMessage(receiverId, msgContent, undefined, chatProposal.id?.toString(), undefined)
-            } else {
-                await sendMessage(receiverId, msgContent, undefined, undefined, chatProposal.id?.toString())
-            }
+            // sendMessage signature: (receiverId, content, file?, workspaceId?, projectName?)
+            await sendMessage(receiverId, msgContent, undefined, chatProposal.workspace_id?.toString())
         } catch (e) {
             console.error("Message send failed:", e)
             setChatMessage(msgContent)
@@ -2259,9 +2452,9 @@ function InfluencerDashboardContent() {
 
     const filteredProposals = (status: string) => {
         if (!displayUser) return []
-        if (status === 'new') return brandProposals?.filter(p => (!p.status || p.status === 'offered') && p.influencer_id === displayUser.id)
-        if (status === 'applied') return brandProposals?.filter(p => p.status === 'applied' && p.influencer_id === displayUser.id)
-        return brandProposals?.filter(p => p.status === status && p.influencer_id === displayUser.id)
+        if (status === 'new') return brandProposals?.filter(p => (!p.status || p.status === 'offered') && p.creator_id === displayUser.id)
+        if (status === 'applied') return brandProposals?.filter(p => p.status === 'applied' && p.creator_id === displayUser.id)
+        return brandProposals?.filter(p => p.status === status && p.creator_id === displayUser.id)
     }
 
 
@@ -2305,7 +2498,7 @@ function InfluencerDashboardContent() {
                                         <div className="text-xs text-muted-foreground">팔로워</div>
                                     </div>
                                     <div className="p-4 bg-muted/50 rounded-xl text-center">
-                                        <div className="text-2xl font-bold text-primary">{myEvents.length}</div>
+                                        <div className="text-2xl font-bold text-primary">{allMyMoments.length}</div>
                                         <div className="text-xs text-muted-foreground">등록된 모먼트</div>
                                     </div>
                                     <div className="p-4 bg-muted/50 rounded-xl text-center">
@@ -2423,8 +2616,8 @@ function InfluencerDashboardContent() {
                         </Card>
 
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {discoverEvents.map((item) => (
-                                <Link key={item.id} href={`/event/${item.id}`} className="block group">
+                            {discoverMoments.map((item) => (
+                                <Link key={item.id} href={`/moment/${item.id}`} className="block group">
                                     <Card className="overflow-hidden transition-all hover:shadow-lg border-border/60 bg-background flex flex-col h-full cursor-pointer">
                                         <CardHeader className="pb-3 flex-row gap-3 items-start space-y-0">
                                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold overflow-hidden">
@@ -2445,11 +2638,11 @@ function InfluencerDashboardContent() {
                                             </div>
                                         </CardHeader>
                                         <CardContent className="space-y-3 flex-1">
-                                            <h3 className="font-bold text-sm line-clamp-2">{item.event}</h3>
+                                            <h3 className="font-bold text-sm line-clamp-2">{item.title}</h3>
                                             <div className="space-y-1 py-1">
                                                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                                     <Calendar className="h-3 w-3 shrink-0" />
-                                                    <span className="font-medium text-foreground/80">일정:</span> {formatDateToMonth(item.eventDate)}
+                                                    <span className="font-medium text-foreground/80">일정:</span> {formatDateToMonth(item.momentDate)}
                                                 </div>
                                                 {item.postingDate && (
                                                     <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -2492,114 +2685,19 @@ function InfluencerDashboardContent() {
                             </Button>
                         </div>
 
-                        {/* Selected Moment Detail View */}
-                        {selectedMomentId ? (
-                            <div className="grid gap-6 md:grid-cols-[2fr_1fr] animate-in slide-in-from-bottom-4 duration-500">
-                                {/* Left: Moment Details */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Button variant="ghost" size="sm" onClick={() => setSelectedMomentId(null)} className="h-8">
-                                            <ChevronRight className="h-4 w-4 rotate-180 mr-1" /> 목록으로
-                                        </Button>
-                                    </div>
-                                    {/* Find the selected moment */}
-                                    {myMoments.find(e => e.id === selectedMomentId) && (
-                                        <div className="space-y-6">
-                                            <div className="flex justify-between items-start">
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <Badge variant="outline" className="text-emerald-600 border-emerald-100 bg-emerald-50">
-                                                            {myMoments.find(e => e.id === selectedMomentId)?.category}
-                                                        </Badge>
-                                                    </div>
-                                                    <h3 className="text-xl font-bold">
-                                                        {myMoments.find(e => e.id === selectedMomentId)?.event}
-                                                    </h3>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="p-3 bg-muted/30 rounded-xl space-y-1 text-center">
-                                                    <div className="text-xs text-muted-foreground/70 flex items-center justify-center gap-1.5"><Calendar className="h-3 w-3" /> 일정</div>
-                                                    <span className="font-semibold">
-                                                        {myMoments.find(e => e.id === selectedMomentId)?.date}
-                                                    </span>
-                                                </div>
-                                                <div className="p-3 bg-muted/30 rounded-xl space-y-1 text-center">
-                                                    <div className="text-xs text-muted-foreground/70 flex items-center justify-center gap-1.5"><Package className="h-3 w-3" /> 희망 제품</div>
-                                                    <span className="font-semibold">{myMoments.find(e => e.id === selectedMomentId)?.targetProduct}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <h4 className="text-sm font-bold text-foreground">모먼트 소개</h4>
-                                                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                                    {myMoments.find(e => e.id === selectedMomentId)?.description}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Right: Proposals List */}
-                                <div className="space-y-4">
-                                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                                        <Briefcase className="h-5 w-5 text-primary" />
-                                        도착한 제안
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {filteredProposalsByMoment.length > 0 ? (
-                                            filteredProposalsByMoment.map((proposal: any) => (
-                                                <Card
-                                                    key={proposal.id}
-                                                    className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all group"
-                                                    onClick={() => {
-                                                        setChatProposal(proposal)
-                                                        setIsChatOpen(true)
-                                                    }}
-                                                >
-                                                    <div className="flex items-start justify-between mb-2">
-                                                        <div className="font-bold text-sm truncate pr-2">
-                                                            {proposal.brand_name || "익명 브랜드"}
-                                                        </div>
-                                                        <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground">
-                                                            {new Date(proposal.created_at).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm font-medium text-emerald-600 mb-1">
-                                                        {proposal.product_name}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground line-clamp-2">
-                                                        "{proposal.message}"
-                                                    </p>
-                                                    <div className="mt-3 text-xs w-full text-right text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium">
-                                                        자세히 보기 →
-                                                    </div>
-                                                </Card>
-                                            ))
-                                        ) : (
-                                            <div className="text-center py-8 bg-muted/20 rounded-lg border-dashed border">
-                                                <p className="text-sm text-muted-foreground">이 일정에 도착한 제안이 아직 없습니다.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <DashboardView
-                                activeMoments={activeMoments}
-                                myMoments={myMoments}
-                                pastMoments={pastMoments}
-                                outboundApplications={outboundApplications}
-                                inboundProposals={inboundProposals}
-                                allActive={allActive}
-                                allCompleted={allCompleted}
-                                setCurrentView={setCurrentView}
-                                setSelectedMomentId={setSelectedMomentId}
-                                setChatProposal={setChatProposal}
-                                setIsChatOpen={setIsChatOpen}
-                            />
-                        )}
+                        <DashboardView
+                            activeMoments={activeMoments}
+                            myMoments={myMoments}
+                            pastMoments={pastMoments}
+                            outboundApplications={outboundApplications}
+                            inboundProposals={inboundProposals}
+                            allActive={allActive}
+                            allCompleted={allCompleted}
+                            setCurrentView={setCurrentView}
+                            handleOpenDetails={handleOpenDetails}
+                            setChatProposal={setChatProposal}
+                            setIsChatOpen={setIsChatOpen}
+                        />
                     </div>
                 )
             case "moments_list":
@@ -2609,11 +2707,11 @@ function InfluencerDashboardContent() {
                         myMoments={myMoments}
                         pastMoments={pastMoments}
                         upcomingMoments={upcomingMoments}
-                        brandProposals={allInboundProposals}
+                        momentProposals={momentProposals}
                         setCurrentView={setCurrentView}
                         handleOpenDetails={handleOpenDetails}
-                        deleteEvent={deleteEvent}
-                        updateEvent={updateEvent}
+                        deleteMoment={deleteMoment}
+                        updateMoment={updateMoment}
                         user={displayUser}
                     />
                 )
@@ -2632,8 +2730,8 @@ function InfluencerDashboardContent() {
                     <InboundProposalsView
                         inboundProposals={inboundProposals}
                         setCurrentView={setCurrentView}
-                        setChatProposal={setChatProposal}
-                        setIsChatOpen={setIsChatOpen}
+                        setSelectedProposal={setSelectedProposal}
+                        setShowReadonlyDialog={setShowReadonlyDialog}
                     />
                 )
 
@@ -2800,25 +2898,25 @@ function InfluencerDashboardContent() {
                                 <div className="text-center py-10 border rounded-lg border-dashed text-muted-foreground">
                                     완료된 모먼트가 없습니다.
                                 </div>
-                            ) : pastMoments.map((event) => (
-                                <Card key={event.id} className="opacity-75">
+                            ) : pastMoments.map((moment) => (
+                                <Card key={moment.id} className="opacity-75">
                                     <CardHeader>
-                                        <CardTitle className="text-lg">{event.event}</CardTitle>
+                                        <CardTitle className="text-lg">{moment.title}</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="flex flex-col gap-1">
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                 <Calendar className="h-3.5 w-3.5 text-primary" />
-                                                <span className="font-medium">일정:</span> {event.eventDate || "미정"}
+                                                <span className="font-medium">일정:</span> {moment.momentDate || "미정"}
                                             </div>
-                                            {event.postingDate && (
+                                            {moment.postingDate && (
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                     <Send className="h-3.5 w-3.5 text-primary" />
                                                     <span className="font-medium">업로드:</span>
-                                                    {event.dateFlexible ? (
+                                                    {moment.dateFlexible ? (
                                                         <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
                                                     ) : (
-                                                        event.postingDate
+                                                        moment.postingDate
                                                     )}
                                                 </div>
                                             )}
@@ -2826,7 +2924,7 @@ function InfluencerDashboardContent() {
                                                 <div className="flex items-center gap-2">
                                                     <Gift className="h-3.5 w-3.5 text-purple-500" />
                                                     <span className="text-muted-foreground shrink-0">희망 제품:</span>
-                                                    <span className="font-medium truncate">{event.targetProduct || "미정"}</span>
+                                                    <span className="font-medium truncate">{moment.targetProduct || "미정"}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                                                     <Banknote className="h-3.5 w-3.5 text-blue-500" />
@@ -2844,7 +2942,7 @@ function InfluencerDashboardContent() {
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 if (confirm("모먼트를 다시 진행하시겠습니까? '내 모먼트' 탭으로 이동합니다.")) {
-                                                    updateEvent(event.id, { status: "active" });
+                                                    updateMoment(moment.id, { status: "active" });
                                                 }
                                             }}
                                         >
@@ -2858,18 +2956,45 @@ function InfluencerDashboardContent() {
                 )
 
             case "notifications":
+                const sortedNotifs = [...(notifications || [])].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 return (
                     <div className="space-y-6">
-                        <h1 className="text-3xl font-bold tracking-tight">알림</h1>
-                        <div className="space-y-2">
-                            {notifications && notifications.length > 0 ? (
-                                notifications.map((notif) => (
-                                    <div key={notif.id} className="p-4 bg-white dark:bg-card border rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
-                                        <div className={`w-2 h-2 mt-2 rounded-full ${notif.is_read ? "bg-gray-300" : "bg-red-500"}`}></div>
-                                        <div>
-                                            <p className="text-sm">{notif.content}</p>
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                                <Bell className="h-7 w-7 text-primary" /> 알림 센터
+                            </h1>
+                            <p className="text-sm text-muted-foreground mt-1">브랜드와의 협업 진행 상황을 실시간으로 확인하세요.</p>
+                        </div>
+                        <div className="space-y-3">
+                            {sortedNotifs.length > 0 ? (
+                                sortedNotifs.map((notif: any) => (
+                                    <div
+                                        key={notif.id}
+                                        className={`p-4 bg-card border rounded-2xl flex items-start gap-4 cursor-pointer hover:shadow-md transition-all group ${!notif.is_read ? 'ring-2 ring-primary/20' : 'opacity-70'}`}
+                                        onClick={() => {
+                                            // 읽음 처리 (백그라운드)
+                                            if (!notif.is_read) markAsRead(notif.id).catch(() => { })
+                                            // type 기반 router.push 딥링크
+                                            const ref = notif.reference_id
+                                            const inboundTypes = ['proposal_received', 'moment_proposal']
+                                            const outboundTypes = ['proposal_rejected', 'condition_confirmed', 'contract_negotiating', 'contract_rejected']
+                                            const settlementTypes = ['collaboration_complete', 'collaboration_final_complete', 'settlement_paid']
+                                            let tab = 'active'
+                                            if (inboundTypes.includes(notif.type)) tab = 'inbound'
+                                            else if (outboundTypes.includes(notif.type)) tab = 'outbound'
+                                            if (settlementTypes.includes(notif.type)) {
+                                                router.push(`/creator?view=earnings${ref ? `&proposalId=${ref}` : ''}`)
+                                            } else {
+                                                router.push(`/creator?view=proposals&workspaceTab=${tab}${ref ? `&proposalId=${ref}` : ''}`)
+                                            }
+                                        }}
+                                    >
+                                        <div className={`w-2 h-2 mt-2 shrink-0 rounded-full ${notif.is_read ? 'bg-gray-300' : 'bg-red-500'}`} />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium group-hover:text-primary transition-colors">{notif.content}</p>
                                             <p className="text-xs text-muted-foreground mt-1">{new Date(notif.created_at).toLocaleDateString()}</p>
                                         </div>
+                                        <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 self-center" />
                                     </div>
                                 ))
                             ) : (
@@ -2880,6 +3005,7 @@ function InfluencerDashboardContent() {
                         </div>
                     </div>
                 )
+
             case "insight-analyzer":
                 return <InsightAnalyzer />
             case "settings":
@@ -2893,7 +3019,7 @@ function InfluencerDashboardContent() {
                         favorites={favorites}
                         onViewDetail={(p) => {
                             setSelectedProductId(String(p.id))
-                            setCurrentView("product-detail")
+                            setCurrentView("discover-products")
                         }}
                         onViewGuide={(p) => {
                             if (p.link) window.open(p.link, "_blank")
@@ -2915,11 +3041,11 @@ function InfluencerDashboardContent() {
             case "discover-campaigns":
                 return (
                     <CampaignBrowseView
-                        campaigns={campaigns}
+                        campaigns={(campaigns || []).filter((c: any) => c.status !== 'draft')}
                         applicantCounts={applicantCounts}
                         favorites={favorites}
-                        onCampaignClick={(camp) => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
-                        onApply={(e, camp) => { e.stopPropagation(); handleApplyClick(camp); }}
+                        onCampaignClick={(camp: any) => { setSelectedCampaign(camp); setIsCampaignDetailOpen(true); }}
+                        onApply={(e: any, camp: any) => { e.stopPropagation(); handleApplyClick(camp); }}
                         description="브랜드가 등록한 쳪페인을 확인하고 지원해보세요."
                     />
                 )
@@ -2932,96 +3058,10 @@ function InfluencerDashboardContent() {
 
 
 
-    const handleSubmitApplication = async (formData: import('@/components/dialogs/CreatorProposalDialog').CreatorProposalFormData) => {
-        if (!formData.channelUrl || !formData.motivation || !formData.contentPlan) {
-            toast.error("활동 채널/계정, 지원 동기, 콘텐츠 제작 계획은 필수 입력 항목입니다.")
-            return
-        }
-
-        const effectiveCreatorId = formData.targetCreatorId || user?.id
-
-        if ((user?.role === 'agency' || user?.role === 'mcn') && !effectiveCreatorId) {
-            toast.error("지원을 대행할 크리에이터를 선택해주세요.")
-            return
-        }
-
-        if (!selectedCampaign) return
-
-        setIsApplying(true)
-        try {
-            // Upload Insight File if exists
-            let insightUrl: string | undefined = undefined
-            if (formData.insightFile) {
-                const fileExt = formData.insightFile.name.split('.').pop()
-                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-                const filePath = `insights/${fileName}`
-
-                const { error: uploadError } = await supabase.storage
-                    .from('campaigns')
-                    .upload(filePath, formData.insightFile)
-
-                if (!uploadError) {
-                    const { data } = supabase.storage.from('campaigns').getPublicUrl(filePath)
-                    insightUrl = data.publicUrl
-                }
-            }
-
-            const priceOffer = formData.desiredCost ? parseInt(formData.desiredCost.replace(/[^0-9]/g, '')) : undefined
-            const pLinks = formData.portfolioLinks.split('\n').map(l => l.trim()).filter(Boolean)
-
-            await addProposal({
-                campaignId: selectedCampaign.id,
-                influencerId: effectiveCreatorId,
-                fromId: effectiveCreatorId!,
-                toId: selectedCampaign.brandId || selectedCampaign.brand_id,
-                message: formData.appealMessage,
-                status: 'applied',
-                type: 'creator_apply',
-                motivation: formData.motivation,
-                content_plan: formData.contentPlan,
-                portfolioLinks: pLinks,
-                instagramHandle: formData.channelUrl,
-                insightScreenshot: insightUrl,
-                priceOffer: priceOffer,
-                dealType: 'ad',
-                date: new Date().toISOString()
-            } as any)
-
-            setIsApplyDialogOpen(false)
-
-            await refreshData()
-            toast.success("지원서가 성공적으로 발송되었습니다!")
-            handleOpenDetails(null, 'campaign')
-
-        } catch (e: any) {
-            console.error("Application Error:", e)
-            toast.error(`지원 중 오류가 발생했습니다: ${e.message}`)
-        } finally {
-            setIsApplying(false)
-        }
-    }
-
+    // [CONSOLIDATED] 캠페인 지원은 CampaignDetailDialog → CampaignApplicationDialog 단일 경로로 처리
     const handleApplyClick = (campaign: any) => {
         setSelectedCampaign(campaign)
-        setAppealMessage("") // Reset general message
-        setDesiredCost("")
-        setMotivation("")
-        setContentPlan("")
-        setPortfolioLinks("")
-        setInstagramHandle(displayUser?.handle || "") // Pre-fill handle if available
-        setInsightFile(null)
-        setIsApplyDialogOpen(true)
-    }
-
-    const handleProductApply = (product: any) => {
-        const mockCampaign = {
-            id: product.id,
-            brand: product.brandName || "Unknown Brand",
-            brandId: product.brand_id, // [FIX] Add brandId for correct proposal routing
-            product: product.name,
-            budget: product.price ? `${product.price.toLocaleString()}원` : "협의",
-        }
-        handleApplyClick(mockCampaign)
+        setIsCampaignDetailOpen(true)
     }
 
     const handleDownloadContract = () => {
@@ -3056,9 +3096,9 @@ function InfluencerDashboardContent() {
                                         <p><small>${chatProposal?.brand_signed_at ? new Date(chatProposal.brand_signed_at).toLocaleDateString() : ''}</small></p>
                                     </div>
                                     <div class="sign-box">
-                                        <p><strong>을 (크리에이터):</strong> ${chatProposal?.influencer_name || user?.name || 'Creator'}</p>
-                                        ${chatProposal?.influencer_signature ? `<img src="${chatProposal.influencer_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
-                                        <p><small>${chatProposal?.influencer_signed_at ? new Date(chatProposal.influencer_signed_at).toLocaleDateString() : ''}</small></p>
+                                        <p><strong>을 (크리에이터):</strong> ${chatProposal?.creator_name || user?.name || 'Creator'}</p>
+                                        ${chatProposal?.creator_signature ? `<img src="${chatProposal.creator_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                                        <p><small>${chatProposal?.creator_signed_at ? new Date(chatProposal.creator_signed_at).toLocaleDateString() : ''}</small></p>
                                     </div>
                                 </div>
                                 <script>
@@ -3491,19 +3531,22 @@ function InfluencerDashboardContent() {
                                 campaign={selectedCampaign}
                             />
 
-                            <CreatorProposalDialog
-                                open={isApplyDialogOpen}
-                                onOpenChange={setIsApplyDialogOpen}
-                                target={selectedCampaign ? {
-                                    brandName: selectedCampaign.brand || selectedCampaign.brandName || "브랜드",
-                                    targetName: selectedCampaign.product || selectedCampaign.name || "캠페인",
-                                    budget: selectedCampaign.budget,
-                                    productName: selectedCampaign.product || selectedCampaign.name,
-                                } : null}
-                                onSubmit={handleSubmitApplication}
-                                isSubmitting={isApplying}
-                                teamMembers={(teamMembers || []).map((m: any) => ({ user_id: m.user_id || m.id, name: m.name || m.email }))}
-                                prefillHandle={user?.handle || ""}
+                            {/* [ADDED] 캠페인 임시저장용 existingApplication 전달 */}
+                            <CampaignApplicationDialog
+                                open={isCampaignApplyOpen}
+                                onOpenChange={(open) => {
+                                    setIsCampaignApplyOpen(open);
+                                    if (!open) setEditApplicationParams(null);
+                                }}
+                                campaign={{
+                                    id: editApplicationParams?.campaignId,
+                                    brandId: editApplicationParams?.brandId
+                                }}
+                                existingApplication={editApplicationParams?.existingData}
+                                onSuccess={() => {
+                                    refreshData()
+                                    toast.success("캠페인 지원이 완료되었습니다.")
+                                }}
                             />
 
                             {/* Workspace Dialog (Mobile & Desktop Unified) */}
@@ -3555,7 +3598,7 @@ function InfluencerDashboardContent() {
                                             })
                                             return
                                         }
-                                        await deleteEvent(id);
+                                        await deleteMoment(id);
                                         setIsDetailsModalOpen(false);
                                     },
                                     variant: "destructive"
@@ -3647,6 +3690,39 @@ function InfluencerDashboardContent() {
                             />
                         )
                     }
+                    {/* [ADDED] 임시저장 데이터 연동을 위해 existingProposal 프롭 전달 */}
+                    <CreatorProposalDialog
+                        open={isProposalOpen}
+                        onOpenChange={(open) => {
+                            setIsProposalOpen(open);
+                            if (!open) setEditApplicationParams(null); // 닫을 때 초기화
+                        }}
+                        target={proposalTarget}
+                        onSubmit={async (data) => {
+                            if (!proposalTarget || !user) return;
+                            await addProposal({
+                                toId: proposalTarget.brandId,
+                                creatorId: user.id,
+                                productId: proposalTarget.productId,
+                                productName: proposalTarget.productName,
+                                message: data.appealMessage || data.motivation,
+                                status: 'applied',
+                                instagramHandle: data.channelUrl,
+                                channel_name: data.channelName,
+                                channel_subtype: data.channelSubtype,
+                                channel_url: data.channelUrl,
+                                product_type: 'ad',
+                                cost: data.desiredCost ? parseInt(data.desiredCost) : 0,
+                                motivation: data.motivation,
+                                content_plan: data.contentPlan,
+                                portfolioLinks: data.portfolioLinks ? data.portfolioLinks.split("\n").map(l => l.trim()).filter(Boolean) : [],
+                                insightScreenshot: undefined,
+                            });
+                            toast.success("제안이 송신되었습니다.")
+                            setIsProposalOpen(false);
+                            refreshData()
+                        }}
+                    />
                     {/* Brand Detail Modal */}
                     <Dialog open={!!selectedBrandProduct} onOpenChange={(open) => !open && setSelectedBrandProduct(null)}>
                         <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
@@ -3701,8 +3777,10 @@ function InfluencerDashboardContent() {
 
                                     <div className="pt-4 flex gap-3">
                                         <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={() => {
-                                            handleProductApply(selectedBrandProduct);
-                                            setSelectedBrandProduct(null);
+                                            // BrandProductDetailView로 이동 — 거기서 CreatorProposalDialog 제공
+                                            setSelectedProductId(String(selectedBrandProduct.id))
+                                            setCurrentView("product-detail")
+                                            setSelectedBrandProduct(null)
                                         }}>
                                             <Send className="mr-2 h-4 w-4" /> 제안 보내기
                                         </Button>
@@ -3715,139 +3793,7 @@ function InfluencerDashboardContent() {
                         </DialogContent>
                     </Dialog>
 
-                    {/* Moment Detail Dialog */}
-                    <Dialog open={!!selectedMoment} onOpenChange={(open) => !open && setSelectedMoment(null)}>
-                        <DialogContent className="max-w-md md:max-w-2xl overflow-y-auto max-h-[90vh]">
-                            <DialogHeader>
-                                <DialogTitle>모먼트 상세</DialogTitle>
-                                <DialogDescription>
-                                    해당 모먼트의 상세 정보와 도착한 제안 목록입니다.
-                                </DialogDescription>
-                            </DialogHeader>
 
-                            {selectedMoment && (
-                                <div className="space-y-6">
-                                    {/* Moment Info */}
-                                    <div className="space-y-4">
-                                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-                                            {selectedMoment.targetProduct ? (
-                                                <div className="text-center p-4">
-                                                    <div className="text-4xl mb-2">📸</div>
-                                                    <p className="text-sm font-medium text-foreground">{selectedMoment.title}</p>
-                                                </div>
-                                            ) : (
-                                                <span className="text-4xl">✨</span>
-                                            )}
-                                            {selectedMoment.status === 'completed' && (
-                                                <div className="absolute top-2 right-2 bg-slate-800/80 text-white text-xs px-2 py-1 rounded-full">
-                                                    완료됨
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <h3 className="text-lg font-bold text-foreground">{selectedMoment.title}</h3>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                <Badge variant="secondary">{selectedMoment.category}</Badge>
-                                                {selectedMoment.tags.map(tag => (
-                                                    <Badge key={tag} variant="outline" className="text-[10px]">#{tag}</Badge>
-                                                ))}
-                                            </div>
-                                            <p className="text-sm text-muted-foreground mt-3 whitespace-pre-wrap leading-relaxed">
-                                                {selectedMoment.description}
-                                            </p>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
-                                            <div>
-                                                <span className="text-muted-foreground block text-xs mb-1">희망 일정</span>
-                                                <span className="font-medium">{selectedMoment.eventDate || '미정'}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground block text-xs mb-1">업로드 희망</span>
-                                                <span className="font-medium">
-                                                    {selectedMoment.dateFlexible ? (
-                                                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-100">협의가능</Badge>
-                                                    ) : (
-                                                        selectedMoment.postingDate || '미정'
-                                                    )}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <Separator />
-
-                                    {/* Linked Proposals */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-foreground mb-3 flex items-center">
-                                            📥 도착한 제안 <Badge className="ml-2 bg-indigo-600 hover:bg-indigo-700">{allInboundProposals.filter(p => p.event_id === selectedMoment.id).length}건</Badge>
-                                        </h4>
-
-                                        <div className="space-y-3">
-                                            {allInboundProposals.filter(p => p.event_id === selectedMoment.id).length > 0 ? (
-                                                allInboundProposals.filter(p => p.event_id === selectedMoment.id).map(proposal => (
-                                                    <div
-                                                        key={proposal.id}
-                                                        className="bg-white border hover:border-indigo-500 rounded-lg p-4 transition-all cursor-pointer shadow-sm hover:shadow-md group"
-                                                        onClick={() => {
-                                                            setChatProposal(proposal)
-                                                            setIsChatOpen(true)
-                                                            setSelectedMoment(null)
-                                                        }}
-                                                    >
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <Avatar className="w-8 h-8">
-                                                                    <AvatarImage src={proposal.brand_avatar} />
-                                                                    <AvatarFallback>{proposal.brand_name?.substring(0, 2)}</AvatarFallback>
-                                                                </Avatar>
-                                                                <div>
-                                                                    <p className="text-sm font-bold text-foreground">{proposal.brand_name || '브랜드'}</p>
-                                                                    <p className="text-[10px] text-muted-foreground">{new Date(proposal.created_at).toLocaleDateString()}</p>
-                                                                </div>
-                                                            </div>
-                                                            <Badge variant={proposal.status === 'accepted' ? 'default' : 'secondary'}>
-                                                                {proposal.status === 'offered' ? '제안옴' :
-                                                                    proposal.status === 'accepted' ? '진행중' :
-                                                                        proposal.status === 'rejected' ? '거절됨' : proposal.status}
-                                                            </Badge>
-                                                        </div>
-
-                                                        <div className="flex gap-3 mt-3">
-                                                            {proposal.product && (
-                                                                <div className="w-12 h-12 rounded bg-muted/30 flex-shrink-0 border flex items-center justify-center overflow-hidden">
-                                                                    {proposal.product.image_url ? (
-                                                                        <img src={proposal.product.image_url} alt="" className="w-full h-full object-cover" />
-                                                                    ) : (
-                                                                        <Package className="w-5 h-5 text-slate-300" />
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-sm font-medium text-foreground truncate">{proposal.product_name}</p>
-                                                                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{proposal.message}</p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="mt-3 flex justify-end">
-                                                            <Button size="sm" variant="outline" className="text-xs h-7 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-200">
-                                                                제안 확인하기 <ArrowRight className="w-3 h-3 ml-1" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-center py-8 bg-muted/30 rounded-lg border border-dashed">
-                                                    <p className="text-muted-foreground text-sm">아직 이 모먼트에 도착한 제안이 없습니다.</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </DialogContent>
-                    </Dialog>
 
                     {/* ReadonlyProposalDialog for viewing proposal details */}
                     <ReadonlyProposalDialog
@@ -3922,7 +3868,6 @@ function InfluencerDashboardContent() {
                                 throw error
                             }
                         }}
-                        currentUserId={user?.id}
                     />
 
                     {/* G3: 크리에이터가 보낸 지원서 수정 다이얼로그 */}
@@ -3987,8 +3932,9 @@ function InfluencerDashboardContent() {
                         />
                     )}
                 </>
-            )}
-        </div>
+            )
+            }
+        </div >
     )
 }
 
@@ -3996,7 +3942,7 @@ export default function CreatorDashboardPage() {
     return (
         <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-indigo-600" /></div>}>
             <DemoBanner />
-            <InfluencerDashboardContent />
+            <CreatorDashboardContent />
         </Suspense>
     )
 }

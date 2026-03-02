@@ -3,7 +3,7 @@
 import React from "react"
 import { AuthProvider, useAuth } from "./auth-provider"
 import { CampaignProvider, useCampaigns } from "./campaign-provider"
-import { EventProvider, useEvents } from "./event-provider"
+import { EventProvider, useEvents } from "./moment-provider"
 import { FavoriteProvider, useFavorites } from "./favorite-provider"
 import { MessageProvider, useMessages } from "./message-provider"
 import { ProductProvider, useProducts } from "./product-provider"
@@ -12,8 +12,8 @@ import { SocialChannelsProvider, useSocialChannels } from "./social-channels-pro
 import { TeamProvider, useTeam } from "./team-provider"
 
 // Context for triggering public events load (lazy)
-const PublicEventsContext = React.createContext<() => void>(() => { })
-export const useEnablePublicEvents = () => React.useContext(PublicEventsContext)
+const PublicMomentsContext = React.createContext<() => void>(() => { })
+export const useEnablePublicMoments = () => React.useContext(PublicMomentsContext)
 
 // Unified Provider that combines all domain providers
 export function UnifiedProvider({ children }: { children: React.ReactNode }) {
@@ -54,9 +54,9 @@ function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
     const { user } = useAuth()
     const { currentTeam, selectedMember, isProxyMode } = useTeam()
 
-    // Public events lazy loading: 처음에는 비활성화, discover 탭 진입 시 enablePublicEvents() 호출
+    // Public events lazy loading: 처음에는 비활성화, discover 탭 진입 시 enablePublicMoments() 호출
     const [publicEventsEnabled, setPublicEventsEnabled] = React.useState(false)
-    const enablePublicEvents = React.useCallback(() => {
+    const enablePublicMoments = React.useCallback(() => {
         setPublicEventsEnabled(true)
     }, [])
 
@@ -93,9 +93,9 @@ function TeamProviderConsumer({ children }: { children: React.ReactNode }) {
                         <MessageProvider userId={effectiveUserId}>
                             <FavoriteProvider userId={effectiveUserId}>
                                 <SocialChannelsProvider>
-                                    <PublicEventsContext.Provider value={enablePublicEvents}>
+                                    <PublicMomentsContext.Provider value={enablePublicMoments}>
                                         {children}
-                                    </PublicEventsContext.Provider>
+                                    </PublicMomentsContext.Provider>
                                 </SocialChannelsProvider>
                             </FavoriteProvider>
                         </MessageProvider>
@@ -121,7 +121,7 @@ export function useUnifiedProvider() {
     const favorites = useFavorites()
     const team = useTeam()
     const supabase = auth.supabase
-    const enablePublicEvents = useEnablePublicEvents()  // Hook을 useMemo 밖에서 호출 (React rules)
+    const enablePublicMoments = useEnablePublicMoments()  // Hook을 useMemo 밖에서 호출 (React rules)
 
     return React.useMemo(() => ({
         // Team (New)
@@ -146,14 +146,14 @@ export function useUnifiedProvider() {
         deleteCampaign: campaigns.deleteCampaign,
 
         // Events
-        events: events.events,
-        allEvents: events.allEvents,
-        addEvent: events.addEvent,
-        updateEvent: events.updateEvent,
-        deleteEvent: events.deleteEvent,
-        fetchAllEvents: events.fetchAllEvents,
-        refreshEvents: events.refreshEvents,
-        enablePublicEvents,  // Discover 탭 진입 시 호출 → public events 쿼리 활성화
+        moments: events.moments,
+        allMoments: events.allMoments,
+        addMoment: events.addMoment,
+        updateMoment: events.updateMoment,
+        deleteMoment: events.deleteMoment,
+        fetchAllMoments: events.fetchAllMoments,
+        refreshMoments: events.refreshMoments,
+        enablePublicMoments,  // Discover 탭 진입 시 호출 → public events 쿼리 활성화
 
 
         // Products
@@ -225,7 +225,7 @@ export function useUnifiedProvider() {
         refreshData: async () => {
             await Promise.all([
                 campaigns.refreshCampaigns(),
-                events.refreshEvents(),
+                events.refreshMoments(),
                 products.refreshProducts(),
                 proposals.refreshProposals(),
                 messages.refreshMessages(),
@@ -236,7 +236,7 @@ export function useUnifiedProvider() {
     }), [
         auth.user, auth.isAuthChecked, auth.isInitialized,
         campaigns.campaigns, campaigns.isLoading,
-        events.events, events.isLoading,
+        events.moments, events.isLoading,
         products.products, products.isLoading,
         proposals.campaignProposals, proposals.productApplications, proposals.momentProposals, proposals.isLoading,
         messages.messages, messages.notifications, messages.isLoading,

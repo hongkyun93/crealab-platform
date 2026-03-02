@@ -12,7 +12,7 @@ const MY_PLAN_DATA = [
         title: "9월 제주도 휴가, 수영복&비치웨어 협찬 찾아요! 🏖️",
         description: "9월 10일부터 4박 5일간 제주도 서귀포 풀빌라로 휴가를 갑니다.",
         targetProduct: "수영복, 로브, 튜브",
-        eventDate: "2024.09.10 ~ 09.14",
+        momentDate: "2024.09.10 ~ 09.14",
         postingDate: "2024.09.20 이내",
         status: "모집중",
         category: "여행/레저",
@@ -25,7 +25,7 @@ const MY_PLAN_DATA = [
         title: "아이폰16 언박싱 & 데스크 셋업 영상 기획 중 🖥️",
         description: "이번에 아이폰16 프로 맥스를 구매했습니다. 데스크테리어 소품 브랜드 찾습니다.",
         targetProduct: "충전기, 케이스, 케이블",
-        eventDate: "2024.09.25",
+        momentDate: "2024.09.25",
         postingDate: "수령 후 3일 이내",
         status: "급구",
         category: "IT/테크",
@@ -38,7 +38,7 @@ const MY_PLAN_DATA = [
         title: "주말 홈파티! 와인 안주 플레이팅 🍷",
         description: "친한 친구들 4명과 홈파티를 계획 중입니다.",
         targetProduct: "와인안주, 치즈, 식기",
-        eventDate: "2024.08.31 (토)",
+        momentDate: "2024.08.31 (토)",
         postingDate: "2024.09.02 (월)",
         status: "마감임박",
         category: "푸드/요리",
@@ -144,7 +144,7 @@ function Style1_ManagementCard() {
                                     <span className="text-xs text-gray-500">{p.category}</span>
                                 </div>
                                 <h3 className="font-bold text-lg">{p.title}</h3>
-                                <div className="text-sm text-gray-500">{p.eventDate}</div>
+                                <div className="text-sm text-gray-500">{p.momentDate}</div>
                             </div>
                         </div>
                         <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
@@ -171,7 +171,7 @@ function Style2_CompactRow() {
             {data.map((p, i) => (
                 <div key={i} className="p-4 flex items-center gap-4 hover:bg-gray-50">
                     <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-400">
-                        {p.eventDate.slice(5, 7)}.{p.eventDate.slice(8, 10)}
+                        {p.momentDate.slice(5, 7)}.{p.momentDate.slice(8, 10)}
                     </div>
                     <div className="flex-1">
                         <h4 className="font-bold text-sm">{p.title}</h4>
@@ -203,7 +203,7 @@ function Style3_VisualGrid() {
                     <div className="p-3">
                         <h3 className="font-bold text-sm mb-2 line-clamp-1">{p.title}</h3>
                         <div className="flex justify-between items-center text-xs text-gray-500">
-                            <span>{p.eventDate}</span>
+                            <span>{p.momentDate}</span>
                             <span className="text-blue-600 font-bold">{p.proposals} offers</span>
                         </div>
                     </div>
@@ -272,7 +272,7 @@ function Style6_DashboardStats() {
                 <div key={i} className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border">
                     <div className="flex-1">
                         <h3 className="font-bold text-sm truncate">{p.title}</h3>
-                        <div className="text-xs text-gray-400">{p.eventDate}</div>
+                        <div className="text-xs text-gray-400">{p.momentDate}</div>
                     </div>
                     <div className="flex gap-8 text-center">
                         <div>
@@ -301,7 +301,7 @@ function Style7_FolderArchive() {
                     <div className="absolute top-0 right-0 w-8 h-8 bg-yellow-100 rounded-bl-lg"></div>
                     <h3 className="font-bold text-sm mb-4 mt-2">{p.title}</h3>
                     <div className="flex justify-between items-end">
-                        <span className="text-xs text-yellow-700">{p.eventDate}</span>
+                        <span className="text-xs text-yellow-700">{p.momentDate}</span>
                         <span className="text-xs font-bold bg-white px-2 py-1 rounded border border-yellow-100">{p.status}</span>
                     </div>
                 </div>
@@ -353,7 +353,7 @@ function Style9_KanbanBoard() {
                             <span className="text-[10px] bg-green-100 text-green-700 px-1 rounded mb-1 inline-block">{p.status}</span>
                             <h4 className="font-bold text-xs mb-2">{p.title}</h4>
                             <div className="flex justify-between items-center text-[10px] text-gray-400">
-                                <span>{p.eventDate}</span>
+                                <span>{p.momentDate}</span>
                                 <div className="flex -space-x-1">
                                     <div className="w-4 h-4 rounded-full bg-blue-500"></div>
                                     <div className="w-4 h-4 rounded-full bg-red-400"></div>
@@ -378,7 +378,7 @@ function Style10_TicketStub() {
                         <div className="absolute -top-3 -right-[9px] w-4 h-4 bg-white border-b-2 border-l-2 border-r-2 border-gray-300 rounded-full"></div>
                         <div className="absolute -bottom-3 -right-[9px] w-4 h-4 bg-white border-t-2 border-l-2 border-r-2 border-gray-300 rounded-full"></div>
                         <h3 className="font-bold text-md">{p.title}</h3>
-                        <p className="text-xs text-gray-500">{p.eventDate}</p>
+                        <p className="text-xs text-gray-500">{p.momentDate}</p>
                     </div>
                     <div className="w-24 flex flex-col items-center justify-center p-2 text-center">
                         <div className="text-2xl font-bold">{p.proposals}</div>
@@ -399,7 +399,7 @@ function Style11_Minimalist() {
                 <div key={i} className="group">
                     <div className="flex justify-between items-end mb-2">
                         <h3 className="font-bold text-xl group-hover:text-blue-600 transition-colors cursor-pointer">{p.title}</h3>
-                        <span className="font-mono text-sm">{p.eventDate}</span>
+                        <span className="font-mono text-sm">{p.momentDate}</span>
                     </div>
                     <div className="h-px bg-gray-200 w-full group-hover:bg-blue-600 transition-colors"></div>
                     <div className="flex justify-between mt-2 text-sm text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -442,7 +442,7 @@ function Style13_SideAction() {
                 <div key={i} className="flex border rounded-lg overflow-hidden h-24">
                     <div className="flex-1 p-4 flex flex-col justify-center bg-white">
                         <h3 className="font-bold text-sm truncate">{p.title}</h3>
-                        <div className="text-xs text-gray-500">{p.eventDate}</div>
+                        <div className="text-xs text-gray-500">{p.momentDate}</div>
                     </div>
                     <div className="w-16 bg-blue-50 flex flex-col items-center justify-center border-l text-blue-700 hover:bg-blue-100 cursor-pointer transition-colors">
                         <span className="font-bold text-lg">{p.proposals}</span>
@@ -477,7 +477,7 @@ function Style14_CalendarView() {
                     <div key={i} className="flex gap-2 items-center text-xs">
                         <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                         <span className="flex-1 truncate">{p.title}</span>
-                        <span className="font-bold">{p.eventDate.slice(5)}</span>
+                        <span className="font-bold">{p.momentDate.slice(5)}</span>
                     </div>
                 ))}
             </div>

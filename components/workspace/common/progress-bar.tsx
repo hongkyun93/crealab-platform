@@ -20,7 +20,7 @@ export function ProgressBar() {
     const currentStepIndex = STAGES.findIndex((s) => s.id === currentStage);
 
     // 결제 마이크로 도트: 계약서 서명 완료 + 결제 미확인일 때만 표시
-    const isFullySigned = !!(proposal?.brand_signature && proposal?.influencer_signature);
+    const isFullySigned = !!(proposal?.brand_signature && proposal?.creator_signature);
     const isPaid = !!(proposal as any)?.payment_confirmed_at;
     const showPaymentDot = isFullySigned && !isPaid;
 

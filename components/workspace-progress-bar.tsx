@@ -33,13 +33,13 @@ export function WorkspaceProgressBar({ proposal, className }: Props) {
         setStageMap({ [proposalId]: stage });
     }, [proposalId, proposal?.status, proposal?.contract_status, proposal?.delivery_status,
         proposal?.content_submission_status, proposal?.payment_confirmed_at,
-        proposal?.brand_signature, proposal?.influencer_signature]); // eslint-disable-line
+        proposal?.brand_signature, proposal?.creator_signature]); // eslint-disable-line
 
     const currentStage = stageMap[proposalId] ?? computeWorkspaceStage(proposal);
     const currentIndex = STAGE_ORDER.indexOf(currentStage);
 
     // 결제 도트: 계약 체결 완료 + 결제 미확인
-    const isFullySigned = !!(proposal?.brand_signature && proposal?.influencer_signature);
+    const isFullySigned = !!(proposal?.brand_signature && proposal?.creator_signature);
     const isPaid = !!proposal?.payment_confirmed_at;
     const showPaymentDot = isFullySigned && !isPaid;
 

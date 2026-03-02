@@ -47,6 +47,9 @@ export interface CreatorProposalTarget {
     targetName: string
     /** 브랜드가 제시한 예산 (캠페인의 경우) */
     budget?: string
+    /** 대상 ID */
+    productId?: string
+    brandId?: string
     /** AI 기획안 생성에 사용할 제품 정보 */
     productName?: string
     sellingPoints?: string

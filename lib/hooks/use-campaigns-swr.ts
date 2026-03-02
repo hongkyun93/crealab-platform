@@ -19,7 +19,7 @@ function mapCampaign(c: any): Campaign {
         description: c.description || '',
         image: c.image || c.image_url,
         date: new Date(c.created_at).toISOString().split('T')[0],
-        eventDate: c.event_date,
+        momentDate: c.moment_date,
         postingDate: c.posting_date,
         targetProduct: c.target_product,
         status: c.status || 'active',

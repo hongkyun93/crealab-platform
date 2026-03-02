@@ -26,7 +26,7 @@ const MOCK = {
     category: "💄 뷰티",
     title: "피부과 레이저 시술 후기 & 홈케어 루틴",
     description: `3월에 피부과에서 레이저 토닝 시술을 받을 예정입니다. 시술 전후 비교와 함께 홈케어 루틴을 소개하는 콘텐츠를 제작하려고 합니다.\n\n평소 피부 관리에 관심이 많은 팔로워분들이 많아서, 시술 후기와 함께 추천 제품을 자연스럽게 소개할 수 있습니다.\n\n특히 시술 직후부터 2주간의 회복 과정을 브이로그로 담아 리얼한 후기를 전달할 예정이며, 사용하는 스킨케어 제품들의 효과를 직접 보여드릴 수 있습니다.`,
-    eventDate: "2026년 3월",
+    momentDate: "2026년 3월",
     postingDate: "2026년 4월",
     dateFlexible: false,
     targetProduct: "더마 화장품, 선크림, 시술 후 진정 크림, 재생 패치",
@@ -110,7 +110,7 @@ export default function DesignDPage() {
                                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1">
                                     <Calendar className="h-3 w-3 text-primary" /> 모먼트 일정
                                 </div>
-                                <p className="font-bold text-primary">{MOCK.eventDate}</p>
+                                <p className="font-bold text-primary">{MOCK.momentDate}</p>
                             </div>
                             <div className="rounded-lg border p-3 bg-emerald-500/5">
                                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1">

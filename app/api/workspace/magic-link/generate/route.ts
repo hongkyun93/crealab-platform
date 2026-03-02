@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
 
         // 2. Parse Request Body
         const body = await req.json()
-        const { influencerId, brandName, priceOffer, message } = body
+        const { creatorId, brandName, priceOffer, message } = body
 
-        if (!influencerId) {
+        if (!creatorId) {
             return NextResponse.json({ error: '크리에이터 ID가 필요합니다.' }, { status: 400 })
         }
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
             .eq('user_id', user.id)
             .single()
 
-        const influencerTeamId = teamMember?.team_id || null
+        const creatorTeamId = teamMember?.team_id || null
 
         // 4. Generate Token & Expiration (+7 days)
         const token = crypto.randomUUID()
@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
         // 5. Insert Blank Proposal (Growth Hack MVP)
         // Insert into moment_proposals with brand_id = null
         const insertData = {
-            influencer_id: influencerId,
-            influencer_team_id: influencerTeamId,
+            creator_id: creatorId,
+            creator_team_id: creatorTeamId,
             status: 'accepted', // Auto-accepted since MCN initiated it
             is_magic_link_invited: true,
             direct_invite_token: token,

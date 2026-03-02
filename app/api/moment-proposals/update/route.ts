@@ -17,15 +17,23 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { id, updates } = await req.json()
+        const { id, updates, conditionUpdates } = await req.json()
 
-        if (!id || !updates) {
+        if (!id || (!updates && !conditionUpdates)) {
             return NextResponse.json({ error: 'id and updates required' }, { status: 400 })
+        }
+
+        const dbUpdates = { ...updates }
+
+        if (conditionUpdates && Object.keys(conditionUpdates).length > 0) {
+            // Merge conditions
+            const { data: existing } = await supabaseAdmin.from('moment_proposals').select('conditions').eq('id', id).single()
+            dbUpdates.conditions = { ...(existing?.conditions || {}), ...conditionUpdates }
         }
 
         const { error } = await supabaseAdmin
             .from('moment_proposals')
-            .update(updates)
+            .update(dbUpdates)
             .eq('id', id)
 
         if (error) {

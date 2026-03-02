@@ -57,6 +57,7 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
 
     // Product Load Modal State
     const [isProductLoadModalOpen, setIsProductLoadModalOpen] = useState(false)
+    const [isDraftSave, setIsDraftSave] = useState(false)
 
     // Filter brand products
     const brandProducts = products.filter(p => p.brandId === user?.id)
@@ -116,7 +117,19 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
         }
         setLoading(true)
 
+        const isDraft = isDraftSave;
+
+        if (isDraft && !title) {
+            toast.error("임시저장을 위해 최소한 '캠페인 제목'은 입력해주세요.")
+            setLoading(false)
+            return
+        }
+
         const formData = new FormData(e.currentTarget)
+        if (isDraft) {
+            formData.append('status', 'draft')
+        }
+
         if (image) {
             formData.append("image", image)
         }
@@ -136,7 +149,7 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
             toast.error(result.error)
             setLoading(false)
         } else {
-            toast.success(`캠페인이 성공적으로 ${mode === 'edit' ? '수정' : '등록'}되었습니다!`)
+            toast.success(isDraft ? "캠페인이 임시저장 되었습니다." : `캠페인이 성공적으로 ${mode === 'edit' ? '수정' : '등록'}되었습니다!`)
             await refreshData()
             router.refresh()
             router.push("/brand?view=my-campaigns")
@@ -523,12 +536,15 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
                             />
                         </div>
 
-                        <div className="flex justify-end gap-4 pt-4">
+                        <div className="flex justify-end gap-2 pt-4">
                             <Button type="button" variant="outline" asChild>
                                 <Link href="/brand?view=dashboard">취소</Link>
                             </Button>
-                            <Button type="submit" size="lg" className="w-full md:w-auto" disabled={loading}>
-                                {loading ? "처리 중..." : mode === 'edit' ? (
+                            <Button type="submit" variant="secondary" size="lg" className="w-full md:w-auto" disabled={loading} onClick={() => setIsDraftSave(true)} formNoValidate>
+                                임시저장
+                            </Button>
+                            <Button type="submit" size="lg" className="w-full md:w-auto" disabled={loading} onClick={() => setIsDraftSave(false)}>
+                                {loading && !isDraftSave ? "처리 중..." : mode === 'edit' ? (
                                     <><Save className="mr-2 h-4 w-4" /> 변경사항 저장</>
                                 ) : (
                                     <><Plus className="mr-2 h-4 w-4" /> 캠페인 등록하기</>

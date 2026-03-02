@@ -21,7 +21,7 @@ const MOMENT_PLAN_DATA = [
         title: "9월 제주도 휴가, 수영복&비치웨어 협찬 찾아요! 🏖️",
         description: "9월 10일부터 4박 5일간 제주도 서귀포 풀빌라로 휴가를 갑니다. 야외 수영장이 예쁜 곳이라 수영복이나 비치웨어, 튜브 등 감성적인 제품 사진/영상 예쁘게 담아드릴 수 있어요.",
         targetProduct: "수영복, 로브, 튜브, 선글라스",
-        eventDate: "2024.09.10 ~ 09.14",
+        momentDate: "2024.09.10 ~ 09.14",
         postingDate: "2024.09.20 이내 업로드",
         guide: "릴스 1건 + 피드 2건 (제품 착용샷 필수, 태그 5개 포함)",
         category: "여행/레저",
@@ -40,7 +40,7 @@ const MOMENT_PLAN_DATA = [
         title: "아이폰16 언박싱 & 데스크 셋업 영상 기획 중 🖥️",
         description: "이번에 아이폰16 프로 맥스를 구매했습니다. 언박싱 영상 찍으면서 같이 노출될 수 있는 맥세이프 충전기나 케이스, 데스크테리어 소품 브랜드 찾습니다.",
         targetProduct: "맥세이프 충전기, 케이스, 케이블",
-        eventDate: "2024.09.25 (배송 완료 시)",
+        momentDate: "2024.09.25 (배송 완료 시)",
         postingDate: "제품 수령 후 5일 이내",
         guide: "유튜브 쇼츠 1건 + 인스타 스토리 하이라이트 박제",
         category: "IT/테크",
@@ -59,7 +59,7 @@ const MOMENT_PLAN_DATA = [
         title: "주말 홈파티! 와인 안주 플레이팅 🍷",
         description: "친한 친구들 4명과 홈파티를 계획 중입니다. 와인과 잘 어울리는 치즈, 샤퀴테리, 혹은 예쁜 접시나 와인잔 협찬해주시면 감성적인 플레이팅 컷 찍어드려요.",
         targetProduct: "와인안주, 치즈, 식기, 커트러리",
-        eventDate: "2024.08.31 (토)",
+        momentDate: "2024.08.31 (토)",
         postingDate: "2024.09.02 (월)",
         guide: "피드 1건 (제품 근접샷 2장 이상 포함)",
         category: "푸드/요리",
@@ -78,7 +78,7 @@ const MOMENT_PLAN_DATA = [
         title: "가을 차박 캠핑 준비, 감성 랜턴/담요 🔥",
         description: "날씨가 선선해져서 강원도로 차박을 떠납니다. 저녁 불멍 타임에 사용할 감성 랜턴이나 쌀쌀할 때 덮을 블랭킷 제품 찾고 있습니다.",
         targetProduct: "캠핑랜턴, 블랭킷, 캠핑의자, 밀키트",
-        eventDate: "2024.10.03 ~ 10.05",
+        momentDate: "2024.10.03 ~ 10.05",
         postingDate: "다녀온 후 3일 이내",
         guide: "유튜브 브이로그 노출 (3분 이상) + 인스타 피드 1건",
         category: "캠핑/아웃도어",
@@ -226,7 +226,7 @@ function Style1_StandardProposal() {
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-500 flex items-center gap-1"><Calendar className="w-3 h-3" /> 일정</span>
-                            <span className="font-medium text-gray-900">{p.eventDate}</span>
+                            <span className="font-medium text-gray-900">{p.momentDate}</span>
                         </div>
                     </div>
                 </div>
@@ -244,7 +244,7 @@ function Style2_CalendarFocus() {
                 <div key={i} className="bg-white border rounded-2xl overflow-hidden flex flex-col">
                     <div className="bg-indigo-600 p-4 text-white text-center">
                         <div className="text-xs opacity-80 uppercase tracking-widest mb-1">EVENT DATE</div>
-                        <div className="font-bold text-xl">{p.eventDate.split('~')[0]}</div>
+                        <div className="font-bold text-xl">{p.momentDate.split('~')[0]}</div>
                     </div>
                     <div className="p-4 flex-1 flex flex-col">
                         <div className="uppercase text-xs font-bold text-indigo-600 mb-2">{p.category}</div>
@@ -301,7 +301,7 @@ function Style4_RichGuide() {
                     <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
                     <div className="ml-2">
                         <h3 className="font-bold text-lg text-gray-900 mb-1">{p.title}</h3>
-                        <p className="text-sm text-gray-500 mb-4">{p.eventDate} • {p.location}</p>
+                        <p className="text-sm text-gray-500 mb-4">{p.momentDate} • {p.location}</p>
 
                         <div className="bg-orange-50 rounded-lg p-4 border border-orange-100">
                             <h4 className="font-bold text-xs text-orange-800 uppercase mb-2">Creator's Proposal</h4>
@@ -326,8 +326,8 @@ function Style5_MinimalRow() {
             {data.map((p, i) => (
                 <div key={i} className="p-4 flex gap-4 items-center hover:bg-gray-50 cursor-pointer">
                     <div className="w-12 h-12 bg-gray-100 rounded-lg flex flex-col items-center justify-center shrink-0">
-                        <span className="text-[10px] text-gray-500 font-bold uppercase">{p.eventDate.slice(5, 8)}</span>
-                        <span className="text-lg font-bold leading-none">{p.eventDate.slice(8, 10)}</span>
+                        <span className="text-[10px] text-gray-500 font-bold uppercase">{p.momentDate.slice(5, 8)}</span>
+                        <span className="text-lg font-bold leading-none">{p.momentDate.slice(8, 10)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-sm truncate">{p.title}</h4>
@@ -360,7 +360,7 @@ function Style6_TicketPass() {
                     <div className="bg-white p-4 flex-1">
                         <div className="flex justify-between mb-2">
                             <span className="text-xs font-bold text-gray-400">BOARDING PASS TO COLLAB</span>
-                            <span className="text-xs font-bold text-black">{p.eventDate}</span>
+                            <span className="text-xs font-bold text-black">{p.momentDate}</span>
                         </div>
                         <h3 className="font-bold text-lg mb-1">{p.title}</h3>
                         <p className="text-sm text-gray-600 mb-3">{p.description.substring(0, 50)}...</p>
@@ -408,7 +408,7 @@ function Style8_BudgetLayout() {
                 <div key={i} className="border border-green-100 bg-green-50/30 p-4 rounded-lg flex items-center justify-between">
                     <div>
                         <h3 className="font-bold text-sm text-green-900">{p.title}</h3>
-                        <div className="text-xs text-green-700 mt-1">{p.targetProduct} • {p.eventDate}</div>
+                        <div className="text-xs text-green-700 mt-1">{p.targetProduct} • {p.momentDate}</div>
                     </div>
                     <div className="text-right">
                         <div className="text-[10px] text-gray-500 uppercase">Est. Value</div>
@@ -428,7 +428,7 @@ function Style9_TimelineFlow() {
             {data.map((p, i) => (
                 <div key={i} className="relative pl-6">
                     <div className="absolute top-0 -left-[25px] w-4 h-4 rounded-full bg-white border-4 border-blue-500"></div>
-                    <div className="text-xs font-bold text-blue-500 mb-1">{p.eventDate}</div>
+                    <div className="text-xs font-bold text-blue-500 mb-1">{p.momentDate}</div>
                     <div className="bg-white p-4 rounded-lg shadow-sm border">
                         <h3 className="font-bold mb-2">{p.title}</h3>
                         <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -454,7 +454,7 @@ function Style10_MagazinePlan() {
                         <div className="uppercase tracking-widest text-xs font-bold mb-2 opacity-70">{p.category} PROJECT</div>
                         <h3 className="text-2xl font-bold mb-2">{p.title}</h3>
                         <div className="flex gap-4 text-sm font-medium">
-                            <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {p.eventDate}</span>
+                            <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {p.momentDate}</span>
                             <span className="flex items-center gap-1"><Camera className="w-4 h-4" /> {p.guide}</span>
                         </div>
                     </div>
@@ -535,7 +535,7 @@ function Style14_TagsFirst() {
                         {p.tags.map((t, j) => <span key={j} className="text-xs font-bold text-blue-600">#{t}</span>)}
                     </div>
                     <h3 className="font-bold text-lg mb-1">{p.title}</h3>
-                    <p className="text-sm text-gray-600">{p.eventDate}에 예정된 계획입니다.</p>
+                    <p className="text-sm text-gray-600">{p.momentDate}에 예정된 계획입니다.</p>
                 </div>
             ))}
         </div>
@@ -567,7 +567,7 @@ function Style16_StickyNote() {
         <div className="flex flex-wrap gap-4 p-4 bg-wood-pattern">
             {data.map((p, i) => (
                 <div key={i} className="bg-yellow-100 p-4 w-60 shadow-lg rotate-1 hover:rotate-0 transition-transform font-handwriting min-h-[160px] flex flex-col">
-                    <div className="font-bold text-sm mb-2 border-b border-yellow-200 pb-1">{p.eventDate}</div>
+                    <div className="font-bold text-sm mb-2 border-b border-yellow-200 pb-1">{p.momentDate}</div>
                     <div className="flex-1 text-sm leading-snug">{p.title}</div>
                     <div className="text-xs text-gray-500 mt-2 text-right">- {p.creator}</div>
                 </div>
@@ -602,7 +602,7 @@ function Style18_Glassmorphism() {
                 <div key={i} className="bg-white/20 backdrop-blur border border-white/30 p-4 rounded-xl text-white">
                     <div className="flex justify-between mb-1">
                         <span className="font-bold text-sm opacity-90">{p.creator}</span>
-                        <span className="text-xs opacity-70">{p.eventDate}</span>
+                        <span className="text-xs opacity-70">{p.momentDate}</span>
                     </div>
                     <h3 className="font-bold text-lg mb-2">{p.title}</h3>
                     <div className="flex gap-2 text-xs">

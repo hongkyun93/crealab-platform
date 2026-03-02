@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2 } from "lucide-react"
-import React from "react"
+import React, { useState } from "react"
+import { AddressSearchDialog } from "@/components/ui/address-search-dialog"
 
 interface BrandProfileViewProps {
     user: any
@@ -24,6 +25,7 @@ interface BrandProfileViewProps {
     editBio: string
     setEditBio: (value: string) => void
     // Brand Business Fields
+    editLegalName: string; setEditLegalName: (v: string) => void
     editRepresentativeName: string; setEditRepresentativeName: (v: string) => void
     editBusinessNumber: string; setEditBusinessNumber: (v: string) => void
     editCompanyAddress: string; setEditCompanyAddress: (v: string) => void
@@ -52,6 +54,7 @@ export const BrandProfileView = React.memo(function BrandProfileView({
     editPhone, setEditPhone,
     editAddress, setEditAddress,
     editBio, setEditBio,
+    editLegalName, setEditLegalName,
     editRepresentativeName, setEditRepresentativeName,
     editBusinessNumber, setEditBusinessNumber,
     editCompanyAddress, setEditCompanyAddress,
@@ -70,6 +73,11 @@ export const BrandProfileView = React.memo(function BrandProfileView({
     switchRole
 }: BrandProfileViewProps) {
     const { supabase } = useUnifiedProvider()
+    const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false)
+    const [isCompanyAddressSearchOpen, setIsCompanyAddressSearchOpen] = useState(false)
+
+    // Separate base and detail address logic if editAddress is already combined
+    // Or just treat the whole string and append if needed. For simplicity we will override the whole address or user can manually edit it.
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -113,10 +121,32 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                         <Label htmlFor="b-phone">대표 연락처</Label>
                         <Input id="b-phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="02-0000-0000" />
                     </div>
+
+                    {/* 카카오 주소 폼 적용: 브랜드 주소 */}
                     <div className="space-y-2">
                         <Label htmlFor="b-address">브랜드 주소</Label>
-                        <Input id="b-address" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder="서울시 강남구..." />
+                        <div className="flex gap-2">
+                            <Input
+                                id="b-address"
+                                value={editAddress}
+                                onChange={(e) => setEditAddress(e.target.value)}
+                                placeholder="서울시 강남구..."
+                                className="flex-1"
+                            />
+                            <Button type="button" variant="outline" onClick={() => setIsAddressSearchOpen(true)} className="shrink-0 gap-2">
+                                주소 검색
+                            </Button>
+                        </div>
                     </div>
+
+                    <AddressSearchDialog
+                        open={isAddressSearchOpen}
+                        onOpenChange={setIsAddressSearchOpen}
+                        onComplete={(data) => {
+                            setEditAddress(`[${data.zonecode}] ${data.address} `)
+                        }}
+                    />
+
                     <div className="space-y-2">
                         <Label htmlFor="b-bio">브랜드 소개</Label>
                         <Textarea id="b-bio" value={editBio} onChange={(e) => setEditBio(e.target.value)} placeholder="브랜드의 비전과 가치를 설명해주세요." className="min-h-[120px]" />
@@ -131,6 +161,11 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                     <CardDescription>계약서 생성 및 세금계산서 발행에 사용됩니다.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="b-legal-name">법인명 (상호)</Label>
+                        <Input id="b-legal-name" value={editLegalName} onChange={(e) => setEditLegalName(e.target.value)} placeholder="주식회사 크레디픽" />
+                        <p className="text-[11px] text-muted-foreground mt-1">계약서 상의 '갑' 기명에 사용되는 정식 명칭입니다.</p>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="b-rep">대표자명</Label>
@@ -151,10 +186,32 @@ export const BrandProfileView = React.memo(function BrandProfileView({
                             <Input id="b-biz-cat" value={editBusinessCategory} onChange={(e) => setEditBusinessCategory(e.target.value)} placeholder="서비스업 / 광고업" />
                         </div>
                     </div>
+
+                    {/* 카카오 주소 폼 적용: 회사 주소 */}
                     <div className="space-y-2">
                         <Label htmlFor="b-comp-addr">회사 주소 (계약서용)</Label>
-                        <Input id="b-comp-addr" value={editCompanyAddress} onChange={(e) => setEditCompanyAddress(e.target.value)} placeholder="서울시 강남구 테헤란로 000" />
+                        <div className="flex gap-2">
+                            <Input
+                                id="b-comp-addr"
+                                value={editCompanyAddress}
+                                onChange={(e) => setEditCompanyAddress(e.target.value)}
+                                placeholder="서울시 강남구 테헤란로 000"
+                                className="flex-1"
+                            />
+                            <Button type="button" variant="outline" onClick={() => setIsCompanyAddressSearchOpen(true)} className="shrink-0 gap-2">
+                                주소 검색
+                            </Button>
+                        </div>
                     </div>
+
+                    <AddressSearchDialog
+                        open={isCompanyAddressSearchOpen}
+                        onOpenChange={setIsCompanyAddressSearchOpen}
+                        onComplete={(data) => {
+                            setEditCompanyAddress(`[${data.zonecode}] ${data.address} `)
+                        }}
+                    />
+
                     <div className="space-y-2">
                         <Label htmlFor="b-comp-phone">회사 전화번호</Label>
                         <Input id="b-comp-phone" value={editCompanyPhone} onChange={(e) => setEditCompanyPhone(e.target.value)} placeholder="02-0000-0000" />

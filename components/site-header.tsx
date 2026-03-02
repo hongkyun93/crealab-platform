@@ -170,7 +170,7 @@ export function SiteHeader() {
     }
 
     const handleProfileClick = () => {
-        if (user?.role === 'brand') router.push('/brand/settings')
+        if (user?.role === 'brand') router.push('/brand?view=settings')
         else if (user?.role === 'mcn' || user?.role === 'agency') router.push('/mcn')
         else router.push('/creator?view=settings')
     }

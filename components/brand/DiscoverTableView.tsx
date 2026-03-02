@@ -16,7 +16,7 @@ interface DiscoverTableViewProps {
     filteredEvents: any[]
     favorites: any[]
     toggleFavorite: (id: string, type: string) => void
-    deleteEvent: (id: string) => Promise<void>
+    deleteMoment: (id: string) => Promise<void>
     user: any
 }
 
@@ -50,7 +50,7 @@ export function DiscoverTableView({
                 <TableBody>
                     {filteredEvents.length > 0 ? (
                         filteredEvents.map((item) => {
-                            const isFavorite = favorites.some(f => f.target_id === item.id && f.target_type === 'event')
+                            const isFavorite = favorites.some(f => f.target_id === item.id && f.target_type === 'moment')
                             const pc = (item as any).primaryChannel
                             const platform = pc?.platform || ''
                             return (
@@ -62,7 +62,7 @@ export function DiscoverTableView({
                                             className="h-8 w-8 text-muted-foreground hover:text-yellow-500"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                toggleFavorite(item.id, 'event');
+                                                toggleFavorite(item.id, 'moment');
                                             }}
                                         >
                                             <Star
@@ -89,8 +89,8 @@ export function DiscoverTableView({
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Link href={`/event/${item.id}`} className="hover:underline flex items-center gap-2 group-hover:text-primary transition-colors">
-                                            <span className="font-medium truncate max-w-[200px]">{item.event}</span>
+                                        <Link href={`/moment/${item.id}`} className="hover:underline flex items-center gap-2 group-hover:text-primary transition-colors">
+                                            <span className="font-medium truncate max-w-[200px]">{item.title}</span>
                                             <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-50" />
                                         </Link>
                                     </TableCell>
@@ -120,8 +120,8 @@ export function DiscoverTableView({
                                     </TableCell>
                                     <TableCell>
                                         <div className="text-xs text-muted-foreground">
-                                            <div>{formatDateToMonth(item.eventDate)} (이벤트)</div>
-                                            <div>{item.dateFlexible ? '협의가능' : formatDateToMonth(item.postingDate)} (업로드)</div>
+                                            <div>{formatDateToMonth(item.momentStartDate)} (이벤트)</div>
+                                            <div>{item.dateFlexible ? '협의가능' : formatDateToMonth(item.postingDateExact)} (업로드)</div>
                                         </div>
                                     </TableCell>
                                 </TableRow>

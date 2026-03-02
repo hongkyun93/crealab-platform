@@ -43,7 +43,7 @@ export function CampaignProvider({ children, userId, userType, teamId }: {
         formData.append('target', newCampaign.target)
         formData.append('description', newCampaign.description)
         if (newCampaign.image) formData.append('image', newCampaign.image)
-        if (newCampaign.eventDate) formData.append('eventDate', newCampaign.eventDate)
+        if (newCampaign.momentDate) formData.append('momentDate', newCampaign.momentDate)
         if (newCampaign.postingDate) formData.append('postingDate', newCampaign.postingDate)
         if (newCampaign.targetProduct) formData.append('targetProduct', newCampaign.targetProduct)
         if (newCampaign.status) formData.append('status', newCampaign.status)

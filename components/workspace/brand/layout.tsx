@@ -43,10 +43,10 @@ function BrandMobileLayout() {
         const updates: any = {
             brand_signature: signatureData,
             brand_signed_at: new Date().toISOString(),
-            contract_status: proposal.influencer_signature ? 'signed' : 'partial',
+            contract_status: proposal.creator_signature ? 'signed' : 'partial',
         };
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
@@ -62,7 +62,7 @@ function BrandMobileLayout() {
     const handleSaveContract = async (content: string) => {
         if (!proposal?.id) return;
         const updates: any = { contract_content: content };
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             await updateProposal(proposal.id, updates);
@@ -76,10 +76,10 @@ function BrandMobileLayout() {
         const updates: any = {
             brand_signature: null,
             brand_signed_at: null,
-            contract_status: proposal.influencer_signature ? 'partial' : 'none',
+            contract_status: proposal.creator_signature ? 'partial' : 'none',
         };
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
@@ -93,8 +93,8 @@ function BrandMobileLayout() {
     };
 
     // 크리에이터의 아바타 및 이름 결정
-    const creatorAvatar = proposal?.influencerAvatar || (proposal as any)?.influencer_avatar;
-    const creatorName = proposal?.influencerName || 'Creator Name';
+    const creatorAvatar = proposal?.creatorAvatar || (proposal as any)?.creator_avatar;
+    const creatorName = proposal?.creatorName || 'Creator Name';
 
     return (
         <div className="flex flex-col h-[100dvh] w-full bg-background overflow-hidden relative">

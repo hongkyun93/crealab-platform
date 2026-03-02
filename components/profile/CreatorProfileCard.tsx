@@ -3,6 +3,7 @@
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useCreatorProfile } from "@/lib/hooks/use-creator-profile"
+import { formatDateToMonth } from "@/lib/utils"
 import { ArrowUpRight, BookOpen, Calendar, CheckCircle, Gift, Globe, Instagram, Loader2, MapPin, Music2, Sparkles, Star, Youtube } from "lucide-react"
 import { useRouter } from "next/navigation"
 import React, { useState } from "react"
@@ -106,7 +107,7 @@ function CreatorProfileCardContent({
 
     const handleMomentClick = (momentId: string) => {
         onClose()
-        router.push(`/event/${momentId}`)
+        router.push(`/moment/${momentId}`)
     }
 
     const handleChannelClick = (platform: string, handle: string) => {
@@ -384,7 +385,7 @@ function CreatorProfileCardContent({
                         <Sparkles className="h-3.5 w-3.5 text-purple-400" />모먼트 모아보기
                     </h3>
                     <div className="space-y-1.5">
-                        {profile.moments.map(m => (
+                        {profile.moments.map((m: any) => (
                             <div
                                 key={m.id}
                                 className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-purple-500/30 hover:bg-white/10 transition-all cursor-pointer group"
@@ -397,7 +398,7 @@ function CreatorProfileCardContent({
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium truncate">{m.title}</div>
                                     <div className="flex items-center gap-2 text-[10px] text-white/40 mt-0.5">
-                                        <Calendar className="h-2.5 w-2.5" /><span>{m.eventDate || "미정"}</span>
+                                        <Calendar className="h-2.5 w-2.5" /><span>{formatDateToMonth(m.momentStartDate) || "미정"}</span>
                                         <span className="text-white/20">·</span>
                                         <Gift className="h-2.5 w-2.5" /><span className="truncate">{m.targetProduct || "미정"}</span>
                                     </div>

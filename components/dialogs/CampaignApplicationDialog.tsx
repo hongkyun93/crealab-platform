@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { AddressSearchDialog } from "@/components/ui/address-search-dialog"
+
 import { createClient } from "@/lib/supabase/client"
 import { Loader2, Send, Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -31,12 +31,16 @@ interface CampaignApplicationDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     campaign: any
+    existingApplication?: any
+    onSuccess?: () => void
 }
 
 export function CampaignApplicationDialog({
     open,
     onOpenChange,
-    campaign
+    campaign,
+    existingApplication,
+    onSuccess
 }: CampaignApplicationDialogProps) {
     const { user, addProposal } = useUnifiedProvider()
 
@@ -51,12 +55,7 @@ export function CampaignApplicationDialog({
     const [desiredCost, setDesiredCost] = useState("")
     const [additionalMessage, setAdditionalMessage] = useState("")
 
-    // 배송 정보
-    const [shippingName, setShippingName] = useState("")
-    const [shippingPhone, setShippingPhone] = useState("")
-    const [shippingAddress, setShippingAddress] = useState("")
-    const [shippingDetailAddress, setShippingDetailAddress] = useState("")
-    const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false)
+
 
     // AI State
     const [isAIPlanning, setIsAIPlanning] = useState(false)
@@ -67,13 +66,35 @@ export function CampaignApplicationDialog({
     const [teamMembers, setTeamMembers] = useState<any[]>([])
 
     useEffect(() => {
-        if (user && open) {
-            setChannelUrl(user.handle || "")
-            setShippingName(user.shippingName || user.name || "")
-            setShippingPhone(user.shippingPhone || user.phone || "")
-            setShippingAddress(user.shippingAddress || "")
+        if (open) {
+            if (existingApplication) {
+                // 기존 임시저장/지원 내역이 있다면 그 데이터로 초기화
+                setChannelName(existingApplication.channel_info?.name || "instagram")
+                setChannelSubtype(existingApplication.channel_info?.subtype || "")
+                setChannelUrl(existingApplication.channel_info?.url || user?.handle || "")
+                setMotivation(existingApplication.motivation || "")
+                setContentPlan(existingApplication.content_plan || "")
+                setPortfolioLinks(existingApplication.portfolio_links || "")
+                setDesiredCost(existingApplication.desired_cost?.toString() || "")
+                setAdditionalMessage(existingApplication.additional_message || "")
+            } else {
+                // 신규 작성이면 유저 기본 정보(핸들 등)로 초기화
+                setChannelUrl(user?.handle || "")
+                setMotivation("")
+                setContentPlan("")
+                setPortfolioLinks("")
+                setDesiredCost("")
+                setAdditionalMessage("")
+            }
+        } else {
+            // 닫힐 때 초기화
+            setMotivation("")
+            setContentPlan("")
+            setPortfolioLinks("")
+            setDesiredCost("")
+            setAdditionalMessage("")
         }
-    }, [user, open])
+    }, [user, open, existingApplication])
 
     // Fetch team members for MCN/Agency
     useEffect(() => {
@@ -149,6 +170,93 @@ export function CampaignApplicationDialog({
         }
     }
 
+    // Save Draft
+    const handleSaveDraft = async () => {
+        if (!user) {
+            toast.error("로그인이 필요합니다.")
+            return
+        }
+
+        setIsSubmitting(true)
+        try {
+            const effectiveCreatorId = (user?.role === 'agency' || user?.role === 'mcn')
+                ? targetCreatorId
+                : user?.id
+
+            // Format message with all info
+            const formattedMessage = `
+[지원 정보]
+- 활동 채널: ${channelName} (${channelUrl})
+- 희망 원고료: ${desiredCost || '제시 없음'}
+- 포트폴리오: ${portfolioLinks || '없음'}
+- 인사이트 첨부: 없음
+
+[지원 동기]
+${motivation}
+
+[콘텐츠 제작 계획]
+${contentPlan}
+
+[추가 메시지]
+${additionalMessage || '없음'}
+            `.trim()
+
+            const draftData = {
+                type: "creator_apply" as const, // Lint 오류 해결을 위해 ProposalType 에 존재할 법한 타입으로 캐스팅
+                campaignId: campaign.id,
+                cost: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
+                commission: 0,
+                requestDetails: formattedMessage,
+                status: "draft",
+                fromId: effectiveCreatorId,
+                toId: campaign.brandId,
+                motivation: motivation,
+                content_plan: contentPlan,
+                portfolioLinks: portfolioLinks ? [portfolioLinks] : [],
+                channel_name: channelName,
+                channel_url: channelUrl,
+                channel_subtype: channelSubtype || undefined,
+            } as any
+
+            if (existingApplication?.id) {
+                // Update existing draft
+                const supabase = createClient()
+                const { error } = await supabase
+                    .from('campaign_applications')
+                    .update({
+                        channel_info: {
+                            name: channelName,
+                            subtype: channelSubtype,
+                            url: channelUrl
+                        },
+                        motivation: motivation,
+                        content_plan: contentPlan,
+                        portfolio_links: portfolioLinks,
+                        desired_cost: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
+                        additional_message: additionalMessage,
+                        status: 'draft',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existingApplication.id)
+
+                if (error) throw error;
+            } else {
+                // Insert new draft (using unified provider for consistency if it handles drafting, otherwise raw query)
+                await addProposal(draftData) // Assuming addProposal handles 'draft' status gracefully
+            }
+
+            toast.success("캠페인 지원서가 임시저장되었습니다.")
+            onOpenChange(false)
+            onSuccess?.()
+
+        } catch (error) {
+            console.error("Draft Save Error:", error)
+            toast.error("임시저장 중 오류가 발생했습니다.")
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
     // Form Submission
     const handleSubmit = async () => {
         if (!user) {
@@ -217,31 +325,55 @@ ${additionalMessage || '없음'}
                 creatorId: effectiveCreatorId
             })
 
-            await addProposal({
-                type: "campaign_apply",
-                dealType: "ad",
-                campaignId: campaign.id,
-                cost: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
-                commission: 0,
-                requestDetails: formattedMessage,
-                status: "applied",
-                fromId: effectiveCreatorId,
-                toId: campaign.brandId,
-                // Structured data
-                motivation: motivation,
-                content_plan: contentPlan,
-                portfolioLinks: portfolioLinks ? [portfolioLinks] : [],
-                channel_name: channelName,
-                channel_url: channelUrl,
-                channel_subtype: channelSubtype || undefined, // [NEW]
-                insightScreenshot: insightUrl || undefined,
-                receiver_name: shippingName,
-                shipping_phone: shippingPhone,
-                shipping_address: shippingDetailAddress ? `${shippingAddress} ${shippingDetailAddress}`.trim() : shippingAddress,
-            })
+            if (existingApplication?.id) {
+                // 이미 임시저장(또는 다른 상태)인 기존 지원서가 존재한다면 Update
+                const supabase = createClient()
+                const { error } = await supabase
+                    .from('campaign_applications')
+                    .update({
+                        channel_info: {
+                            name: channelName,
+                            subtype: channelSubtype,
+                            url: channelUrl
+                        },
+                        motivation: motivation,
+                        content_plan: contentPlan,
+                        portfolio_links: portfolioLinks ? [portfolioLinks] : [],
+                        desired_cost: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
+                        additional_message: additionalMessage,
+                        insight_screenshot: insightUrl || null,
+                        status: 'applied', // 최종 제출이므로 applied 상태로 승격
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existingApplication.id)
+
+                if (error) throw error
+            } else {
+                // 기존 문서가 없으면 새롭게 Insert
+                await addProposal({
+                    type: "creator_apply" as const,
+                    campaignId: campaign.id,
+                    cost: desiredCost ? Number(desiredCost.replace(/[^0-9]/g, '')) : 0,
+                    commission: 0,
+                    requestDetails: formattedMessage,
+                    status: "applied",
+                    fromId: effectiveCreatorId,
+                    toId: campaign.brandId,
+                    // Structured data
+                    motivation: motivation,
+                    content_plan: contentPlan,
+                    portfolioLinks: portfolioLinks ? [portfolioLinks] : [],
+                    channel_name: channelName,
+                    channel_url: channelUrl,
+                    channel_subtype: channelSubtype || undefined,
+                    insightScreenshot: insightUrl || undefined,
+
+                } as any)
+            }
 
             toast.success("캠페인 지원서가 성공적으로 전송되었습니다!")
             onOpenChange(false)
+            onSuccess?.()
 
             // Reset form
             setChannelName("instagram")
@@ -253,10 +385,7 @@ ${additionalMessage || '없음'}
             setInsightFile(null)
             setDesiredCost("")
             setAdditionalMessage("")
-            setShippingName("")
-            setShippingPhone("")
-            setShippingAddress("")
-            setShippingDetailAddress("")
+
         } catch (error) {
             console.error("Application Error:", error)
             toast.error("지원서 전송 중 오류가 발생했습니다.")
@@ -380,20 +509,22 @@ ${additionalMessage || '없음'}
 
                         <div className="space-y-2">
                             <Label htmlFor="channelUrl" className="text-xs text-muted-foreground">
-                                {channelName === 'instagram' && '인스타그램 프로필 주소 또는 ID'}
-                                {channelName === 'youtube' && '유튜브 채널 주소'}
-                                {channelName === 'tiktok' && '틱톡 프로필 주소'}
-                                {channelName === 'blog' && '블로그 주소'}
-                                {channelName === 'other' && '채널/포트폴리오 주소'}
+                                {channelName === 'instagram' && '인스타그램 아이디'}
+                                {channelName === 'youtube' && '유튜브 채널 아이디'}
+                                {channelName === 'tiktok' && '틱톡 아이디'}
+                                {channelName === 'blog' && '블로그 아이디'}
+                                {channelName === 'other' && '채널 아이디 / 링크'}
                             </Label>
                             <Input
                                 id="channelUrl"
                                 value={channelUrl}
                                 onChange={(e) => setChannelUrl(e.target.value)}
                                 placeholder={
-                                    channelName === 'instagram' ? "https://instagram.com/userid" :
-                                        channelName === 'youtube' ? "https://youtube.com/@channel" :
-                                            "https://..."
+                                    channelName === 'instagram' ? 'hongkyuniiii (@ 없이 아이디만)' :
+                                        channelName === 'youtube' ? '채널 아이디 또는 @핸들명' :
+                                            channelName === 'tiktok' ? '채널 아이디 (@ 없이)' :
+                                                channelName === 'blog' ? '블로그 아이디 또는 URL' :
+                                                    '채널 아이디 또는 링크'
                                 }
                                 className="bg-muted/30"
                             />
@@ -506,72 +637,28 @@ ${additionalMessage || '없음'}
                         />
                     </div>
 
-                    {/* 배송 정보 (캠페인 등 제품 수령용) */}
-                    <div className="space-y-4 pt-4 border-t mt-2">
-                        <Label className="text-base text-foreground">배송 정보 <span className="text-muted-foreground text-xs font-normal">(제품 수령용)</span></Label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-xs">수령인 이름</Label>
-                                <Input
-                                    value={shippingName}
-                                    onChange={(e) => setShippingName(e.target.value)}
-                                    placeholder="본명 또는 닉네임"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs">수령인 연락처</Label>
-                                <Input
-                                    value={shippingPhone}
-                                    onChange={(e) => setShippingPhone(e.target.value)}
-                                    placeholder="010-0000-0000"
-                                />
-                            </div>
-                        </div>
 
-                        <div className="space-y-2">
-                            <Label className="text-xs">배송지 주소</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    value={shippingAddress}
-                                    readOnly
-                                    placeholder="주소 검색을 클릭하여 기본 주소를 입력하세요"
-                                    className="bg-muted text-foreground"
-                                />
-                                <Button type="button" variant="outline" onClick={() => setIsAddressSearchOpen(true)} className="shrink-0 gap-2">
-                                    주소 검색
-                                </Button>
-                            </div>
-                            <Input
-                                value={shippingDetailAddress}
-                                onChange={(e) => setShippingDetailAddress(e.target.value)}
-                                placeholder="상세 주소 입력"
-                                className="mt-2"
-                            />
-                        </div>
-                    </div>
-
-                    <AddressSearchDialog
-                        open={isAddressSearchOpen}
-                        onOpenChange={setIsAddressSearchOpen}
-                        onComplete={(data) => {
-                            setShippingAddress(`[${data.zonecode}] ${data.address}`)
-                            setShippingDetailAddress('')
-                        }}
-                    />
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        취소
-                    </Button>
-                    <Button onClick={handleSubmit} disabled={isSubmitting} className="font-bold">
-                        {isSubmitting ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Send className="mr-2 h-4 w-4" />
-                        )}
-                        제안서 전송
-                    </Button>
+                    <div className="flex w-full justify-between items-center sm:justify-between">
+                        <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                            취소
+                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={handleSaveDraft} disabled={isSubmitting} className="border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+                                임시저장
+                            </Button>
+                            <Button onClick={handleSubmit} disabled={isSubmitting} className="font-bold bg-indigo-600 hover:bg-indigo-700">
+                                {isSubmitting ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Send className="mr-2 h-4 w-4" />
+                                )}
+                                제안서 전송
+                            </Button>
+                        </div>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

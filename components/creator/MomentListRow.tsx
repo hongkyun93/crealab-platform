@@ -37,7 +37,7 @@ export function MomentListRow({
     onComplete,
     isPast = false
 }: MomentListRowProps) {
-    const offerCount = brandProposals.filter((p: any) => p.event_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
+    const offerCount = brandProposals.filter((p: any) => p.moment_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false)
 
@@ -69,7 +69,7 @@ export function MomentListRow({
                             )}
                         </div>
                         <h3 className={`font-bold truncate ${isPast ? 'line-through text-muted-foreground' : 'group-hover:text-emerald-600'}`}>
-                            {moment.title || moment.event}
+                            {moment.title}
                         </h3>
                     </div>
 
@@ -91,7 +91,7 @@ export function MomentListRow({
                     <div className="hidden md:flex md:col-span-4 gap-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5" />
-                            <span>{formatDateToMonth(moment.eventDate)}</span>
+                            <span>{formatDateToMonth(moment.momentDate)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                             <Send className="h-3.5 w-3.5" />

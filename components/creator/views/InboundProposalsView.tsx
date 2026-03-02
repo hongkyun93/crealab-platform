@@ -6,15 +6,15 @@ import { Briefcase, ChevronRight } from "lucide-react"
 interface InboundProposalsViewProps {
     inboundProposals: any[]
     setCurrentView: (view: string) => void
-    setChatProposal: (proposal: any) => void
-    setIsChatOpen: (open: boolean) => void
+    setSelectedProposal: (proposal: any) => void
+    setShowReadonlyDialog: (open: boolean) => void
 }
 
 export function InboundProposalsView({
     inboundProposals,
     setCurrentView,
-    setChatProposal,
-    setIsChatOpen
+    setSelectedProposal,
+    setShowReadonlyDialog
 }: InboundProposalsViewProps) {
     return (
         <div className="space-y-6 animate-in fade-in-from-right-2">
@@ -29,7 +29,7 @@ export function InboundProposalsView({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {inboundProposals.length > 0 ? (
                     inboundProposals.map((proposal: any) => (
-                        <Card key={proposal.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-purple-500" onClick={() => { setChatProposal(proposal); setIsChatOpen(true); }}>
+                        <Card key={proposal.id} className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-purple-500" onClick={() => { setSelectedProposal(proposal); setShowReadonlyDialog(true); }}>
                             <CardContent className="p-4 space-y-4">
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-center gap-3">

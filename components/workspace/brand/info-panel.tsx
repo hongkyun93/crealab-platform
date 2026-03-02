@@ -44,7 +44,7 @@ export function InfoPanel() {
     // settlement 또는 final_complete 단계 진입 시 campaign_performance 조회
     useEffect(() => {
         if ((currentStage !== 'settlement' && currentStage !== 'final_complete') || !proposal?.id) return;
-        const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+        const proposalType = (proposal as any).moment_id || (proposal as any).moment_id
             ? 'moment_proposal'
             : (proposal as any).campaignId || (proposal as any).campaign_id
                 ? 'campaign_application'
@@ -135,7 +135,7 @@ export function InfoPanel() {
         // 2. campaignId/campaign_id → campaign_applications
         // 3. else → brand_proposals
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, payload);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, payload);
@@ -155,7 +155,7 @@ export function InfoPanel() {
         const newValue = !currentValue;
         const updates: any = { brand_condition_confirmed: newValue };
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
@@ -166,7 +166,7 @@ export function InfoPanel() {
             useWorkspaceStore.getState().updateProposal(updates);
 
             // 양쪽 다 확정됐으면 즉시 계약 단계로 전환 (progress-bar 즉시 반영)
-            const bothConfirmed = newValue && !!proposal.influencer_condition_confirmed;
+            const bothConfirmed = newValue && !!proposal.creator_condition_confirmed;
             if (bothConfirmed) {
                 useWorkspaceStore.getState().setCurrentStage('contract');
             }
@@ -183,14 +183,14 @@ export function InfoPanel() {
         };
 
         // If influencer already signed, mark as fully signed
-        if (proposal.influencer_signature) {
+        if (proposal.creator_signature) {
             updates.contract_status = 'signed';
         } else {
             updates.contract_status = 'partial';
         }
 
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
@@ -204,6 +204,21 @@ export function InfoPanel() {
             if (updates.contract_status === 'signed') {
                 useWorkspaceStore.getState().setCurrentStage('shipping');
             }
+
+            // 🔔 크리에이터에게 브랜드 서명 완료 알림
+            try {
+                const creatorId = (proposal as any)?.creator_id || (proposal as any)?.influencer?.id;
+                const brandName = (proposal as any)?.brand_name || '브랜드';
+                if (creatorId) {
+                    const msg = updates.contract_status === 'signed'
+                        ? `${brandName}와 계약이 완전히 체결되었습니다! 다음 단계를 확인해보세요.`
+                        : `${brandName}가 계약서에 서명했습니다. 크리에이터 서명이 필요합니다.`;
+                    await sendNotification(creatorId, msg, 'contract_signed', proposal.id?.toString());
+                }
+            } catch (notifErr) {
+                console.warn('브랜드 서명 알림 실패 (무시):', notifErr);
+            }
+
             refreshData(); // Sync archive cards + cross-user data
         }
     };
@@ -211,7 +226,7 @@ export function InfoPanel() {
     const handleSaveContract = async (content: string) => {
         if (!proposal?.id) return;
         const updates: any = { contract_content: content };
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             await updateProposal(proposal.id, updates);
@@ -225,11 +240,11 @@ export function InfoPanel() {
         const updates: any = {
             brand_signature: null,
             brand_signed_at: null,
-            contract_status: proposal.influencer_signature ? 'partial' : 'none',
+            contract_status: proposal.creator_signature ? 'partial' : 'none',
 
         };
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).event_id) {
+        if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
@@ -249,14 +264,14 @@ export function InfoPanel() {
                 <div className="flex items-center gap-3 mb-4">
                     {/* Creator Avatar */}
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-lg font-bold text-primary overflow-hidden">
-                        {(proposal?.influencerAvatar || (proposal as any)?.influencer_avatar) ? (
-                            <img src={proposal?.influencerAvatar || (proposal as any)?.influencer_avatar} alt="Creator" className="w-full h-full object-cover" />
+                        {(proposal?.creatorAvatar || (proposal as any)?.creator_avatar) ? (
+                            <img src={proposal?.creatorAvatar || (proposal as any)?.creator_avatar} alt="Creator" className="w-full h-full object-cover" />
                         ) : (
-                            (proposal?.influencerName?.[0] || 'C')
+                            (proposal?.creatorName?.[0] || 'C')
                         )}
                     </div>
                     <div>
-                        <h2 className="font-bold text-lg leading-tight">{proposal?.influencerName || 'Creator Name'}</h2>
+                        <h2 className="font-bold text-lg leading-tight">{proposal?.creatorName || 'Creator Name'}</h2>
                         <p className="text-xs text-muted-foreground">{proposal?.product_name || proposal?.campaignName || '협업 프로젝트'}</p>
                     </div>
                 </div>
@@ -310,11 +325,11 @@ export function InfoPanel() {
                         isActive={currentStage === 'contract'}
                         isCompleted={getStageStatus('contract') === 'completed'}
                         summary={
-                            proposal?.brand_signature && proposal?.influencer_signature
+                            proposal?.brand_signature && proposal?.creator_signature
                                 ? '✅ 양측 서명 완료'
                                 : proposal?.brand_signature
                                     ? '✍️ 브랜드 서명 완료 · 크리에이터 대기 중'
-                                    : proposal?.influencer_signature
+                                    : proposal?.creator_signature
                                         ? '✍️ 크리에이터 서명 완료 · 브랜드 대기 중'
                                         : '표준 계약서 (자동 생성됨)'
                         }
@@ -326,9 +341,9 @@ export function InfoPanel() {
                                     {proposal?.brand_signature ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border-2 border-current inline-block" />}
                                     브랜드 {proposal?.brand_signature ? '서명완료' : '미서명'}
                                 </div>
-                                <div className={`flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2.5 rounded-lg border cursor-default ${proposal?.influencer_signature ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/40' : 'bg-muted/50 text-muted-foreground border-border'}`}>
-                                    {proposal?.influencer_signature ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border-2 border-current inline-block" />}
-                                    크리에이터 {proposal?.influencer_signature ? '서명완료' : '미서명'}
+                                <div className={`flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2.5 rounded-lg border cursor-default ${proposal?.creator_signature ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/40' : 'bg-muted/50 text-muted-foreground border-border'}`}>
+                                    {proposal?.creator_signature ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border-2 border-current inline-block" />}
+                                    크리에이터 {proposal?.creator_signature ? '서명완료' : '미서명'}
                                 </div>
                             </div>
                             {/* Toggle button to open contract in main area */}
@@ -349,7 +364,7 @@ export function InfoPanel() {
                             </Button>
 
                             {/* 광고비 결제 안내 — 양측 서명 완료 후에만 표시 */}
-                            {proposal?.brand_signature && proposal?.influencer_signature && (
+                            {proposal?.brand_signature && proposal?.creator_signature && (
                                 (proposal as any).payment_confirmed_at ? (
                                     <div className="flex items-center gap-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/25 px-3 py-2.5">
                                         <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -489,7 +504,7 @@ export function InfoPanel() {
                                                 try {
                                                     const updates: any = { tracking_number: trackingInput.trim(), delivery_status: 'shipped' };
                                                     let success = false;
-                                                    if ((proposal as any).moment_id || (proposal as any).event_id) {
+                                                    if ((proposal as any).moment_id || (proposal as any).moment_id) {
                                                         success = await updateMomentProposal(proposal.id, updates);
                                                     } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
                                                         success = await updateProposal(proposal.id, updates);
@@ -587,7 +602,7 @@ export function InfoPanel() {
                                                         useWorkspaceStore.getState().updateProposal(updates);
                                                         refreshData();
                                                         toast.success('수정 요청을 전달했습니다.');
-                                                        const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
+                                                        const creatorId = (proposal as any).creator_id || (proposal as any).creator_id;
                                                         if (creatorId) sendNotification(creatorId, '브랜드가 콘텐츠 수정을 요청했습니다.', 'content_revision', proposal.id?.toString());
                                                     }
                                                 }}
@@ -608,7 +623,7 @@ export function InfoPanel() {
                                                         useWorkspaceStore.getState().updateProposal(updates);
                                                         refreshData();
                                                         toast.success('초안을 승인했습니다!');
-                                                        const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
+                                                        const creatorId = (proposal as any).creator_id || (proposal as any).creator_id;
                                                         if (creatorId) sendNotification(creatorId, '브랜드가 콘텐츠를 승인했습니다! 최종본과 클린본을 제출해주세요.', 'content_approved', proposal.id?.toString());
                                                     }
                                                 }}
@@ -671,13 +686,13 @@ export function InfoPanel() {
                                                     // 1. 제안 상태 settlement로 변경
                                                     const updates: any = { status: 'settlement', content_submission_status: 'completed' };
                                                     let success = false;
-                                                    const proposalType = (proposal as any).moment_id || (proposal as any).event_id
+                                                    const proposalType = (proposal as any).moment_id || (proposal as any).moment_id
                                                         ? 'moment_proposal'
                                                         : (proposal as any).campaignId || (proposal as any).campaign_id
                                                             ? 'campaign_application'
                                                             : 'product_application';
 
-                                                    if ((proposal as any).moment_id || (proposal as any).event_id) success = await updateMomentProposal(proposal.id, updates);
+                                                    if ((proposal as any).moment_id || (proposal as any).moment_id) success = await updateMomentProposal(proposal.id, updates);
                                                     else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
                                                     else success = await updateBrandProposal(proposal.id, updates);
 
@@ -685,7 +700,7 @@ export function InfoPanel() {
 
                                                     // 2. settlements 레코드 생성 (SECURITY DEFINER RPC — MCN/일반 자동 분기)
                                                     try {
-                                                        const creatorId = (proposal as any).influencer_id || (proposal as any).creator_id;
+                                                        const creatorId = (proposal as any).creator_id || (proposal as any).creator_id;
                                                         const brandId = (proposal as any).brand_id;
                                                         const priceOffer = (proposal as any).price_offer || 0;
 
@@ -711,7 +726,7 @@ export function InfoPanel() {
                                                     useWorkspaceStore.getState().setCurrentStage('settlement');
                                                     refreshData();
                                                     toast.success('협업 완료 및 정산 승인되었습니다! 🎉');
-                                                    const creatorId2 = (proposal as any).influencer_id || (proposal as any).creator_id;
+                                                    const creatorId2 = (proposal as any).creator_id || (proposal as any).creator_id;
                                                     if (creatorId2) sendNotification(creatorId2, '협업이 완료되었습니다! 3~7일 내 인사이트 성과를 제출해주세요.', 'collaboration_complete', proposal.id?.toString());
                                                 }}
                                             >

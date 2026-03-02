@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File | null;
     const proposalStr = formData.get("proposal") as string | null;
     const brandName = formData.get("brandName") as string || "브랜드(갑)";
-    const influencerName = formData.get("influencerName") as string || "크리에이터(을)";
+    const creatorName = formData.get("creatorName") as string || "크리에이터(을)";
     let brandProfile: any = {};
     let creatorProfile: any = {};
     try { brandProfile = JSON.parse(formData.get("brandProfile") as string || '{}'); } catch { /* ignore */ }
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
         if (!extractedText.trim()) {
             return NextResponse.json({ error: "파일에서 텍스트를 추출할 수 없습니다. PDF가 스캔 이미지인 경우 GEMINI_API_KEY가 필요합니다." }, { status: 422 });
         }
-        const fallback = buildFallbackFromExtracted(extractedText, brandName, influencerName, proposal);
+        const fallback = buildFallbackFromExtracted(extractedText, brandName, creatorName, proposal);
         return NextResponse.json({ result: fallback });
     }
 
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
     // ── 스캔 PDF 감지: 텍스트 추출 실패 시 Gemini Vision으로 직접 전달 ──────
     if (!extractedText.trim() && isPdf) {
         const base64Data = buffer.toString("base64");
-        const visionPrompt = buildVisionPrompt(brandName, influencerName, brandProfile, creatorProfile, proposal);
+        const visionPrompt = buildVisionPrompt(brandName, creatorName, brandProfile, creatorProfile, proposal);
         try {
             const visionResult = await model.generateContent([
                 { inlineData: { data: base64Data, mimeType: "application/pdf" } },
@@ -123,7 +123,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "파일에서 텍스트를 추출할 수 없습니다." }, { status: 422 });
     }
 
-    const systemPrompt = buildTextPrompt(brandName, influencerName, brandProfile, creatorProfile, proposal, extractedText);
+    const systemPrompt = buildTextPrompt(brandName, creatorName, brandProfile, creatorProfile, proposal, extractedText);
 
     try {
         const result = await model.generateContent(systemPrompt);
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ result: text });
     } catch (err) {
         console.error("[parse-contract] Gemini API error:", err);
-        const fallback = buildFallbackFromExtracted(extractedText, brandName, influencerName, proposal);
+        const fallback = buildFallbackFromExtracted(extractedText, brandName, creatorName, proposal);
         return NextResponse.json({ result: fallback });
     }
 }
@@ -152,7 +152,7 @@ function buildConditions(proposal: any) {
     return { productName, priceOffer, channelInfo, dateReceived, dateDraft, dateFinal, dateUpload, specialTerms, secondaryUsagePeriod, secondaryFee };
 }
 
-function buildParties(brandName: string, influencerName: string, brandProfile: any, creatorProfile: any) {
+function buildParties(brandName: string, creatorName: string, brandProfile: any, creatorProfile: any) {
     return `[계약 당사자]
 - 갑(광고주): ${brandName}
   - 대표자명: ${brandProfile?.representative_name || '미입력'}
@@ -162,8 +162,8 @@ function buildParties(brandName: string, influencerName: string, brandProfile: a
   - 회사 전화번호: ${brandProfile?.company_phone || brandProfile?.phone || '미입력'}
   - 담당자: ${brandProfile?.contact_person_name || '미입력'} (${brandProfile?.contact_person_phone || ''} / ${brandProfile?.contact_person_email || ''})
   - 세금계산서 이메일: ${brandProfile?.tax_email || '미입력'}
-- 을(크리에이터): ${influencerName}
-  - 실명: ${creatorProfile?.legal_name || creatorProfile?.display_name || influencerName}
+- 을(크리에이터): ${creatorName}
+  - 실명: ${creatorProfile?.legal_name || creatorProfile?.display_name || creatorName}
   - 생년월일: ${creatorProfile?.birth_date || '미입력'}
   - 주소: ${creatorProfile?.legal_address || creatorProfile?.shipping_address || '미입력'}
   - 연락처: ${creatorProfile?.phone || '미입력'}
@@ -172,7 +172,7 @@ function buildParties(brandName: string, influencerName: string, brandProfile: a
 }
 
 // 텍스트 기반 프롬프트
-function buildTextPrompt(brandName: string, influencerName: string, brandProfile: any, creatorProfile: any, proposal: any, extractedText: string): string {
+function buildTextPrompt(brandName: string, creatorName: string, brandProfile: any, creatorProfile: any, proposal: any, extractedText: string): string {
     const c = buildConditions(proposal);
     return `당신은 대한민국 법률 전문가이자 인플루언서 마케팅 계약 전문가입니다.
 
@@ -180,7 +180,7 @@ function buildTextPrompt(brandName: string, influencerName: string, brandProfile
 이 계약서의 **모든 조항을 빠짐없이** 추출하고,
 현재 협업의 실제 조건값으로 채워 넣어 주세요.
 
-${buildParties(brandName, influencerName, brandProfile, creatorProfile)}
+${buildParties(brandName, creatorName, brandProfile, creatorProfile)}
 
 [이번 협업 조건 — 계약서에 반드시 반영]
 - 상품명: ${c.productName}
@@ -207,7 +207,7 @@ ${extractedText}
 }
 
 // 스캔 PDF용 Vision 프롬프트 (텍스트 없이 이미지 직접 전달)
-function buildVisionPrompt(brandName: string, influencerName: string, brandProfile: any, creatorProfile: any, proposal: any): string {
+function buildVisionPrompt(brandName: string, creatorName: string, brandProfile: any, creatorProfile: any, proposal: any): string {
     const c = buildConditions(proposal);
     return `당신은 대한민국 법률 전문가이자 인플루언서 마케팅 계약 전문가입니다.
 
@@ -215,7 +215,7 @@ function buildVisionPrompt(brandName: string, influencerName: string, brandProfi
 PDF에서 **모든 조항을 빠짐없이** 읽어내고,
 현재 협업의 실제 조건값으로 채워 완성된 계약서를 작성해주세요.
 
-${buildParties(brandName, influencerName, brandProfile, creatorProfile)}
+${buildParties(brandName, creatorName, brandProfile, creatorProfile)}
 
 [이번 협업 조건 — 계약서에 반드시 반영]
 - 상품명: ${c.productName}
@@ -242,7 +242,7 @@ ${buildParties(brandName, influencerName, brandProfile, creatorProfile)}
 function buildFallbackFromExtracted(
     extractedText: string,
     brandName: string,
-    influencerName: string,
+    creatorName: string,
     proposal: any
 ): string {
     const productName = proposal.product_name || proposal.productName || "협업 제품";
@@ -250,7 +250,7 @@ function buildFallbackFromExtracted(
     return `# 계약서 (원본 기반)
 
 **갑(광고주):** ${brandName}
-**을(크리에이터):** ${influencerName}
+**을(크리에이터):** ${creatorName}
 **상품명:** ${productName}
 **원고료:** ${priceOffer}원
 

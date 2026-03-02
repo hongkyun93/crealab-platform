@@ -98,7 +98,7 @@ export default function CreatorNotificationsPage() {
             case 12: return <CategorizedTabStyle />;
             case 13: return <InteractiveBannerStyle />;
             case 14: return <GamifiedRewardStyle />;
-            case 15: return <CalendarEventStyle />;
+            case 15: return <CalendarMomentStyle />;
             case 16: return <GlassmorphismAlert />;
             case 17: return <TickerTapeStyle />;
             case 18: return <DetailedLogStyle />;
@@ -163,7 +163,7 @@ export default function CreatorNotificationsPage() {
                                     case 12: return <CategorizedTabStyle />;
                                     case 13: return <InteractiveBannerStyle />;
                                     case 14: return <GamifiedRewardStyle />;
-                                    case 15: return <CalendarEventStyle />;
+                                    case 15: return <CalendarMomentStyle />;
                                     case 16: return <GlassmorphismAlert />;
                                     case 17: return <TickerTapeStyle />;
                                     case 18: return <DetailedLogStyle />;
@@ -528,7 +528,7 @@ function GamifiedRewardStyle() {
 }
 
 // 15. Calendar Event Style
-function CalendarEventStyle() {
+function CalendarMomentStyle() {
     const data = getRandomNotifications()
     return (
         <div className="space-y-3">

@@ -80,16 +80,16 @@ import { ProductBrowseView } from "@/components/shared/ProductBrowseView"
 
 function BrandDashboardContent() {
 
-    const {
-        events, user, isLoading, campaigns, deleteCampaign,
+    const { moments, user, isLoading, campaigns, deleteCampaign,
         brandProposals, updateBrandProposal, deleteBrandProposal, sendMessage, messages,
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
-        updateUser, products, addProduct, updateProduct, deleteProduct, deleteEvent, supabase, createBrandProposal,
+        updateUser, products, addProduct, updateProduct, deleteProduct, deleteMoment, supabase, createBrandProposal,
         switchRole, campaignProposals, updateCampaignStatus, updateProposal, notifications, sendNotification, refreshData,
         favorites, toggleFavorite,
         createMomentProposal, // [FIX] was missing from destructure
         momentProposals, // [FIX] needed for chatProposal sync
-        allEvents, fetchAllEvents, isAuthLoading, deleteMomentProposal, enablePublicEvents // New: Public events & Moment deletion
+        allMoments, fetchAllMoments, isAuthLoading, deleteMomentProposal, enablePublicMoments, // New: Public events & Moment deletion
+        markAsRead, // [딥링크] 알림 센터 클릭 시 읽음 처리용
     } = useUnifiedProvider()
 
     // 비공개 상품 관련 (product-provider에서 직접 가져옴)
@@ -111,19 +111,38 @@ function BrandDashboardContent() {
     const [currentView, setCurrentView] = useState(initialView)
     const [sortOrder, setSortOrder] = useState("latest")
 
-    // Discover 탭 진입 시에만 public events 활성화 (enablePublicEvents는 idempotent - 여러 번 호출해도 안전)
+    // [딥링크] URL의 view 파라미터 변경 시 currentView 동기화 (알림 클릭 시 필요)
+    useEffect(() => {
+        const viewParam = searchParams.get('view')
+        if (!viewParam) return
+        const normalized = viewParam === 'dashboard' ? 'my-campaigns' : viewParam
+        setCurrentView(normalized)
+    }, [searchParams])
+
+    // [새로고침 유지] currentView 변경 시 URL 동기화 → 새로고침 후 원래 페이지로 돌아옴
+    useEffect(() => {
+        const currentUrlView = searchParams.get('view')
+        if (currentUrlView === currentView) return  // 이미 동기화됨 (루프 방지)
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('view', currentView)
+        router.replace(`/brand?${params.toString()}`, { scroll: false })
+    }, [currentView]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Discover 탭 진입 시에만 public events 활성화 (enablePublicMoments는 idempotent - 여러 번 호출해도 안전)
     useEffect(() => {
         if (currentView === 'discover') {
-            enablePublicEvents()
+            enablePublicMoments()
         }
     }, [currentView])
 
-    // Compute set of moment IDs where the brand has already sent a proposal
+    // Compute set of moment IDs where the brand has already sent an active proposal
     const sentMomentIds = useMemo(() => {
         const ids = new Set<string>()
         if (momentProposals) {
             momentProposals.forEach((p: any) => {
-                if (p.moment_id) ids.add(p.moment_id)
+                if (p.moment_id && p.status !== 'cancelled' && p.status !== 'rejected') {
+                    ids.add(p.moment_id)
+                }
             })
         }
         return ids
@@ -244,16 +263,8 @@ function BrandDashboardContent() {
 
     // Fetch Feedback History when Chat Opens
     useEffect(() => {
-        if (chatProposal) {
-            const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
-            const pId = chatProposal.id.toString()
-            // [FIX] fetchSubmissionFeedback(proposalId?: string, productApplicationId?: string)
-            // campaign → proposalId, brand/moment → productApplicationId
-            if (isCampaign) {
-                fetchSubmissionFeedback(pId, undefined)
-            } else {
-                fetchSubmissionFeedback(undefined, pId)
-            }
+        if (chatProposal?.workspace_id) {
+            fetchSubmissionFeedback(chatProposal.workspace_id.toString())
         }
     }, [chatProposal])
 
@@ -266,41 +277,41 @@ function BrandDashboardContent() {
     useEffect(() => {
         const proposalId = searchParams.get('proposalId')
 
-        // IMPORTANT: Wait for auth loading to finish only. 
-        // Background data (isLoading) might still be fetching.
-        if (isAuthLoading) return;
+        // IMPORTANT: Wait for auth loading to finish only.
+        if (isAuthLoading) return
 
-        if (proposalId && !chatProposal) {
+        if (!proposalId) return
 
-            // 1. Search in brandProposals (product_applications)
-            let target: any = brandProposals.find((p: any) => (p.id === proposalId || p.id?.toString() === proposalId))
+        // 워크스페이스가 이미 열린 상태에서 같은 proposal이면 무시 (루프 방지)
+        // 닫혀있을 때는 chatProposal이 남아있어도 재오픈 허용
+        if (isChatOpen && (chatProposal?.workspace_id?.toString() === proposalId || chatProposal?.id?.toString() === proposalId)) return
 
-            // 2. Search in campaignProposals (campaign_applications)
-            if (!target) {
-                target = campaignProposals.find((p: any) => (p.id === proposalId || p.id?.toString() === proposalId))
-            }
+        // 1. brandProposals (product_applications) 탐색
+        let target: any = brandProposals.find((p: any) => p.workspace_id?.toString() === proposalId || p.id?.toString() === proposalId)
 
-            // 3. Search in campaigns[].proposals (legacy fallback)
-            if (!target) {
-                for (const campaign of campaigns) {
-                    const anyCampaign = campaign as any
-                    if (anyCampaign.proposals) {
-                        const found = anyCampaign.proposals.find((p: any) => (p.id === proposalId || p.id?.toString() === proposalId))
-                        if (found) {
-                            target = found
-                            break
-                        }
-                    }
-                }
-            }
+        // 2. campaignProposals (campaign_applications) 탐색
+        if (!target) {
+            target = campaignProposals.find((p: any) => p.workspace_id?.toString() === proposalId || p.id?.toString() === proposalId)
+        }
 
-            if (target) {
-                // To prevent infinite loop/race condition, we ONLY set if the ID actually changed
-                setChatProposal((prev: any) => prev?.id?.toString() === target.id.toString() ? prev : target)
-                setIsChatOpen(true)
+        // 3. momentProposals 탐색
+        if (!target) {
+            target = (momentProposals as any[])?.find((p: any) => p.workspace_id?.toString() === proposalId || p.id?.toString() === proposalId)
+        }
+
+        // 4. campaigns[].proposals 레거시 폴백
+        if (!target) {
+            for (const campaign of campaigns) {
+                const found = (campaign as any).proposals?.find((p: any) => p.id?.toString() === proposalId)
+                if (found) { target = found; break }
             }
         }
-    }, [searchParams, brandProposals, campaignProposals, campaigns, isAuthLoading]) // Removed chatProposal from deps to prevent loop
+
+        if (target) {
+            setChatProposal(target)
+            setIsChatOpen(true)
+        }
+    }, [searchParams, brandProposals, campaignProposals, momentProposals, campaigns, isAuthLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Auto-set workspaceTab from URL (Notification Redirect)
     useEffect(() => {
@@ -315,7 +326,7 @@ function BrandDashboardContent() {
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString())
         if (isChatOpen && chatProposal?.id) {
-            params.set('proposalId', chatProposal.id.toString())
+            params.set('proposalId', chatProposal.workspace_id?.toString() || chatProposal.id.toString())
         } else {
             params.delete('proposalId')
         }
@@ -369,7 +380,7 @@ function BrandDashboardContent() {
             // 2. Determine Current Stage
             let stage: 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete' = 'negotiation';
 
-            if (chatProposal.brand_condition_confirmed && chatProposal.influencer_condition_confirmed) stage = 'contract';
+            if (chatProposal.brand_condition_confirmed && chatProposal.creator_condition_confirmed) stage = 'contract';
             if (chatProposal.contract_status === 'signed') stage = 'contract'; // 계약 서명 완료 → 입금 대기
             // [입금 확인 게이트] 관리자가 payment_confirmed_at 세팅 후에만 shipping으로 이동
             if (chatProposal.contract_status === 'signed' && (chatProposal as any).payment_confirmed_at) stage = 'shipping';
@@ -416,24 +427,21 @@ function BrandDashboardContent() {
             // [FIX] sendSubmissionFeedback(proposalId, productApplicationId, content) - 3 args
             // [FIX] sendSubmissionFeedback returns void, use try/catch instead of if(success)
             await sendSubmissionFeedback(
-                isCampaign ? pId : undefined,
-                isCampaign ? undefined : pId,
+                chatProposal.workspace_id?.toString(),
                 feedbackMsg
             )
             setFeedbackMsg("")
             setIsSendingFeedback(false)
-            if (isCampaign) {
-                await fetchSubmissionFeedback(pId, undefined)
-            } else {
-                await fetchSubmissionFeedback(undefined, pId)
+            if (chatProposal.workspace_id) {
+                await fetchSubmissionFeedback(chatProposal.workspace_id.toString())
             }
 
             // 🔔 Send notification to influencer
             await sendNotification(
-                chatProposal.influencer_id,
+                chatProposal.creator_id,
                 `${user?.name}님이 피드백을 남겼습니다.`,
                 'feedback_received',
-                chatProposal.id.toString()
+                chatProposal.workspace_id?.toString() || chatProposal.id.toString()
             )
         } catch (e) {
             console.error("Feedback error:", e)
@@ -442,23 +450,19 @@ function BrandDashboardContent() {
 
     // Effect to fetch feedback when work tab is visited
     useEffect(() => {
-        if (activeProposalTab === 'work' && chatProposal?.id) {
-            const isCampaign = !!chatProposal?.campaignId || (chatProposal as any)?.type === 'creator_apply'
-            const pId = chatProposal.id.toString()
-            // [FIX] correct signature
-            if (isCampaign) {
-                fetchSubmissionFeedback(pId, undefined)
-            } else {
-                fetchSubmissionFeedback(undefined, pId)
-            }
+        if (activeProposalTab === 'work' && chatProposal?.workspace_id) {
+            fetchSubmissionFeedback(chatProposal.workspace_id.toString())
         }
     }, [activeProposalTab, chatProposal, fetchSubmissionFeedback])
     const handleStatusUpdate = useCallback(async (id: string | number, status: 'accepted' | 'rejected' | 'hold') => {
         if (confirm(`이 지원서를 ${status === 'accepted' ? '수락' : status === 'hold' ? '보류' : '거절'}하시겠습니까?`)) {
             try {
-                const { updateApplicationStatus } = await import('@/app/actions/proposal')
-                const result = await updateApplicationStatus(id.toString(), status)
-                if (result.error) toast.error(result.error)
+                const supabaseCli = (await import('@/lib/supabase/client')).createClient()
+                const { error: statusErr } = await supabaseCli
+                    .from('campaign_applications')
+                    .update({ status })
+                    .eq('id', id.toString())
+                if (statusErr) { toast.error(statusErr.message); return }
                 else {
                     toast.success("상태가 변경되었습니다.")
                     await refreshData()
@@ -474,13 +478,13 @@ function BrandDashboardContent() {
                             ...campaignProposals,
                             ...(momentProposals as any[])
                         ].find((p: any) => p.id?.toString() === id.toString())
-                        const influencerId = targetProposal?.influencer_id || targetProposal?.influencerId
-                        if (influencerId) {
+                        const creatorId = targetProposal?.creator_id || targetProposal?.creatorId
+                        if (creatorId) {
                             await sendNotification(
-                                influencerId,
+                                creatorId,
                                 `${user?.name || '브랜드'}님이 지원서를 검토 후 다음 단계로 진행하지 않기로 결정했습니다.`,
                                 'proposal_rejected',
-                                id.toString()
+                                targetProposal?.workspace_id?.toString() || id.toString()
                             )
                         }
                     }
@@ -496,17 +500,17 @@ function BrandDashboardContent() {
 
         setIsGeneratingContract(true)
         try {
-            const influencerId = chatProposal.influencer_id || chatProposal.influencerId
-            const influencerMessages = messages.filter((m: any) => m.proposalId === chatProposal.id?.toString() || m.productApplicationId === chatProposal.id?.toString())
+            const creatorId = chatProposal.creator_id || chatProposal.creatorId
+            const creatorMessages = messages.filter((m: any) => m.proposalId === chatProposal.id?.toString() || m.productApplicationId === chatProposal.id?.toString())
 
             const response = await fetch('/api/generate-contract', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: influencerMessages,
+                    messages: creatorMessages,
                     proposal: chatProposal,
                     brandName: (user as any).display_name || (user as any).name || "브랜드",
-                    influencerName: chatProposal.influencer_name || chatProposal.influencerName || "크리에이터"
+                    creatorName: chatProposal.creator_name || chatProposal.creatorName || "크리에이터"
                 })
             })
 
@@ -534,7 +538,7 @@ function BrandDashboardContent() {
         if (!chatProposal) return;
         setIsConfirmDialogOpen(false);
 
-        const isMutualConfirmed = chatProposal.influencer_condition_confirmed;
+        const isMutualConfirmed = chatProposal.creator_condition_confirmed;
 
         // Optimistic UI Update
         const optimizedProposal = {
@@ -566,20 +570,20 @@ function BrandDashboardContent() {
                 : "✅ [시스템 알림] 브랜드가 조건을 확정했습니다. 크리에이터님의 확정을 기다리고 있습니다.";
 
             await sendMessage(
-                chatProposal.influencer_id || chatProposal.influencerId || "creator",
+                chatProposal.creator_id || chatProposal.creatorId || "creator",
                 msgContent,
-                isCampaign ? pId : undefined,
-                !isCampaign ? pId : undefined
+                undefined,
+                chatProposal.workspace_id?.toString()
             );
 
             // 3. Notify Creator
             await sendNotification(
-                chatProposal.influencer_id || chatProposal.influencerId || "creator",
+                chatProposal.creator_id || chatProposal.creatorId || "creator",
                 isMutualConfirmed
                     ? "조건 협의가 완료되었습니다. 계약서를 작성해주세요."
                     : `${user?.name}님이 조건을 확정했습니다.`,
                 "proposal_update",
-                pId
+                chatProposal.workspace_id?.toString() || pId
             );
 
             // Force refresh to update dashboard lists (e.g., move to 'confirmed' status)
@@ -595,7 +599,7 @@ function BrandDashboardContent() {
     const handleSendMessage = async () => {
         if (!chatMessage.trim() || !chatProposal || !user || isSendingMessage) return
 
-        const receiverId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id
+        const receiverId = chatProposal.creator_id || chatProposal.creatorId || chatProposal.influencer?.id
 
         if (!receiverId) {
             toast.error("수신자를 찾을 수 없습니다.")
@@ -610,14 +614,8 @@ function BrandDashboardContent() {
             // Determine if it's a Campaign Application (proposals table) or Direct Offer (brand_proposals table)
             const isCampaignProposal = (chatProposal as any)?.type === 'creator_apply' || !!(chatProposal as any)?.campaignId
 
-            // sendMessage signature: (receiverId, content, file?, proposalId?, productApplicationId?)
-            if (isCampaignProposal) {
-                // For Campaign Applications -> proposals table
-                await sendMessage(receiverId, msgContent, undefined, chatProposal.id?.toString(), undefined)
-            } else {
-                // For Direct Offers -> brand_proposals table
-                await sendMessage(receiverId, msgContent, undefined, undefined, chatProposal.id?.toString())
-            }
+            // sendMessage signature: (receiverId, content, file?, workspaceId?, projectName?)
+            await sendMessage(receiverId, msgContent, undefined, chatProposal.workspace_id?.toString())
         } catch (e) {
             console.error("Message send failed:", e)
             setChatMessage(msgContent)
@@ -629,7 +627,7 @@ function BrandDashboardContent() {
 
     // Propose Modal State
     const [proposeModalOpen, setProposeModalOpen] = useState(false)
-    const [selectedInfluencer, setSelectedInfluencer] = useState<any>(null)
+    const [selectedCreator, setSelectedInfluencer] = useState<any>(null)
     const [offerProduct, setOfferProduct] = useState("")
     const [confirmStatusData, setConfirmStatusData] = useState<{ id: string, status: string } | null>(null)
     const [confirmContractSend, setConfirmContractSend] = useState(false)
@@ -723,17 +721,12 @@ function BrandDashboardContent() {
             setIsSignatureModalOpen(false)
 
             // Send system message
-            const receiverId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id
+            const receiverId = chatProposal.creator_id || chatProposal.creatorId || chatProposal.influencer?.id
             if (receiverId) {
                 const msgContent = "📄 [시스템] 표준 계약서가 발송되었습니다. (브랜드 서명 완료)\n[계약 관리] 탭에서 확인 후 서명해주세요."
 
                 // Pass ID to correct argument to avoid FK error
-                if (isCampaignProposal) {
-                    // (to, content, proposalId, productApplicationId)
-                    await sendMessage(receiverId, msgContent, proposalId, undefined)
-                } else {
-                    await sendMessage(receiverId, msgContent, undefined, proposalId)
-                }
+                await sendMessage(receiverId, msgContent, undefined, chatProposal.workspace_id?.toString())
             }
 
             // 🔔 크리에이터에게 계약서 발송 알림
@@ -743,7 +736,7 @@ function BrandDashboardContent() {
                         receiverId,
                         `${user?.name}님이 계약서를 발송했습니다. 확인 후 서명해주세요.`,
                         'contract_sent',
-                        proposalId
+                        chatProposal?.workspace_id?.toString() || proposalId
                     )
                 } catch (notifErr) {
                     console.warn('알림 발송 실패 (무시):', notifErr)
@@ -807,9 +800,9 @@ function BrandDashboardContent() {
                             <p><small>${chatProposal?.brand_signed_at ? new Date(chatProposal.brand_signed_at).toLocaleDateString() : ''}</small></p>
                         </div>
                         <div class="sign-box">
-                            <p><strong>을 (크리에이터):</strong> ${chatProposal?.influencer_name || chatProposal?.influencer?.name || user?.name}</p>
-                            ${chatProposal?.influencer_signature ? `<img src="${chatProposal.influencer_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
-                            <p><small>${chatProposal?.influencer_signed_at ? new Date(chatProposal.influencer_signed_at).toLocaleDateString() : ''}</small></p>
+                            <p><strong>을 (크리에이터):</strong> ${chatProposal?.creator_name || chatProposal?.influencer?.name || user?.name}</p>
+                            ${chatProposal?.creator_signature ? `<img src="${chatProposal.creator_signature}" class="sign-img" />` : '<p>(서명 없음)</p>'}
+                            <p><small>${chatProposal?.creator_signed_at ? new Date(chatProposal.creator_signed_at).toLocaleDateString() : ''}</small></p>
                         </div>
                     </div>
                     <script>
@@ -831,7 +824,7 @@ function BrandDashboardContent() {
         try {
             const isCampaignProposal = !!chatProposal.campaignId || (chatProposal as any)?.type === 'creator_apply'
             const proposalId = chatProposal.id?.toString()
-            const receiverId = chatProposal.influencer_id || chatProposal.influencerId || chatProposal.influencer?.id
+            const receiverId = chatProposal.creator_id || chatProposal.creatorId || chatProposal.influencer?.id
 
             const updateData = {
                 tracking_number: trackingInput,
@@ -852,17 +845,13 @@ function BrandDashboardContent() {
                 // Notify Creator (message + notification)
                 if (receiverId) {
                     const msgContent = `📦 [시스템] 제품 발송이 시작되었습니다.\n운송장 번호: ${trackingInput}`
-                    if (isCampaignProposal) {
-                        await sendMessage(receiverId, msgContent, proposalId, undefined)
-                    } else {
-                        await sendMessage(receiverId, msgContent, undefined, proposalId)
-                    }
+                    await sendMessage(receiverId, msgContent, undefined, chatProposal.workspace_id?.toString())
                     // 🔔 배송 운송장 알림
                     await sendNotification(
                         receiverId,
                         `${user?.name || '브랜드'}님이 제품을 발송했습니다. 운송장 번호: ${trackingInput}`,
                         'shipping_started',
-                        proposalId
+                        chatProposal?.workspace_id?.toString() || proposalId
                     )
                 }
 
@@ -907,6 +896,7 @@ function BrandDashboardContent() {
     ]
 
     const filteredProducts = products?.filter(p => {
+        if ((p as any).is_draft) return false
         const q = productSearchQuery.toLowerCase()
         if (!q) return true
         return (
@@ -964,6 +954,7 @@ function BrandDashboardContent() {
     const [editAddress, setEditAddress] = useState("")
     const [isSaving, setIsSaving] = useState(false)
     // Brand Business Fields
+    const [editLegalName, setEditLegalName] = useState("")
     const [editRepresentativeName, setEditRepresentativeName] = useState("")
     const [editBusinessNumber, setEditBusinessNumber] = useState("")
     const [editCompanyAddress, setEditCompanyAddress] = useState("")
@@ -987,6 +978,7 @@ function BrandDashboardContent() {
             setEditPhone(displayUser.phone || "")
             setEditAddress(displayUser.address || "")
             // Brand Business Fields
+            setEditLegalName(displayUser.legalName || "")
             setEditRepresentativeName(displayUser.representativeName || "")
             setEditBusinessNumber(displayUser.businessNumber || "")
             setEditCompanyAddress(displayUser.companyAddress || "")
@@ -1052,8 +1044,8 @@ function BrandDashboardContent() {
     }, [])
 
     const getFilteredAndSortedEvents = () => {
-        // Use allEvents for discovery, default empty array if undefined
-        let result = [...(allEvents || [])]
+        // Use allMoments for discovery, default empty array if undefined
+        let result = [...(allMoments || [])]
         if (selectedTags.length > 0) {
             result = result.filter(e =>
                 selectedTags.some(tag =>
@@ -1067,7 +1059,7 @@ function BrandDashboardContent() {
         } else if (statusFilter === "past") {
             result = result.filter(e => e.status === 'completed')
         } else if (statusFilter === "favorites") {
-            result = result.filter(e => favorites.some(f => f.target_id === e.id && f.target_type === 'event'))
+            result = result.filter(e => favorites.some(f => f.target_id === e.id && f.target_type === 'moment'))
         }
         // Multi-select follower filter
         if (!followerFilter.includes('all') && followerFilter.length > 0) {
@@ -1110,26 +1102,26 @@ function BrandDashboardContent() {
         else if (sortOrder === "verified") result = result.filter(e => e.verified)
         else if (sortOrder === "followers_high") result.sort((a, b) => (b.followers || 0) - (a.followers || 0))
         else if (sortOrder === "followers_low") result.sort((a, b) => (a.followers || 0) - (b.followers || 0))
-        else if (sortOrder === "event_date_asc") result.sort((a, b) => {
-            const da = new Date(a.eventDate || a.date || 0).getTime()
-            const db = new Date(b.eventDate || b.date || 0).getTime()
+        else if (sortOrder === "moment_date_asc") result.sort((a, b) => {
+            const da = new Date(a.momentDate || a.date || 0).getTime()
+            const db = new Date(b.momentDate || b.date || 0).getTime()
             return da - db
         })
         else if (sortOrder === "posting_date_asc") result.sort((a, b) => {
-            const da = new Date(a.postingDate || a.eventDate || a.date || 0).getTime()
-            const db = new Date(b.postingDate || b.eventDate || b.date || 0).getTime()
+            const da = new Date(a.postingDate || a.momentDate || a.date || 0).getTime()
+            const db = new Date(b.postingDate || b.momentDate || b.date || 0).getTime()
             return da - db
         })
         else if (sortOrder === "price_low") result.sort((a, b) => (a.priceVideo || 0) - (b.priceVideo || 0))
         else if (sortOrder === "price_high") result.sort((a, b) => (b.priceVideo || 0) - (a.priceVideo || 0))
         else if (sortOrder === "proposal_low") result.sort((a, b) => {
-            const aCount = (momentProposals || []).filter((p: any) => p.moment_id === a.id || p.event_id === a.id).length
-            const bCount = (momentProposals || []).filter((p: any) => p.moment_id === b.id || p.event_id === b.id).length
+            const aCount = (momentProposals || []).filter((p: any) => p.moment_id === a.id || p.moment_id === a.id).length
+            const bCount = (momentProposals || []).filter((p: any) => p.moment_id === b.id || p.moment_id === b.id).length
             return aCount - bCount
         })
         else if (sortOrder === "favorites_high") result.sort((a, b) => {
-            const aCount = (favorites || []).filter(f => f.target_id === a.id && f.target_type === 'event').length
-            const bCount = (favorites || []).filter(f => f.target_id === b.id && f.target_type === 'event').length
+            const aCount = (favorites || []).filter(f => f.target_id === a.id && f.target_type === 'moment').length
+            const bCount = (favorites || []).filter(f => f.target_id === b.id && f.target_type === 'moment').length
             return bCount - aCount
         })
         if (sortOrder === "latest") result.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
@@ -1138,7 +1130,7 @@ function BrandDashboardContent() {
 
 
 
-    const submitProposal = async () => {
+    const submitProposal = async (isDraft: boolean = false) => {
         // Prevent duplicate submissions
         if (isSubmitting) return
 
@@ -1147,10 +1139,16 @@ function BrandDashboardContent() {
             return
         }
 
-        if (!offerProduct || !compensation || !contentType) {
+        if (!isDraft && (!offerProduct || !compensation || !contentType)) {
             toast.error("필수 항목을 모두 입력해주세요.")
             return
         }
+
+        if (isDraft && !offerProduct) {
+            toast.error("임시저장을 위해 최소한 '제품명'은 입력해주세요.")
+            return
+        }
+
         setIsSubmitting(true)
         setSubmitProgress(10) // Start progress
 
@@ -1165,7 +1163,7 @@ function BrandDashboardContent() {
         try {
             const proposalData = {
                 brand_id: user?.id,
-                influencer_id: selectedInfluencer?.influencerId,
+                creator_id: selectedCreator?.creatorId,
                 product_name: offerProduct,
                 product_url: productLink,
                 product_type: productType,
@@ -1173,7 +1171,7 @@ function BrandDashboardContent() {
                 compensation_amount: compensation,
                 has_incentive: hasIncentive,
                 incentive_detail: incentiveDetail,
-                event_id: selectedInfluencer?.id,
+                moment_id: selectedCreator?.id,
                 content_type: contentType,
                 message: message,
 
@@ -1181,7 +1179,8 @@ function BrandDashboardContent() {
                 condition_draft_submission_date: conditionDraftDate,
                 condition_final_submission_date: conditionFinalDate,
                 condition_upload_date: conditionUploadDate,
-                condition_secondary_usage_period: conditionSecondary
+                condition_secondary_usage_period: conditionSecondary,
+                status: isDraft ? 'draft' : 'offered' // draft 상태 부여
             }
 
             // Optional: Remove fields that might not exist in schema if needed
@@ -1190,11 +1189,8 @@ function BrandDashboardContent() {
             // [FIX] Logic Split: Use specific handler for Moments
             let insertedProposal;
             try {
-                if (proposalData.event_id) {
-                    insertedProposal = await createMomentProposal({
-                        ...proposalData,
-                        moment_id: proposalData.event_id // Map event_id to moment_id
-                    });
+                if (proposalData.moment_id) {
+                    insertedProposal = await createMomentProposal(proposalData);
                 } else {
                     insertedProposal = await createBrandProposal(proposalData);
                 }
@@ -1204,7 +1200,6 @@ function BrandDashboardContent() {
                 if (err?.code === '42703' || err?.message?.includes('column')) {
                     // ... existing fallback attempt ...
                     const fallbackData: any = { ...proposalData }
-                    delete fallbackData.event_id
                     delete fallbackData.has_incentive
                     delete fallbackData.incentive_detail
                     insertedProposal = await createBrandProposal(fallbackData);
@@ -1214,14 +1209,17 @@ function BrandDashboardContent() {
             }
 
             if (insertedProposal) {
-                await sendMessage(selectedInfluencer?.influencerId, `협업 제안서가 전송되었습니다.\n[${offerProduct}]`, undefined, insertedProposal.id)
+                await sendMessage(selectedCreator?.creatorId, `협업 제안서가 전송되었습니다.\n[${offerProduct}]`, undefined, insertedProposal.workspace_id?.toString())
             }
 
             clearInterval(progressInterval)
             setSubmitProgress(100) // Complete
             await new Promise(resolve => setTimeout(resolve, 800)) // Slight delay for user to see 100%
 
-            // alert(`${selectedInfluencer?.influencer}님에게 제안서가 성공적으로 발송되었습니다!`) // Removed alert in favor of UI message
+            if (isDraft) {
+                toast.success("제안서가 임시저장 되었습니다.")
+            }
+
             setProposeModalOpen(false)
             setSubmitProgress(0) // Reset
 
@@ -1294,9 +1292,14 @@ function BrandDashboardContent() {
         setPreviewModalOpen(true)
     }
 
-    const handleFinalSubmit = async () => {
+    const handleFinalSubmit = async (isDraft: boolean = false) => {
         // Prevent duplicate submissions or submitting while image is still uploading
         if (isUploading) return
+
+        if (isDraft && !newProductName) {
+            toast.error("임시저장을 위해 최소한 '제품명'은 지정해주세요.")
+            return
+        }
 
         setIsUploading(true)
 
@@ -1317,7 +1320,8 @@ function BrandDashboardContent() {
                 formatGuide: newProductFormatGuide,
                 accountTag: newProductAccountTag,
                 tags: newProductHashtags.split(/[\s,]+/).filter(tag => tag.trim() !== "").map(tag => tag.startsWith('#') ? tag : `#${tag}`),
-                channels: newProductChannels
+                channels: newProductChannels,
+                is_draft: isDraft
             }
 
 
@@ -1348,8 +1352,7 @@ function BrandDashboardContent() {
 
             setPreviewModalOpen(false) // Close preview
             setProductModalOpen(false) // Close form
-            toast.success(isEditing ? "제품이 성공적으로 수정되었습니다!" : "제품이 성공적으로 등록되었습니다!")
-            setProductModalOpen(false);
+            toast.success(isEditing ? (isDraft ? "제품이 임시저장 되었습니다." : "제품이 성공적으로 수정되었습니다!") : (isDraft ? "제품이 임시저장 되었습니다." : "제품이 성공적으로 등록되었습니다!"))
             refreshData()
         } catch (e: any) {
             console.error(e)
@@ -1371,6 +1374,7 @@ function BrandDashboardContent() {
                 phone: editPhone,
                 address: editAddress,
                 // Brand Business Fields
+                legalName: editLegalName, // 법인명(상호) 추가
                 representativeName: editRepresentativeName,
                 businessNumber: editBusinessNumber,
                 companyAddress: editCompanyAddress,
@@ -1413,15 +1417,15 @@ function BrandDashboardContent() {
         return items.filter(item => {
             if (type === 'moment') {
                 // Moment proposals or brand proposals with event_id
-                return item.moment_id || item.event_id
+                return item.moment_id || item.moment_id
             }
             if (type === 'campaign') {
                 // Campaign proposals  
-                return item.campaign_id && !item.moment_id && !item.event_id
+                return item.campaign_id && !item.moment_id && !item.moment_id
             }
             if (type === 'brand') {
                 // Brand proposals without event_id (direct offers)
-                return !item.moment_id && !item.event_id && !item.campaign_id
+                return !item.moment_id && !item.moment_id && !item.campaign_id
             }
             return false
         })
@@ -1499,7 +1503,7 @@ function BrandDashboardContent() {
                         POPULAR_TAGS={POPULAR_TAGS}
                         PRICE_FILTER_RANGES={PRICE_FILTER_RANGES}
                         user={user}
-                        deleteEvent={deleteEvent as any}
+                        deleteMoment={deleteMoment as any}
                         channelFilter={channelFilter}
                         setChannelFilter={setChannelFilter}
                         sentMomentIds={sentMomentIds}
@@ -1521,7 +1525,7 @@ function BrandDashboardContent() {
             case "browse-campaigns":
                 return (
                     <CampaignBrowseView
-                        campaigns={allCampaigns}
+                        campaigns={(allCampaigns || []).filter((c: any) => c.status !== 'draft')}
                         applicantCounts={brandApplicantCounts}
                         favorites={favorites}
                         onCampaignClick={() => { }}
@@ -1535,6 +1539,7 @@ function BrandDashboardContent() {
                     <WorkspaceView
                         campaignProposals={campaignProposals}
                         brandProposals={brandProposals}
+                        momentProposals={momentProposals as any[]}
                         workspaceTab={workspaceTab}
                         setWorkspaceTab={setWorkspaceTab}
                         setChatProposal={setChatProposal}
@@ -1622,10 +1627,22 @@ function BrandDashboardContent() {
                                         key={n.id}
                                         className={`overflow-hidden border-0 shadow-sm transition-all hover:shadow-md cursor-pointer group rounded-3xl ${n.is_read ? 'bg-card opacity-70' : 'bg-card ring-2 ring-primary/20'}`}
                                         onClick={() => {
-                                            const content = n.content || "";
-                                            if (content.includes('지원') || content.includes('제안') || content.includes('계약')) {
-                                                setCurrentView("proposals")
-                                                if (content.includes('지원')) setWorkspaceTab("inbound")
+                                            // 읽음 처리 (백그라운드)
+                                            if (!n.is_read) {
+                                                markAsRead(n.id).catch(() => { })
+                                            }
+                                            // router.push로 딥링크 → 기존 useEffect가 proposal 자동 오픈
+                                            const ref = n.reference_id
+                                            const activeTypes = ['shipping_address_saved', 'delivery_confirmed', 'content_submission', 'content_final_uploaded', 'content_clean_uploaded', 'performance_submitted', 'new_message', 'contract_signed', 'proposal_accepted']
+                                            const inboundTypes = ['application_received', 'application_updated', 'proposal_received', 'condition_confirmed']
+                                            if (activeTypes.includes(n.type)) {
+                                                router.push(`/brand?view=proposals&workspaceTab=active${ref ? `&proposalId=${ref}` : ''}`)
+                                            } else if (inboundTypes.includes(n.type)) {
+                                                router.push(`/brand?view=proposals&workspaceTab=inbound${ref ? `&proposalId=${ref}` : ''}`)
+                                            } else if (n.type === 'payment_confirmed' || n.type === 'payment_pending' || n.type === 'deposit_confirmed') {
+                                                router.push('/brand?view=deposit')
+                                            } else {
+                                                router.push('/brand?view=proposals')
                                             }
                                         }}
                                     >
@@ -1683,6 +1700,8 @@ function BrandDashboardContent() {
                         setEditAddress={setEditAddress}
                         editBio={editBio}
                         setEditBio={setEditBio}
+                        editLegalName={editLegalName}
+                        setEditLegalName={setEditLegalName}
                         editRepresentativeName={editRepresentativeName}
                         setEditRepresentativeName={setEditRepresentativeName}
                         editBusinessNumber={editBusinessNumber}
@@ -1943,7 +1962,7 @@ function BrandDashboardContent() {
                     <DialogHeader>
                         <DialogTitle>협업 제안하기</DialogTitle>
                         <DialogDescription>
-                            {selectedInfluencer?.influencer}님에게 보낼 제안서를 작성해주세요.
+                            {selectedCreator?.influencer}님에게 보낼 제안서를 작성해주세요.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col gap-4 py-4">
@@ -1992,8 +2011,8 @@ function BrandDashboardContent() {
                                 {showCalculator && (
                                     <div className="animate-in slide-in-from-top-2 fade-in">
                                         <AIPriceCalculator
-                                            initialFollowers={selectedInfluencer?.followers || 0}
-                                            initialCategory={selectedInfluencer?.category || "뷰티"}
+                                            initialFollowers={selectedCreator?.followers || 0}
+                                            initialCategory={selectedCreator?.category || "뷰티"}
                                             onPriceCalculated={(price) => {
                                                 setCompensation(price)
                                                 // Don't auto-close, let user see result
@@ -2093,11 +2112,16 @@ function BrandDashboardContent() {
                             </div>
                         </div>
                     )}
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setProposeModalOpen(false)}>취소</Button>
-                        <Button onClick={submitProposal} disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "제안서 전송"}
-                        </Button>
+                    <DialogFooter className="flex flex-col sm:flex-row justify-between w-full sm:items-center gap-2 sm:gap-0">
+                        <Button variant="outline" onClick={() => setProposeModalOpen(false)} className="w-full sm:w-auto order-3 sm:order-1">취소</Button>
+                        <div className="flex gap-2 w-full sm:w-auto order-1 sm:order-2">
+                            <Button variant="secondary" onClick={() => submitProposal(true)} disabled={isSubmitting} className="flex-1 sm:flex-none">
+                                임시저장
+                            </Button>
+                            <Button onClick={() => submitProposal(false)} disabled={isSubmitting} className="flex-1 sm:flex-none">
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "제안서 전송"}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -2308,11 +2332,16 @@ function BrandDashboardContent() {
                             </div>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setProductModalOpen(false)}>취소</Button>
-                        <Button onClick={handlePreview} disabled={isUploading} type="button">
-                            미리보기 및 등록
-                        </Button>
+                    <DialogFooter className="flex flex-col sm:flex-row justify-between w-full sm:items-center gap-2 sm:gap-0 mt-4 sm:mt-0">
+                        <Button variant="outline" onClick={() => setProductModalOpen(false)} className="w-full sm:w-auto order-3 sm:order-1">취소</Button>
+                        <div className="flex gap-2 w-full sm:w-auto order-1 sm:order-2">
+                            <Button variant="secondary" onClick={() => handleFinalSubmit(true)} disabled={isUploading} type="button" className="flex-1 sm:flex-none">
+                                임시저장
+                            </Button>
+                            <Button onClick={handlePreview} disabled={isUploading} type="button" className="flex-1 sm:flex-none bg-primary hover:bg-primary/90 text-primary-foreground">
+                                {editingProductId ? "미리보기 및 수정" : "미리보기 및 등록"}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -2428,7 +2457,7 @@ function BrandDashboardContent() {
                                 <Button variant="outline" onClick={() => setPreviewModalOpen(false)} className="w-full sm:w-auto">
                                     <Pencil className="mr-2 h-4 w-4" /> 수정하기
                                 </Button>
-                                <Button onClick={handleFinalSubmit} disabled={isUploading} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90">
+                                <Button onClick={() => handleFinalSubmit(false)} disabled={isUploading} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90">
                                     {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
                                         <>
                                             <Send className="mr-2 h-4 w-4" /> {editingProductId ? "이대로 수정" : "이대로 등록"}
@@ -2536,7 +2565,7 @@ function BrandDashboardContent() {
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto p-6 bg-muted/30 rounded-xl border border-border font-mono text-sm whitespace-pre-wrap">
                         {generatedContract || `제 1조 [목적]
-본 계약은 '갑'(${user?.name || '브랜드'})과 '을'(${chatProposal?.influencer_name || '크리에이터'})간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.
+본 계약은 '갑'(${user?.name || '브랜드'})과 '을'(${chatProposal?.creator_name || '크리에이터'})간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.
 
 제 2조 [원고료 및 지급]
 1. '갑'은 '을'에게 콘텐츠 제작의 대가로 금 ${chatProposal?.cost ? parseInt(chatProposal.cost).toLocaleString() : chatProposal?.compensation_amount || '0'}원을 지급한다.

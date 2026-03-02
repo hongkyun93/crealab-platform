@@ -1,6 +1,7 @@
 import { CalendarView } from "@/components/dashboard/calendar-view"
 import { Badge } from "@/components/ui/badge"
 import { Bell, Calendar, Megaphone } from "lucide-react"
+import { useRouter } from "next/navigation"
 import React from "react"
 
 interface DashboardViewProps {
@@ -12,7 +13,7 @@ interface DashboardViewProps {
     allActive: any[]
     allCompleted: any[]
     setCurrentView: (view: string) => void
-    setSelectedMomentId: (id: string | null) => void
+    handleOpenDetails: (item: any, type: "moment" | "campaign") => void
     setChatProposal: (proposal: any) => void
     setIsChatOpen: (open: boolean) => void
 }
@@ -26,10 +27,12 @@ export const DashboardView = React.memo(function DashboardView({
     allActive,
     allCompleted,
     setCurrentView,
-    setSelectedMomentId,
+    handleOpenDetails,
     setChatProposal,
     setIsChatOpen
 }: DashboardViewProps) {
+    const router = useRouter()
+
     return (
         <>
             {/* 1. Stats Overview Section */}
@@ -110,13 +113,9 @@ export const DashboardView = React.memo(function DashboardView({
                         activeMoments={allActive}
                         upcomingMoments={myMoments}
                         pastMoments={allCompleted}
-                        onSelectEvent={(event) => {
-                            if (event.type === 'upcoming') {
-                                setSelectedMomentId(event.id)
-                            } else if (event.type === 'active' || event.type === 'completed') {
-                                // For active/completed, open workspace chat/proposal
-                                setChatProposal(event)
-                                setIsChatOpen(true)
+                        onSelectMoment={(event) => {
+                            if (event.id) {
+                                router.push(`/moment/${event.id}`)
                             }
                         }}
                     />

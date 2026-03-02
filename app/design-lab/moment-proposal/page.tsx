@@ -61,7 +61,7 @@ const PROPOSAL = {
 const MOMENT = {
     title: "봄맞이 메이크업 & 스킨케어 루틴 🌸",
     creator: "김하은",
-    eventDate: "2026-03-01",
+    momentDate: "2026-03-01",
 }
 
 // ─── HELPERS ─────────────────────────────────────────────

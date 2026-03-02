@@ -26,7 +26,7 @@ export interface CreatorProfile {
     moments: {
         id: string
         title: string
-        eventDate: string
+        momentDate: string
         targetProduct: string
         status: string
     }[]
@@ -83,8 +83,8 @@ export function useCreatorProfile(creatorId: string | null) {
                 // Query 2: public moments (max 3, newest first)
                 const { data: momentsData, error: momentsError } = await supabase
                     .from('life_moments')
-                    .select('id, title, event_date, target_product, status')
-                    .eq('influencer_id', creatorId)
+                    .select('id, title, moment_start_date, target_product, status')
+                    .eq('creator_id', creatorId)
                     .eq('is_private', false)
                     .order('created_at', { ascending: false })
                     .limit(3)
@@ -132,7 +132,7 @@ export function useCreatorProfile(creatorId: string | null) {
                         moments: (momentsData || []).map((m: any) => ({
                             id: m.id,
                             title: m.title || '',
-                            eventDate: m.event_date || '',
+                            momentDate: m.moment_start_date || '',
                             targetProduct: m.target_product || '',
                             status: m.status || 'recruiting',
                         })),

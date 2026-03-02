@@ -31,7 +31,7 @@ const MOMENTS = [
         tags: ["신혼집", "인테리어", "입주"],
         targetProduct: "가구, 조명, 소품, 패브릭",
         priceVideo: 350000,
-        eventDate: "2026-03-15",
+        momentDate: "2026-03-15",
         postingDate: "2026-03-20",
         dateFlexible: false,
         channels: ["instagram_reels", "youtube_longform"],
@@ -48,7 +48,7 @@ const MOMENTS = [
         tags: ["뷰티", "스킨케어", "봄"],
         targetProduct: "스킨케어, 쿠션 팩트, 립",
         priceVideo: 250000,
-        eventDate: "2026-03-01",
+        momentDate: "2026-03-01",
         postingDate: "2026-03-05",
         dateFlexible: true,
         channels: ["instagram_reels", "instagram_feed"],
@@ -65,7 +65,7 @@ const MOMENTS = [
         tags: ["제주도", "여행", "브이로그"],
         targetProduct: "호텔, 항공, 캐리어, 카메라",
         priceVideo: 500000,
-        eventDate: "2026-03-25",
+        momentDate: "2026-03-25",
         postingDate: "2026-04-01",
         dateFlexible: false,
         channels: ["youtube_longform", "instagram_reels"],
@@ -200,7 +200,7 @@ export default function MomentArchiveDesignLab() {
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Calendar className="h-4 w-4 text-primary" /> 모먼트 일정
                                     </div>
-                                    <span className="text-base font-bold text-primary">{fmtDate(selectedMoment.eventDate)}</span>
+                                    <span className="text-base font-bold text-primary">{fmtDate(selectedMoment.momentDate)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

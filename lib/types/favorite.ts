@@ -1,5 +1,5 @@
 // Favorite Types
-export type FavoriteTargetType = 'product' | 'campaign' | 'profile' | 'event' | 'workspace'
+export type FavoriteTargetType = 'product' | 'campaign' | 'profile' | 'moment' | 'workspace'
 
 export interface Favorite {
     id: string

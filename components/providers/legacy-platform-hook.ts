@@ -9,13 +9,13 @@ export const usePlatform = useUnifiedProvider
 
 // Re-export types that were previously exported from platform-provider
 export type {
-    Campaign, Favorite, InfluencerEvent, Message,
+    Campaign, Favorite, CreatorMoment, Message,
     Notification, Product, ProductApplication, Proposal, SubmissionFeedback, User
 } from "@/lib/types"
 
 // Mock users for development (if needed)
-export const MOCK_INFLUENCER_USER = {
-    id: "guest_influencer",
+export const MOCK_CREATOR_USER = {
+    id: "guest_creator",
     name: "게스트 크리에이터",
     type: "creator" as const,
     avatar: "👤",

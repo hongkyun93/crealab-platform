@@ -69,28 +69,28 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
 
         const fetchAll = async () => {
             setIsLoading(true)
-            const allEvents: CalendarEvent[] = []
+            const allMoments: CalendarEvent[] = []
 
             try {
-                // 1. Life Moments (event_date)
+                // 1. Life Moments (moment_date)
                 const { data: moments } = await supabase
                     .from('life_moments')
                     .select(`
-                        id, title, name, event_date, posting_date, status, influencer_id,
-                        profiles!influencer_id ( display_name )
+                        id, title, name, moment_start_date, posting_date_exact, status, creator_id,
+                        profiles!creator_id ( display_name )
                     `)
                     .eq('team_id', teamId)
 
                 for (const m of (moments || []) as any[]) {
-                    const dateStr = m.event_date || m.posting_date
+                    const dateStr = m.moment_start_date || m.posting_date_exact
                     if (!dateStr) continue
-                    allEvents.push({
+                    allMoments.push({
                         id: `m-${m.id}`,
                         title: m.title || m.name || '모먼트',
                         date: dateStr.split('T')[0],
                         type: 'moment',
                         creatorName: m.profiles?.display_name || 'Unknown',
-                        creatorId: m.influencer_id,
+                        creatorId: m.creator_id,
                         status: m.status,
                     })
                 }
@@ -103,7 +103,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
 
                 const memberIds = (members || []).map(m => m.user_id)
                 if (memberIds.length === 0) {
-                    setEvents(allEvents)
+                    setEvents(allMoments)
                     setIsLoading(false)
                     return
                 }
@@ -112,22 +112,22 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
                 const { data: mps } = await supabase
                     .from('moment_proposals')
                     .select(`
-                        id, desired_date, product_name, status, influencer_id,
-                        profiles!influencer_id ( display_name ),
+                        id, desired_date, product_name, status, creator_id,
+                        profiles!creator_id ( display_name ),
                         brand:profiles!brand_id ( display_name )
                     `)
-                    .in('influencer_id', memberIds)
+                    .in('creator_id', memberIds)
                     .not('desired_date', 'is', null)
 
                 for (const mp of (mps || []) as any[]) {
                     if (!mp.desired_date) continue
-                    allEvents.push({
+                    allMoments.push({
                         id: `mp-${mp.id}`,
                         title: mp.product_name || '모먼트 제안',
                         date: mp.desired_date.split('T')[0],
                         type: 'moment_proposal',
                         creatorName: mp.profiles?.display_name || 'Unknown',
-                        creatorId: mp.influencer_id,
+                        creatorId: mp.creator_id,
                         status: mp.status,
                         brandName: mp.brand?.display_name,
                         productName: mp.product_name,
@@ -138,22 +138,22 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
                 const { data: bps } = await supabase
                     .from('product_applications')
                     .select(`
-                        id, desired_date, product_name, status, influencer_id,
-                        profiles!influencer_id ( display_name ),
+                        id, desired_date, product_name, status, creator_id,
+                        profiles!creator_id ( display_name ),
                         brand:profiles!brand_id ( display_name )
                     `)
-                    .in('influencer_id', memberIds)
+                    .in('creator_id', memberIds)
                     .not('desired_date', 'is', null)
 
                 for (const bp of (bps || []) as any[]) {
                     if (!bp.desired_date) continue
-                    allEvents.push({
+                    allMoments.push({
                         id: `bp-${bp.id}`,
                         title: bp.product_name || '브랜드 제안',
                         date: bp.desired_date.split('T')[0],
                         type: 'product_application',
                         creatorName: bp.profiles?.display_name || 'Unknown',
-                        creatorId: bp.influencer_id,
+                        creatorId: bp.creator_id,
                         status: bp.status,
                         brandName: bp.brand?.display_name,
                         productName: bp.product_name,
@@ -169,7 +169,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
 
                 for (const c of (campaigns || []) as any[]) {
                     if (!c.recruitment_deadline) continue
-                    allEvents.push({
+                    allMoments.push({
                         id: `camp-${c.id}`,
                         title: c.title || '캠페인 마감',
                         date: c.recruitment_deadline.split('T')[0],
@@ -185,7 +185,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
                 console.error('[TeamCalendar] Error:', err)
             }
 
-            setEvents(allEvents)
+            setEvents(allMoments)
             setIsLoading(false)
         }
 
@@ -262,6 +262,10 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
 
     const handleEventClick = (event: CalendarEvent) => {
         if (event.type === 'campaign') return
+        if (event.type === 'moment') {
+            window.location.href = `/moment/${event.id}`
+            return
+        }
         switchToMember(event.creatorId)
         window.location.href = '/creator?view=dashboard'
     }

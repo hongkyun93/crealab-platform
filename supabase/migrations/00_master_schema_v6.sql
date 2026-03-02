@@ -25,6 +25,15 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+
+-- Drop all existing tables to allow clean recreation
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO public;
+
+
+
 --
 -- Name: public; Type: SCHEMA; Schema: -; Owner: -
 --
@@ -43,16 +52,239 @@ SET row_security = off;
 -- Name: user_role; Type: TYPE; Schema: public; Owner: -
 --
 
-CREATE TYPE public.user_role AS ENUM (
-    'brand',
-    'influencer',
-    'admin'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE public.user_role AS ENUM (
+            'brand',
+            'creator',
+            'admin'
+        );
+    END IF;
+END
+$$;
 
 
 --
 -- Name: accept_invitation(uuid); Type: FUNCTION; Schema: public; Owner: -
+
+-- RESTORED FUNCTION: notify_influencer_on_brand_offer
+CREATE OR REPLACE FUNCTION public.notify_influencer_on_brand_offer() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    brand_name TEXT;
+BEGIN
+    IF NEW.status = 'offered' THEN
+        SELECT display_name INTO brand_name
+        FROM profiles WHERE id = NEW.brand_id;
+        
+        INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
+        VALUES (
+            NEW.creator_id,
+            NEW.brand_id,
+            'brand_offer',
+            COALESCE(brand_name, '브랜드') || '님이 "' || COALESCE(NEW.product_name, '제품') || '" 협업을 제안했습니다.',
+            NEW.id::text
+        );
+    END IF;
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Failed to create brand offer notification: %', SQLERRM;
+        RETURN NEW;
+END;
+$$;
+
+-- RESTORED FUNCTION: notify_influencer_on_moment_proposal
+CREATE OR REPLACE FUNCTION public.notify_influencer_on_moment_proposal() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    moment_title TEXT;
+    brand_name TEXT;
+BEGIN
+    SELECT title INTO moment_title
+    FROM life_moments WHERE id = NEW.moment_id;
+    
+    SELECT display_name INTO brand_name
+    FROM profiles WHERE id = NEW.brand_id;
+    
+    INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
+    VALUES (
+        NEW.creator_id,
+        NEW.brand_id,
+        'moment_proposal',
+        COALESCE(brand_name, '브랜드') || '님이 "' || COALESCE(moment_title, '모먼트') || '" 모먼트에 제안했습니다.',
+        NEW.id::text
+    );
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Failed to create moment proposal notification: %', SQLERRM;
+        RETURN NEW;
+END;
+$$;
+
+-- RESTORED FUNCTION: notify_brand_on_product_application
+CREATE OR REPLACE FUNCTION public.notify_brand_on_product_application() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    creator_name TEXT;
+BEGIN
+    IF NEW.status IN ('applied', 'pending') THEN
+        SELECT display_name INTO creator_name
+        FROM profiles WHERE id = NEW.creator_id;
+        
+        INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
+        VALUES (
+            NEW.brand_id,
+            NEW.creator_id,
+            'product_application',
+            COALESCE(creator_name, '크리에이터') || '님이 "' || COALESCE(NEW.product_name, '제품') || '" 제품에 신청했습니다.',
+            NEW.id::text
+        );
+    END IF;
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Failed to create product application notification: %', SQLERRM;
+        RETURN NEW;
+END;
+$$;
+
+-- RESTORED FUNCTION: handle_new_team
+CREATE OR REPLACE FUNCTION public.handle_new_team() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL THEN
+      INSERT INTO public.team_members (team_id, user_id, role)
+      VALUES (new.id, auth.uid(), 'owner')
+      ON CONFLICT (team_id, user_id) DO NOTHING;
+  END IF;
+  RETURN new;
+END;
+$$;
+
+-- RESTORED FUNCTION: set_proposal_team_ids
+CREATE OR REPLACE FUNCTION public.set_proposal_team_ids() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+    -- 2. Life Moments (Target: team_id)
+    IF TG_TABLE_NAME = 'life_moments' THEN
+        IF NEW.team_id IS NULL THEN
+            -- A. Common Team (Agency Mode)
+            NEW.team_id := (
+                SELECT tm.team_id
+                FROM public.team_members tm
+                JOIN public.team_members agent_tm ON tm.team_id = agent_tm.team_id
+                WHERE tm.user_id = NEW.creator_id
+                AND agent_tm.user_id = auth.uid()
+                LIMIT 1
+            );
+            
+            -- B. Owner Team (Self Mode)
+            IF NEW.team_id IS NULL THEN
+                NEW.team_id := (
+                    SELECT team_id FROM public.team_members
+                    WHERE user_id = NEW.creator_id
+                    AND role = 'owner'
+                    LIMIT 1
+                );
+            END IF;
+            
+            -- C. Any Team (Fallback)
+            IF NEW.team_id IS NULL THEN
+                NEW.team_id := (
+                    SELECT team_id FROM public.team_members
+                    WHERE user_id = NEW.creator_id
+                    LIMIT 1
+                );
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+
+
+-- RESTORED FUNCTION: notify_user_on_message
+CREATE OR REPLACE FUNCTION public.notify_user_on_message() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    sender_name TEXT;
+BEGIN
+    SELECT display_name INTO sender_name
+    FROM profiles WHERE id = NEW.sender_id;
+    
+    INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
+    VALUES (
+        NEW.receiver_id,
+        NEW.sender_id,
+        'message_received',
+        sender_name || '님이 메시지를 보냈습니다: ' || LEFT(NEW.content, 20) || '...',
+        NEW.id
+    );
+    
+    RETURN NEW;
+END;
+$$;
+
 --
+
+
+
+
+-- RESTORED FUNCTION: is_admin
+CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    AS $$
+  SELECT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin');
+$$;
+
+-- RESTORED FUNCTION: get_user_team_ids
+CREATE OR REPLACE FUNCTION public.get_user_team_ids(target_user_id uuid) RETURNS SETOF uuid
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+    SET LOCAL row_security = off;
+    RETURN QUERY 
+    SELECT team_id 
+    FROM public.team_members 
+    WHERE user_id = target_user_id;
+END;
+$$;
+
+-- RESTORED FUNCTION: is_team_owner_or_admin
+CREATE OR REPLACE FUNCTION public.is_team_owner_or_admin(target_team_id uuid, target_user_id uuid) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+DECLARE
+    user_role TEXT;
+BEGIN
+    SET LOCAL row_security = off;
+    
+    SELECT role INTO user_role
+    FROM public.team_members
+    WHERE team_id = target_team_id AND user_id = target_user_id
+    LIMIT 1;
+    
+    RETURN (user_role = 'owner' OR user_role = 'admin');
+END;
+$$;
 
 CREATE FUNCTION public.accept_invitation(invitation_id uuid) RETURNS boolean
     LANGUAGE plpgsql SECURITY DEFINER
@@ -195,61 +427,45 @@ $$;
 -- Name: can_access_submission_feedback(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.can_access_submission_feedback(p_proposal_id uuid) RETURNS boolean
+CREATE FUNCTION public.can_access_submission_feedback(p_workspace_id uuid) RETURNS boolean
     LANGUAGE plpgsql STABLE SECURITY DEFINER
     AS $$
 DECLARE
     v_uid         uuid := auth.uid();
     v_brand_id    uuid;
     v_creator_id  uuid;
-    v_in_team     boolean := false;
+    v_team_id     uuid;
 BEGIN
     IF v_uid IS NULL THEN RETURN false; END IF;
 
-    -- 1) product_applications 에서 찾기
-    SELECT brand_id, influencer_id
+    SELECT brand_id, creator_id
     INTO   v_brand_id, v_creator_id
-    FROM   public.product_applications
-    WHERE  id = p_proposal_id
+    FROM   public.workspaces
+    WHERE  id = p_workspace_id
     LIMIT  1;
 
-    -- 2) moment_proposals 에서 찾기 (없으면)
-    IF v_brand_id IS NULL THEN
-        SELECT brand_id, influencer_id
-        INTO   v_brand_id, v_creator_id
-        FROM   public.moment_proposals
-        WHERE  id = p_proposal_id
-        LIMIT  1;
-    END IF;
-
-    -- 3) campaign_applications 에서 찾기 (없으면)
-    IF v_brand_id IS NULL THEN
-        SELECT c.brand_id, ca.influencer_id
-        INTO   v_brand_id, v_creator_id
-        FROM   public.campaign_applications ca
-        JOIN   public.campaigns c ON c.id = ca.campaign_id
-        WHERE  ca.id = p_proposal_id
-        LIMIT  1;
-    END IF;
+    IF v_brand_id IS NULL THEN RETURN false; END IF;
 
     -- 직접 당사자면 true
     IF v_uid = v_brand_id OR v_uid = v_creator_id THEN
         RETURN true;
     END IF;
 
-    -- 크리에이터 소속 MCN 팀원인지 확인
-    IF v_creator_id IS NOT NULL THEN
-        SELECT EXISTS (
-            SELECT 1
-            FROM   public.team_members tm_mcn
-            JOIN   public.team_members tm_creator
-              ON   tm_creator.team_id = tm_mcn.team_id
-            WHERE  tm_mcn.user_id   = v_uid
-              AND  tm_creator.user_id = v_creator_id
-        ) INTO v_in_team;
-    END IF;
+    -- 브랜드의 팀 소속인지
+    SELECT team_id INTO v_team_id
+    FROM   public.team_members
+    WHERE  user_id = v_uid AND team_id = (SELECT team_id FROM public.team_members WHERE user_id = v_brand_id LIMIT 1)
+    LIMIT  1;
+    IF v_team_id IS NOT NULL THEN RETURN true; END IF;
 
-    RETURN v_in_team;
+    -- 크리에이터의 팀 소속인지
+    SELECT team_id INTO v_team_id
+    FROM   public.team_members
+    WHERE  user_id = v_uid AND team_id = (SELECT team_id FROM public.team_members WHERE user_id = v_creator_id LIMIT 1)
+    LIMIT  1;
+    IF v_team_id IS NOT NULL THEN RETURN true; END IF;
+
+    RETURN false;
 END;
 $$;
 
@@ -258,15 +474,14 @@ $$;
 -- Name: complete_settlement(text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.complete_settlement(p_proposal_id text, p_proposal_type text) RETURNS void
+CREATE FUNCTION public.complete_settlement(p_workspace_id uuid) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 BEGIN
   UPDATE public.settlements
   SET final_completed_at = NOW(),
       updated_at = NOW()
-  WHERE proposal_id = p_proposal_id
-    AND proposal_type = p_proposal_type
+  WHERE workspace_id = p_workspace_id
     AND final_completed_at IS NULL;
 END;
 $$;
@@ -276,12 +491,12 @@ $$;
 -- Name: create_settlement_on_approval(text, text, uuid, uuid, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.create_settlement_on_approval(p_proposal_id text, p_proposal_type text, p_brand_id uuid, p_creator_id uuid, p_gross_amount integer) RETURNS uuid
+CREATE FUNCTION public.create_settlement_on_approval(p_workspace_id uuid, p_brand_id uuid, p_creator_id uuid, p_gross_amount integer) RETURNS uuid
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
   v_team_id       uuid;
-  v_split_ratio   numeric(4,3) := 1.000;  -- 기본: 일반 크리에이터 (MCN 없음)
+  v_split_ratio   numeric(4,3) := 1.000;
   v_creator_amount integer;
   v_mcn_amount     integer;
   v_wh_amount      integer;
@@ -289,63 +504,24 @@ DECLARE
   v_month          text;
   v_settlement_id  uuid;
 BEGIN
-  -- 크리에이터 소속 팀(MCN) 조회
-  SELECT team_id INTO v_team_id
-  FROM public.profiles
-  WHERE id = p_creator_id;
+  SELECT team_id INTO v_team_id FROM public.profiles WHERE id = p_creator_id;
 
-  -- MCN 소속이면 배분율 조회
   IF v_team_id IS NOT NULL THEN
-    SELECT split_ratio INTO v_split_ratio
-    FROM public.mcn_revenue_splits
-    WHERE team_id = v_team_id AND creator_id = p_creator_id;
-
-    -- mcn_revenue_splits에 없으면 기본 70%
-    IF NOT FOUND THEN
-      v_split_ratio := 0.700;
-    END IF;
+    SELECT split_ratio INTO v_split_ratio FROM public.mcn_revenue_splits WHERE team_id = v_team_id AND creator_id = p_creator_id;
+    IF NOT FOUND THEN v_split_ratio := 0.700; END IF;
   END IF;
 
-  -- 금액 계산
   v_creator_amount := ROUND(p_gross_amount * v_split_ratio);
   v_mcn_amount     := p_gross_amount - v_creator_amount;
   v_wh_amount      := ROUND(v_creator_amount * 0.033);
   v_net_amount     := v_creator_amount - v_wh_amount;
   v_month          := TO_CHAR(NOW(), 'YYYY-MM');
 
-  -- settlements INSERT
   INSERT INTO public.settlements (
-    team_id,
-    creator_id,
-    brand_id,
-    proposal_type,
-    proposal_id,
-    gross_amount,
-    split_ratio,
-    creator_amount,
-    mcn_amount,
-    withholding_rate,
-    withholding_amount,
-    net_creator_amount,
-    settlement_month,
-    status
+    team_id, creator_id, brand_id, workspace_id, gross_amount, split_ratio, creator_amount, mcn_amount, withholding_rate, withholding_amount, net_creator_amount, settlement_month, status
   ) VALUES (
-    v_team_id,
-    p_creator_id,
-    p_brand_id,
-    p_proposal_type,
-    p_proposal_id,
-    p_gross_amount,
-    v_split_ratio,
-    v_creator_amount,
-    v_mcn_amount,
-    0.033,
-    v_wh_amount,
-    v_net_amount,
-    v_month,
-    'pending'
-  )
-  RETURNING id INTO v_settlement_id;
+    v_team_id, p_creator_id, p_brand_id, p_workspace_id, p_gross_amount, v_split_ratio, v_creator_amount, v_mcn_amount, 0.033, v_wh_amount, v_net_amount, v_month, 'pending'
+  ) RETURNING id INTO v_settlement_id;
 
   RETURN v_settlement_id;
 END;
@@ -394,11 +570,42 @@ END;
 $$;
 
 
+COMMENT ON FUNCTION public.exec_sql(sql text) IS 'Executes arbitrary SQL. Restricted to service_role.';
+
+
 --
--- Name: FUNCTION exec_sql(sql text); Type: COMMENT; Schema: public; Owner: -
+-- Name: force_null_role(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.exec_sql(sql text) IS 'Executes arbitrary SQL. Restricted to service_role.';
+CREATE OR REPLACE FUNCTION public.force_null_role() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+  NEW.role := NULL;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: generate_invite_code(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION public.generate_invite_code() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.invite_code IS NULL THEN
+        -- If email exists, use it for uniqueness. Otherwise, use team_id + timestamp
+        IF NEW.email IS NOT NULL THEN
+            NEW.invite_code := substring(md5(random()::text || NEW.email || now()::text) from 1 for 12);
+        ELSE
+            NEW.invite_code := substring(md5(random()::text || NEW.team_id::text || now()::text) from 1 for 12);
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
 
 
 --
@@ -427,1137 +634,71 @@ BEGIN
   IF NEW.status != 'completed' OR OLD.status = 'completed' THEN RETURN NEW; END IF;
 
   IF TG_TABLE_NAME = 'product_applications' THEN
-    v_creator_id  := NEW.influencer_id;
+    v_creator_id  := NEW.creator_id;
     v_brand_id    := NEW.brand_id;
     v_price_offer := COALESCE(NEW.price_offer, 0);
     v_prop_type   := 'product_application';
     v_prop_id     := NEW.id::text;
   ELSIF TG_TABLE_NAME = 'moment_proposals' THEN
-    v_creator_id  := NEW.influencer_id;
+    v_creator_id  := NEW.creator_id;
     v_brand_id    := NEW.brand_id;
     v_price_offer := COALESCE(NEW.price_offer, 0);
     v_prop_type   := 'moment_proposal';
     v_prop_id     := NEW.id::text;
   ELSIF TG_TABLE_NAME = 'campaign_applications' THEN
-    v_creator_id  := NEW.influencer_id;
+    v_creator_id  := NEW.creator_id;
+    v_brand_id    := (SELECT brand_id FROM public.campaigns WHERE id = NEW.campaign_id LIMIT 1);
     v_price_offer := COALESCE(NEW.price_offer, 0);
     v_prop_type   := 'campaign_application';
     v_prop_id     := NEW.id::text;
-    SELECT brand_id INTO v_brand_id FROM public.campaigns WHERE id = NEW.campaign_id;
+  ELSE
+    RETURN NEW;
   END IF;
 
+  -- 2. Validate price
   IF v_price_offer <= 0 THEN RETURN NEW; END IF;
-  IF EXISTS (SELECT 1 FROM public.settlements WHERE proposal_type=v_prop_type AND proposal_id=v_prop_id) THEN RETURN NEW; END IF;
+  v_gross := v_price_offer;
 
-  SELECT tm.team_id INTO v_team_id
-  FROM public.team_members tm
-  JOIN public.team_members owner_tm ON owner_tm.team_id=tm.team_id AND owner_tm.role='owner'
-  JOIN public.profiles owner_p ON owner_p.id=owner_tm.user_id AND owner_p.role='mcn'
-  WHERE tm.user_id=v_creator_id AND tm.role != 'owner' LIMIT 1;
+  -- 3. MCN Team resolving
+  SELECT team_id INTO v_team_id FROM public.profiles WHERE id = v_creator_id;
 
-  IF v_team_id IS NULL THEN RETURN NEW; END IF;
+  -- 4. Split Ratio
+  IF v_team_id IS NOT NULL THEN
+    SELECT split_ratio INTO v_split_ratio
+    FROM public.mcn_revenue_splits
+    WHERE team_id = v_team_id AND creator_id = v_creator_id;
 
-  SELECT split_ratio INTO v_split_ratio FROM public.mcn_revenue_splits WHERE team_id=v_team_id AND creator_id=v_creator_id;
-  IF v_split_ratio IS NULL THEN v_split_ratio := 0.700; END IF;
+    IF NOT FOUND THEN v_split_ratio := 0.700; END IF;
+  ELSE
+    v_split_ratio := 1.000;
+  END IF;
 
-  v_gross        := v_price_offer;
-  v_creator_amt  := ROUND(v_gross * v_split_ratio);
-  v_mcn_amt      := v_gross - v_creator_amt;
-  v_withhold_amt := ROUND(v_creator_amt * v_withhold_rate);
-  v_net_amt      := v_creator_amt - v_withhold_amt;
-  v_month        := TO_CHAR(NOW(), 'YYYY-MM');
+  -- 5. Calculate amounts
+  v_creator_amt := ROUND(v_gross * v_split_ratio);
+  v_mcn_amt     := v_gross - v_creator_amt;
+  v_withhold_amt:= ROUND(v_creator_amt * v_withhold_rate);
+  v_net_amt     := v_creator_amt - v_withhold_amt;
+  v_month       := TO_CHAR(NOW(), 'YYYY-MM');
 
+  -- 6. Insert into settlements
   INSERT INTO public.settlements (
-    team_id, creator_id, brand_id, proposal_type, proposal_id,
-    gross_amount, split_ratio, creator_amount, mcn_amount,
-    withholding_rate, withholding_amount, net_creator_amount, status, settlement_month
-  ) VALUES (
-    v_team_id, v_creator_id, v_brand_id, v_prop_type, v_prop_id,
-    v_gross, v_split_ratio, v_creator_amt, v_mcn_amt,
-    v_withhold_rate, v_withhold_amt, v_net_amt, 'pending', v_month
-  );
-
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: fn_deduct_deposit_on_contract_signed(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.fn_deduct_deposit_on_contract_signed() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-    v_brand_id    uuid;
-    v_amount      integer;
-    v_prop_label  text;
-    v_prop_id     text;
-    v_balance     integer;
-BEGIN
-    -- contract_status가 'signed'로 바뀔 때만 실행
-    IF NEW.contract_status != 'signed' OR OLD.contract_status = 'signed' THEN
-        RETURN NEW;
-    END IF;
-
-    -- 테이블별 필드 매핑
-    v_brand_id   := NEW.brand_id;
-    v_amount     := COALESCE(NEW.price_offer, 0);
-    v_prop_id    := NEW.id::text;
-
-    IF TG_TABLE_NAME = 'product_applications' THEN
-        v_prop_label := 'product_application';
-    ELSIF TG_TABLE_NAME = 'moment_proposals' THEN
-        v_prop_label := 'moment_proposal';
-    ELSIF TG_TABLE_NAME = 'campaign_applications' THEN
-        -- campaign_applications는 brand_id가 campaigns 테이블에 있음
-        SELECT c.brand_id INTO v_brand_id
-        FROM public.campaigns c WHERE c.id = NEW.campaign_id;
-        v_prop_label := 'campaign_application';
-    END IF;
-
-    -- price_offer가 0이면 차감 불필요
-    IF v_amount <= 0 OR v_brand_id IS NULL THEN
-        RETURN NEW;
-    END IF;
-
-    -- 중복 차감 방지: 이미 'use' 레코드가 있으면 스킵
-    IF EXISTS (
-        SELECT 1 FROM public.brand_deposits
-        WHERE brand_id = v_brand_id
-          AND note = v_prop_label || ':' || v_prop_id
-          AND type = 'use'
-    ) THEN
-        RETURN NEW;
-    END IF;
-
-    -- 현재 잔액 조회
-    SELECT COALESCE(deposit_balance, 0) INTO v_balance
-    FROM public.profiles WHERE id = v_brand_id;
-
-    -- 브랜드 deposit_balance 차감
-    UPDATE public.profiles
-    SET deposit_balance = GREATEST(0, COALESCE(deposit_balance, 0) - v_amount)
-    WHERE id = v_brand_id;
-
-    -- brand_deposits에 'use' 레코드 삽입
-    INSERT INTO public.brand_deposits (
-        brand_id,
-        amount,
-        type,
-        status,
-        note,
-        confirmed_at,
-        balance_after
-    ) VALUES (
-        v_brand_id,
-        v_amount,
-        'use',
-        'confirmed',  -- 서명 완료 = 확정
-        v_prop_label || ':' || v_prop_id,
-        now(),
-        GREATEST(0, v_balance - v_amount)
-    );
-
-    RETURN NEW;
-END;
-$$;
-
-
---
--- Name: force_null_role(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.force_null_role() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  NEW.role := NULL;
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: generate_invite_code(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.generate_invite_code() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF NEW.invite_code IS NULL THEN
-        -- If email exists, use it for uniqueness. Otherwise, use team_id + timestamp
-        IF NEW.email IS NOT NULL THEN
-            NEW.invite_code := substring(md5(random()::text || NEW.email || now()::text) from 1 for 12);
-        ELSE
-            NEW.invite_code := substring(md5(random()::text || NEW.team_id::text || now()::text) from 1 for 12);
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-
---
--- Name: generate_statement_number(uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.generate_statement_number(target_team_id uuid, target_month text) RETURNS text
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  seq integer;
-  result text;
-BEGIN
-  -- Count how many statements already have a number for this team+month
-  SELECT COUNT(*) + 1 INTO seq
-  FROM public.settlements
-  WHERE team_id = target_team_id
-    AND settlement_month = target_month
-    AND statement_number IS NOT NULL;
-
-  result := replace(target_month, '-', '') || '-' || lpad(seq::text, 5, '0');
-  RETURN result;
-END;
-$$;
-
-
---
--- Name: get_brand_balance(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_brand_balance(p_brand_id uuid) RETURNS integer
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-  bal integer;
-BEGIN
-  SELECT COALESCE(deposit_balance, 0) INTO bal
-  FROM public.profiles
-  WHERE id = p_brand_id;
-  RETURN COALESCE(bal, 0);
-END;
-$$;
-
-
---
--- Name: get_current_user_info(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_current_user_info() RETURNS json
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-    current_user_id UUID;
-    result json;
-BEGIN
-    current_user_id := auth.uid();
-    IF current_user_id IS NULL THEN RETURN NULL; END IF;
-
-    SELECT json_build_object(
-        'id', p.id,
-        'email', p.email,
-        'role', p.role,
-        'name', COALESCE(p.display_name, split_part(p.email, '@', 1)),
-        'avatar', p.avatar_url,
-        'onboardingCompleted', COALESCE(p.onboarding_completed, false),
-        'bio', p.description,
-        'handle', p.instagram_handle,
-        'followers', COALESCE(p.followers_count, 0),
-        'tags', COALESCE(p.tags, '{}'::text[]),
-        'phone', p.phone,
-        'address', p.shipping_address,
-        'website', p.website,
-        'primaryRegion', p.primary_region,
-        'priceVideo', COALESCE(p.price_video, 0),
-        'priceFeed', COALESCE(p.price_feed, 0),
-        'priceStory', COALESCE(p.price_story, 0),
-        'priceUsageRights', COALESCE(p.price_usage_rights, 0),
-        'priceAutoDm', COALESCE(p.price_auto_dm, 0),
-        'teamId', (SELECT team_id FROM public.team_members WHERE user_id = current_user_id LIMIT 1),
-        'bankName', p.bank_name,
-        'accountNumber', p.account_number,
-        'accountHolder', p.account_holder,
-        'usageRightsMonth', COALESCE(p.usage_rights_month, 0),
-        'usageRightsPrice', COALESCE(p.usage_rights_price, 0),
-        'autoDmMonth', COALESCE(p.auto_dm_month, 0),
-        'autoDmPrice', COALESCE(p.auto_dm_price, 0),
-        -- Brand Business Fields
-        'representativeName', p.representative_name,
-        'businessNumber', p.business_number,
-        'companyAddress', p.company_address,
-        'companyPhone', p.company_phone,
-        'taxEmail', p.tax_email,
-        'businessCategory', p.business_category,
-        'businessType', p.business_type,
-        'contactPersonName', p.contact_person_name,
-        'contactPersonPhone', p.contact_person_phone,
-        'contactPersonEmail', p.contact_person_email,
-        'settlementBank', p.settlement_bank,
-        -- Creator Legal/Tax Fields
-        'legalName', p.legal_name,
-        'birthDate', p.birth_date,
-        'legalAddress', p.legal_address,
-        'isBusinessRegistered', COALESCE(p.is_business_registered, false),
-        'creatorBusinessNumber', p.creator_business_number
-    ) INTO result
-    FROM public.profiles p
-    WHERE p.id = current_user_id;
-
-    RETURN result;
-END;
-$$;
-
-
---
--- Name: get_invitation_by_code(text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_invitation_by_code(code text) RETURNS TABLE(valid boolean, team_id uuid, team_name text, inviter_name text, inviter_avatar text, error_message text)
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-    invite_record RECORD;
-    team_record RECORD;
-    inviter_record RECORD;
-BEGIN
-    -- 1. Find invitation
-    SELECT * INTO invite_record FROM public.team_invitations WHERE invite_code = code AND status = 'pending';
-    
-    IF invite_record.id IS NULL THEN
-        RETURN QUERY SELECT false, null::uuid, null::text, null::text, null::text, '유효하지 않은 초대 코드입니다.'::text;
-        RETURN;
-    END IF;
-
-    -- 2. Check expiration
-    IF invite_record.expires_at < now() THEN
-        RETURN QUERY SELECT false, null::uuid, null::text, null::text, null::text, '만료된 초대 코드입니다.'::text;
-        RETURN;
-    END IF;
-
-    -- 3. Get Team Info
-    SELECT * INTO team_record FROM public.teams WHERE id = invite_record.team_id;
-
-    -- 4. Get Inviter Info
-    SELECT * INTO inviter_record FROM public.profiles WHERE id = invite_record.invited_by;
-
-    RETURN QUERY SELECT 
-        true, 
-        team_record.id, 
-        team_record.name, 
-        COALESCE(inviter_record.display_name, inviter_record.email), 
-        inviter_record.avatar_url,
-        null::text;
-END;
-$$;
-
-
---
--- Name: get_my_invitations(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_my_invitations() RETURNS TABLE(id uuid, team_id uuid, team_name text, role text, created_at timestamp with time zone, inviter_name text)
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-    current_email TEXT;
-BEGIN
-    current_email := auth.jwt() ->> 'email';
-    
-    RETURN QUERY
-    SELECT 
-        ti.id,
-        ti.team_id,
-        t.name as team_name,
-        ti.role,
-        ti.created_at,
-        p.display_name as inviter_name
-    FROM public.team_invitations ti
-    JOIN public.teams t ON ti.team_id = t.id
-    LEFT JOIN public.profiles p ON ti.invited_by = p.id
-    WHERE ti.email = current_email
-    AND ti.status = 'pending'
-    AND ti.expires_at > now();
-END;
-$$;
-
-
---
--- Name: get_my_team_ids(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_my_team_ids() RETURNS TABLE(team_id uuid)
-    LANGUAGE plpgsql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-BEGIN
-    RETURN QUERY
-    SELECT tm.team_id 
-    FROM public.team_members tm
-    WHERE tm.user_id = auth.uid();
-END;
-$$;
-
-
---
--- Name: get_team_dashboard_summary(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_team_dashboard_summary(target_team_id uuid) RETURNS json
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE caller_id UUID; result json;
-BEGIN
-  caller_id := auth.uid();
-  IF caller_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.team_members WHERE team_id=target_team_id AND user_id=caller_id)
-  THEN RAISE EXCEPTION 'Not a member of this team'; END IF;
-
-  SELECT json_agg(creator_summary) INTO result FROM (
-    SELECT
-      tm.user_id, p.display_name, p.avatar_url, p.instagram_handle,
-      p.followers_count, p.tier, p.tags, p.price_video, p.price_feed,
-      COALESCE(ms.total_moments, 0) AS total_moments,
-      COALESCE(ms.active_moments, 0) AS active_moments,
-      COALESCE(pa.total_proposals, 0) AS total_product_applications,
-      COALESCE(pa.pending_proposals, 0) AS pending_product_applications,
-      COALESCE(pa.active_proposals, 0) AS active_product_applications,
-      COALESCE(pa.total_revenue, 0) AS product_revenue,
-      COALESCE(mp.total_proposals, 0) AS total_moment_proposals,
-      COALESCE(mp.pending_proposals, 0) AS pending_moment_proposals,
-      COALESCE(mp.active_proposals, 0) AS active_moment_proposals,
-      COALESCE(mp.total_revenue, 0) AS moment_revenue,
-      COALESCE(ca.total_applications, 0) AS total_campaign_applications,
-      COALESCE(ca.pending_applications, 0) AS pending_campaign_applications,
-      COALESCE(ca.active_applications, 0) AS active_campaign_applications
-    FROM public.team_members tm
-    JOIN public.profiles p ON p.id = tm.user_id
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*) total_moments, COUNT(*) FILTER (WHERE lm.status='recruiting') active_moments
-      FROM public.life_moments lm WHERE lm.influencer_id=tm.user_id
-    ) ms ON true
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*) total_proposals,
-        COUNT(*) FILTER (WHERE a.status='offered') pending_proposals,
-        COUNT(*) FILTER (WHERE a.status IN ('accepted','active','in_progress')) active_proposals,
-        COALESCE(SUM(a.price_offer) FILTER (WHERE a.status IN ('accepted','active','in_progress','completed')),0) total_revenue
-      FROM public.product_applications a WHERE a.influencer_id=tm.user_id
-    ) pa ON true
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*) total_proposals,
-        COUNT(*) FILTER (WHERE m.status='offered') pending_proposals,
-        COUNT(*) FILTER (WHERE m.status IN ('accepted','active','in_progress')) active_proposals,
-        COALESCE(SUM(m.price_offer) FILTER (WHERE m.status IN ('accepted','active','in_progress','completed')),0) total_revenue
-      FROM public.moment_proposals m WHERE m.influencer_id=tm.user_id
-    ) mp ON true
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*) total_applications,
-        COUNT(*) FILTER (WHERE c.status='pending') pending_applications,
-        COUNT(*) FILTER (WHERE c.status IN ('accepted','active','in_progress')) active_applications
-      FROM public.campaign_applications c WHERE c.influencer_id=tm.user_id
-    ) ca ON true
-    WHERE tm.team_id=target_team_id AND tm.user_id != caller_id
-    ORDER BY p.display_name
-  ) creator_summary;
-  RETURN COALESCE(result, '[]'::json);
-END;
-$$;
-
-
---
--- Name: get_team_proposals(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_team_proposals(target_team_id uuid) RETURNS json
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE caller_id UUID; result json;
-BEGIN
-  caller_id := auth.uid();
-  IF caller_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.team_members WHERE team_id=target_team_id AND user_id=caller_id)
-  THEN RAISE EXCEPTION 'Not a member of this team'; END IF;
-
-  SELECT json_agg(row ORDER BY row.created_at DESC) INTO result FROM (
-    SELECT pa.id,'product_application'::text AS proposal_type,pa.status,pa.product_name,pa.price_offer,
-      pa.message,pa.created_at,pa.influencer_id,
-      inf.display_name AS creator_name, inf.avatar_url AS creator_avatar,
-      br.display_name AS brand_name, br.avatar_url AS brand_avatar,
-      pa.content_type,pa.brand_condition_confirmed,pa.influencer_condition_confirmed,pa.contract_status,pa.delivery_status
-    FROM public.product_applications pa
-    JOIN public.profiles inf ON inf.id=pa.influencer_id
-    JOIN public.profiles br ON br.id=pa.brand_id
-    WHERE pa.influencer_id IN (SELECT user_id FROM public.team_members WHERE team_id=target_team_id AND user_id!=caller_id)
-    UNION ALL
-    SELECT mp.id,'moment_proposal'::text,mp.status,mp.product_name,mp.price_offer,
-      mp.message,mp.created_at,mp.influencer_id,
-      inf.display_name,inf.avatar_url,br.display_name,br.avatar_url,
-      mp.content_type,mp.brand_condition_confirmed,mp.influencer_condition_confirmed,mp.contract_status,mp.delivery_status
-    FROM public.moment_proposals mp
-    JOIN public.profiles inf ON inf.id=mp.influencer_id
-    JOIN public.profiles br ON br.id=mp.brand_id
-    WHERE mp.influencer_id IN (SELECT user_id FROM public.team_members WHERE team_id=target_team_id AND user_id!=caller_id)
-    UNION ALL
-    SELECT ca.id,'campaign_application'::text,ca.status,c.product_name,ca.price_offer,
-      ca.message,ca.created_at,ca.influencer_id,
-      inf.display_name,inf.avatar_url,br.display_name,br.avatar_url,
-      NULL,NULL::boolean,NULL::boolean,NULL,NULL
-    FROM public.campaign_applications ca
-    JOIN public.campaigns c ON c.id=ca.campaign_id
-    JOIN public.profiles inf ON inf.id=ca.influencer_id
-    JOIN public.profiles br ON br.id=c.brand_id
-    WHERE ca.influencer_id IN (SELECT user_id FROM public.team_members WHERE team_id=target_team_id AND user_id!=caller_id)
-  ) row;
-  RETURN COALESCE(result, '[]'::json);
-END;
-$$;
-
-
---
--- Name: get_team_settlements(uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_team_settlements(target_team_id uuid, target_month text DEFAULT NULL::text) RETURNS TABLE(id uuid, creator_id uuid, creator_name text, creator_avatar text, brand_id uuid, brand_name text, proposal_type text, proposal_id text, gross_amount integer, split_ratio numeric, creator_amount integer, mcn_amount integer, withholding_rate numeric, withholding_amount integer, net_creator_amount integer, status text, paid_at timestamp with time zone, final_completed_at timestamp with time zone, settlement_month text, statement_number text, note text, created_at timestamp with time zone)
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    s.id,
-    s.creator_id,
-    cp.display_name    AS creator_name,
-    cp.avatar_url      AS creator_avatar,
-    s.brand_id,
-    bp.display_name    AS brand_name,
-    s.proposal_type,
-    s.proposal_id,
-    s.gross_amount,
-    s.split_ratio,
-    s.creator_amount,
-    s.mcn_amount,
-    COALESCE(s.withholding_rate, 0.033)                                    AS withholding_rate,
-    COALESCE(s.withholding_amount, ROUND(s.creator_amount * 0.033)::int)   AS withholding_amount,
-    COALESCE(s.net_creator_amount, s.creator_amount - ROUND(s.creator_amount * 0.033)::int) AS net_creator_amount,
-    s.status,
-    s.paid_at,
-    s.final_completed_at,
-    s.settlement_month,
-    s.statement_number,
-    s.note,
-    s.created_at
-  FROM public.settlements s
-  LEFT JOIN public.profiles cp ON cp.id = s.creator_id
-  LEFT JOIN public.profiles bp ON bp.id = s.brand_id
-  WHERE
-    s.team_id = target_team_id
-    AND (target_month IS NULL OR s.settlement_month = target_month)
-  ORDER BY s.created_at DESC;
-END;
-$$;
-
-
---
--- Name: get_user_team_ids(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_user_team_ids(target_user_id uuid) RETURNS SETOF uuid
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-BEGIN
-    SET LOCAL row_security = off;
-    RETURN QUERY 
-    SELECT team_id 
-    FROM public.team_members 
-    WHERE user_id = target_user_id;
-END;
-$$;
-
-
---
--- Name: FUNCTION get_user_team_ids(target_user_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_user_team_ids(target_user_id uuid) IS 'Returns team IDs for a given user. VOLATILE because it uses SET LOCAL to bypass RLS and prevent infinite recursion.';
-
-
---
--- Name: handle_new_team(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.handle_new_team() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-BEGIN
-  IF auth.uid() IS NOT NULL THEN
-      INSERT INTO public.team_members (team_id, user_id, role)
-      VALUES (new.id, auth.uid(), 'owner')
-      ON CONFLICT (team_id, user_id) DO NOTHING;
-  END IF;
-  RETURN new;
-END;
-$$;
-
-
---
--- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.handle_new_user() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'extensions'
-    AS $$
-DECLARE
-  preferred_role text;
-  user_name text;
-BEGIN
-  -- 1. Determine Role
-  -- Check metadata first. If missing, leave as NULL to trigger onboarding.
-  preferred_role := new.raw_user_meta_data->>'role';
-  
-  -- OLD LOGIC: Default to 'creator'
-  -- IF preferred_role IS NULL OR preferred_role = '' THEN
-  --     preferred_role := 'creator';
-  -- END IF;
-
-  -- 2. Determine Name
-  user_name := new.raw_user_meta_data->>'name';
-  IF user_name IS NULL OR user_name = '' THEN
-      user_name := split_part(new.email, '@', 1);
-  END IF;
-
-  -- 3. Insert Profile
-  INSERT INTO public.profiles (id, email, display_name, role)
-  VALUES (
-    new.id,
-    new.email,
-    user_name,
-    preferred_role
+    team_id, creator_id, brand_id, workspace_id,
+    proposal_type, proposal_id,
+    gross_amount, split_ratio,
+    creator_amount, mcn_amount,
+    withholding_rate, withholding_amount,
+    net_creator_amount, settlement_month, status
   )
-  ON CONFLICT (id) DO UPDATE
-  SET
-    email = EXCLUDED.email,
-    display_name = COALESCE(EXCLUDED.display_name, public.profiles.display_name);
-
-  -- 4. Create Team (DISABLED: No longer creating teams automatically)
-  -- Logic removed to prevent confusion. Teams are now created explicitly by MCN/Agencies.
-
-  RETURN new;
-EXCEPTION
-  WHEN OTHERS THEN
-      RAISE WARNING 'Error in handle_new_user: %', SQLERRM;
-      RAISE;
-END;
-$$;
-
-
---
--- Name: has_team_access(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.has_team_access(target_user_id uuid) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    AS $$
-  SELECT EXISTS (
-    SELECT 1 
-    FROM public.team_members tm_auth
-    JOIN public.team_members tm_target ON tm_auth.team_id = tm_target.team_id
-    WHERE tm_auth.user_id = auth.uid()
-    AND tm_target.user_id = target_user_id
-    -- Restrict to privileged roles in the team
-    AND tm_auth.role IN ('owner', 'admin', 'manager')
+  VALUES (
+    v_team_id, v_creator_id, v_brand_id, NEW.workspace_id,
+    v_prop_type, v_prop_id,
+    v_gross, v_split_ratio,
+    v_creator_amt, v_mcn_amt,
+    v_withhold_rate, v_withhold_amt,
+    v_net_amt, v_month, 'pending'
   );
-$$;
 
-
---
--- Name: invite_team_member(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.invite_team_member(target_team_id uuid, target_email text, target_role text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-    current_user_id UUID;
-    is_authorized BOOLEAN;
-    existing_member_id UUID;
-    existing_invite_id UUID;
-BEGIN
-    current_user_id := auth.uid();
-    
-    -- 1. Check Permissions
-    -- 1. Check Permissions
-    -- Allow if user is owner/manager/admin in team_members OR if user created the team (fallback)
-    SELECT EXISTS (
-        SELECT 1 FROM public.team_members 
-        WHERE team_id = target_team_id 
-        AND user_id = current_user_id 
-        AND role IN ('owner', 'manager', 'admin')
-    ) OR EXISTS (
-        SELECT 1 FROM public.teams
-        WHERE id = target_team_id
-        AND created_by = current_user_id
-    ) INTO is_authorized;
-
-    IF NOT is_authorized THEN
-        RETURN jsonb_build_object('success', false, 'message', '초대 권한이 없습니다.');
-    END IF;
-
-    -- 2. Check if already a member
-    SELECT id INTO existing_member_id FROM public.profiles WHERE email = target_email;
-    
-    IF existing_member_id IS NOT NULL THEN
-        IF EXISTS (SELECT 1 FROM public.team_members WHERE team_id = target_team_id AND user_id = existing_member_id) THEN
-            RETURN jsonb_build_object('success', false, 'message', '이미 팀 멤버입니다.');
-        END IF;
-    END IF;
-
-    -- 3. Check if already invited
-    SELECT id INTO existing_invite_id FROM public.team_invitations 
-    WHERE team_id = target_team_id AND email = target_email AND status = 'pending';
-
-    IF existing_invite_id IS NOT NULL THEN
-        RETURN jsonb_build_object('success', false, 'message', '이미 대기 중인 초대가 있습니다.');
-    END IF;
-
-    -- 4. Create Invitation
-    INSERT INTO public.team_invitations (team_id, email, role, invited_by, status)
-    VALUES (target_team_id, target_email, target_role, current_user_id, 'pending');
-
-    RETURN jsonb_build_object('success', true, 'message', '초대가 발송되었습니다.');
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN jsonb_build_object('success', false, 'message', '오류 발생: ' || SQLERRM);
-END;
-$$;
-
-
---
--- Name: is_admin(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.is_admin() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    AS $$
-  SELECT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin');
-$$;
-
-
---
--- Name: is_team_owner_or_admin(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.is_team_owner_or_admin(target_team_id uuid, target_user_id uuid) RETURNS boolean
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-    user_role TEXT;
-BEGIN
-    SET LOCAL row_security = off;
-    
-    SELECT role INTO user_role
-    FROM public.team_members
-    WHERE team_id = target_team_id AND user_id = target_user_id
-    LIMIT 1;
-    
-    RETURN (user_role = 'owner' OR user_role = 'admin');
-END;
-$$;
-
-
---
--- Name: FUNCTION is_team_owner_or_admin(target_team_id uuid, target_user_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.is_team_owner_or_admin(target_team_id uuid, target_user_id uuid) IS 'Checks if user is owner or admin of a team. VOLATILE because it uses SET LOCAL to bypass RLS.';
-
-
---
--- Name: join_team_with_code(text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.join_team_with_code(code text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-    invite_record RECORD;
-    current_user_id UUID;
-    is_member BOOLEAN;
-BEGIN
-    current_user_id := auth.uid();
-    IF current_user_id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'message', '로그인이 필요합니다.');
-    END IF;
-
-    -- 1. Find invitation
-    SELECT * INTO invite_record FROM public.team_invitations WHERE invite_code = code AND status = 'pending';
-    
-    IF invite_record.id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'message', '유효하지 않거나 만료된 초대입니다.');
-    END IF;
-
-    -- 2. Check if already member of THIS team
-    SELECT EXISTS (SELECT 1 FROM public.team_members WHERE team_id = invite_record.team_id AND user_id = current_user_id) INTO is_member;
-    
-    IF is_member THEN
-        RETURN jsonb_build_object('success', true, 'message', 'Already a member');
-    END IF;
-
-    -- 3. Leave ANY other teams (Enforce single team membership)
-    DELETE FROM public.team_members WHERE user_id = current_user_id;
-
-    -- 4. Add to new team
-    INSERT INTO public.team_members (team_id, user_id, role)
-    VALUES (invite_record.team_id, current_user_id, invite_record.role);
-
-    -- 5. Update Invitation Status
-    UPDATE public.team_invitations 
-    SET status = 'accepted' 
-    WHERE id = invite_record.id;
-
-    RETURN jsonb_build_object('success', true, 'team_id', invite_record.team_id);
-END;
-$$;
-
-
---
--- Name: notify_brand_on_campaign_application(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_brand_on_campaign_application() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-    campaign_name TEXT;
-    brand_user_id UUID;
-    influencer_name TEXT;
-BEGIN
-    SELECT title, brand_id INTO campaign_name, brand_user_id
-    FROM campaigns WHERE id = NEW.campaign_id;
-    
-    SELECT display_name INTO influencer_name
-    FROM profiles WHERE id = NEW.influencer_id;
-    
-    INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
-    VALUES (
-        brand_user_id,
-        NEW.influencer_id,
-        'campaign_application',
-        COALESCE(influencer_name, '크리에이터') || '님이 "' || COALESCE(campaign_name, '캠페인') || '" 캠페인에 지원했습니다.',
-        NEW.id::text
-    );
-    
-    RETURN NEW;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE WARNING 'Failed to create campaign application notification: %', SQLERRM;
-        RETURN NEW;
-END;
-$$;
-
-
---
--- Name: notify_brand_on_product_application(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_brand_on_product_application() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-    influencer_name TEXT;
-BEGIN
-    IF NEW.status IN ('applied', 'pending') THEN
-        SELECT display_name INTO influencer_name
-        FROM profiles WHERE id = NEW.influencer_id;
-        
-        INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
-        VALUES (
-            NEW.brand_id,
-            NEW.influencer_id,
-            'product_application',
-            COALESCE(influencer_name, '크리에이터') || '님이 "' || COALESCE(NEW.product_name, '제품') || '" 제품에 신청했습니다.',
-            NEW.id::text
-        );
-    END IF;
-    
-    RETURN NEW;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE WARNING 'Failed to create product application notification: %', SQLERRM;
-        RETURN NEW;
-END;
-$$;
-
-
---
--- Name: notify_influencer_on_brand_offer(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_influencer_on_brand_offer() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-    brand_name TEXT;
-BEGIN
-    IF NEW.status = 'offered' THEN
-        SELECT display_name INTO brand_name
-        FROM profiles WHERE id = NEW.brand_id;
-        
-        INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
-        VALUES (
-            NEW.influencer_id,
-            NEW.brand_id,
-            'brand_offer',
-            COALESCE(brand_name, '브랜드') || '님이 "' || COALESCE(NEW.product_name, '제품') || '" 협업을 제안했습니다.',
-            NEW.id::text
-        );
-    END IF;
-    
-    RETURN NEW;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE WARNING 'Failed to create brand offer notification: %', SQLERRM;
-        RETURN NEW;
-END;
-$$;
-
-
---
--- Name: notify_influencer_on_moment_proposal(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_influencer_on_moment_proposal() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-    moment_title TEXT;
-    brand_name TEXT;
-BEGIN
-    SELECT title INTO moment_title
-    FROM life_moments WHERE id = NEW.moment_id;
-    
-    SELECT display_name INTO brand_name
-    FROM profiles WHERE id = NEW.brand_id;
-    
-    INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
-    VALUES (
-        NEW.influencer_id,
-        NEW.brand_id,
-        'moment_proposal',
-        COALESCE(brand_name, '브랜드') || '님이 "' || COALESCE(moment_title, '모먼트') || '" 모먼트에 제안했습니다.',
-        NEW.id::text
-    );
-    
-    RETURN NEW;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE WARNING 'Failed to create moment proposal notification: %', SQLERRM;
-        RETURN NEW;
-END;
-$$;
-
-
---
--- Name: notify_user_on_message(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_user_on_message() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    sender_name TEXT;
-BEGIN
-    SELECT display_name INTO sender_name
-    FROM profiles WHERE id = NEW.sender_id;
-    
-    INSERT INTO notifications (recipient_id, sender_id, type, content, reference_id)
-    VALUES (
-        NEW.receiver_id,
-        NEW.sender_id,
-        'message_received',
-        sender_name || '님이 메시지를 보냈습니다: ' || LEFT(NEW.content, 20) || '...',
-        NEW.id
-    );
-    
-    RETURN NEW;
-END;
-$$;
-
-
---
--- Name: save_instagram_connection(uuid, text, integer, text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.save_instagram_connection(p_user_id uuid, p_handle text, p_followers_count integer, p_ig_user_id text, p_ig_access_token text) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-BEGIN
-  -- 기존 instagram 채널 삭제 후 재삽입 (handle이 바뀌면 unique 충돌 방지)
-  DELETE FROM public.social_channels
-  WHERE user_id = p_user_id AND platform = 'instagram';
-
-  INSERT INTO public.social_channels (
-    user_id, platform, handle, followers_count,
-    is_primary, is_public, ig_user_id, ig_access_token
-  ) VALUES (
-    p_user_id, 'instagram', p_handle, p_followers_count,
-    true, true, p_ig_user_id, p_ig_access_token
-  );
-END;
-$$;
-
-
---
--- Name: save_instagram_connection_basic(uuid, text, text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.save_instagram_connection_basic(p_user_id uuid, p_handle text, p_ig_user_id text, p_ig_access_token text) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-    v_platform text := 'instagram';
-    v_existing_id uuid;
-BEGIN
-    SELECT id INTO v_existing_id
-    FROM public.social_channels
-    WHERE user_id = p_user_id AND platform = v_platform
-    LIMIT 1;
-
-    IF v_existing_id IS NOT NULL THEN
-        UPDATE public.social_channels
-        SET 
-            handle = p_handle,
-            ig_user_id = p_ig_user_id,
-            ig_access_token = p_ig_access_token,
-            updated_at = NOW()
-        WHERE id = v_existing_id;
-    ELSE
-        INSERT INTO public.social_channels (
-            user_id,
-            platform,
-            handle,
-            followers_count,
-            ig_user_id,
-            ig_access_token,
-            is_primary,
-            is_public
-        ) VALUES (
-            p_user_id,
-            v_platform,
-            p_handle,
-            0,
-            p_ig_user_id,
-            p_ig_access_token,
-            false,
-            true
-        );
-    END IF;
-END;
-$$;
-
-
---
--- Name: set_proposal_team_ids(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.set_proposal_team_ids() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-    -- 1. Campaign Proposals (Target: influencer_team_id)
-    IF TG_TABLE_NAME = 'campaign_proposals' THEN
-        IF NEW.influencer_id IS NOT NULL AND NEW.influencer_team_id IS NULL THEN
-            -- A. Common Team (Agency Mode)
-            NEW.influencer_team_id := (
-                SELECT tm.team_id
-                FROM public.team_members tm
-                JOIN public.team_members agent_tm ON tm.team_id = agent_tm.team_id
-                WHERE tm.user_id = NEW.influencer_id
-                AND agent_tm.user_id = auth.uid()
-                LIMIT 1
-            );
-
-            -- B. Fallback: any team of influencer
-            IF NEW.influencer_team_id IS NULL THEN
-                NEW.influencer_team_id := (
-                    SELECT team_id FROM public.team_members
-                    WHERE user_id = NEW.influencer_id
-                    LIMIT 1
-                );
-            END IF;
-        END IF;
-    END IF;
-
-    -- 2. Life Moments (Target: team_id)
-    IF TG_TABLE_NAME = 'life_moments' THEN
-        IF NEW.team_id IS NULL THEN
-            -- A. Common Team (Agency Mode)
-            NEW.team_id := (
-                SELECT tm.team_id
-                FROM public.team_members tm
-                JOIN public.team_members agent_tm ON tm.team_id = agent_tm.team_id
-                WHERE tm.user_id = NEW.influencer_id
-                AND agent_tm.user_id = auth.uid()
-                LIMIT 1
-            );
-            
-            -- B. Owner Team (Self Mode)
-            IF NEW.team_id IS NULL THEN
-                NEW.team_id := (
-                    SELECT team_id FROM public.team_members
-                    WHERE user_id = NEW.influencer_id
-                    AND role = 'owner'
-                    LIMIT 1
-                );
-            END IF;
-            
-            -- C. Any Team (Fallback)
-            IF NEW.team_id IS NULL THEN
-                NEW.team_id := (
-                    SELECT team_id FROM public.team_members
-                    WHERE user_id = NEW.influencer_id
-                    LIMIT 1
-                );
-            END IF;
-        END IF;
-    END IF;
-
-    -- 3. Brand Proposals (Target: brand_team_id)
-    IF TG_TABLE_NAME = 'brand_proposals' THEN
-        IF NEW.brand_id IS NOT NULL AND NEW.brand_team_id IS NULL THEN
-             NEW.brand_team_id := (
-                SELECT team_id FROM public.team_members
-                WHERE user_id = NEW.brand_id
-                LIMIT 1
-            );
-        END IF;
-    END IF;
-
-    -- 4. Moment Proposals (Target: brand_team_id)
-    IF TG_TABLE_NAME = 'moment_proposals' THEN
-        IF NEW.brand_id IS NOT NULL AND NEW.brand_team_id IS NULL THEN
-             NEW.brand_team_id := (
-                SELECT team_id FROM public.team_members
-                WHERE user_id = NEW.brand_id
-                LIMIT 1
-            );
-        END IF;
-    END IF;
-
-    RETURN NEW;
+  RETURN NEW;
 END;
 $$;
 
@@ -1686,7 +827,8 @@ CREATE TABLE public.brand_products (
     tags text[],
     account_tag text,
     team_id uuid,
-    channels text[] DEFAULT '{}'::text[]
+    channels text[] DEFAULT '{}'::text[],
+    is_active boolean DEFAULT true
 );
 
 
@@ -1697,7 +839,7 @@ CREATE TABLE public.brand_products (
 CREATE TABLE public.campaign_applications (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     campaign_id uuid NOT NULL,
-    influencer_id uuid NOT NULL,
+    creator_id uuid NOT NULL,
     message text,
     price_offer integer,
     status text DEFAULT 'pending'::text,
@@ -1706,70 +848,23 @@ CREATE TABLE public.campaign_applications (
     portfolio_links text[],
     instagram_handle text,
     insight_screenshot text,
-    shipping_name text,
-    shipping_phone text,
-    shipping_address text,
-    tracking_number text,
-    delivery_status text DEFAULT 'pending'::text,
-    contract_content text,
-    contract_status text DEFAULT 'none'::text,
-    brand_signature text,
-    influencer_signature text,
-    brand_signed_at timestamp with time zone,
-    influencer_signed_at timestamp with time zone,
-    condition_product_receipt_date text,
-    condition_plan_sharing_date text,
-    condition_draft_submission_date text,
-    condition_final_submission_date text,
-    condition_upload_date text,
-    condition_maintenance_period text,
-    condition_secondary_usage_period text,
-    brand_condition_confirmed boolean DEFAULT false,
-    influencer_condition_confirmed boolean DEFAULT false,
-    special_terms text,
-    content_submission_url text,
-    content_submission_file_url text,
-    content_submission_status text DEFAULT 'pending'::text,
-    content_submission_date timestamp with time zone,
-    content_submission_version numeric(3,1) DEFAULT 1.0,
-    content_submission_url_2 text,
-    content_submission_file_url_2 text,
-    content_submission_status_2 text DEFAULT 'pending'::text,
-    content_submission_date_2 timestamp with time zone,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     compensation_amount text,
     has_incentive boolean DEFAULT false,
     incentive_detail text,
     content_type text,
     moment_id uuid,
-    influencer_team_id uuid,
+
     product_name text,
     product_type text DEFAULT 'gift'::text,
     channel_name text,
     channel_subtype text,
-    workspace_id uuid,
-    receiver_name text,
-    content_final_url text,
-    content_clean_url text,
     secondary_usage_fee integer DEFAULT 0,
-    content_final_approved_at timestamp with time zone,
-    content_revision_requested_at timestamp with time zone,
-    payment_confirmed_at timestamp with time zone
+    workspace_id uuid
 );
 
 
---
--- Name: COLUMN campaign_applications.content_final_approved_at; Type: COMMENT; Schema: public; Owner: -
---
 
-COMMENT ON COLUMN public.campaign_applications.content_final_approved_at IS 'Timestamp when brand gave final approval for the submitted content.';
-
-
---
--- Name: COLUMN campaign_applications.content_revision_requested_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.campaign_applications.content_revision_requested_at IS 'Set when brand clicks "검토 완료". Unlocks revision upload for creator.';
 
 
 --
@@ -1778,8 +873,7 @@ COMMENT ON COLUMN public.campaign_applications.content_revision_requested_at IS 
 
 CREATE TABLE public.campaign_performance (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    proposal_type text NOT NULL,
-    proposal_id text NOT NULL,
+    workspace_id uuid NOT NULL,
     creator_id uuid NOT NULL,
     brand_id uuid NOT NULL,
     views integer,
@@ -1797,8 +891,7 @@ CREATE TABLE public.campaign_performance (
     screenshot_url text,
     submitted_by uuid,
     submitted_at timestamp with time zone DEFAULT now(),
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT campaign_performance_proposal_type_check CHECK ((proposal_type = ANY (ARRAY['product_application'::text, 'moment_proposal'::text, 'campaign_application'::text])))
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -1818,7 +911,7 @@ CREATE TABLE public.campaigns (
     target_moment_id uuid,
     status text DEFAULT 'active'::text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-    event_date text,
+    moment_date text,
     posting_date text,
     category text,
     budget text,
@@ -1854,52 +947,30 @@ CREATE TABLE public.favorites (
 
 
 --
--- Name: instagram_accounts; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.instagram_accounts (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid,
-    instagram_user_id text NOT NULL,
-    access_token text NOT NULL,
-    page_id text,
-    username text,
-    profile_picture_url text,
-    follower_count integer,
-    updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
-
---
 -- Name: life_moments; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.life_moments (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
-    icon text,
     description text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-    influencer_id uuid,
+    creator_id uuid,
     title text DEFAULT ''::text NOT NULL,
     tags text[] DEFAULT '{}'::text[],
     target_product text,
-    posting_date text,
     status text DEFAULT 'recruiting'::text,
     is_private boolean DEFAULT false,
     schedule jsonb DEFAULT '{}'::jsonb,
     updated_at timestamp with time zone DEFAULT now(),
-    name text,
-    event_date text,
     category text,
     is_verified boolean DEFAULT false,
     is_mock boolean DEFAULT false,
     guide text,
-    price_video integer,
     date_flexible boolean DEFAULT false,
     team_id uuid,
     channels text[] DEFAULT '{}'::text[],
-    event_start_date date,
-    event_end_date date,
+    moment_start_date date,
+    moment_end_date date,
     posting_date_exact date
 );
 
@@ -1925,15 +996,13 @@ CREATE TABLE public.mcn_revenue_splits (
 
 CREATE TABLE public.messages (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
-    proposal_id uuid,
+    workspace_id uuid NOT NULL,
     sender_id uuid,
     receiver_id uuid,
     content text NOT NULL,
     is_read boolean DEFAULT false,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-    product_application_id uuid,
     is_mock boolean DEFAULT false,
-    workspace_id uuid,
     file_url text,
     file_name text,
     file_size integer,
@@ -1950,88 +1019,17 @@ CREATE TABLE public.moment_proposals (
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     brand_id uuid NOT NULL,
-    influencer_id uuid NOT NULL,
+    creator_id uuid NOT NULL,
     moment_id uuid NOT NULL,
     product_id uuid,
     message text,
-    price_offer bigint,
     conditions jsonb DEFAULT '{}'::jsonb,
     status text DEFAULT 'offered'::text,
-    contract_status text DEFAULT 'none'::text,
-    delivery_status text DEFAULT 'none'::text,
-    content_submission_status text DEFAULT 'none'::text,
-    brand_signature text,
-    influencer_signature text,
-    product_name text,
-    product_type text DEFAULT 'gift'::text,
-    compensation_amount text,
-    has_incentive boolean DEFAULT false,
-    incentive_detail text,
-    content_type text,
-    is_mock boolean DEFAULT false,
-    contract_content text,
-    brand_signed_at timestamp with time zone,
-    influencer_signed_at timestamp with time zone,
-    shipping_name text,
-    shipping_phone text,
-    shipping_address text,
-    tracking_number text,
-    date_flexible boolean DEFAULT false,
-    desired_date date,
-    video_guide text DEFAULT 'brand_provided'::text,
-    product_url text,
-    condition_product_receipt_date text,
-    condition_plan_sharing_date text,
-    condition_draft_submission_date text,
-    condition_final_submission_date text,
-    condition_upload_date text,
-    condition_maintenance_period text,
-    condition_secondary_usage_period text,
-    brand_condition_confirmed boolean DEFAULT false,
-    influencer_condition_confirmed boolean DEFAULT false,
-    content_submission_url text,
-    content_submission_file_url text,
-    content_submission_date timestamp with time zone,
-    content_submission_version numeric(3,1) DEFAULT 1.0,
-    content_submission_url_2 text,
-    content_submission_file_url_2 text,
-    content_submission_status_2 text DEFAULT 'pending'::text,
-    content_submission_date_2 timestamp with time zone,
-    content_submission_version_2 numeric(3,1) DEFAULT 0.9,
-    motivation text,
-    content_plan text,
-    portfolio_links text[],
-    instagram_handle text,
-    insight_screenshot text,
-    special_terms text,
-    brand_team_id uuid,
-    influencer_team_id uuid,
-    workspace_id uuid,
-    receiver_name text,
-    content_final_url text,
-    content_clean_url text,
-    channel_name text,
-    channel_subtype text,
-    secondary_usage_fee integer DEFAULT 0,
-    content_final_approved_at timestamp with time zone,
-    content_revision_requested_at timestamp with time zone,
-    payment_confirmed_at timestamp with time zone,
-    CONSTRAINT moment_proposals_status_check CHECK ((status = ANY (ARRAY['offered'::text, 'pending'::text, 'applied'::text, 'accepted'::text, 'declined'::text, 'negotiating'::text, 'confirmed'::text, 'active'::text, 'in_progress'::text, 'signed'::text, 'shipped'::text, 'started'::text, 'completed'::text, 'settlement'::text, 'final_complete'::text, 'cancelled'::text, 'rejected'::text])))
+    workspace_id uuid
 );
 
 
---
--- Name: COLUMN moment_proposals.content_final_approved_at; Type: COMMENT; Schema: public; Owner: -
---
 
-COMMENT ON COLUMN public.moment_proposals.content_final_approved_at IS 'Timestamp when brand gave final approval for the submitted content.';
-
-
---
--- Name: COLUMN moment_proposals.content_revision_requested_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.moment_proposals.content_revision_requested_at IS 'Set when brand clicks "검토 완료". Unlocks revision upload for creator.';
 
 
 --
@@ -2057,90 +1055,21 @@ CREATE TABLE public.notifications (
 CREATE TABLE public.product_applications (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     brand_id uuid NOT NULL,
-    influencer_id uuid NOT NULL,
-    product_name text NOT NULL,
-    product_type text DEFAULT 'gift'::text,
-    compensation_amount text,
-    has_incentive boolean DEFAULT false,
-    incentive_detail text,
-    content_type text,
+    creator_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    moment_id uuid,
     message text,
     status text DEFAULT 'offered'::text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-    event_id uuid,
-    product_id uuid,
-    contract_content text,
-    contract_status text DEFAULT 'none'::text,
-    completed_at timestamp with time zone,
-    brand_signed_at timestamp with time zone,
-    influencer_signed_at timestamp with time zone,
-    is_mock boolean DEFAULT false,
-    brand_signature text,
-    influencer_signature text,
-    shipping_name text,
-    shipping_phone text,
-    shipping_address text,
-    tracking_number text,
-    delivery_status text DEFAULT 'pending'::text,
-    content_submission_url text,
-    content_submission_file_url text,
-    content_submission_status text DEFAULT 'pending'::text,
-    content_submission_date timestamp with time zone,
-    content_submission_version numeric(3,1) DEFAULT 1.0,
-    brand_condition_confirmed boolean DEFAULT false,
-    influencer_condition_confirmed boolean DEFAULT false,
-    product_url text,
-    date_flexible boolean DEFAULT false,
-    desired_date date,
-    content_submission_url_2 text,
-    content_submission_file_url_2 text,
-    content_submission_status_2 text DEFAULT 'pending'::text,
-    content_submission_date_2 timestamp with time zone,
-    content_submission_version_2 numeric(3,1) DEFAULT 0.9,
-    condition_product_receipt_date text,
-    condition_plan_sharing_date text,
-    condition_draft_submission_date text,
-    condition_final_submission_date text,
-    condition_upload_date text,
-    condition_maintenance_period text,
-    condition_secondary_usage_period text,
-    video_guide text DEFAULT 'brand_provided'::text NOT NULL,
-    other_content_type text,
     motivation text,
     content_plan text,
     portfolio_links text[],
-    instagram_handle text,
     insight_screenshot text,
-    special_terms text,
-    price_offer bigint,
-    brand_team_id uuid,
-    influencer_team_id uuid,
-    channel_name text,
-    channel_url text,
-    workspace_id uuid,
-    receiver_name text,
-    content_final_url text,
-    content_clean_url text,
-    channel_subtype text,
-    secondary_usage_fee integer DEFAULT 0,
-    content_final_approved_at timestamp with time zone,
-    content_revision_requested_at timestamp with time zone,
-    payment_confirmed_at timestamp with time zone
+    workspace_id uuid
 );
 
 
---
--- Name: COLUMN product_applications.content_final_approved_at; Type: COMMENT; Schema: public; Owner: -
---
 
-COMMENT ON COLUMN public.product_applications.content_final_approved_at IS 'Timestamp when brand gave final approval for the submitted content. Unlocks final/clean version upload for creator.';
-
-
---
--- Name: COLUMN product_applications.content_revision_requested_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.product_applications.content_revision_requested_at IS 'Set when brand clicks "검토 완료". Unlocks revision upload for creator. Cleared (set NULL) after creator uploads a new revision.';
 
 
 --
@@ -2150,7 +1079,7 @@ COMMENT ON COLUMN public.product_applications.content_revision_requested_at IS '
 CREATE TABLE public.profiles (
     id uuid NOT NULL,
     email text,
-    role text DEFAULT 'influencer'::public.user_role,
+    role text DEFAULT 'creator'::public.user_role,
     display_name text,
     avatar_url text,
     bio text,
@@ -2281,9 +1210,7 @@ CREATE TABLE public.settlements (
     team_id uuid,
     creator_id uuid NOT NULL,
     brand_id uuid,
-    proposal_type text NOT NULL,
-    proposal_id text NOT NULL,
-    workspace_id uuid,
+    workspace_id uuid NOT NULL,
     gross_amount integer DEFAULT 0 NOT NULL,
     split_ratio numeric(4,3) DEFAULT 0.700 NOT NULL,
     creator_amount integer DEFAULT 0 NOT NULL,
@@ -2300,7 +1227,6 @@ CREATE TABLE public.settlements (
     statement_number text,
     final_completed_at timestamp with time zone,
     performance_submitted_at timestamp with time zone,
-    CONSTRAINT settlements_proposal_type_check CHECK ((proposal_type = ANY (ARRAY['product_application'::text, 'moment_proposal'::text, 'campaign_application'::text]))),
     CONSTRAINT settlements_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'paid'::text, 'cancelled'::text])))
 );
 
@@ -2374,13 +1300,11 @@ COMMENT ON COLUMN public.social_channels.is_public IS '브랜드에게 공개 �
 
 CREATE TABLE public.submission_feedback (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
-    proposal_id uuid,
-    product_application_id uuid,
+    workspace_id uuid NOT NULL,
     sender_id uuid,
     content text NOT NULL,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-    video_timestamp_seconds numeric(8,2),
-    CONSTRAINT feedback_target_check CHECK ((((proposal_id IS NOT NULL) AND (product_application_id IS NULL)) OR ((proposal_id IS NULL) AND (product_application_id IS NOT NULL))))
+    video_timestamp_seconds numeric(8,2)
 );
 
 
@@ -2430,7 +1354,6 @@ CREATE TABLE public.team_members (
 
 CREATE TABLE public.teams (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
-    name text NOT NULL,
     slug text NOT NULL,
     logo_url text,
     website text,
@@ -2450,10 +1373,7 @@ CREATE TABLE public.teams (
 
 CREATE TABLE public.workspace_files (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    workspace_id uuid,
-    brand_proposal_id uuid,
-    proposal_id uuid,
-    moment_proposal_id uuid,
+    workspace_id uuid NOT NULL,
     uploader_id uuid,
     file_name text NOT NULL,
     file_url text NOT NULL,
@@ -2470,11 +1390,78 @@ CREATE TABLE public.workspace_files (
 CREATE TABLE public.workspaces (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     brand_id uuid NOT NULL,
-    influencer_id uuid NOT NULL,
-    proposal_type text NOT NULL,
-    proposal_id text NOT NULL,
+    creator_id uuid NOT NULL,
+    original_proposal_id uuid,
+    original_proposal_type text,
+    project_title text, -- UI 표기용 이름 (캠페인명, 제품명, 모먼트명)
+    
+    -- 기본 상태
+    status text DEFAULT 'in_progress'::text,
     created_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT workspaces_proposal_type_check CHECK ((proposal_type = ANY (ARRAY['product_application'::text, 'moment_proposal'::text, 'campaign_application'::text])))
+    completed_at timestamp with time zone,
+    
+    -- 팀 참조 (MCN 등)
+
+
+    
+    -- 가격/조건 합의
+    price_offer bigint,
+    product_type text DEFAULT 'gift'::text,
+    receiver_name text,
+    secondary_usage_fee integer DEFAULT 0,
+    date_flexible boolean DEFAULT false,
+    desired_date date,
+    video_guide text DEFAULT 'brand_provided'::text,
+    
+    -- 제안 커스텀 조건 (날짜류 텍스트 저장용)
+    condition_product_receipt_date text,
+    condition_plan_sharing_date text,
+    condition_draft_submission_date text,
+    condition_final_submission_date text,
+    condition_upload_date text,
+    condition_maintenance_period text,
+    condition_secondary_usage_period text,
+    
+    brand_condition_confirmed boolean DEFAULT false,
+    creator_condition_confirmed boolean DEFAULT false,
+    
+    -- 계약 정보
+    contract_status text DEFAULT 'none'::text,
+    contract_content text,
+    brand_signature text,
+    creator_signature text,
+    brand_signed_at timestamp with time zone,
+    creator_signed_at timestamp with time zone,
+    
+    -- 배송 정보
+    shipping_name text,
+    shipping_phone text,
+    shipping_address text,
+    tracking_number text,
+    delivery_status text DEFAULT 'pending'::text,
+    
+    -- 제출 에셋 (1차, 2차, 최종, 클린)
+    content_submission_status text DEFAULT 'pending'::text,
+    content_submission_url text,
+    content_submission_file_url text,
+    content_submission_date timestamp with time zone,
+    content_submission_version numeric(3,1) DEFAULT 1.0,
+    
+    content_submission_status_2 text DEFAULT 'pending'::text,
+    content_submission_url_2 text,
+    content_submission_file_url_2 text,
+    content_submission_date_2 timestamp with time zone,
+    content_submission_version_2 numeric(3,1) DEFAULT 0.9,
+    
+    content_final_url text,
+    content_clean_url text,
+    content_final_approved_at timestamp with time zone,
+    content_revision_requested_at timestamp with time zone,
+    
+    -- 정산 정보
+    payment_confirmed_at timestamp with time zone,
+    
+    CONSTRAINT workspaces_product_type_check CHECK ((product_type = ANY (ARRAY['gift'::text, 'loan'::text])))
 );
 
 
@@ -2527,11 +1514,11 @@ ALTER TABLE ONLY public.campaign_performance
 
 
 --
--- Name: campaign_performance campaign_performance_proposal_type_proposal_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: campaign_performance campaign_performance_workspace_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.campaign_performance
-    ADD CONSTRAINT campaign_performance_proposal_type_proposal_id_key UNIQUE (proposal_type, proposal_id);
+    ADD CONSTRAINT campaign_performance_workspace_id_key UNIQUE (workspace_id);
 
 
 --
@@ -2558,28 +1545,7 @@ ALTER TABLE ONLY public.favorites
     ADD CONSTRAINT favorites_user_id_target_id_target_type_key UNIQUE (user_id, target_id, target_type);
 
 
---
--- Name: instagram_accounts instagram_accounts_instagram_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
-ALTER TABLE ONLY public.instagram_accounts
-    ADD CONSTRAINT instagram_accounts_instagram_user_id_key UNIQUE (instagram_user_id);
-
-
---
--- Name: instagram_accounts instagram_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.instagram_accounts
-    ADD CONSTRAINT instagram_accounts_pkey PRIMARY KEY (id);
-
-
---
--- Name: instagram_accounts instagram_accounts_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.instagram_accounts
-    ADD CONSTRAINT instagram_accounts_user_id_key UNIQUE (user_id);
 
 
 --
@@ -2799,45 +1765,29 @@ COMMENT ON INDEX public.idx_brand_products_lookup IS 'Optimizes brand products J
 
 
 --
--- Name: idx_brand_proposals_contract_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_brand_proposals_contract_status ON public.product_applications USING btree (contract_status);
 
 
---
--- Name: idx_brand_proposals_influencer_team_id; Type: INDEX; Schema: public; Owner: -
---
 
-CREATE INDEX idx_brand_proposals_influencer_team_id ON public.product_applications USING btree (influencer_team_id);
 
 
 --
 -- Name: idx_brand_proposals_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_brand_proposals_lookup ON public.product_applications USING btree (brand_id, influencer_id, status) WHERE (status = ANY (ARRAY['offered'::text, 'pending'::text, 'accepted'::text, 'confirmed'::text]));
+CREATE INDEX idx_brand_proposals_lookup ON public.product_applications USING btree (brand_id, creator_id, status) WHERE (status = ANY (ARRAY['offered'::text, 'pending'::text, 'accepted'::text, 'confirmed'::text]));
 
 
 --
 -- Name: INDEX idx_brand_proposals_lookup; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON INDEX public.idx_brand_proposals_lookup IS 'Optimizes brand proposal queries by brand_id, influencer_id, and status';
+COMMENT ON INDEX public.idx_brand_proposals_lookup IS 'Optimizes brand proposal queries by brand_id, creator_id, and status';
 
 
 --
--- Name: idx_brand_proposals_payment; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_brand_proposals_payment ON public.product_applications USING btree (payment_confirmed_at, contract_status);
 
 
---
--- Name: idx_campaign_applications_influencer_team_id; Type: INDEX; Schema: public; Owner: -
---
 
-CREATE INDEX idx_campaign_applications_influencer_team_id ON public.campaign_applications USING btree (influencer_team_id);
 
 
 --
@@ -2855,10 +1805,10 @@ CREATE INDEX idx_campaign_performance_creator ON public.campaign_performance USI
 
 
 --
--- Name: idx_campaign_performance_proposal; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_campaign_performance_workspace_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_campaign_performance_proposal ON public.campaign_performance USING btree (proposal_type, proposal_id);
+CREATE INDEX idx_campaign_performance_workspace_id ON public.campaign_performance USING btree (workspace_id);
 
 
 --
@@ -2890,10 +1840,10 @@ CREATE INDEX idx_life_moments_created_at ON public.life_moments USING btree (cre
 
 
 --
--- Name: idx_life_moments_influencer_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_life_moments_creator_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_life_moments_influencer_id ON public.life_moments USING btree (influencer_id);
+CREATE INDEX idx_life_moments_creator_id ON public.life_moments USING btree (creator_id);
 
 
 --
@@ -2907,7 +1857,7 @@ CREATE INDEX idx_life_moments_is_private ON public.life_moments USING btree (is_
 -- Name: idx_life_moments_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_life_moments_lookup ON public.life_moments USING btree (influencer_id, event_date);
+CREATE INDEX idx_life_moments_lookup ON public.life_moments USING btree (creator_id, moment_start_date);
 
 
 --
@@ -2924,39 +1874,24 @@ COMMENT ON INDEX public.idx_life_moments_lookup IS 'Optimizes life moments JOIN 
 CREATE INDEX idx_life_moments_status ON public.life_moments USING btree (status);
 
 
---
--- Name: idx_messages_brand_proposal_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_messages_brand_proposal_id ON public.messages USING btree (product_application_id);
 
 
---
--- Name: idx_moment_proposals_brand_team_id; Type: INDEX; Schema: public; Owner: -
---
 
-CREATE INDEX idx_moment_proposals_brand_team_id ON public.moment_proposals USING btree (brand_team_id);
+
 
 
 --
 -- Name: idx_moment_proposals_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_moment_proposals_lookup ON public.moment_proposals USING btree (brand_id, influencer_id, status);
+CREATE INDEX idx_moment_proposals_lookup ON public.moment_proposals USING btree (brand_id, creator_id, status);
 
 
 --
 -- Name: INDEX idx_moment_proposals_lookup; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON INDEX public.idx_moment_proposals_lookup IS 'Optimizes moment proposal queries by brand_id, influencer_id, and status';
-
-
---
--- Name: idx_moment_proposals_payment; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_moment_proposals_payment ON public.moment_proposals USING btree (payment_confirmed_at, contract_status);
+COMMENT ON INDEX public.idx_moment_proposals_lookup IS 'Optimizes moment proposal queries by brand_id, creator_id, and status';
 
 
 --
@@ -3051,24 +1986,15 @@ CREATE INDEX idx_team_members_user_id ON public.team_members USING btree (user_i
 
 
 --
--- Name: workspace_files_brand_proposal_id_idx; Type: INDEX; Schema: public; Owner: -
---
 
-CREATE INDEX workspace_files_brand_proposal_id_idx ON public.workspace_files USING btree (brand_proposal_id);
 
 
 --
--- Name: workspace_files_moment_proposal_id_idx; Type: INDEX; Schema: public; Owner: -
---
 
-CREATE INDEX workspace_files_moment_proposal_id_idx ON public.workspace_files USING btree (moment_proposal_id);
 
 
 --
--- Name: workspace_files_proposal_id_idx; Type: INDEX; Schema: public; Owner: -
---
 
-CREATE INDEX workspace_files_proposal_id_idx ON public.workspace_files USING btree (proposal_id);
 
 
 --
@@ -3135,27 +2061,6 @@ CREATE TRIGGER on_team_created AFTER INSERT ON public.teams FOR EACH ROW EXECUTE
 
 
 --
--- Name: campaign_applications trg_deposit_deduct_on_campaign_application_signed; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_deposit_deduct_on_campaign_application_signed AFTER UPDATE OF contract_status ON public.campaign_applications FOR EACH ROW EXECUTE FUNCTION public.fn_deduct_deposit_on_contract_signed();
-
-
---
--- Name: moment_proposals trg_deposit_deduct_on_moment_proposal_signed; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_deposit_deduct_on_moment_proposal_signed AFTER UPDATE OF contract_status ON public.moment_proposals FOR EACH ROW EXECUTE FUNCTION public.fn_deduct_deposit_on_contract_signed();
-
-
---
--- Name: product_applications trg_deposit_deduct_on_product_application_signed; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_deposit_deduct_on_product_application_signed AFTER UPDATE OF contract_status ON public.product_applications FOR EACH ROW EXECUTE FUNCTION public.fn_deduct_deposit_on_contract_signed();
-
-
---
 -- Name: campaign_applications trg_settlement_on_campaign_app_complete; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3180,21 +2085,10 @@ CREATE TRIGGER trg_settlement_on_product_application_complete AFTER UPDATE OF st
 -- Name: life_moments trigger_set_life_moments_team_id; Type: TRIGGER; Schema: public; Owner: -
 --
 
+-- Name: life_moments trigger_set_life_moments_team_id; Type: TRIGGER; Schema: public; Owner: -
+--
+
 CREATE TRIGGER trigger_set_life_moments_team_id BEFORE INSERT ON public.life_moments FOR EACH ROW EXECUTE FUNCTION public.set_proposal_team_ids();
-
-
---
--- Name: moment_proposals trigger_set_proposal_team_ids; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trigger_set_proposal_team_ids BEFORE INSERT ON public.moment_proposals FOR EACH ROW EXECUTE FUNCTION public.set_proposal_team_ids();
-
-
---
--- Name: product_applications trigger_set_proposal_team_ids; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trigger_set_proposal_team_ids BEFORE INSERT ON public.product_applications FOR EACH ROW EXECUTE FUNCTION public.set_proposal_team_ids();
 
 
 --
@@ -3251,36 +2145,25 @@ ALTER TABLE ONLY public.product_applications
     ADD CONSTRAINT brand_proposals_brand_id_fkey FOREIGN KEY (brand_id) REFERENCES public.profiles(id);
 
 
---
--- Name: product_applications brand_proposals_brand_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.product_applications
-    ADD CONSTRAINT brand_proposals_brand_team_id_fkey FOREIGN KEY (brand_team_id) REFERENCES public.teams(id);
 
 
---
--- Name: product_applications brand_proposals_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
-ALTER TABLE ONLY public.product_applications
-    ADD CONSTRAINT brand_proposals_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.life_moments(id) ON DELETE CASCADE;
+-- Name: product_applications brand_proposals_moment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
 
 
 --
--- Name: product_applications brand_proposals_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_applications brand_proposals_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.product_applications
-    ADD CONSTRAINT brand_proposals_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.profiles(id);
+    ADD CONSTRAINT brand_proposals_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.profiles(id);
 
 
 --
--- Name: product_applications brand_proposals_influencer_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
-ALTER TABLE ONLY public.product_applications
-    ADD CONSTRAINT brand_proposals_influencer_team_id_fkey FOREIGN KEY (influencer_team_id) REFERENCES public.teams(id);
+
+
 
 
 --
@@ -3308,19 +2191,17 @@ ALTER TABLE ONLY public.campaign_applications
 
 
 --
--- Name: campaign_applications campaign_applications_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: campaign_applications campaign_applications_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.campaign_applications
-    ADD CONSTRAINT campaign_applications_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.profiles(id);
+    ADD CONSTRAINT campaign_applications_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.profiles(id);
 
 
 --
--- Name: campaign_applications campaign_applications_influencer_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
-ALTER TABLE ONLY public.campaign_applications
-    ADD CONSTRAINT campaign_applications_influencer_team_id_fkey FOREIGN KEY (influencer_team_id) REFERENCES public.teams(id);
+
+
 
 
 --
@@ -3387,20 +2268,15 @@ ALTER TABLE ONLY public.favorites
     ADD CONSTRAINT favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
 
---
--- Name: instagram_accounts instagram_accounts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
-ALTER TABLE ONLY public.instagram_accounts
-    ADD CONSTRAINT instagram_accounts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 
 --
--- Name: life_moments life_moments_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: life_moments life_moments_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.life_moments
-    ADD CONSTRAINT life_moments_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    ADD CONSTRAINT life_moments_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
 
 --
@@ -3451,28 +2327,21 @@ ALTER TABLE ONLY public.moment_proposals
     ADD CONSTRAINT moment_proposals_brand_id_fkey FOREIGN KEY (brand_id) REFERENCES public.profiles(id);
 
 
---
--- Name: moment_proposals moment_proposals_brand_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
-ALTER TABLE ONLY public.moment_proposals
-    ADD CONSTRAINT moment_proposals_brand_team_id_fkey FOREIGN KEY (brand_team_id) REFERENCES public.teams(id);
 
 
 --
--- Name: moment_proposals moment_proposals_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: moment_proposals moment_proposals_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.moment_proposals
-    ADD CONSTRAINT moment_proposals_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.profiles(id);
+    ADD CONSTRAINT moment_proposals_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.profiles(id);
 
 
 --
--- Name: moment_proposals moment_proposals_influencer_team_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
-ALTER TABLE ONLY public.moment_proposals
-    ADD CONSTRAINT moment_proposals_influencer_team_id_fkey FOREIGN KEY (influencer_team_id) REFERENCES public.teams(id);
+
+
 
 
 --
@@ -3620,11 +2489,7 @@ ALTER TABLE ONLY public.teams
 
 
 --
--- Name: workspace_files workspace_files_brand_proposal_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
-ALTER TABLE ONLY public.workspace_files
-    ADD CONSTRAINT workspace_files_brand_proposal_id_fkey FOREIGN KEY (brand_proposal_id) REFERENCES public.product_applications(id) ON DELETE CASCADE;
 
 
 --
@@ -3644,11 +2509,11 @@ ALTER TABLE ONLY public.workspaces
 
 
 --
--- Name: workspaces workspaces_influencer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: workspaces workspaces_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workspaces
-    ADD CONSTRAINT workspaces_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES auth.users(id);
+    ADD CONSTRAINT workspaces_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id);
 
 
 --
@@ -3822,28 +2687,28 @@ CREATE POLICY brand_products_update ON public.brand_products FOR UPDATE USING ((
 -- Name: product_applications brand_proposals_delete; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY brand_proposals_delete ON public.product_applications FOR DELETE TO authenticated USING (((auth.uid() = brand_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY brand_proposals_delete ON public.product_applications FOR DELETE TO authenticated USING (((auth.uid() = brand_id) ));
 
 
 --
 -- Name: product_applications brand_proposals_insert; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY brand_proposals_insert ON public.product_applications FOR INSERT TO authenticated WITH CHECK (((auth.uid() = brand_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY brand_proposals_insert ON public.product_applications FOR INSERT TO authenticated WITH CHECK (((auth.uid() = brand_id) ));
 
 
 --
 -- Name: product_applications brand_proposals_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY brand_proposals_select ON public.product_applications FOR SELECT TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY brand_proposals_select ON public.product_applications FOR SELECT TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id)  ));
 
 
 --
 -- Name: product_applications brand_proposals_update; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY brand_proposals_update ON public.product_applications FOR UPDATE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY brand_proposals_update ON public.product_applications FOR UPDATE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id)  ));
 
 
 --
@@ -3870,21 +2735,21 @@ ALTER TABLE public.campaign_applications ENABLE ROW LEVEL SECURITY;
 -- Name: campaign_applications campaign_apps_delete; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY campaign_apps_delete ON public.campaign_applications FOR DELETE TO authenticated USING (((auth.uid() = influencer_id) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY campaign_apps_delete ON public.campaign_applications FOR DELETE TO authenticated USING (((auth.uid() = creator_id) ));
 
 
 --
 -- Name: campaign_applications campaign_apps_insert; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY campaign_apps_insert ON public.campaign_applications FOR INSERT TO authenticated WITH CHECK (((auth.uid() = influencer_id) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY campaign_apps_insert ON public.campaign_applications FOR INSERT TO authenticated WITH CHECK (((auth.uid() = creator_id) ));
 
 
 --
 -- Name: campaign_applications campaign_apps_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY campaign_apps_select ON public.campaign_applications FOR SELECT TO authenticated USING (((auth.uid() = influencer_id) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (EXISTS ( SELECT 1
+CREATE POLICY campaign_apps_select ON public.campaign_applications FOR SELECT TO authenticated USING (((auth.uid() = creator_id)  OR (EXISTS ( SELECT 1
    FROM public.campaigns c
   WHERE ((c.id = campaign_applications.campaign_id) AND ((c.brand_id = auth.uid()) OR (c.team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))))))));
 
@@ -3893,7 +2758,7 @@ CREATE POLICY campaign_apps_select ON public.campaign_applications FOR SELECT TO
 -- Name: campaign_applications campaign_apps_update; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY campaign_apps_update ON public.campaign_applications FOR UPDATE TO authenticated USING (((auth.uid() = influencer_id) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (EXISTS ( SELECT 1
+CREATE POLICY campaign_apps_update ON public.campaign_applications FOR UPDATE TO authenticated USING (((auth.uid() = creator_id)  OR (EXISTS ( SELECT 1
    FROM public.campaigns c
   WHERE ((c.id = campaign_applications.campaign_id) AND ((c.brand_id = auth.uid()) OR (c.team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))))))));
 
@@ -3976,34 +2841,10 @@ CREATE POLICY favorites_select ON public.favorites FOR SELECT TO authenticated U
 -- Name: moment_proposals influencer_update_moment_proposals; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY influencer_update_moment_proposals ON public.moment_proposals FOR UPDATE USING ((influencer_id = auth.uid())) WITH CHECK ((influencer_id = auth.uid()));
+CREATE POLICY influencer_update_moment_proposals ON public.moment_proposals FOR UPDATE USING ((creator_id = auth.uid())) WITH CHECK ((creator_id = auth.uid()));
 
 
---
--- Name: instagram_accounts; Type: ROW SECURITY; Schema: public; Owner: -
---
 
-ALTER TABLE public.instagram_accounts ENABLE ROW LEVEL SECURITY;
-
---
--- Name: instagram_accounts instagram_insert; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY instagram_insert ON public.instagram_accounts FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));
-
-
---
--- Name: instagram_accounts instagram_select; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY instagram_select ON public.instagram_accounts FOR SELECT TO authenticated USING ((auth.uid() = user_id));
-
-
---
--- Name: instagram_accounts instagram_update; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY instagram_update ON public.instagram_accounts FOR UPDATE TO authenticated USING ((auth.uid() = user_id));
 
 
 --
@@ -4044,34 +2885,34 @@ ALTER TABLE public.life_moments ENABLE ROW LEVEL SECURITY;
 -- Name: life_moments life_moments_delete; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY life_moments_delete ON public.life_moments FOR DELETE USING (((influencer_id = auth.uid()) OR public.is_admin()));
+CREATE POLICY life_moments_delete ON public.life_moments FOR DELETE USING (((creator_id = auth.uid()) OR public.is_admin()));
 
 
 --
 -- Name: life_moments life_moments_insert; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY life_moments_insert ON public.life_moments FOR INSERT WITH CHECK (((influencer_id = auth.uid()) OR public.is_admin()));
+CREATE POLICY life_moments_insert ON public.life_moments FOR INSERT WITH CHECK (((creator_id = auth.uid()) OR public.is_admin()));
 
 
 --
 -- Name: life_moments life_moments_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY life_moments_select ON public.life_moments FOR SELECT USING (((is_private = false) OR (influencer_id = auth.uid()) OR public.is_admin() OR (EXISTS ( SELECT 1
+CREATE POLICY life_moments_select ON public.life_moments FOR SELECT USING (((is_private = false) OR (creator_id = auth.uid()) OR public.is_admin() OR (EXISTS ( SELECT 1
    FROM (public.team_members tm_viewer
      JOIN public.team_members tm_owner ON ((tm_owner.team_id = tm_viewer.team_id)))
-  WHERE ((tm_viewer.user_id = auth.uid()) AND (tm_owner.user_id = life_moments.influencer_id))))));
+  WHERE ((tm_viewer.user_id = auth.uid()) AND (tm_owner.user_id = life_moments.creator_id))))));
 
 
 --
 -- Name: life_moments life_moments_update; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY life_moments_update ON public.life_moments FOR UPDATE USING (((influencer_id = auth.uid()) OR public.is_admin() OR (EXISTS ( SELECT 1
+CREATE POLICY life_moments_update ON public.life_moments FOR UPDATE USING (((creator_id = auth.uid()) OR public.is_admin() OR (EXISTS ( SELECT 1
    FROM (public.team_members tm_viewer
      JOIN public.team_members tm_owner ON ((tm_owner.team_id = tm_viewer.team_id)))
-  WHERE ((tm_viewer.user_id = auth.uid()) AND (tm_viewer.role = ANY (ARRAY['owner'::text, 'admin'::text])) AND (tm_owner.user_id = life_moments.influencer_id))))));
+  WHERE ((tm_viewer.user_id = auth.uid()) AND (tm_viewer.role = ANY (ARRAY['owner'::text, 'admin'::text])) AND (tm_owner.user_id = life_moments.creator_id))))));
 
 
 --
@@ -4165,56 +3006,56 @@ ALTER TABLE public.moment_proposals ENABLE ROW LEVEL SECURITY;
 -- Name: moment_proposals moment_proposals_delete; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY moment_proposals_delete ON public.moment_proposals FOR DELETE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moment_proposals_delete ON public.moment_proposals FOR DELETE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id)  ));
 
 
 --
 -- Name: moment_proposals moment_proposals_insert; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY moment_proposals_insert ON public.moment_proposals FOR INSERT TO authenticated WITH CHECK (((auth.uid() = brand_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moment_proposals_insert ON public.moment_proposals FOR INSERT TO authenticated WITH CHECK (((auth.uid() = brand_id) ));
 
 
 --
 -- Name: moment_proposals moment_proposals_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY moment_proposals_select ON public.moment_proposals FOR SELECT TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moment_proposals_select ON public.moment_proposals FOR SELECT TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id)  ));
 
 
 --
 -- Name: moment_proposals moment_proposals_update; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY moment_proposals_update ON public.moment_proposals FOR UPDATE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = influencer_id) OR (brand_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids)) OR (influencer_team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moment_proposals_update ON public.moment_proposals FOR UPDATE TO authenticated USING (((auth.uid() = brand_id) OR (auth.uid() = creator_id)  ));
 
 
 --
 -- Name: life_moments moments_delete; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY moments_delete ON public.life_moments FOR DELETE TO authenticated USING (((auth.uid() = influencer_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moments_delete ON public.life_moments FOR DELETE TO authenticated USING (((auth.uid() = creator_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
 -- Name: life_moments moments_insert; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY moments_insert ON public.life_moments FOR INSERT TO authenticated WITH CHECK (((auth.uid() = influencer_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moments_insert ON public.life_moments FOR INSERT TO authenticated WITH CHECK (((auth.uid() = creator_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
 -- Name: life_moments moments_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY moments_select ON public.life_moments FOR SELECT TO authenticated USING (((is_private = false) OR (auth.uid() = influencer_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moments_select ON public.life_moments FOR SELECT TO authenticated USING (((is_private = false) OR (auth.uid() = creator_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
 -- Name: life_moments moments_update; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY moments_update ON public.life_moments FOR UPDATE TO authenticated USING (((auth.uid() = influencer_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
+CREATE POLICY moments_update ON public.life_moments FOR UPDATE TO authenticated USING (((auth.uid() = creator_id) OR (team_id IN ( SELECT public.get_user_team_ids(auth.uid()) AS get_user_team_ids))));
 
 
 --
@@ -4248,7 +3089,7 @@ CREATE POLICY notifications_update ON public.notifications FOR UPDATE TO authent
 -- Name: moment_proposals participants_select_moment_proposals; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY participants_select_moment_proposals ON public.moment_proposals FOR SELECT USING (((influencer_id = auth.uid()) OR (brand_id = auth.uid()) OR public.is_admin()));
+CREATE POLICY participants_select_moment_proposals ON public.moment_proposals FOR SELECT USING (((creator_id = auth.uid()) OR (brand_id = auth.uid()) OR public.is_admin()));
 
 
 --
@@ -4408,7 +3249,7 @@ CREATE POLICY submission_feedback_insert ON public.submission_feedback FOR INSER
 -- Name: submission_feedback submission_feedback_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY submission_feedback_select ON public.submission_feedback FOR SELECT USING (((auth.uid() = sender_id) OR ((product_application_id IS NOT NULL) AND public.can_access_submission_feedback(product_application_id)) OR ((proposal_id IS NOT NULL) AND public.can_access_submission_feedback(proposal_id))));
+CREATE POLICY submission_feedback_select ON public.submission_feedback FOR SELECT USING ((auth.uid() = sender_id) OR public.can_access_submission_feedback(workspace_id));
 
 
 --
@@ -4486,14 +3327,14 @@ CREATE POLICY view_team_members ON public.team_members FOR SELECT USING ((team_i
 -- Name: workspaces workspace members can insert; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "workspace members can insert" ON public.workspaces FOR INSERT WITH CHECK (((brand_id = auth.uid()) OR (influencer_id = auth.uid())));
+CREATE POLICY "workspace members can insert" ON public.workspaces FOR INSERT WITH CHECK (((brand_id = auth.uid()) OR (creator_id = auth.uid())));
 
 
 --
 -- Name: workspaces workspace members can view; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "workspace members can view" ON public.workspaces FOR SELECT USING (((brand_id = auth.uid()) OR (influencer_id = auth.uid())));
+CREATE POLICY "workspace members can view" ON public.workspaces FOR SELECT USING (((brand_id = auth.uid()) OR (creator_id = auth.uid())));
 
 
 --
@@ -4532,3 +3373,5 @@ ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
 --
 -- PostgreSQL database dump complete
 --
+
+

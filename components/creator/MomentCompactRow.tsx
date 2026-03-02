@@ -26,13 +26,13 @@ export function MomentCompactRow({ moment: m, onClick, onDelete, isPast }: Momen
 
                 {/* Date */}
                 <div className="w-24 shrink-0 text-muted-foreground text-xs text-center">
-                    {formatDateToMonth(m.eventDate)}
+                    {formatDateToMonth(m.momentStartDate)}
                 </div>
 
                 {/* Main Info */}
                 <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
                     <div className="font-bold truncate text-foreground group-hover:text-primary transition-colors">
-                        {m.title || m.event}
+                        {m.title}
                     </div>
                     <div className="text-muted-foreground truncate text-xs flex items-center gap-1">
                         <span className="font-medium text-foreground">{m.brand || "브랜드 미정"}</span>

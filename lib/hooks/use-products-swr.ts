@@ -16,8 +16,7 @@ async function fetchProducts(): Promise<Product[]> {
       *,
       profiles(display_name, avatar_url, description)
     `)
-        // NOTE: is_active 필터는 DB 컬럼 추가 후 활성화
-        // .eq('is_active', true)
+        .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(100)
 
@@ -78,8 +77,7 @@ async function fetchHiddenProducts(): Promise<Product[]> {
     const { data, error } = await supabase
         .from('brand_products')
         .select(`*, profiles(display_name, avatar_url, description)`)
-        // NOTE: is_active 필터는 DB 컬럼 추가 후 활성화
-        // .eq('is_active', false)
+        .eq('is_active', false)
         .order('created_at', { ascending: false })
         .limit(100)
 

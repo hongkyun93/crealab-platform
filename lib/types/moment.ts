@@ -1,8 +1,8 @@
 // Event (Moment) Types
-export interface InfluencerEvent {
+export interface CreatorMoment {
     id: string
     influencer: string
-    influencerId?: string
+    creatorId?: string
     handle: string
     avatar: string
     priceVideo?: number      // 숏폼 영상 (Reels) 단가
@@ -11,8 +11,7 @@ export interface InfluencerEvent {
     usageRightsMonth?: number // 2차 활용 권한 기간 (개월)
     autoDmPrice?: number     // 자동 DM 단가
     autoDmMonth?: number     // 자동 DM 기간 (개월)
-    event: string // Title in DB
-    title?: string // Alias for event
+    title: string
     date: string
     description: string
     tags: string[]
@@ -20,24 +19,24 @@ export interface InfluencerEvent {
     followers: number
     category?: string
     targetProduct: string
-    eventDate: string
+    momentDate?: string
     postingDate?: string
     guide?: string
     status?: 'recruiting' | 'active' | 'completed'
     isMock?: boolean
     isPrivate?: boolean
     dateFlexible?: boolean
-    schedule?: EventSchedule
+    schedule?: MomentSchedule
     createdAt?: string
     channels?: string[]
     socialChannels?: { platform: string; handle: string; followersCount: number }[]
     // Exact dates (private — shown only to creator + MCN)
-    eventStartDate?: string   // ISO "YYYY-MM-DD"
-    eventEndDate?: string     // ISO "YYYY-MM-DD" (multi-day events, optional)
+    momentStartDate?: string  // ISO "YYYY-MM-DD"
+    momentEndDate?: string    // ISO "YYYY-MM-DD" (multi-day moments, optional)
     postingDateExact?: string // ISO "YYYY-MM-DD"
 }
 
-export interface EventSchedule {
+export interface MomentSchedule {
     product_delivery?: string
     draft_submission?: string
     shooting?: string
@@ -45,19 +44,19 @@ export interface EventSchedule {
     upload?: string
 }
 
-export interface EventFormData {
-    event: string
+export interface MomentFormData {
+    title: string
     description: string
     targetProduct: string
-    eventDate: string
+    momentDate?: string
     postingDate?: string
     tags: string[]
     guide?: string
     isPrivate?: boolean
     dateFlexible?: boolean
-    schedule?: EventSchedule
+    schedule?: MomentSchedule
     // Exact dates (private)
-    eventStartDate?: string
-    eventEndDate?: string
+    momentStartDate?: string
+    momentEndDate?: string
     postingDateExact?: string
 }

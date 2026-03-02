@@ -14,7 +14,7 @@ export function computeWorkspaceStage(proposal: any): WorkspaceStage {
     const contentStatus = proposal.content_submission_status ?? '';
     const paymentConfirmed = !!(proposal as any).payment_confirmed_at;
     const brandSigned = !!(proposal as any).brand_signature;
-    const influencerSigned = !!(proposal as any).influencer_signature;
+    const influencerSigned = !!(proposal as any).creator_signature;
 
     // 최종 완료
     if (status === 'final_complete') return 'final_complete';

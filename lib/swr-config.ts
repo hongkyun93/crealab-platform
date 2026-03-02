@@ -50,7 +50,7 @@ export const SWR_KEYS = {
 
     // Proposals
     PROPOSALS_BRAND: (brandId: string) => `proposals-brand-${brandId}`,
-    PROPOSALS_INFLUENCER: (influencerId: string) => `proposals-influencer-${influencerId}`,
+    PROPOSALS_CREATOR: (creatorId: string) => `proposals-influencer-${creatorId}`,
 
     // Campaigns
     CAMPAIGNS_ALL: 'campaigns-all',
