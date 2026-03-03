@@ -367,27 +367,30 @@ export function CreatorInfoPanel() {
                 useWorkspaceStore.getState().setCurrentStage('contract');
             }
 
-            // ⚠️ 수락 시에만 브랜드에게 알림
-            if (newValue) {
-                try {
-                    const brandId = (proposal as any).brand_id ||
-                        (proposal as any).brandId ||
-                        (proposal as any).campaign?.brand_id;
-                    const creatorName = user?.name || '크리에이터';
-                    if (brandId) {
-                        const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
-                        await sendNotification(
-                            brandId,
-                            `${creatorName}님이 조건을 수락했습니다. 계약서를 작성해주세요.`,
-                            'condition_confirmed',
-                            proposal.id?.toString(),
-                            actionUrl,
-                            { target_tab: 'contract' }
-                        );
-                    }
-                } catch (notifErr) {
-                    console.warn('알림 발송 실패 (무시):', notifErr);
+            // 🔔 알림 전송 로직 (Item 12)
+            try {
+                const brandId = (proposal as any).brand_id ||
+                    (proposal as any).brandId ||
+                    (proposal as any).campaign?.brand_id;
+                const creatorName = user?.name || '크리에이터';
+                if (brandId) {
+                    const msg = bothConfirmed
+                        ? `양측 모두 조건을 확정하여 계약 단계로 이동합니다.`
+                        : newValue
+                            ? `${creatorName}님이 조건을 수락했습니다. 브랜드님의 확정이 필요합니다.`
+                            : `${creatorName}님이 조건 수락을 취소했습니다.`;
+                    const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                    await sendNotification(
+                        brandId,
+                        msg,
+                        'condition_confirmed',
+                        proposal.id?.toString(),
+                        actionUrl,
+                        { target_tab: bothConfirmed ? 'contract' : 'negotiation' }
+                    );
                 }
+            } catch (notifErr) {
+                console.warn('조건 확정 알림 발송 실패:', notifErr);
             }
         }
     };

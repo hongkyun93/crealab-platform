@@ -153,6 +153,7 @@ function BrandDashboardContent() {
     // Filter Query States
     const [selectedTags, setSelectedTags] = useState<string[]>([])
     const [followerFilter, setFollowerFilter] = useState<string[]>(["all"])
+    const [scheduleFilter, setScheduleFilter] = useState<string[]>(["all"]) // [Item 4]
     const [statusFilter, setStatusFilter] = useState<string>("all") // all, upcoming, past, favorites
     const [minFollowers, setMinFollowers] = useState<string>("")
     const [maxFollowers, setMaxFollowers] = useState<string>("")
@@ -915,6 +916,33 @@ function BrandDashboardContent() {
                 })
             })
         }
+        // [Item 4] Schedule filter
+        if (!scheduleFilter.includes('all') && scheduleFilter.length > 0) {
+            result = result.filter(e => {
+                if (scheduleFilter.includes('flex') && e.dateFlexible) return true;
+
+                const getDay = (dateStr: string | null | undefined) => {
+                    if (!dateStr) return null;
+                    const d = new Date(dateStr);
+                    if (isNaN(d.getTime())) return null;
+                    return d.getDate();
+                };
+
+                const startDay = getDay(e.momentStartDate);
+                const postDay = getDay(e.postingDateExact);
+
+                return scheduleFilter.some((key: string) => {
+                    const checkDay = (day: number | null) => {
+                        if (!day) return false;
+                        if (key === 'early' && day <= 10) return true;
+                        if (key === 'mid' && day > 10 && day <= 20) return true;
+                        if (key === 'late' && day > 20) return true;
+                        return false;
+                    };
+                    return checkDay(startDay) || checkDay(postDay);
+                });
+            });
+        }
         // Multi-select channel filter
         if (!channelFilter.includes('all') && channelFilter.length > 0) {
             result = result.filter(e => {
@@ -1325,6 +1353,8 @@ function BrandDashboardContent() {
                         toggleFavorite={toggleFavorite as any}
                         priceFilter={priceFilter}
                         setPriceFilter={setPriceFilter}
+                        scheduleFilter={scheduleFilter}
+                        setScheduleFilter={setScheduleFilter}
                         POPULAR_TAGS={POPULAR_TAGS}
                         PRICE_FILTER_RANGES={PRICE_FILTER_RANGES}
                         user={user}

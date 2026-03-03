@@ -1,12 +1,14 @@
 "use client"
 
 import { useAuth } from "@/components/providers/auth-provider"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
 import { useEffect } from "react"
 import { toast } from "sonner"
 
 export function RealtimeWorkspaceSync() {
     const { supabase } = useAuth()
+    const { refreshData } = useUnifiedProvider()
     const proposal = useWorkspaceStore((state) => state.proposal)
     const updateProposal = useWorkspaceStore((state) => state.updateProposal)
 
@@ -38,6 +40,9 @@ export function RealtimeWorkspaceSync() {
                     console.log("[RealtimeWorkspaceSync] Received update:", payload.new)
                     // Optimistically update the UI with any incoming changes from the other party
                     updateProposal(payload.new as any)
+
+                    // [Item 11] 워크스테이션 전반적인 정보 업데이트가 실시간으로 반영되도록 refreshData 호출
+                    refreshData()
 
                     // Specific toast for signature
                     const oldDoc = payload.old as any;

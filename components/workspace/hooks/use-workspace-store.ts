@@ -37,7 +37,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     stageMap: {},
     isChatOpen: false,
     activeMobileTab: 'info',
-    expandedSections: ['current_stage'],
+    expandedSections: ['current_stage', 'negotiation'],
     contractViewOpen: false,
     videoReviewOpen: false,
 
@@ -68,7 +68,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             currentStage: 'negotiation',
             isChatOpen: false,
             activeMobileTab: 'info',
-            expandedSections: ['current_stage'],
+            expandedSections: ['current_stage', 'negotiation'],
             contractViewOpen: false,
             videoReviewOpen: false,
         }),

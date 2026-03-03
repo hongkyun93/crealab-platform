@@ -219,6 +219,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
 
         // [PERF] Realtime subscriptions instead of 2-second polling
         // Only re-fetch when actual DB changes occur (INSERT/UPDATE on relevant rows)
+        // [Item 8] filter 조건을 제거하고 RLS 정책(sender OR receiver)에 권한을 맡겨 실시간 수신률 개선
         const messagesChannel = supabase
             .channel(`messages-realtime-${userId}`)
             .on(
@@ -227,22 +228,9 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     event: '*',
                     schema: 'public',
                     table: 'messages',
-                    filter: `receiver_id=eq.${userId}`
                 },
                 () => {
                     // Skip fetch if tab is hidden — will catch up on visibility change
-                    if (!document.hidden) fetchMessages(userId)
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'messages',
-                    filter: `sender_id=eq.${userId}`
-                },
-                () => {
                     if (!document.hidden) fetchMessages(userId)
                 }
             )
@@ -256,7 +244,6 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                     event: '*',
                     schema: 'public',
                     table: 'notifications',
-                    filter: `recipient_id=eq.${userId}`
                 },
                 () => {
                     if (!document.hidden) fetchNotifications(userId)
@@ -316,8 +303,15 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 throw new Error(detail)
             }
 
-            // 🔔 new_message 알림은 DB 트리거(notify_user_on_message)에서 자동 발송 처리됨.
-            // (클라이언트 수동 발송 시 중복 생성 문제가 있어 제거됨)
+            // [Item 7] 클라이언트에서 명시적으로 알림(message_received) 발송.
+            // DB 트리거 오작동 시 알림 누락을 방지하고, MessageProvider 내부의 debouncing/batching 로직을 적극 활용.
+            try {
+                const notifyContent = `새로운 메시지가 도착했습니다: ${content ? content.substring(0, 20) + '...' : '파일이 첨부되었습니다.'}`
+                // data 배열이 없더라도 insert는 에러가 안나면 성공한 것. 삽입된 ID를 모를 경우 workspaceId 등을 참조용으로 씀.
+                await sendNotification(receiverId, notifyContent, 'message_received', workspaceId)
+            } catch (notifyErr) {
+                console.warn('[MessageProvider] Failed to push message notification:', notifyErr)
+            }
 
             await fetchMessages(userId)
             console.log('[MessageProvider] Message sent OK')

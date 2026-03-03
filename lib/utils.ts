@@ -18,6 +18,26 @@ export function formatDateToMonth(dateStr: string | Date | undefined | null): st
   }
 }
 
+export function formatDateToMonthWithPeriod(dateStr: string | Date | undefined | null): string {
+  if (!dateStr) return ""
+  try {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return String(dateStr)
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+
+    let period = ""
+    if (day <= 10) period = "초순 (1-10일)"
+    else if (day <= 20) period = "중순 (11-20일)"
+    else period = "하순 (21-30일)"
+
+    return `${year}년 ${month}월 ${period}`
+  } catch (e) {
+    return String(dateStr)
+  }
+}
+
 export function formatPriceRange(price: number | undefined | null, isNegotiable: boolean = true): string {
   const p = price || 0;
   if (p === 0) return "협의가능";
@@ -61,7 +81,7 @@ export function formatDateRange(
 /**
  * 뷰 context에 따라 올바른 이벤트 날짜 표시.
  * showExact = true: 크리에이터 본인 / MCN 관리 → 정확한 날짜
- * showExact = false: 브랜드 탐색 → 년-월만 (마스킹)
+ * showExact = false: 브랜드 탐색 → 년-월만 (마스킹) + 초/중/하순 표시
  */
 export function displayEventDate(
   item: { momentStartDate?: string; momentEndDate?: string },
@@ -70,7 +90,7 @@ export function displayEventDate(
   if (showExact && item.momentStartDate) {
     return formatDateRange(item.momentStartDate, item.momentEndDate)
   }
-  return formatDateToMonth(item.momentStartDate) || "미정"
+  return formatDateToMonthWithPeriod(item.momentStartDate) || "미정"
 }
 
 /**
@@ -82,7 +102,7 @@ export function displayPostingDate(
 ): string {
   if (item.dateFlexible) return "협의 가능"
   if (showExact && item.postingDateExact) return formatExactDate(item.postingDateExact)
-  return formatDateToMonth(item.postingDateExact) || "미정"
+  return formatDateToMonthWithPeriod(item.postingDateExact) || "미정"
 }
 
 /**

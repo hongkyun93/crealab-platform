@@ -40,6 +40,8 @@ interface DiscoverViewProps {
     deleteMoment: (id: string) => Promise<void>
     channelFilter?: string[]
     setChannelFilter?: (filter: string[] | ((prev: string[]) => string[])) => void
+    scheduleFilter?: string[]
+    setScheduleFilter?: (filter: string[] | ((prev: string[]) => string[])) => void
     sentMomentIds?: Set<string>
 }
 
@@ -65,6 +67,8 @@ export const DiscoverView = React.memo(function DiscoverView({
     deleteMoment,
     channelFilter,
     setChannelFilter,
+    scheduleFilter,
+    setScheduleFilter,
     sentMomentIds,
 }: DiscoverViewProps) {
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
@@ -304,6 +308,27 @@ export const DiscoverView = React.memo(function DiscoverView({
                                     <span className="md:hidden">{(range as any).s ?? range.l}</span>
                                     <span className="hidden md:inline">{range.l}</span>
                                     {priceFilter.includes(range.k) && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                    {/* [Item 4] Schedule Filter */}
+                    <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
+                        <span className="text-sm font-semibold md:w-24 pt-1">일정(작업/업로드)</span>
+                        <div className="grid grid-cols-4 gap-1 md:flex md:flex-wrap md:gap-2 flex-1">
+                            {[
+                                { k: 'all', l: '전체', s: '전체' },
+                                { k: 'early', l: '초순 (1~10일)', s: '초순' },
+                                { k: 'mid', l: '중순 (11~20일)', s: '중순' },
+                                { k: 'late', l: '하순 (21~말일)', s: '하순' },
+                                { k: 'flex', l: '협의 가능', s: '협의가' },
+                            ].map(opt => (
+                                <Button key={opt.k} variant="ghost" size="sm"
+                                    onClick={() => setScheduleFilter && toggleMulti(setScheduleFilter as any, opt.k, ['early', 'mid', 'late', 'flex'])}
+                                    className={cn('gap-1.5 w-full md:w-auto justify-start', scheduleFilter?.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}>
+                                    <span className="md:hidden">{opt.s}</span>
+                                    <span className="hidden md:inline">{opt.l}</span>
+                                    {scheduleFilter?.includes(opt.k) && <Check className="h-3.5 w-3.5 text-red-500" strokeWidth={3} />}
                                 </Button>
                             ))}
                         </div>

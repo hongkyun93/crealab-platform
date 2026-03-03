@@ -150,6 +150,63 @@ export function MomentProposalDialog({
         }
     }, [open, initialData])
 
+    // [Item 5] 제안 메시지 템플릿 실시간 치환 로직
+    const [prevProductName, setPrevProductName] = useState("[ 제안 드리는 제품명 ]")
+    const [prevChannelFormat, setPrevChannelFormat] = useState("[ 희망 콘텐츠 형식 ]")
+
+    useEffect(() => {
+        if (!open) return
+
+        let newContent = proposalMessage
+
+        // 1. 제품명 치환
+        const currentProductStr = productName || "[ 제안 드리는 제품명 ]"
+        if (prevProductName !== currentProductStr && newContent.includes(prevProductName)) {
+            newContent = newContent.replace(prevProductName, currentProductStr)
+        }
+
+        // 2. 채널 형태 치환
+        const getChannelFormat = () => {
+            if (!channelName) return "[ 희망 콘텐츠 형식 ]"
+            let str = channelName === 'instagram' ? '인스타그램' :
+                channelName === 'youtube' ? '유튜브' :
+                    channelName === 'tiktok' ? '틱톡' :
+                        channelName === 'blog' ? '블로그' : '기타'
+
+            if (channelSubtype) {
+                if (channelSubtype.startsWith('other:')) {
+                    str += ` ${channelSubtype.slice(6)}`
+                } else {
+                    const subLabel = channelSubtype.includes('reels') ? '릴스' :
+                        channelSubtype.includes('shorts') ? '숏츠' :
+                            channelSubtype.includes('feed') ? '피드' :
+                                channelSubtype.includes('story') ? '스토리' :
+                                    channelSubtype.includes('longform') ? '롱폼' : '콘텐츠'
+                    str += ` ${subLabel}`
+                }
+            } else {
+                str += ' 콘텐츠'
+            }
+            return str
+        }
+
+        const currentChannelStr = getChannelFormat()
+        if (prevChannelFormat !== currentChannelStr && newContent.includes(prevChannelFormat)) {
+            newContent = newContent.replace(prevChannelFormat, currentChannelStr)
+        }
+
+        // 상태 업데이트
+        if (newContent !== proposalMessage) {
+            setProposalMessage(newContent)
+            setPrevProductName(currentProductStr)
+            setPrevChannelFormat(currentChannelStr)
+        } else {
+            // 본문 치환은 안 일어났어도, prev 추적은 업데이트 해둠 (사용자가 직접 텍스트를 지웠을 때 포맷 꼬임 방지)
+            setPrevProductName(currentProductStr)
+            setPrevChannelFormat(currentChannelStr)
+        }
+    }, [productName, channelName, channelSubtype, open])
+
     const handleSubmit = async (e: React.MouseEvent) => {
         e.preventDefault()
         if (!productName || !proposalMessage) {
@@ -204,8 +261,9 @@ export function MomentProposalDialog({
                             />
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="icon" title="내 제품 불러오기">
+                                    <Button variant="outline" size="sm" title="내 제품 불러오기" className="h-9 px-3 shrink-0 gap-1.5">
                                         <Package className="h-4 w-4" />
+                                        <span className="text-xs">내 제품 불러오기</span>
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-[300px]">

@@ -41,6 +41,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
         secondaryUsageFee: 0,
         productType: 'gift' as 'gift' | 'loan',
         maintenancePeriod: '' as string,
+        videoGuide: '' as string,
     });
 
     // Semantic Date Helpers (Simulated for now, would be better if proposal had specific date fields)
@@ -105,6 +106,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                 secondaryUsageFee: proposal.secondary_usage_fee || 0,
                 productType: (proposal.product_type as 'gift' | 'loan') || 'gift',
                 maintenancePeriod: proposal.condition_maintenance_period || '',
+                videoGuide: (proposal as any).video_guide || '',
             });
         }
     }, [isEditing]); // Removed 'proposal' dependency to prevent infinite loop if proposal ref is unstable
@@ -128,6 +130,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
             secondary_usage_fee: editValues.secondaryUsageFee || 0,
             product_type: editValues.productType,
             condition_maintenance_period: editValues.maintenancePeriod || undefined,
+            video_guide: editValues.videoGuide || undefined,
 
 
             // Keep camelCase for legacy store compat if needed (optional)
@@ -207,14 +210,14 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
     if (isEditing) {
         return (
             <div className="space-y-4 text-sm animate-in fade-in duration-200">
-                <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-xs">조건 수정</span>
-                    <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={handleCancel} className="h-7 w-7 p-0">
-                            <X className="w-4 h-4" />
+                <div className="flex items-center justify-between mb-2 pb-2 border-b border-border/50">
+                    <span className="font-bold text-xs text-primary">🔧 조건 수정하기</span>
+                    <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={handleCancel} className="h-7 px-3 text-xs">
+                            <X className="w-3.5 h-3.5 mr-1" /> 취소
                         </Button>
-                        <Button size="sm" onClick={handleSave} className="h-7 w-7 p-0 bg-primary text-primary-foreground">
-                            <Save className="w-3.5 h-3.5" />
+                        <Button size="sm" onClick={handleSave} className="h-7 px-4 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
+                            <Save className="w-3.5 h-3.5 mr-1" /> 저장하기
                         </Button>
                     </div>
                 </div>
@@ -367,6 +370,27 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                         </div>
                     </div>
 
+                    {/* 영상 가이드 제공 토글 */}
+                    <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">영상 가이드 제공 (Video Guide)</Label>
+                        <div className="flex gap-2">
+                            {(['brand_provided', 'creator_planned'] as const).map(type => (
+                                <button
+                                    type="button"
+                                    key={type}
+                                    onClick={() => setEditValues({ ...editValues, videoGuide: type })}
+                                    className={`flex-1 py-1.5 rounded-md border text-xs font-medium transition-all duration-200
+                                        ${editValues.videoGuide === type
+                                            ? 'bg-primary text-primary-foreground border-primary'
+                                            : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                                        }`}
+                                >
+                                    {type === 'brand_provided' ? '📋 브랜드 가이드 제공' : '🎨 크리에이터 기획'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
 
                     {/* Date Inputs */}
                     {/* Date Inputs */}
@@ -429,13 +453,13 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
             {/* Edit Button for Brand */}
             {canEdit && (
                 <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setIsEditing(true)}
-                    className="absolute -top-1 -right-1 h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute -top-1 -right-1 h-7 text-xs font-semibold px-2 border-primary/20 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 opacity-0 group-hover:opacity-100 transition-all rounded-full shadow-sm z-10"
                     title="조건 수정"
                 >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-3 h-3 mr-1" /> 조건 수정하기
                 </Button>
             )}
 
@@ -655,7 +679,7 @@ function StatusChip({
     const styles = {
         confirmed: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-100",
         waiting: "bg-muted text-muted-foreground border-transparent",
-        action_needed: "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-100 animate-pulse",
+        action_needed: "bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-700 shadow-md shadow-indigo-200 dark:shadow-none font-bold ring-2 ring-offset-2 ring-indigo-400 animate-[pulse_2.5s_ease-in-out_infinite]",
     };
 
     if (onClick) {

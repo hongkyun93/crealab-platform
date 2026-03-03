@@ -25,7 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import type { CreatorMoment, MomentProposal } from "@/lib/types"; // Added MomentProposal
-import { cn, formatDateToMonth } from "@/lib/utils"
+import { cn, formatDateToMonth, formatDateToMonthWithPeriod } from "@/lib/utils"
 import { format } from "date-fns"
 import { ko } from "date-fns/locale"
 import { ArrowLeft, BadgeCheck, Calendar, Clock, FileText, Globe, Instagram, Loader2, Lock, MessageCircle, Music, Package, SearchX, Send, Share2, Sparkles, Tv, Youtube } from "lucide-react"
@@ -303,13 +303,11 @@ ${u.name}의 담당자입니다.
                 }
                 addMomentProposal(optimisticProposal)
 
-                if (sendNotification && momentData.creatorId) {
-                    const notifyContent = `${user.name || "브랜드"}에서 '${momentData.title}' 모먼트에 협업을 제안했습니다.`
-                    await sendNotification(momentData.creatorId, notifyContent, "moment_proposal", String(data.id))
-                }
+                // [Item 6] DB 트리거(notify_influencer_on_moment_proposal)에서 이미 알림을 발송하므로,
+                // 클라이언트에서의 중복 발송 및 에러 유발 가능성(sender_id 누락 등)을 제거합니다.
 
-                // Success
-                toast.success("제안서가 성공적으로 발송되었습니다!")
+                // Success (직관적인 토스트 메시지)
+                toast.success("제안서가 성공적으로 발송되었습니다!\n보낸 제안함에서 상세 내용을 확인할 수 있습니다.")
                 setShowProposalDialog(false)
 
                 // Trigger manual refresh in background (Do not await)
@@ -430,9 +428,25 @@ ${u.name}의 담당자입니다.
                                             {momentData.influencer?.[0]?.toUpperCase() || 'C'}
                                         </div>
                                     )}
-                                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                                    <div className="flex items-center justify-center gap-1.5 mb-2">
                                         <span className="font-bold text-xl">{momentData.influencer}</span>
                                         {momentData.verified && <BadgeCheck className="h-5 w-5 text-blue-500" />}
+                                    </div>
+
+                                    {/* [Item 2] Creator Info Placeholder (To be filled from CreaPlanet) */}
+                                    <div className="flex flex-wrap items-center justify-center gap-2 mt-2 pt-3 border-t border-border/50 text-xs text-muted-foreground w-full">
+                                        <div className="flex flex-col items-center px-2 border-r border-border/50 last:border-0">
+                                            <span className="block text-[10px] text-muted-foreground/70 mb-0.5">팔로워</span>
+                                            <span className="font-semibold text-foreground">{formatFollowers(momentData.followers || 0)}</span>
+                                        </div>
+                                        <div className="flex flex-col items-center px-2 border-r border-border/50 last:border-0">
+                                            <span className="block text-[10px] text-muted-foreground/70 mb-0.5">주요 연령대</span>
+                                            <span className="font-semibold text-foreground">-</span>
+                                        </div>
+                                        <div className="flex flex-col items-center px-2 last:border-0">
+                                            <span className="block text-[10px] text-muted-foreground/70 mb-0.5">평균 인게이지먼트</span>
+                                            <span className="font-semibold text-foreground">-</span>
+                                        </div>
                                     </div>
                                 </div>
                             }
@@ -462,7 +476,7 @@ ${u.name}의 담당자입니다.
                                                 }
                                                 return startStr
                                             })()
-                                            : formatDateToMonth(momentData.momentStartDate))
+                                            : formatDateToMonthWithPeriod(momentData.momentStartDate))
                                         : "미정"}
                                 </span>
                             </div>
@@ -476,7 +490,7 @@ ${u.name}의 담당자입니다.
                                         : (momentData.postingDateExact
                                             ? (user?.id === momentData.creatorId
                                                 ? `${new Date(momentData.postingDateExact).getFullYear()}년 ${new Date(momentData.postingDateExact).getMonth() + 1}월 ${new Date(momentData.postingDateExact).getDate()}일`
-                                                : formatDateToMonth(momentData.postingDateExact))
+                                                : formatDateToMonthWithPeriod(momentData.postingDateExact))
                                             : "미정")}
                                 </span>
                             </div>

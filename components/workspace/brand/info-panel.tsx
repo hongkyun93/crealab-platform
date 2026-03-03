@@ -170,6 +170,30 @@ export function InfoPanel() {
             if (bothConfirmed) {
                 useWorkspaceStore.getState().setCurrentStage('contract');
             }
+
+            // 🔔 알림 전송 로직 (Item 12)
+            try {
+                const creatorId = (proposal as any)?.creator_id || (proposal as any)?.creatorId || (proposal as any)?.influencer?.id;
+                const brandName = (proposal as any)?.brand_name || '브랜드';
+                if (creatorId) {
+                    const msg = bothConfirmed
+                        ? `양측 모두 조건을 확정하여 계약 단계로 이동합니다.`
+                        : newValue
+                            ? `${brandName}가 제시된 조건을 확정했습니다. 크리에이터님의 수락이 필요합니다.`
+                            : `${brandName}가 조건 확정을 취소했습니다.`;
+                    const actionUrl = `/creator?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                    await sendNotification(
+                        creatorId,
+                        msg,
+                        'condition_confirmed',
+                        proposal.id?.toString(),
+                        actionUrl,
+                        { target_tab: bothConfirmed ? 'contract' : 'negotiation' }
+                    );
+                }
+            } catch (err) {
+                console.warn('조건 확정 알림 전송 실패:', err);
+            }
         }
     };
 
