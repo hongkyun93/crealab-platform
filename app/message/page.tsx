@@ -81,7 +81,7 @@ export default function MessagePage() {
                 <div className="grid grid-cols-2 gap-2 text-[11px] bg-white/50 p-2 rounded">
                     <div>
                         <p className="text-muted-foreground">제시 원고료</p>
-                        <p className="font-bold text-emerald-600 font-mono">{proposal.compensation_amount}</p>
+                        <p className="font-bold text-emerald-600 font-mono">{proposal.price_offer ? `${proposal.price_offer.toLocaleString()}원` : '미정'}</p>
                     </div>
                     <div>
                         <p className="text-muted-foreground">희망 채널</p>

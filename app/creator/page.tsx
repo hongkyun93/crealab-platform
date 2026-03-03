@@ -29,7 +29,7 @@ import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { CreatorWorkspaceLayout } from "@/components/workspace/creator/layout"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
-import { ArrowRight, BadgeCheck, Banknote, Bell, Briefcase, Building2, Calendar, ChevronRight, DollarSign, ExternalLink, FileText, Filter, Gift, Image as ImageIcon, LayoutGrid, List, Megaphone, Menu, Package, Pencil, Plus, Rocket, Search, Send, Settings, Shield, ShoppingBag, Sparkles, Star, Table as TableIcon, X } from "lucide-react"
+import { AlertCircle, ArrowRight, BadgeCheck, Banknote, Bell, Briefcase, Building2, Calendar, CheckCircle2, ChevronRight, DollarSign, ExternalLink, FileText, Filter, Gift, Image as ImageIcon, LayoutGrid, List, Megaphone, Menu, MessageSquare, Package, Pencil, Plus, Rocket, Search, Send, Settings, Shield, ShoppingBag, Sparkles, Star, Table as TableIcon, X } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 
@@ -160,6 +160,7 @@ function CreatorDashboardContent() {
 
     // State definitions moved up to avoid ReferenceError
     const [currentView, setCurrentView] = useState(initialView)
+    const [notificationFilter, setNotificationFilter] = useState<'all' | 'action' | 'update' | 'message'>('action')
 
     const [chatProposal, setChatProposal] = useState<any>(null)
     const [isChatOpen, setIsChatOpen] = useState(false)
@@ -1121,7 +1122,7 @@ function CreatorDashboardContent() {
                         <TableBody>
                             {items.map((item) => (
                                 <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => {
-                                    if (type === 'active') {
+                                    if (type === 'active' || ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete'].includes(item.status)) {
                                         setChatProposal(item);
                                         setIsChatOpen(true);
                                     } else {
@@ -1239,7 +1240,7 @@ function CreatorDashboardContent() {
                                                     ? 'border-l-slate-400'
                                                     : 'border-l-emerald-500'}
                         `} onClick={() => {
-                                if (type === 'active') {
+                                if (type === 'active' || ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete'].includes(item.status)) {
                                     setChatProposal(item);
                                     setIsChatOpen(true);
                                 } else {
@@ -1360,7 +1361,7 @@ function CreatorDashboardContent() {
                                                 ? 'border-l-slate-400'
                                                 : 'border-l-emerald-500'}
                     `} onClick={() => {
-                            if (type === 'active') {
+                            if (type === 'active' || ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete'].includes(proposal.status)) {
                                 setChatProposal(proposal);
                                 setIsChatOpen(true);
                             } else {
@@ -1580,10 +1581,11 @@ function CreatorDashboardContent() {
                     "❌ 계약 제안을 거절했습니다."
 
             // Send message with correct IDs
-            await sendMessage(brandId, msg, undefined, chatProposal.workspace_id?.toString())
+            const targetBrandId = brandId || chatProposal?.campaign?.brand_id;
+            await sendMessage(targetBrandId, msg, undefined, chatProposal.workspace_id?.toString())
 
             // 🔔 브랜드에게 계약 관련 알림 발송
-            if (brandId) {
+            if (targetBrandId) {
                 try {
                     const notifContent = status === 'signed'
                         ? `${displayUser?.name}님이 계약서에 서명했습니다. 협업을 시작하세요!`
@@ -1593,7 +1595,7 @@ function CreatorDashboardContent() {
                     const notifType = status === 'signed' ? 'contract_signed'
                         : status === 'negotiating' ? 'contract_negotiating'
                             : 'contract_rejected'
-                    await sendNotification(brandId, notifContent, notifType, chatProposal?.workspace_id?.toString() || proposalId)
+                    await sendNotification(targetBrandId, notifContent, notifType, chatProposal?.workspace_id?.toString() || proposalId)
                 } catch (notifErr) {
                     console.warn('알림 발송 실패 (무시):', notifErr)
                 }
@@ -1881,12 +1883,15 @@ function CreatorDashboardContent() {
             await sendMessage(brandId, notificationContent, undefined, chatProposal.workspace_id?.toString())
 
             // 🔔 Send notification to brand
-            await sendNotification(
-                brandId,
-                `${displayUser?.name}님이 콘텐츠를 제출했습니다.`,
-                'content_submission',
-                chatProposal?.workspace_id?.toString() || proposalId
-            )
+            const targetBrandId = brandId || chatProposal?.campaign?.brand_id;
+            if (targetBrandId) {
+                await sendNotification(
+                    targetBrandId,
+                    `${displayUser?.name}님이 콘텐츠를 제출했습니다.`,
+                    'content_submission',
+                    chatProposal?.workspace_id?.toString() || proposalId
+                )
+            }
 
             // Refresh feedback list
             if (chatProposal.workspace_id) {
@@ -2199,14 +2204,15 @@ function CreatorDashboardContent() {
                     // Send notification/message to brand
                     if (newStatus === 'accepted') {
                         // Pass proposal.id as 4th argument (productApplicationId)
-                        await sendMessage(proposal.brand_id, `✅ [시스템 알림] 크리에이터가 협업 제안을 수락했습니다! 대화를 시작해보세요.`, undefined, proposal.workspace_id?.toString())
+                        const targetBrandId = proposal.brand_id || proposal.brandId || proposal.campaign?.brand_id;
+                        await sendMessage(targetBrandId, `✅ [시스템 알림] 크리에이터가 협업 제안을 수락했습니다! 대화를 시작해보세요.`, undefined, proposal.workspace_id?.toString())
 
                         // 🔔 브랜드에게 제안 수락 알림
                         try {
                             const creatorName = (displayUser as any)?.display_name || displayUser?.name || '크리에이터'
-                            if (proposal.brand_id) {
+                            if (targetBrandId) {
                                 await sendNotification(
-                                    proposal.brand_id,
+                                    targetBrandId,
                                     `${creatorName}님이 '${proposal.product_name || '협업 제안'}'을 수락했습니다! 지금 대화를 시작해보세요.`,
                                     'proposal_accepted',
                                     proposal.workspace_id?.toString() || proposal.id.toString()
@@ -2283,14 +2289,15 @@ function CreatorDashboardContent() {
                     setChatProposal((prev: any) => prev ? { ...prev, status: 'rejected' } : prev)
 
                     // Send polite rejection message
-                    await sendMessage(proposal.brand_id, `안녕하세요 ${proposal.brand_name}님, 제안 주셔서 감사합니다.\n아쉽게도 현재 제 일정 및 상황상 참여가 어려울 것 같습니다. 😢\n다음에 더 좋은 기회로 뵙기를 희망합니다!`, undefined, proposal.workspace_id?.toString())
+                    const targetBrandId = proposal.brand_id || proposal.brandId || proposal.campaign?.brand_id;
+                    await sendMessage(targetBrandId, `안녕하세요 ${proposal.brand_name}님, 제안 주셔서 감사합니다.\n아쉽게도 현재 제 일정 및 상황상 참여가 어려울 것 같습니다. 😢\n다음에 더 좋은 기회로 뵙기를 희망합니다!`, undefined, proposal.workspace_id?.toString())
 
                     // 🔔 브랜드에게 거절 알림
                     try {
                         const creatorName = (displayUser as any)?.display_name || displayUser?.name || '크리에이터'
-                        if (proposal.brand_id) {
+                        if (targetBrandId) {
                             await sendNotification(
-                                proposal.brand_id,
+                                targetBrandId,
                                 `${creatorName}님이 '${proposal.product_name || '제안'}'을 거절했습니다.`,
                                 'proposal_rejected',
                                 proposal.workspace_id?.toString() || proposal.id.toString()
@@ -2403,7 +2410,7 @@ function CreatorDashboardContent() {
                 <div className="grid grid-cols-2 gap-2 text-[11px] bg-white/50 p-2 rounded">
                     <div>
                         <p className="text-muted-foreground">제시 원고료</p>
-                        <p className="font-bold text-emerald-600 font-mono">{proposal.compensation_amount}</p>
+                        <p className="font-bold text-emerald-600 font-mono">{proposal.price_offer ? `${proposal.price_offer.toLocaleString()}원` : '미정'}</p>
                     </div>
                     <div>
                         <p className="text-muted-foreground">희망 채널</p>
@@ -2970,7 +2977,42 @@ function CreatorDashboardContent() {
                 )
 
             case "notifications":
-                const sortedNotifs = [...(notifications || [])].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                const getCreatorNotificationStyle = (type: string) => {
+                    const actionTypes = ['contract_negotiating', 'content_revision', 'proposal_update', 'application_received', 'shipping_address_saved', 'shipping_started', 'condition_confirmed']
+                    const successTypes = ['contract_signed', 'proposal_accepted', 'collaboration_complete', 'collaboration_final_complete', 'content_approved', 'payment_confirmed', 'settlement_paid', 'delivery_confirmed']
+
+                    if (actionTypes.includes(type)) {
+                        return { icon: <AlertCircle className="w-5 h-5 text-red-500" />, bg: "bg-red-50/50 dark:bg-red-900/10", border: "border-l-4 border-red-500" }
+                    } else if (successTypes.includes(type)) {
+                        return { icon: <CheckCircle2 className="w-5 h-5 text-green-500" />, bg: "bg-green-50/50 dark:bg-green-900/10", border: "border-l-4 border-green-500" }
+                    }
+                    return { icon: <MessageSquare className="w-5 h-5 text-muted-foreground" />, bg: "bg-transparent", border: "border-l-4 border-transparent" }
+                }
+
+                const creatorActionTypes = [
+                    'proposal_received', 'moment_proposal',
+                    'proposal_update', 'contract_signed', 'shipping_started',
+                    'delivery_confirmed', 'content_revision', 'content_approved',
+                    'collaboration_complete'
+                ];
+
+                const isCreatorAction = (type: string) => creatorActionTypes.includes(type);
+                const isCreatorMessage = (type: string) => ['new_message', 'feedback_received'].includes(type);
+
+                const filteredNotifs = [...(notifications || [])]
+                    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .filter(n => {
+                        if (notificationFilter === 'all') return true;
+                        if (notificationFilter === 'action') return isCreatorAction(n.type);
+                        if (notificationFilter === 'message') return isCreatorMessage(n.type);
+                        if (notificationFilter === 'update') return !isCreatorAction(n.type) && !isCreatorMessage(n.type);
+                        return true;
+                    })
+
+                const unreadActionCount = (notifications || []).filter(n => isCreatorAction(n.type) && !n.is_read).length;
+                const unreadMessageCount = (notifications || []).filter(n => isCreatorMessage(n.type) && !n.is_read).length;
+                const unreadUpdateCount = (notifications || []).filter(n => !isCreatorAction(n.type) && !isCreatorMessage(n.type) && !n.is_read).length;
+
                 return (
                     <div className="space-y-6">
                         <div>
@@ -2979,40 +3021,84 @@ function CreatorDashboardContent() {
                             </h1>
                             <p className="text-sm text-muted-foreground mt-1">브랜드와의 협업 진행 상황을 실시간으로 확인하세요.</p>
                         </div>
+
+                        <div className="flex border-b text-sm font-medium mb-4">
+                            <button
+                                onClick={() => setNotificationFilter('action')}
+                                className={`flex-1 py-3 text-center transition-colors relative ${notificationFilter === 'action' ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                할 일 {unreadActionCount > 0 && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadActionCount}</span>}
+                                {notificationFilter === 'action' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                            </button>
+                            <button
+                                onClick={() => setNotificationFilter('update')}
+                                className={`flex-1 py-3 text-center transition-colors relative ${notificationFilter === 'update' ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                업데이트 {unreadUpdateCount > 0 && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadUpdateCount}</span>}
+                                {notificationFilter === 'update' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                            </button>
+                            <button
+                                onClick={() => setNotificationFilter('message')}
+                                className={`flex-1 py-3 text-center transition-colors relative ${notificationFilter === 'message' ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                메시지 {unreadMessageCount > 0 && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadMessageCount}</span>}
+                                {notificationFilter === 'message' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                            </button>
+                            <button
+                                onClick={() => setNotificationFilter('all')}
+                                className={`flex-1 py-3 text-center transition-colors relative ${notificationFilter === 'all' ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                전체보기
+                                {notificationFilter === 'all' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                            </button>
+                        </div>
+
                         <div className="space-y-3">
-                            {sortedNotifs.length > 0 ? (
-                                sortedNotifs.map((notif: any) => (
-                                    <div
-                                        key={notif.id}
-                                        className={`p-4 bg-card border rounded-2xl flex items-start gap-4 cursor-pointer hover:shadow-md transition-all group ${!notif.is_read ? 'ring-2 ring-primary/20' : 'opacity-70'}`}
-                                        onClick={() => {
-                                            // 읽음 처리 (백그라운드)
-                                            if (!notif.is_read) markAsRead(notif.id).catch(() => { })
-                                            // type 기반 router.push 딥링크
-                                            const ref = notif.reference_id
-                                            const inboundTypes = ['proposal_received', 'moment_proposal']
-                                            const outboundTypes = ['proposal_rejected', 'condition_confirmed', 'contract_negotiating', 'contract_rejected']
-                                            const settlementTypes = ['collaboration_complete', 'collaboration_final_complete', 'settlement_paid']
-                                            let tab = 'active'
-                                            if (inboundTypes.includes(notif.type)) tab = 'inbound'
-                                            else if (outboundTypes.includes(notif.type)) tab = 'outbound'
-                                            if (settlementTypes.includes(notif.type)) {
-                                                router.push(`/creator?view=earnings${ref ? `&proposalId=${ref}` : ''}`)
-                                            } else {
-                                                router.push(`/creator?view=proposals&workspaceTab=${tab}${ref ? `&proposalId=${ref}` : ''}`)
-                                            }
-                                        }}
-                                    >
-                                        <div className={`w-2 h-2 mt-2 shrink-0 rounded-full ${notif.is_read ? 'bg-gray-300' : 'bg-red-500'}`} />
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium group-hover:text-primary transition-colors">{notif.content}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">{new Date(notif.created_at).toLocaleDateString()}</p>
+                            {filteredNotifs.length > 0 ? (
+                                filteredNotifs.map((notif: any) => {
+                                    const style = getCreatorNotificationStyle(notif.type)
+                                    return (
+                                        <div
+                                            key={notif.id}
+                                            className={`p-4 bg-card rounded-2xl flex items-start gap-4 cursor-pointer hover:shadow-md transition-all group ${!notif.is_read ? 'ring-2 ring-primary/20' : 'border opacity-70'} ${style.bg} ${style.border}`}
+                                            onClick={() => {
+                                                if (!notif.is_read) markAsRead(notif.id).catch(() => { })
+                                                if (notif.action_url) {
+                                                    router.push(notif.action_url)
+                                                    return
+                                                }
+                                                const ref = notif.reference_id
+                                                const inboundTypes = ['proposal_received', 'moment_proposal']
+                                                const outboundTypes = ['proposal_rejected', 'condition_confirmed', 'contract_negotiating', 'contract_rejected']
+                                                const settlementTypes = ['collaboration_complete', 'collaboration_final_complete', 'settlement_paid']
+                                                let tab = 'active'
+                                                if (inboundTypes.includes(notif.type)) tab = 'inbound'
+                                                else if (outboundTypes.includes(notif.type)) tab = 'outbound'
+                                                if (settlementTypes.includes(notif.type)) {
+                                                    router.push(`/creator?view=earnings${ref ? `&proposalId=${ref}` : ''}`)
+                                                } else {
+                                                    router.push(`/creator?view=proposals&workspaceTab=${tab}${ref ? `&proposalId=${ref}` : ''}`)
+                                                }
+                                            }}
+                                        >
+                                            <div className="mt-1 shrink-0">
+                                                {style.icon}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-sm group-hover:text-primary transition-colors ${!notif.is_read ? 'font-bold text-foreground' : 'font-medium'}`}>{notif.content}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">{new Date(notif.created_at).toLocaleDateString()}</p>
+                                            </div>
+                                            {!notif.is_read && (
+                                                <div className="shrink-0 mt-2">
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                                </div>
+                                            )}
                                         </div>
-                                        <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 self-center" />
-                                    </div>
-                                ))
+                                    )
+                                })
                             ) : (
-                                <div className="p-8 text-center text-muted-foreground border border-dashed rounded-lg">
+                                <div className="p-12 text-center text-muted-foreground border border-dashed rounded-xl bg-muted/10">
+                                    <Bell className="w-10 h-10 mx-auto opacity-20 mb-4" />
                                     새로운 알림이 없습니다.
                                 </div>
                             )}
@@ -3632,13 +3718,13 @@ function CreatorDashboardContent() {
 본 계약은 '갑'(${chatProposal?.brand_name || '브랜드'})과 '을'(${user?.name || '크리에이터'})간의 콘텐츠 제작 및 홍보 업무에 관한 제반 사항을 규정함을 목적으로 한다.
 
 제 2조 [원고료 및 지급]
-1. '갑'은 '을'에게 콘텐츠 제작의 대가로 금 ${chatProposal?.compensation_amount || '0'}을 지급한다.
-2. 지급 시기는 콘텐츠 업로드 후 30일 이내로 한다.
+1. '갑'은 '을'에게 콘텐츠 제작의 대가로 금 ${chatProposal?.price_offer ? `${chatProposal.price_offer.toLocaleString()}원` : '0원'}을 지급한다.
+                                    2. 지급 시기는 콘텐츠 업로드 후 30일 이내로 한다.
 
-제 3조 [콘텐츠 제작]
-'을'은 '갑'의 가이드를 준수하여 고품질의 콘텐츠를 제작하며, 합의된 일정 내에 업로드한다.
+                                    제 3조 [콘텐츠 제작]
+                                    '을'은 '갑'의 가이드를 준수하여 고품질의 콘텐츠를 제작하며, 합의된 일정 내에 업로드한다.
 
-... (중략) ...
+                                    ... (중략) ...
 
 상기 내용을 확인하였으며, 계약에 동의합니다.`}
                                 </div>
@@ -3726,7 +3812,7 @@ function CreatorDashboardContent() {
                                 channel_subtype: data.channelSubtype,
                                 channel_url: data.channelUrl,
                                 product_type: 'ad',
-                                cost: data.desiredCost ? parseInt(data.desiredCost) : 0,
+                                price_offer: data.desiredCost ? parseInt(data.desiredCost) : 0,
                                 motivation: data.motivation,
                                 content_plan: data.contentPlan,
                                 portfolioLinks: data.portfolioLinks ? data.portfolioLinks.split("\n").map(l => l.trim()).filter(Boolean) : [],

@@ -10,6 +10,7 @@ import { VideoReviewPanel } from '../common/VideoReviewPanel';
 
 import { useUnifiedProvider } from '@/components/providers/unified-provider';
 import { SmartContractPanel } from '../common/smart-contract-panel';
+import { RealtimeWorkspaceSync } from '../common/realtime-workspace-sync';
 
 interface CreatorWorkspaceLayoutProps {
     className?: string;
@@ -18,6 +19,7 @@ interface CreatorWorkspaceLayoutProps {
 export function CreatorWorkspaceLayout({ className }: CreatorWorkspaceLayoutProps) {
     return (
         <>
+            <RealtimeWorkspaceSync />
             <div className={cn("md:hidden flex flex-col h-full w-full", className)}>
                 <CreatorMobileLayout />
             </div>
@@ -43,6 +45,10 @@ function CreatorMobileLayout() {
             creator_signed_at: new Date().toISOString(),
             contract_status: proposal.brand_signature ? 'signed' : 'partial',
         };
+
+        // Optimistic UI update
+        useWorkspaceStore.getState().updateProposal(updates);
+
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
@@ -51,8 +57,10 @@ function CreatorMobileLayout() {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
+
         if (success) {
-            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        } else {
             refreshData();
         }
     };
@@ -64,6 +72,10 @@ function CreatorMobileLayout() {
             creator_signed_at: null,
             contract_status: proposal.brand_signature ? 'partial' : 'none',
         };
+
+        // Optimistic UI update
+        useWorkspaceStore.getState().updateProposal(updates);
+
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
@@ -72,8 +84,10 @@ function CreatorMobileLayout() {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
+
         if (success) {
-            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        } else {
             refreshData();
         }
     };

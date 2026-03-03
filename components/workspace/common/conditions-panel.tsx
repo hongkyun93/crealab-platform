@@ -89,7 +89,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
     useEffect(() => {
         if (isEditing && proposal) {
             setEditValues({
-                priceOffer: proposal.price_offer || (proposal.compensation_amount ? parseInt(proposal.compensation_amount.replace(/[^0-9]/g, '')) : 0) || 0,
+                priceOffer: proposal.price_offer || 0,
                 productName: proposal.product_name || proposal.productName || (proposal.productId ? '제품명 로딩중...' : ''),
                 // Use stored dates if available (check both camelCase and snake_case), otherwise fallback to logic
                 dateReceived: proposal.condition_product_receipt_date || proposal.date_received || defaultDates.receipt,
@@ -154,7 +154,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
     // View Data (Prioritize saved dates over calculated ones)
     const product = proposal?.product_name || proposal?.productName || (proposal?.productId ? '제품명 로딩중...' : '협업 제품 정보 없음');
     // [FIX] Unified Logic: price_offer is master. Fallback to parsing string if needed.
-    const priceOffer = proposal?.price_offer || (proposal?.compensation_amount ? parseInt(proposal.compensation_amount.replace(/[^0-9]/g, '')) : 0) || 0;
+    const priceOffer = proposal?.price_offer || 0;
     const formattedCost = priceOffer > 0
         ? `${priceOffer.toLocaleString()}원`
         : '협의 필요';

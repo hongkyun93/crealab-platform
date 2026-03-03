@@ -12,6 +12,7 @@ import { InfoPanel } from './info-panel';
 import { BrandDesktopLayout } from './desktop-layout';
 import { BrandMobileTabs } from './mobile-tabs';
 import { ProgressBar } from '../common/progress-bar';
+import { RealtimeWorkspaceSync } from '../common/realtime-workspace-sync';
 
 interface BrandWorkspaceLayoutProps {
     className?: string;
@@ -20,6 +21,7 @@ interface BrandWorkspaceLayoutProps {
 export function BrandWorkspaceLayout({ className }: BrandWorkspaceLayoutProps) {
     return (
         <>
+            <RealtimeWorkspaceSync />
             <div className={cn("md:hidden flex flex-col h-full w-full", className)}>
                 <BrandMobileLayout />
             </div>
@@ -45,6 +47,10 @@ function BrandMobileLayout() {
             brand_signed_at: new Date().toISOString(),
             contract_status: proposal.creator_signature ? 'signed' : 'partial',
         };
+
+        // Optimistic UI update
+        useWorkspaceStore.getState().updateProposal(updates);
+
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
@@ -53,8 +59,11 @@ function BrandMobileLayout() {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
+
         if (success) {
-            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        } else {
+            // Revert on failure (optional, but good practice. For now, we trust it works or refresh fixes it)
             refreshData();
         }
     };
@@ -78,6 +87,10 @@ function BrandMobileLayout() {
             brand_signed_at: null,
             contract_status: proposal.creator_signature ? 'partial' : 'none',
         };
+
+        // Optimistic UI update
+        useWorkspaceStore.getState().updateProposal(updates);
+
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
@@ -86,8 +99,10 @@ function BrandMobileLayout() {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
+
         if (success) {
-            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        } else {
             refreshData();
         }
     };

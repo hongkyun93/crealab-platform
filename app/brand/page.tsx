@@ -44,7 +44,7 @@ import { BrandWorkspaceLayout } from "@/components/workspace/brand/layout"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
 import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
 import {
-    ArrowRight, AtSign, BadgeCheck, Bell, Briefcase, Calculator, Camera, CheckCircle2, ChevronRight, FileText, Info, Loader2, Package, Pencil,
+    AlertCircle, ArrowRight, AtSign, BadgeCheck, Bell, Briefcase, Calculator, Camera, CheckCircle2, ChevronRight, FileText, Info, Loader2, MessageSquare, Package, Pencil,
     Search, Send, Settings, ShoppingBag, Upload, Wallet, X
 } from "lucide-react"; // Explicit import for debugging
 import dynamic from 'next/dynamic'
@@ -109,6 +109,7 @@ function BrandDashboardContent() {
     const initialViewRaw = searchParams.get('view') || "discover"
     const initialView = initialViewRaw === "dashboard" ? "my-campaigns" : initialViewRaw
     const [currentView, setCurrentView] = useState(initialView)
+    const [notificationFilter, setNotificationFilter] = useState<'all' | 'action' | 'update' | 'message'>('action')
     const [sortOrder, setSortOrder] = useState("latest")
 
     // [딥링크] URL의 view 파라미터 변경 시 currentView 동기화 (알림 클릭 시 필요)
@@ -531,22 +532,26 @@ function BrandDashboardContent() {
                 ? "✅ [시스템 알림] 브랜드가 조건을 확정했습니다. 양측 확정이 완료되어 계약서 작성이 시작됩니다."
                 : "✅ [시스템 알림] 브랜드가 조건을 확정했습니다. 크리에이터님의 확정을 기다리고 있습니다.";
 
-            await sendMessage(
-                chatProposal.creator_id || chatProposal.creatorId || "creator",
-                msgContent,
-                undefined,
-                chatProposal.workspace_id?.toString()
-            );
+            const targetCreatorId = chatProposal.creator_id || chatProposal.creatorId || chatProposal.influencer?.id;
 
-            // 3. Notify Creator
-            await sendNotification(
-                chatProposal.creator_id || chatProposal.creatorId || "creator",
-                isMutualConfirmed
-                    ? "조건 협의가 완료되었습니다. 계약서를 작성해주세요."
-                    : `${user?.name}님이 조건을 확정했습니다.`,
-                "proposal_update",
-                chatProposal.workspace_id?.toString() || pId
-            );
+            if (targetCreatorId) {
+                await sendMessage(
+                    targetCreatorId,
+                    msgContent,
+                    undefined,
+                    chatProposal.workspace_id?.toString()
+                );
+
+                // 3. Notify Creator
+                await sendNotification(
+                    targetCreatorId,
+                    isMutualConfirmed
+                        ? "조건 협의가 완료되었습니다. 계약서를 작성해주세요."
+                        : `${user?.name}님이 조건을 확정했습니다.`,
+                    "proposal_update",
+                    chatProposal.workspace_id?.toString() || pId
+                );
+            }
 
             // Force refresh to update dashboard lists (e.g., move to 'confirmed' status)
             if (refreshData) await refreshData();
@@ -988,7 +993,7 @@ function BrandDashboardContent() {
                 product_url: productLink,
                 product_type: productType,
                 video_guide: videoGuide,
-                compensation_amount: compensation,
+                price_offer: compensation,
                 has_incentive: hasIncentive,
                 incentive_detail: incentiveDetail,
                 moment_id: selectedCreator?.id,
@@ -1422,7 +1427,41 @@ function BrandDashboardContent() {
                     />
                 )
             case "notifications":
-                const sortedNotifications = [...(notifications || [])].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                const getBrandNotificationStyle = (type: string) => {
+                    const actionTypes = ['contract_negotiating', 'content_revision', 'proposal_update', 'application_received', 'shipping_address_saved', 'shipping_started', 'condition_confirmed']
+                    const successTypes = ['contract_signed', 'proposal_accepted', 'collaboration_complete', 'collaboration_final_complete', 'content_approved', 'payment_confirmed', 'settlement_paid', 'delivery_confirmed']
+
+                    if (actionTypes.includes(type)) {
+                        return { icon: <AlertCircle className="w-5 h-5 text-red-500" />, bg: "bg-red-50/50 dark:bg-red-900/10", border: "border-l-4 border-red-500", ring: "ring-2 ring-red-500/20" }
+                    } else if (successTypes.includes(type)) {
+                        return { icon: <CheckCircle2 className="w-5 h-5 text-green-500" />, bg: "bg-green-50/50 dark:bg-green-900/10", border: "border-l-4 border-green-500", ring: "ring-2 ring-green-500/20" }
+                    }
+                    return { icon: <MessageSquare className="w-5 h-5 text-muted-foreground" />, bg: "bg-transparent", border: "border-l-4 border-transparent", ring: "ring-2 ring-primary/20" }
+                }
+
+                const brandActionTypes = [
+                    'application_received', 'application_updated',
+                    'contract_negotiating', 'shipping_address_saved',
+                    'performance_submitted', 'condition_confirmed'
+                ];
+
+                const isBrandAction = (type: string) => brandActionTypes.includes(type);
+                const isBrandMessage = (type: string) => ['new_message', 'feedback_received'].includes(type);
+
+                const filteredNotifications = [...(notifications || [])]
+                    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .filter(n => {
+                        if (notificationFilter === 'all') return true;
+                        if (notificationFilter === 'action') return isBrandAction(n.type);
+                        if (notificationFilter === 'message') return isBrandMessage(n.type);
+                        if (notificationFilter === 'update') return !isBrandAction(n.type) && !isBrandMessage(n.type);
+                        return true;
+                    })
+
+                const unreadActionCount = (notifications || []).filter(n => isBrandAction(n.type) && !n.is_read).length;
+                const unreadMessageCount = (notifications || []).filter(n => isBrandMessage(n.type) && !n.is_read).length;
+                const unreadUpdateCount = (notifications || []).filter(n => !isBrandAction(n.type) && !isBrandMessage(n.type) && !n.is_read).length;
+
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -1434,65 +1473,88 @@ function BrandDashboardContent() {
                             </div>
                         </div>
 
-                        {sortedNotifications.length === 0 ? (
+                        <div className="flex border-b text-sm font-medium mb-4">
+                            <button
+                                onClick={() => setNotificationFilter('action')}
+                                className={`flex-1 py-3 text-center transition-colors relative ${notificationFilter === 'action' ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                할 일 {unreadActionCount > 0 && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadActionCount}</span>}
+                                {notificationFilter === 'action' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                            </button>
+                            <button
+                                onClick={() => setNotificationFilter('update')}
+                                className={`flex-1 py-3 text-center transition-colors relative ${notificationFilter === 'update' ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                업데이트 {unreadUpdateCount > 0 && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadUpdateCount}</span>}
+                                {notificationFilter === 'update' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                            </button>
+                            <button
+                                onClick={() => setNotificationFilter('message')}
+                                className={`flex-1 py-3 text-center transition-colors relative ${notificationFilter === 'message' ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                메시지 {unreadMessageCount > 0 && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadMessageCount}</span>}
+                                {notificationFilter === 'message' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                            </button>
+                            <button
+                                onClick={() => setNotificationFilter('all')}
+                                className={`flex-1 py-3 text-center transition-colors relative ${notificationFilter === 'all' ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                전체보기
+                                {notificationFilter === 'all' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                            </button>
+                        </div>
+
+                        {filteredNotifications.length === 0 ? (
                             <Card className="p-20 text-center border-dashed bg-muted/30/50 rounded-[40px] border-2">
                                 <Bell className="mx-auto h-16 w-16 text-slate-200 mb-6" />
                                 <h3 className="text-xl font-bold text-foreground">새로운 알림이 없습니다.</h3>
-                                <p className="text-sm text-muted-foreground/70 mt-2">중요한 협업 업데이트가 발생하면 여기에 실시간으로 표시됩니다.</p>
+                                <p className="text-sm text-muted-foreground/70 mt-2">해당 탭에 표시할 주요 업데이트가 없습니다.</p>
                             </Card>
                         ) : (
                             <div className="space-y-4">
-                                {sortedNotifications.map((n: any) => (
-                                    <Card
-                                        key={n.id}
-                                        className={`overflow-hidden border-0 shadow-sm transition-all hover:shadow-md cursor-pointer group rounded-3xl ${n.is_read ? 'bg-card opacity-70' : 'bg-card ring-2 ring-primary/20'}`}
-                                        onClick={() => {
-                                            // 읽음 처리 (백그라운드)
-                                            if (!n.is_read) {
-                                                markAsRead(n.id).catch(() => { })
-                                            }
-                                            // router.push로 딥링크 → 기존 useEffect가 proposal 자동 오픈
-                                            const ref = n.reference_id
-                                            const activeTypes = ['shipping_address_saved', 'delivery_confirmed', 'content_submission', 'content_final_uploaded', 'content_clean_uploaded', 'performance_submitted', 'new_message', 'contract_signed', 'proposal_accepted']
-                                            const inboundTypes = ['application_received', 'application_updated', 'proposal_received', 'condition_confirmed']
-                                            if (activeTypes.includes(n.type)) {
-                                                router.push(`/brand?view=proposals&workspaceTab=active${ref ? `&proposalId=${ref}` : ''}`)
-                                            } else if (inboundTypes.includes(n.type)) {
-                                                router.push(`/brand?view=proposals&workspaceTab=inbound${ref ? `&proposalId=${ref}` : ''}`)
-                                            } else if (n.type === 'payment_confirmed' || n.type === 'payment_pending' || n.type === 'deposit_confirmed') {
-                                                router.push('/brand?view=deposit')
-                                            } else {
-                                                router.push('/brand?view=proposals')
-                                            }
-                                        }}
-                                    >
-                                        <CardContent className="p-6 flex items-start gap-5">
-                                            <div className={`mt-1 h-14 w-14 shrink-0 rounded-[22px] flex items-center justify-center transition-all group-hover:scale-110 shadow-sm ${n.is_read ? 'bg-muted text-muted-foreground/70' : 'bg-primary/10 text-primary'}`}>
-                                                {(n.content || "").includes('지원') || (n.content || "").includes('제안') ? <Briefcase className="h-7 w-7" /> :
-                                                    (n.content || "").includes('계약') || (n.content || "").includes('서명') ? <FileText className="h-7 w-7" /> :
-                                                        (n.content || "").includes('배송') || (n.content || "").includes('운송장') ? <Package className="h-7 w-7" /> : <Bell className="h-7 w-7" />}
+                                {filteredNotifications.map((n: any) => {
+                                    const style = getBrandNotificationStyle(n.type)
+                                    return (
+                                        <div
+                                            key={n.id}
+                                            className={`p-4 bg-card rounded-2xl flex items-start gap-4 cursor-pointer hover:shadow-md transition-all group ${!n.is_read ? 'ring-2 ring-primary/20' : 'border opacity-70'} ${style.bg} ${style.border}`}
+                                            onClick={() => {
+                                                if (!n.is_read) {
+                                                    markAsRead(n.id).catch(() => { })
+                                                }
+                                                if (n.action_url) {
+                                                    router.push(n.action_url)
+                                                    return
+                                                }
+                                                const ref = n.reference_id
+                                                const activeTypes = ['shipping_address_saved', 'delivery_confirmed', 'content_submission', 'content_final_uploaded', 'content_clean_uploaded', 'performance_submitted', 'new_message', 'contract_signed', 'proposal_accepted']
+                                                const inboundTypes = ['application_received', 'application_updated', 'proposal_received', 'condition_confirmed']
+                                                if (activeTypes.includes(n.type)) {
+                                                    router.push(`/brand?view=proposals&workspaceTab=active${ref ? `&proposalId=${ref}` : ''}`)
+                                                } else if (inboundTypes.includes(n.type)) {
+                                                    router.push(`/brand?view=proposals&workspaceTab=inbound${ref ? `&proposalId=${ref}` : ''}`)
+                                                } else if (n.type === 'payment_confirmed' || n.type === 'payment_pending' || n.type === 'deposit_confirmed') {
+                                                    router.push('/brand?view=deposit')
+                                                } else {
+                                                    router.push('/brand?view=proposals')
+                                                }
+                                            }}
+                                        >
+                                            <div className="mt-1 shrink-0">
+                                                {style.icon}
                                             </div>
-                                            <div className="flex-1 min-w-0 py-1">
-                                                <div className="flex justify-between items-center mb-1.5">
-                                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Notification</span>
-                                                    <span className="text-[10px] font-bold text-muted-foreground/70 bg-muted/30 border border-border/50 px-3 py-1 rounded-full">{new Date(n.created_at).toLocaleDateString()}</span>
-                                                </div>
-                                                <p className="text-[15px] font-bold text-foreground leading-snug mb-2 group-hover:text-primary transition-colors">{n.content}</p>
-                                                <div className="flex items-center gap-2">
-                                                    {!n.is_read && (
-                                                        <Badge className="text-[9px] h-5 px-2 font-black bg-primary rounded-lg shadow-md border-0 uppercase">New Update</Badge>
-                                                    )}
-                                                    <span className="text-[11px] text-muted-foreground/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">워크스페이스로 이동하여 확인하기 →</span>
-                                                </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-sm group-hover:text-primary transition-colors ${!n.is_read ? 'font-bold text-foreground' : 'font-medium'}`}>{n.content}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
                                             </div>
-                                            <div className="self-center">
-                                                <div className="h-10 w-10 rounded-full bg-muted/30 border border-border/50 flex items-center justify-center text-slate-300 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
-                                                    <ArrowRight className="h-5 w-5" />
+                                            {!n.is_read && (
+                                                <div className="shrink-0 mt-2">
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500" />
                                                 </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                            )}
+                                        </div>
+                                    )
+                                })}
                             </div>
                         )}
                     </div>

@@ -70,9 +70,11 @@ function formatRawMessages(data: any[]): LocalMessage[] {
 
 interface ChatAreaProps {
     className?: string;
+    overrideOtherId?: string;
+    isAdminChat?: boolean;
 }
 
-export function ChatArea({ className }: ChatAreaProps) {
+export function ChatArea({ className, overrideOtherId, isAdminChat }: ChatAreaProps) {
     const proposal = useWorkspaceStore((state) => state.proposal);
     const { sendMessage, user } = useUnifiedProvider();
     const { supabase } = useAuth();
@@ -107,6 +109,7 @@ export function ChatArea({ className }: ChatAreaProps) {
 
     // 상대방 user ID
     const otherId: string | undefined = useMemo(() => {
+        if (overrideOtherId) return overrideOtherId;
         if (!p || !user?.id) return undefined;
         const brandUserId: string | undefined = p.brand_id || p.brandId || p.campaign?.brand_id;
         const creatorUserId: string | undefined = p.creator_id || p.creatorId;
@@ -114,7 +117,7 @@ export function ChatArea({ className }: ChatAreaProps) {
         if (user.id === creatorUserId) return brandUserId;
         if (user.role === 'brand') return creatorUserId;
         return brandUserId;
-    }, [p, user?.id, user?.role]);
+    }, [p, user?.id, user?.role, overrideOtherId]);
 
     // ── 메시지 fetch (DB 레벨에서 워크스페이스 단위 격리) ──
     const fetchLocalMessages = useCallback(async () => {
@@ -130,12 +133,20 @@ export function ChatArea({ className }: ChatAreaProps) {
             let data: any[] | null = null;
 
             if (workspaceId) {
-                // [1순위] workspace_id로 정확히 격리 — 가장 안전한 방법
-                const { data: d } = await supabase
+                // [1순위] workspace_id로 격리 (어드민 챗일 경우 해당 pair만 필터)
+                let query = supabase
                     .from('messages')
                     .select(SELECT)
                     .eq('workspace_id', workspaceId)
-                    .order('created_at', { ascending: true });
+
+                if (isAdminChat && otherId && user?.id) {
+                    query = query.or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
+                } else if (!isAdminChat) {
+                    // 일반 채팅은 어드민이 개입한 메시지를 숨겨야 함
+                    query = query.not('sender_id', 'eq', 'b7f8df2d-0b79-4bc7-b8d1-5f21295b9a47') // Optional: hardcoded admin check or rely on pair
+                }
+
+                const { data: d } = await query.order('created_at', { ascending: true });
                 data = d;
             } else if (proposalIdStr && !isMomentProposal && !isCampaignProposal) {
                 // [2순위] product_application 전용: proposal_id FK 사용
@@ -179,11 +190,11 @@ export function ChatArea({ className }: ChatAreaProps) {
         if (!workspaceId && !otherId) return;
 
         const channelName = workspaceId
-            ? `workspace-chat-${workspaceId}`
+            ? isAdminChat ? `workspace-admin-chat-${workspaceId}-${user?.id}` : `workspace-chat-${workspaceId}`
             : `legacy-chat-${[user?.id, otherId].sort().join('-')}`;
 
         const filter = workspaceId
-            ? `workspace_id=eq.${workspaceId}`
+            ? isAdminChat ? `workspace_id=eq.${workspaceId}` : `workspace_id=eq.${workspaceId}` // For simplicity, rely on frontend filtering or strict RLS. We pull all for workspace and filter.
             : `receiver_id=eq.${user?.id}`;
 
         const channel = supabase

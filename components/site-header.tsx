@@ -19,10 +19,11 @@ import {
     PopoverContent,
     PopoverTrigger
 } from "@/components/ui/popover"
-import { Bell, Briefcase, Check, ChevronDown, LogOut, Menu, Plus, Settings, Shield, User } from "lucide-react"
+import { Bell, Briefcase, Check, ChevronDown, LogOut, Menu, Plus, Settings, Shield, User, AlertCircle, CheckCircle2, MessageSquare } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { useState } from "react"
 
 export function SiteHeader() {
     const { user, messages, logout, notifications, markAsRead, teams, currentTeam, switchTeam } = useUnifiedProvider()
@@ -37,6 +38,62 @@ export function SiteHeader() {
         pathname?.startsWith('/mcn')
 
     const unreadNotifications = notifications?.filter(n => !n.is_read) || []
+
+    const [activeTab, setActiveTab] = useState<'all' | 'action' | 'update' | 'message'>('action')
+
+    const getNotificationStyle = (type: string) => {
+        const actionTypes = [
+            'contract_negotiating', 'content_revision', 'proposal_update', 'application_received'
+        ]
+        const successTypes = [
+            'contract_signed', 'proposal_accepted', 'content_approved', 'collaboration_complete', 'collaboration_final_complete', 'deposit_confirmed', 'settlement_paid'
+        ]
+
+        if (actionTypes.includes(type)) {
+            return { icon: <AlertCircle className="w-4 h-4 text-red-500" />, bg: "bg-red-50/50 dark:bg-red-900/10", border: "border-l-4 border-red-500" }
+        } else if (successTypes.includes(type)) {
+            return { icon: <CheckCircle2 className="w-4 h-4 text-green-500" />, bg: "bg-green-50/50 dark:bg-green-900/10", border: "border-l-4 border-green-500" }
+        }
+        return { icon: <MessageSquare className="w-4 h-4 text-muted-foreground" />, bg: "bg-transparent", border: "border-l-4 border-transparent" }
+    }
+
+    const isActionType = (type: string) => {
+        if (user?.role === 'brand') {
+            return [
+                'application_received', 'application_updated',
+                'contract_negotiating', 'shipping_address_saved',
+                'performance_submitted', 'condition_confirmed'
+            ].includes(type);
+        } else if (user?.role === 'creator') {
+            return [
+                'proposal_received', 'moment_proposal',
+                'proposal_update', 'contract_signed', 'shipping_started',
+                'delivery_confirmed', 'content_revision', 'content_approved',
+                'collaboration_complete'
+            ].includes(type);
+        }
+        return false;
+    };
+
+    const isMessageType = (type: string) => {
+        return ['new_message', 'feedback_received'].includes(type);
+    };
+
+    const actionNotifs = notifications?.filter(n => isActionType(n.type)) || [];
+    const messageNotifs = notifications?.filter(n => isMessageType(n.type)) || [];
+    const updateNotifs = notifications?.filter(n => !isActionType(n.type) && !isMessageType(n.type)) || [];
+
+    const unreadActionCount = actionNotifs.filter(n => !n.is_read).length;
+    const unreadMessageCount = messageNotifs.filter(n => !n.is_read).length;
+    const unreadUpdateCount = updateNotifs.filter(n => !n.is_read).length;
+
+    const filteredNotifications = notifications?.filter(n => {
+        if (activeTab === 'all') return true;
+        if (activeTab === 'action') return isActionType(n.type);
+        if (activeTab === 'message') return isMessageType(n.type);
+        if (activeTab === 'update') return !isActionType(n.type) && !isMessageType(n.type);
+        return true;
+    }) || []
 
     // Display logic for MCN proxy mode
     const displayUserType = () => {
@@ -56,7 +113,13 @@ export function SiteHeader() {
             markAsRead(n.id).catch(e => console.warn('markAsRead 실패 (무시):', e))
         }
 
-        console.log('[알림 클릭]', { type: n.type, reference_id: n.reference_id, user_role: user?.role })
+        console.log('[알림 클릭]', { type: n.type, reference_id: n.reference_id, user_role: user?.role, action_url: n.action_url })
+
+        // 1. action_url이 있으면 최우선으로 해당 링크로 이동
+        if (n.action_url) {
+            router.push(n.action_url)
+            return
+        }
 
         const brandActive = `/brand?view=proposals&workspaceTab=active&proposalId=${n.reference_id}`
         const brandInbound = `/brand?view=proposals&workspaceTab=inbound&proposalId=${n.reference_id}`
@@ -183,7 +246,7 @@ export function SiteHeader() {
                 <div className="mr-4 flex">
                     <Link href="/" className="mr-3 sm:mr-6 flex items-center space-x-2">
                         <Image src="/logo.png" alt="CreadyPick" width={238} height={48} className="h-12 w-auto" priority />
-                        <span className="hidden md:inline-block text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V5.0.0</span>
+                        <span className="hidden md:inline-block text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V5.1.0</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
                         <Link
@@ -327,29 +390,79 @@ export function SiteHeader() {
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-80 p-0" align="end">
-                                    <div className="p-4 font-semibold border-b flex justify-between items-center">
-                                        <span>알림</span>
+                                    <div className="p-4 font-semibold border-b flex justify-between items-center bg-muted/30">
+                                        <span>알림센터</span>
                                         {unreadNotifications.length > 0 && (
-                                            <span className="text-xs text-muted-foreground">{unreadNotifications.length}개의 읽지 않은 알림</span>
+                                            <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">
+                                                {unreadNotifications.length} NEW
+                                            </span>
                                         )}
                                     </div>
-                                    <div className="max-h-[300px] overflow-y-auto">
-                                        {notifications && notifications.length > 0 ? (
-                                            <div className="divide-y">
-                                                {notifications.map((n) => (
-                                                    <div
-                                                        key={n.id}
-                                                        className={`p-4 text-sm hover:bg-muted/50 cursor-pointer transition-colors ${!n.is_read ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
-                                                        onClick={() => handleNotificationClick(n)}
-                                                    >
-                                                        <div className="font-medium mb-1">{n.content}</div>
-                                                        <div className="text-xs text-muted-foreground">{new Date(n.created_at).toLocaleDateString()}</div>
-                                                    </div>
-                                                ))}
+                                    <div className="flex border-b text-sm font-medium">
+                                        <button
+                                            onClick={() => setActiveTab('action')}
+                                            className={`flex-1 py-2.5 text-center transition-colors relative ${activeTab === 'action' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            할 일 {unreadActionCount > 0 && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadActionCount}</span>}
+                                            {activeTab === 'action' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('update')}
+                                            className={`flex-1 py-2.5 text-center transition-colors relative ${activeTab === 'update' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            업데이트 {unreadUpdateCount > 0 && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadUpdateCount}</span>}
+                                            {activeTab === 'update' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('message')}
+                                            className={`flex-1 py-2.5 text-center transition-colors relative ${activeTab === 'message' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            메시지 {unreadMessageCount > 0 && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadMessageCount}</span>}
+                                            {activeTab === 'message' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('all')}
+                                            className={`flex-1 py-2.5 text-center transition-colors relative ${activeTab === 'all' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            전체보기
+                                            {activeTab === 'all' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />}
+                                        </button>
+                                    </div>
+                                    <div className="max-h-[350px] overflow-y-auto">
+                                        {filteredNotifications.length > 0 ? (
+                                            <div className="divide-y divide-muted/50">
+                                                {filteredNotifications.map((n) => {
+                                                    const style = getNotificationStyle(n.type)
+                                                    return (
+                                                        <div
+                                                            key={n.id}
+                                                            className={`p-4 text-sm hover:bg-muted/50 cursor-pointer transition-colors flex gap-3 ${!n.is_read ? style.bg : ''} ${style.border}`}
+                                                            onClick={() => handleNotificationClick(n)}
+                                                        >
+                                                            <div className="mt-0.5 shrink-0">
+                                                                {style.icon}
+                                                            </div>
+                                                            <div className="flex-1 space-y-1">
+                                                                <div className={`font-medium leading-snug ${!n.is_read ? 'text-foreground' : 'text-foreground/80'}`}>
+                                                                    {n.content}
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground font-medium">
+                                                                    {new Date(n.created_at).toLocaleDateString()}
+                                                                </div>
+                                                            </div>
+                                                            {!n.is_read && (
+                                                                <div className="shrink-0 mt-1.5">
+                                                                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                         ) : (
-                                            <div className="p-8 text-center text-muted-foreground text-sm">
-                                                새로운 알림이 없습니다.
+                                            <div className="p-10 text-center flex flex-col items-center justify-center text-muted-foreground">
+                                                <Bell className="w-8 h-8 opacity-20 mb-3" />
+                                                <p className="text-sm font-medium">새로운 알림이 없습니다.</p>
                                             </div>
                                         )}
                                     </div>

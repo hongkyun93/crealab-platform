@@ -600,56 +600,8 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                 refreshData()
                 toast.success('최종본/클린본이 제출되었습니다.')
 
-                // ── 정산 자동 생성 ─────────────────────────────────────────
-                try {
-                    const creatorId = (proposal as any)?.creator_id
-                    const brandId = (proposal as any)?.brand_id
-                    const grossAmount = (proposal as any)?.price_offer ?? 0
-                    const proposalType = isMoment ? 'moment_proposal' : isCampaign ? 'campaign_application' : 'product_application'
-
-                    if (creatorId && grossAmount > 0) {
-                        // MCN 소속 및 split_ratio 조회
-                        const { data: splitData } = await supabase
-                            .from('mcn_revenue_splits')
-                            .select('split_ratio, team_id')
-                            .eq('creator_id', creatorId)
-                            .maybeSingle()
-
-                        const splitRatio = splitData?.split_ratio ?? 1.0  // MCN 없으면 100%
-                        const teamId = splitData?.team_id ?? null
-
-                        const creatorAmount = Math.round(grossAmount * splitRatio)
-                        const mcnAmount = grossAmount - creatorAmount
-                        const settlementMonth = new Date().toISOString().slice(0, 7) // '2026-03'
-
-                        // 중복 생성 방지: 같은 proposal_id 정산이 이미 있으면 skip
-                        const { data: existing } = await supabase
-                            .from('settlements')
-                            .select('id')
-                            .eq('proposal_id', String(proposalId))
-                            .maybeSingle()
-
-                        if (!existing) {
-                            await supabase.from('settlements').insert({
-                                creator_id: creatorId,
-                                brand_id: brandId ?? null,
-                                team_id: teamId,
-                                proposal_type: proposalType,
-                                proposal_id: String(proposalId),
-                                gross_amount: grossAmount,
-                                split_ratio: splitRatio,
-                                creator_amount: creatorAmount,
-                                mcn_amount: mcnAmount,
-                                status: 'pending',
-                                settlement_month: settlementMonth,
-                            })
-                            console.log('[VideoReviewPanel] 정산 자동 생성 완료', { proposalId, grossAmount, splitRatio })
-                        }
-                    }
-                } catch (settlementErr) {
-                    // 정산 생성 실패는 메인 플로우를 막지 않음 (soft fail)
-                    console.error('[VideoReviewPanel] 정산 자동 생성 실패:', settlementErr)
-                }
+                // 정산 관리는 이제 100% DB 트리거(fn_handle_settlement_lifecycle)에 의존하므로
+                // 프론트엔드에서의 강제 insert 로직은 제거됨 (Race condition 및 Mismatch 방지)
             }
         } catch (e) {
             console.error('[VideoReviewPanel] save final error:', e)
@@ -1233,7 +1185,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                             useWorkspaceStore.getState().setCurrentStage('settlement');
                                             refreshData();
                                             toast.success('협업 완료 및 정산 승인되었습니다. 크리에이터가 성과를 제출합니다. 🎉');
-                                            const creatorId = (proposal as any)?.creator_id || (proposal as any)?.creator_id;
+                                            const creatorId = (proposal as any)?.creator_id || (proposal as any)?.creatorId || (proposal as any)?.influencer?.id;
                                             if (creatorId) {
                                                 sendNotification(creatorId, '협업이 완료되었습니다! 인사이트 성과를 제출해주세요.', 'collaboration_complete', proposalId);
                                             }

@@ -8,6 +8,7 @@ interface MessageContextType {
     messages: Message[]
     notifications: Notification[]
     submissionFeedback: SubmissionFeedback[]
+    adminId: string | undefined
     isLoading: boolean
     sendMessage: (receiverId: string, content: string, file?: { url: string; name: string; size: number; type: string }, workspaceId?: string, projectName?: string) => Promise<void>
     sendNotification: (recipientId: string, content: string, type: string, referenceId?: string) => Promise<void>
@@ -25,9 +26,11 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
     const [messages, setMessages] = useState<Message[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [submissionFeedback, setSubmissionFeedback] = useState<SubmissionFeedback[]>([])
+    const [adminId, setAdminId] = useState<string | undefined>(undefined)
     const [isLoading, setIsLoading] = useState(false)
     const isFetchingMessages = useRef(false)
     const isFetchingNotifications = useRef(false)
+    const isFetchingAdmin = useRef(false)
 
     // Fetch messages
     const fetchMessages = async (targetUserId?: string) => {
@@ -165,6 +168,29 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         }
     }
 
+    // Fetch Admin ID
+    const fetchAdminId = async () => {
+        if (isFetchingAdmin.current) return;
+        isFetchingAdmin.current = true;
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', 'admin@creadypick.com')
+                .maybeSingle();
+
+            if (data?.id) {
+                setAdminId(data.id);
+            } else {
+                console.warn('[MessageProvider] Admin profile not found for admin@creadypick.com');
+            }
+        } catch (err) {
+            console.error('[MessageProvider] Failed to fetch adminId:', err);
+        } finally {
+            isFetchingAdmin.current = false;
+        }
+    }
+
     // Initial load + Realtime subscription (replaces 2-second polling)
     useEffect(() => {
         if (!userId) {
@@ -183,7 +209,8 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
         const timer = setTimeout(() => {
             Promise.all([
                 fetchMessages(userId),
-                fetchNotifications(userId)
+                fetchNotifications(userId),
+                fetchAdminId()
             ]).finally(() => {
                 setIsLoading(false)
                 window.dispatchEvent(new CustomEvent('app-log', { detail: { msg: '메시지/알림 로드 완료', type: 'success' } }))
@@ -303,18 +330,82 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
 
 
     // Send notification
-    const sendNotification = async (recipientId: string, content: string, type: string, referenceId?: string) => {
+    const sendNotification = async (
+        recipientId: string,
+        content: string,
+        type: string,
+        referenceId?: string,
+        actionUrl?: string,
+        metadata?: any
+    ) => {
         try {
-            console.log('[MessageProvider] Sending notification:', { recipientId, type, content })
+            console.log('[MessageProvider] Sending notification:', { recipientId, type, content, actionUrl, metadata })
 
+            // --- Debouncing / Batching Logic ---
+            // If it's a "spammy" notification type (e.g. feedback), check if there's a recent unread one
+            const spammyTypes = ['feedback_received', 'message_received', 'application_updated'];
+            if (spammyTypes.includes(type) && referenceId) {
+                // Look for an unread notification of the same type and reference_id within the last 1 hour
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+                const { data: existingNotifs } = await supabase
+                    .from('notifications')
+                    .select('id, content, metadata')
+                    .eq('recipient_id', recipientId)
+                    .eq('type', type)
+                    .eq('reference_id', referenceId)
+                    .eq('is_read', false)
+                    .gte('created_at', oneHourAgo)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (existingNotifs && existingNotifs.length > 0) {
+                    const existing = existingNotifs[0];
+                    // Increment a counter in metadata
+                    const currentCount = existing.metadata?.batch_count || 1;
+                    const newCount = currentCount + 1;
+
+                    // Update the existing notification instead of creating a new one
+                    let batchedContent = content;
+                    if (type === 'feedback_received') {
+                        batchedContent = `새로운 피드백이 ${newCount}건 도착했습니다. 확인해보세요.`;
+                    } else if (type === 'message_received') {
+                        batchedContent = `새로운 메시지가 ${newCount}건 도착했습니다.`;
+                    } else {
+                        batchedContent = `${content} (외 ${newCount - 1}건)`;
+                    }
+
+                    const mergedMetadata = {
+                        ...(existing.metadata || {}),
+                        ...(metadata || {}),
+                        batch_count: newCount
+                    };
+
+                    const { error: updateError } = await supabase
+                        .from('notifications')
+                        .update({
+                            content: batchedContent,
+                            metadata: mergedMetadata,
+                            created_at: new Date().toISOString() // Bump to top
+                        })
+                        .eq('id', existing.id);
+
+                    if (updateError) throw updateError;
+                    console.log('[MessageProvider] Notification debounced/batched:', existing.id);
+                    return;
+                }
+            }
+
+            // Normal Insert
             const { error } = await supabase
                 .from('notifications')
                 .insert({
                     recipient_id: recipientId,
                     sender_id: userId,
-                    type,     // 타입 코드 (e.g. 'proposal_update')
-                    content,  // 사람이 읽는 문장 (e.g. '조건 협의가 완료되었습니다.')
+                    type,
+                    content,
                     reference_id: referenceId,
+                    action_url: actionUrl,
+                    metadata: metadata || {},
                     is_read: false
                 })
 
@@ -476,6 +567,7 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
             messages,
             notifications,
             submissionFeedback,
+            adminId,
             isLoading,
             sendMessage,
             sendNotification,

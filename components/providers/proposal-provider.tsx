@@ -303,7 +303,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 product_id: p.product_id,
                 product_name: p.product_name || p.products?.name,
                 product_type: p.workspace?.product_type ?? p.product_type,
-                compensation_amount: p.compensation_amount,
+                price_offer: p.price_offer,
                 has_incentive: p.has_incentive,
                 incentive_detail: p.incentive_detail,
 
@@ -336,7 +336,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 delivery_status: p.workspace?.delivery_status ?? p.delivery_status,
                 brand_condition_confirmed: p.workspace?.brand_condition_confirmed ?? p.brand_condition_confirmed,
                 creator_condition_confirmed: p.workspace?.creator_condition_confirmed ?? p.creator_condition_confirmed,
-                price_offer: p.workspace?.price_offer ?? p.price_offer,
                 special_terms: p.conditions?.special_terms ?? p.special_terms,
                 condition_product_receipt_date: p.workspace?.condition_product_receipt_date ?? p.condition_product_receipt_date,
                 condition_draft_submission_date: p.workspace?.condition_draft_submission_date ?? p.condition_draft_submission_date,
@@ -386,7 +385,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
                 product_name: p.product_name || p.conditions?.product_name || "협업 제안",
                 product_type: p.workspace?.product_type ?? p.conditions?.product_type ?? p.product_type,
-                compensation_amount: p.compensation_amount || (p.price_offer ? String(p.price_offer) : undefined),
                 has_incentive: p.has_incentive || p.conditions?.has_incentive,
                 incentive_detail: p.incentive_detail || p.conditions?.incentive_detail,
                 desired_date: p.desired_date || p.conditions?.desired_date,
@@ -889,7 +887,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         insight_screenshot: proposal.insightScreenshot,
                         product_type: 'ad',
                         price_offer: (proposal.priceOffer || proposal.price_offer) ?? 0,
-                        compensation_amount: (proposal.priceOffer || proposal.price_offer)?.toString(),
                         motivation: proposal.motivation,
                         content_plan: proposal.content_plan,
                         portfolio_links: proposal.portfolioLinks,
@@ -1065,7 +1062,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             // Conditions
             if (updates.price_offer !== undefined) dbUpdates.price_offer = updates.price_offer
-            if (updates.compensation_amount !== undefined) dbUpdates.compensation_amount = updates.compensation_amount
+            // Removed compensation_amount from updates
             if (updates.product_name) dbUpdates.product_name = updates.product_name
             if ((updates as any).product_type) dbUpdates.product_type = (updates as any).product_type
             if ((updates as any).video_guide !== undefined) dbUpdates.video_guide = (updates as any).video_guide
@@ -1137,7 +1134,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             // Conditions
             if (updates.price_offer !== undefined) conditionUpdates.price_offer = updates.price_offer
-            if (updates.compensation_amount !== undefined) conditionUpdates.compensation_amount = updates.compensation_amount
+            // Removed compensation_amount from conditionUpdates
             if (updates.product_name) conditionUpdates.product_name = updates.product_name
             if (updates.product_type) conditionUpdates.product_type = updates.product_type
             if ((updates as any).video_guide !== undefined) conditionUpdates.video_guide = (updates as any).video_guide

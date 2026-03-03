@@ -181,6 +181,7 @@ export function useUnifiedProvider() {
         messages: messages.messages,
         notifications: messages.notifications,
         submissionFeedback: messages.submissionFeedback,
+        adminId: messages.adminId, // NEW
         sendMessage: messages.sendMessage,
         sendNotification: messages.sendNotification,
         sendSubmissionFeedback: messages.sendSubmissionFeedback,

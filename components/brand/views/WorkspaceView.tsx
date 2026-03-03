@@ -1165,7 +1165,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                         productUrl: editingProposal.conditions?.product_url || editingProposal.product_url || "",
                         productType: editingProposal.conditions?.product_type || "gift",
                         videoGuide: editingProposal.conditions?.video_guide || "brand_provided",
-                        priceOffer: editingProposal.conditions?.price_offer || editingProposal.conditions?.compensation_amount || "",
+                        priceOffer: editingProposal.conditions?.price_offer || "",
                         hasIncentive: editingProposal.conditions?.has_incentive || false,
                         incentiveDetail: editingProposal.conditions?.incentive_detail || "",
                         channelName: editingProposal.conditions?.channel_name || "instagram",

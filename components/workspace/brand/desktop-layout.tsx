@@ -25,6 +25,10 @@ export function BrandDesktopLayout({ className }: BrandDesktopLayoutProps) {
             brand_signed_at: new Date().toISOString(),
             contract_status: proposal.creator_signature ? 'signed' : 'partial',
         };
+
+        // Optimistic UI update
+        useWorkspaceStore.getState().updateProposal(updates);
+
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
@@ -33,8 +37,10 @@ export function BrandDesktopLayout({ className }: BrandDesktopLayoutProps) {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
+
         if (success) {
-            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        } else {
             refreshData();
         }
     };
@@ -60,6 +66,10 @@ export function BrandDesktopLayout({ className }: BrandDesktopLayoutProps) {
             brand_signed_at: null,
             contract_status: proposal.creator_signature ? 'partial' : 'none',
         };
+
+        // Optimistic UI update
+        useWorkspaceStore.getState().updateProposal(updates);
+
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).moment_id) {
             success = await updateMomentProposal(proposal.id, updates);
@@ -68,8 +78,10 @@ export function BrandDesktopLayout({ className }: BrandDesktopLayoutProps) {
         } else {
             success = await updateBrandProposal(proposal.id, updates);
         }
+
         if (success) {
-            useWorkspaceStore.getState().updateProposal(updates);
+            refreshData();
+        } else {
             refreshData();
         }
     };

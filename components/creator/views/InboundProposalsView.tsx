@@ -49,7 +49,7 @@ export function InboundProposalsView({
                                         "{proposal.message || "제안 내용이 있습니다."}"
                                     </p>
                                     <p className="font-bold text-sm text-purple-700 mt-2">
-                                        {proposal.compensation_amount ? `${proposal.compensation_amount} 제안` : '원고료 협의'}
+                                        {proposal.price_offer ? `${proposal.price_offer.toLocaleString()}원 제안` : '원고료 협의'}
                                     </p>
                                 </div>
                                 <Button className="w-full h-8 text-xs" variant="secondary">제안 확인하기</Button>

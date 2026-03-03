@@ -16,13 +16,16 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { BarChart3, CheckCircle2, Download, Eye, FileText, Loader2, MapPin, MessageSquare, Package, Truck, Video } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminChatDialog } from '../common/admin-chat-dialog';
+
 export function InfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData, sendNotification } = useUnifiedProvider();
+    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData, sendNotification, adminId } = useUnifiedProvider();
     const { supabase } = useAuth();
     const [trackingInput, setTrackingInput] = useState('');
     const [isShipping, setIsShipping] = useState(false);
+    const [adminChatOpen, setAdminChatOpen] = useState(false);
 
     // 성과 데이터 상태
     const [performance, setPerformance] = useState<any>(null);
@@ -91,8 +94,6 @@ export function InfoPanel() {
         // price_offer
         if (updates.price_offer !== undefined) {
             payload.price_offer = updates.price_offer;
-            // [LEGACY] compensation_amount for DB fallback if needed
-            payload.compensation_amount = `${updates.price_offer}`;
         }
 
         // product_name: ConditionsPanel sends both product_name and productName
@@ -206,13 +207,21 @@ export function InfoPanel() {
 
             // 🔔 크리에이터에게 브랜드 서명 완료 알림
             try {
-                const creatorId = (proposal as any)?.creator_id || (proposal as any)?.influencer?.id;
+                const creatorId = (proposal as any)?.creator_id || (proposal as any)?.creatorId || (proposal as any)?.influencer?.id;
                 const brandName = (proposal as any)?.brand_name || '브랜드';
                 if (creatorId) {
                     const msg = updates.contract_status === 'signed'
                         ? `${brandName}와 계약이 완전히 체결되었습니다! 다음 단계를 확인해보세요.`
                         : `${brandName}가 계약서에 서명했습니다. 크리에이터 서명이 필요합니다.`;
-                    await sendNotification(creatorId, msg, 'contract_signed', proposal.id?.toString());
+                    const actionUrl = `/creator?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                    await sendNotification(
+                        creatorId,
+                        msg,
+                        'contract_signed',
+                        proposal.id?.toString(),
+                        actionUrl,
+                        { target_tab: 'contract' }
+                    );
                 }
             } catch (notifErr) {
                 console.warn('브랜드 서명 알림 실패 (무시):', notifErr);
@@ -606,8 +615,18 @@ export function InfoPanel() {
                                                         useWorkspaceStore.getState().updateProposal(updates);
                                                         refreshData();
                                                         toast.success('수정 요청을 전달했습니다.');
-                                                        const creatorId = (proposal as any).creator_id || (proposal as any).creator_id;
-                                                        if (creatorId) sendNotification(creatorId, '브랜드가 콘텐츠 수정을 요청했습니다.', 'content_revision', proposal.id?.toString());
+                                                        const creatorId = (proposal as any).creator_id || (proposal as any).creatorId || (proposal as any).influencer?.id;
+                                                        const actionUrl = `/creator?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                        if (creatorId) {
+                                                            sendNotification(
+                                                                creatorId,
+                                                                '브랜드가 콘텐츠 수정을 요청했습니다.',
+                                                                'content_revision',
+                                                                proposal.id?.toString(),
+                                                                actionUrl,
+                                                                { target_tab: 'content' }
+                                                            );
+                                                        }
                                                     }
                                                 }}
                                             >
@@ -627,8 +646,18 @@ export function InfoPanel() {
                                                         useWorkspaceStore.getState().updateProposal(updates);
                                                         refreshData();
                                                         toast.success('초안을 승인했습니다!');
-                                                        const creatorId = (proposal as any).creator_id || (proposal as any).creator_id;
-                                                        if (creatorId) sendNotification(creatorId, '브랜드가 콘텐츠를 승인했습니다! 최종본과 클린본을 제출해주세요.', 'content_approved', proposal.id?.toString());
+                                                        const creatorId = (proposal as any).creator_id || (proposal as any).creatorId || (proposal as any).influencer?.id;
+                                                        const actionUrl = `/creator?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                        if (creatorId) {
+                                                            sendNotification(
+                                                                creatorId,
+                                                                '브랜드가 콘텐츠를 승인했습니다! 최종본과 클린본을 제출해주세요.',
+                                                                'content_approved',
+                                                                proposal.id?.toString(),
+                                                                actionUrl,
+                                                                { target_tab: 'content' }
+                                                            );
+                                                        }
                                                     }
                                                 }}
                                             >
@@ -731,7 +760,17 @@ export function InfoPanel() {
                                                     refreshData();
                                                     toast.success('협업 완료 및 정산 승인되었습니다! 🎉');
                                                     const creatorId2 = (proposal as any).creator_id || (proposal as any).creator_id;
-                                                    if (creatorId2) sendNotification(creatorId2, '협업이 완료되었습니다! 3~7일 내 인사이트 성과를 제출해주세요.', 'collaboration_complete', proposal.id?.toString());
+                                                    const actionUrl = `/creator?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                    if (creatorId2) {
+                                                        sendNotification(
+                                                            creatorId2,
+                                                            '협업이 완료되었습니다! 3~7일 내 인사이트 성과를 제출해주세요.',
+                                                            'collaboration_complete',
+                                                            proposal.id?.toString(),
+                                                            actionUrl,
+                                                            { target_tab: 'performance' }
+                                                        );
+                                                    }
                                                 }}
                                             >
                                                 <CheckCircle2 className="h-4 w-4 mr-1.5" /> 협업 완료 및 정산 승인
@@ -897,7 +936,30 @@ export function InfoPanel() {
                         </StageCard>
                     )}
                 </div>
+
+                {/* Bottom Support / Report Section */}
+                <div className="pt-8 pb-4">
+                    <div className="bg-muted/30 rounded-lg p-4 text-center space-y-3 mx-6 mb-6">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                            진행 중 문제가 발생했거나 일방적 계약 파기가 필요한가요?
+                        </p>
+                        <div className="flex gap-2 justify-center">
+                            <Button variant="outline" size="sm" asChild className="h-8 text-xs px-3">
+                                <a href="mailto:admin@creadypick.com">이메일 문의</a>
+                            </Button>
+                            <Button variant="default" size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-700 text-xs px-3" onClick={() => setAdminChatOpen(true)}>
+                                실시간 채팅 문의
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             </ScrollArea>
+
+            <AdminChatDialog
+                open={adminChatOpen}
+                onOpenChange={setAdminChatOpen}
+                adminId={adminId}
+            />
         </div>
     );
 }

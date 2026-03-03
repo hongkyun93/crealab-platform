@@ -58,7 +58,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
 
         const c = proposal.conditions || {}
 
-        const rawAmount = c.price_offer || c.priceOffer || c.compensation_amount || proposal.compensation_amount || proposal.price_offer || proposal.priceOffer || 0
+        const rawAmount = c.price_offer || c.priceOffer || proposal.price_offer || proposal.priceOffer || 0
         const amount = typeof rawAmount === 'string' ? parseInt(rawAmount.replace(/[^0-9]/g, '')) || 0 : rawAmount
 
         const isBrandView = currentUserId && (currentUserId === proposal.brand_id || currentUserId === proposal.sender_id)
@@ -85,7 +85,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
             product_url: c.product_url || proposal.product?.link || proposal.product_url,
 
             // Compensation
-            compensation_amount: amount,
+            price_offer: amount,
             has_incentive: c.has_incentive !== undefined ? c.has_incentive : proposal.has_incentive,
             incentive_detail: c.incentive_detail || proposal.incentive_detail,
 
@@ -164,7 +164,7 @@ export function ReadonlyProposalDialog({ open, onOpenChange, proposal, onAccept,
                             {/* Price */}
                             <div className="text-center py-4 bg-gradient-to-b from-emerald-50 to-emerald-50/30 dark:from-emerald-900/15 dark:to-emerald-900/5 rounded-xl border border-emerald-100/80 dark:border-emerald-900/20">
                                 <p className="text-[11px] uppercase tracking-wider text-emerald-600/60 font-semibold mb-1">광고비</p>
-                                <p className="text-[26px] font-black text-emerald-600 leading-none tracking-tight">{fmt(data.compensation_amount)}</p>
+                                <p className="text-[26px] font-black text-emerald-600 leading-none tracking-tight">{fmt(data.price_offer)}</p>
                                 {data.has_incentive && (
                                     <p className="text-[10px] text-emerald-600/80 mt-1.5 flex items-center justify-center gap-1 font-medium"><TrendingUp className="h-3 w-3" /> 인센티브 있음</p>
                                 )}

@@ -87,13 +87,16 @@ export function PerformanceDialog({
             }
 
             // 크리에이터 알림
-            const creatorId = (proposal as any).creator_id || (proposal as any).creator_id;
+            const creatorId = (proposal as any).creator_id || (proposal as any).creatorId || (proposal as any).influencer?.id;
+            const actionUrl = `/creator?view=settlement&proposalId=${proposal?.id?.toString()}`;
             if (creatorId) {
                 sendNotification(
                     creatorId,
                     '브랜드가 협업을 최종 완료했습니다. 수고하셨습니다! 🎉',
                     'collaboration_final_complete',
-                    proposal.id?.toString()
+                    proposal.id?.toString(),
+                    actionUrl,
+                    { target_tab: 'performance' }
                 );
             }
 

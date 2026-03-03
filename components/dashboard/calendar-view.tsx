@@ -143,11 +143,9 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                                 {event.type === 'upcoming' ? '-' : (
                                                     event.price_offer
                                                         ? `${Number(event.price_offer).toLocaleString()}원`
-                                                        : event.compensation_amount
-                                                            ? (Number.isNaN(Number(event.compensation_amount)) ? event.compensation_amount : `${Number(event.compensation_amount).toLocaleString()}원`)
-                                                            : event.priceOffer
-                                                                ? `${Number(event.priceOffer).toLocaleString()}원`
-                                                                : '-'
+                                                        : event.priceOffer
+                                                            ? `${Number(event.priceOffer).toLocaleString()}원`
+                                                            : '-'
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-center text-xs">
@@ -254,11 +252,9 @@ export function CalendarView({ activeMoments = [], upcomingMoments = [], pastMom
                                                     <div className="font-medium">
                                                         {event.price_offer
                                                             ? `${Number(event.price_offer).toLocaleString()}원`
-                                                            : event.compensation_amount
-                                                                ? (Number.isNaN(Number(event.compensation_amount)) ? event.compensation_amount : `${Number(event.compensation_amount).toLocaleString()}원`)
-                                                                : event.priceOffer
-                                                                    ? `${Number(event.priceOffer).toLocaleString()}원`
-                                                                    : '-'}
+                                                            : event.priceOffer
+                                                                ? `${Number(event.priceOffer).toLocaleString()}원`
+                                                                : '-'}
                                                     </div>
                                                 </div>
                                                 <div>

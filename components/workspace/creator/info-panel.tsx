@@ -16,11 +16,12 @@ import { ConditionsPanel } from '../common/conditions-panel';
 import { ProgressBar } from '../common/progress-bar';
 import { StageCard } from '../common/stage-card';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
+import { AdminChatDialog } from '../common/admin-chat-dialog';
 
 export function CreatorInfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateProposal, updateMomentProposal, updateBrandProposal, sendNotification, user, refreshData } = useUnifiedProvider();
+    const { updateProposal, updateMomentProposal, updateBrandProposal, sendNotification, user, refreshData, adminId } = useUnifiedProvider();
 
     // Helper to determine stage status
     const getStageStatus = (stageId: string) => {
@@ -32,6 +33,8 @@ export function CreatorInfoPanel() {
         if (stageIndex === currentIndex) return 'active';
         return 'pending';
     };
+
+    const [adminChatOpen, setAdminChatOpen] = useState(false);
 
     // Shipping state
     const [shipName, setShipName] = useState('');
@@ -160,7 +163,18 @@ export function CreatorInfoPanel() {
             setPerfSubmitted(data.data);
             // 성과 제출 완료 → status는 settlement 유지, 브랜드에게 알림만 발송
             // (브랜드가 PerformanceDialog에서 최종완료 버튼을 눌러야 completed로 변경됨)
-            if (brandId) sendNotification(brandId, '크리에이터가 성과를 제출했습니다! 확인 후 최종완료 처리해주세요.', 'performance_submitted', proposal.id?.toString());
+            const targetBrandId = brandId || (proposal as any).campaign?.brand_id;
+            const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+            if (targetBrandId) {
+                sendNotification(
+                    targetBrandId,
+                    '크리에이터가 성과를 제출했습니다! 확인 후 최종완료 처리해주세요.',
+                    'performance_submitted',
+                    proposal.id?.toString(),
+                    actionUrl,
+                    { target_tab: 'performance' }
+                );
+            }
             toast.success('Instagram 인사이트 기반 성과 제출 완료! 🎉');
         } catch (err: any) {
             toast.error(err.message);
@@ -263,8 +277,18 @@ export function CreatorInfoPanel() {
             setPerfSubmitted(data);
             // 성과 제출 완료 → status는 settlement 유지, 브랜드에게 알림만 발송
             // (브랜드가 PerformanceDialog에서 최종완료 버튼을 눌러야 completed로 변경됨)
-            const brandId2 = (proposal as any).brand_id || (proposal as any).brandId;
-            if (brandId2) sendNotification(brandId2, '크리에이터가 성과를 제출했습니다! 확인 후 최종완료 처리해주세요.', 'performance_submitted', proposal.id?.toString());
+            const brandId2 = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
+            const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+            if (brandId2) {
+                sendNotification(
+                    brandId2,
+                    '크리에이터가 성과를 제출했습니다! 확인 후 최종완료 처리해주세요.',
+                    'performance_submitted',
+                    proposal.id?.toString(),
+                    actionUrl,
+                    { target_tab: 'performance' }
+                );
+            }
             toast.success('성과 데이터가 제출되었습니다! 브랜드 확인 후 최종 완료됩니다. 🎉');
         } catch (err: any) {
             toast.error(err.message || '제출 중 오류가 발생했습니다.');
@@ -281,7 +305,6 @@ export function CreatorInfoPanel() {
         // [FIX] Full Symmetric Mapping (matching Brand InfoPanel)
         if (updates.price_offer !== undefined) {
             payload.price_offer = updates.price_offer;
-            payload.compensation_amount = `${updates.price_offer}`;
         }
         if (updates.productName !== undefined) payload.product_name = updates.productName;
         else if (updates.product_name !== undefined) payload.product_name = updates.product_name;
@@ -352,11 +375,14 @@ export function CreatorInfoPanel() {
                         (proposal as any).campaign?.brand_id;
                     const creatorName = user?.name || '크리에이터';
                     if (brandId) {
+                        const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
                         await sendNotification(
                             brandId,
                             `${creatorName}님이 조건을 수락했습니다. 계약서를 작성해주세요.`,
                             'condition_confirmed',
-                            proposal.id?.toString()
+                            proposal.id?.toString(),
+                            actionUrl,
+                            { target_tab: 'contract' }
                         );
                     }
                 } catch (notifErr) {
@@ -410,11 +436,14 @@ export function CreatorInfoPanel() {
                         (proposal as any)?.campaign?.brand_id;
                     const creatorName = user?.name || '크리에이터';
                     if (brandId) {
+                        const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
                         await sendNotification(
                             brandId,
                             `${creatorName}님이 계약서에 서명했습니다. 계약이 완료되었습니다.`,
                             'contract_signed',
-                            proposal.id?.toString()
+                            proposal.id?.toString(),
+                            actionUrl,
+                            { target_tab: 'contract' }
                         );
                     }
                 } catch (notifErr) {
@@ -662,11 +691,14 @@ export function CreatorInfoPanel() {
                                                                     (proposal as any).campaign?.brand_id;
                                                                 const creatorName = user?.name || '크리에이터';
                                                                 if (brandId) {
+                                                                    const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
                                                                     await sendNotification(
                                                                         brandId,
                                                                         `${creatorName}님이 배송지 정보를 등록했습니다. 이제 제품을 발송해주세요.`,
                                                                         'shipping_address_saved',
-                                                                        proposal.id?.toString()
+                                                                        proposal.id?.toString(),
+                                                                        actionUrl,
+                                                                        { target_tab: 'shipping' }
                                                                     );
                                                                 }
                                                             } catch (notifErr) {
@@ -768,7 +800,15 @@ export function CreatorInfoPanel() {
                                                         const brandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
                                                         if (brandId) {
                                                             try {
-                                                                await sendNotification(brandId, `${user?.name || '크리에이터'}님이 제품을 수령했습니다.`, 'delivery_confirmed', proposal.id?.toString());
+                                                                const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                                await sendNotification(
+                                                                    brandId,
+                                                                    `${user?.name || '크리에이터'}님이 제품을 수령했습니다.`,
+                                                                    'delivery_confirmed',
+                                                                    proposal.id?.toString(),
+                                                                    actionUrl,
+                                                                    { target_tab: 'shipping' }
+                                                                );
                                                             } catch (notifErr) {
                                                                 console.warn('Notification failed:', notifErr);
                                                             }
@@ -916,8 +956,18 @@ export function CreatorInfoPanel() {
                                                                 useWorkspaceStore.getState().updateProposal(updates);
                                                                 refreshData();
                                                                 toast.success(`초안 v${nextVer} 제출 완료!`);
-                                                                const brandId = (proposal as any).brand_id || (proposal as any).brandId;
-                                                                if (brandId) sendNotification(brandId, `${user?.name || '크리에이터'}님이 콘텐츠 초안을 제출했습니다.`, 'content_submission', proposal.id?.toString());
+                                                                const brandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
+                                                                const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                                if (brandId) {
+                                                                    sendNotification(
+                                                                        brandId,
+                                                                        `${user?.name || '크리에이터'}님이 콘텐츠 초안을 제출했습니다.`,
+                                                                        'content_submission',
+                                                                        proposal.id?.toString(),
+                                                                        actionUrl,
+                                                                        { target_tab: 'content' }
+                                                                    );
+                                                                }
                                                             }
                                                         } catch (err: any) {
                                                             console.error('Draft upload failed:', err);
@@ -1017,9 +1067,19 @@ export function CreatorInfoPanel() {
                                                                 useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('최종본 업로드 완료!');
                                                                 // 🔔 브랜드에게 최종본 업로드 알림
                                                                 try {
-                                                                    const brandId = (proposal as any).brand_id || (proposal as any).brandId;
+                                                                    const targetBrandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
                                                                     const creatorName = user?.name || '크리에이터';
-                                                                    if (brandId) sendNotification(brandId, `${creatorName}님이 최종본을 업로드했습니다. 확인해보세요.`, 'content_final_uploaded', proposal.id?.toString());
+                                                                    const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                                    if (targetBrandId) {
+                                                                        sendNotification(
+                                                                            targetBrandId,
+                                                                            `${creatorName}님이 최종본을 업로드했습니다. 확인해보세요.`,
+                                                                            'content_final_uploaded',
+                                                                            proposal.id?.toString(),
+                                                                            actionUrl,
+                                                                            { target_tab: 'content' }
+                                                                        );
+                                                                    }
                                                                 } catch (notifErr) { console.warn('최종본 알림 실패:', notifErr); }
                                                             }
                                                         } catch (err: any) { toast.error(err.message || '업로드 실패'); }
@@ -1095,9 +1155,19 @@ export function CreatorInfoPanel() {
                                                                 useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('클린본 업로드 완료!');
                                                                 // 🔔 브랜드에게 클린본 업로드 알림
                                                                 try {
-                                                                    const brandId = (proposal as any).brand_id || (proposal as any).brandId;
+                                                                    const targetBrandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
                                                                     const creatorName = user?.name || '크리에이터';
-                                                                    if (brandId) sendNotification(brandId, `${creatorName}님이 클린본(2차 활용 원본)을 업로드했습니다. 확인해보세요.`, 'content_clean_uploaded', proposal.id?.toString());
+                                                                    const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                                    if (targetBrandId) {
+                                                                        sendNotification(
+                                                                            targetBrandId,
+                                                                            `${creatorName}님이 클린본(2차 활용 원본)을 업로드했습니다. 확인해보세요.`,
+                                                                            'content_clean_uploaded',
+                                                                            proposal.id?.toString(),
+                                                                            actionUrl,
+                                                                            { target_tab: 'content' }
+                                                                        );
+                                                                    }
                                                                 } catch (notifErr) { console.warn('클린본 알림 실패:', notifErr); }
                                                             }
                                                         } catch (err: any) { toast.error(err.message || '업로드 실패'); }
@@ -1406,7 +1476,30 @@ export function CreatorInfoPanel() {
                         </StageCard>
                     )}
                 </div>
+
+                {/* Bottom Support / Report Section */}
+                <div className="pt-8 pb-4">
+                    <div className="bg-muted/30 rounded-lg p-4 text-center space-y-3 mx-6 mb-6">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                            진행 중 문제가 발생했거나 일방적 계약 파기가 필요한가요?
+                        </p>
+                        <div className="flex gap-2 justify-center">
+                            <Button variant="outline" size="sm" asChild className="h-8 text-xs px-3">
+                                <a href="mailto:admin@creadypick.com">이메일 문의</a>
+                            </Button>
+                            <Button variant="default" size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-700 text-xs px-3" onClick={() => setAdminChatOpen(true)}>
+                                실시간 채팅 문의
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             </ScrollArea >
+
+            <AdminChatDialog
+                open={adminChatOpen}
+                onOpenChange={setAdminChatOpen}
+                adminId={adminId}
+            />
         </div >
     );
 }

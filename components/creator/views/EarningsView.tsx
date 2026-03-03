@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
 interface Settlement {
     id: string
     brand_id: string | null
+    workspace_id?: string | null
     proposal_type: string
     proposal_id: string
     gross_amount: number
@@ -278,9 +279,19 @@ export function EarningsView() {
                                                     </span>
                                                 ) : null}
                                             </div>
-                                            <p className="text-[10px] text-muted-foreground mt-1">
-                                                {s.settlement_month ?? '-'} · 등록 {new Date(s.created_at).toLocaleDateString('ko-KR')}
-                                                {s.paid_at && ` · 지급 ${new Date(s.paid_at).toLocaleDateString('ko-KR')}`}
+                                            <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
+                                                <span>{s.settlement_month ?? '-'}</span>
+                                                <span>·</span>
+                                                <span>등록 {new Date(s.created_at).toLocaleDateString('ko-KR')}</span>
+                                                {s.paid_at && (
+                                                    <>
+                                                        <span>·</span>
+                                                        <span>지급 {new Date(s.paid_at).toLocaleDateString('ko-KR')}</span>
+                                                    </>
+                                                )}
+                                                <span className="font-mono text-[9px] text-muted-foreground/60 bg-muted/50 px-1 py-0.5 rounded">
+                                                    관리번호 : #{String(s.workspace_id || s.proposal_id).replace(/-/g, '').slice(-6).toUpperCase()}
+                                                </span>
                                             </p>
                                         </div>
 
