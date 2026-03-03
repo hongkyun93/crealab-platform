@@ -78,7 +78,7 @@ export function ProductDetailView({ productId, onBack }: ProductDetailViewProps)
         }
 
         await addProposal({
-            type: "creator_apply",
+            type: "campaign_apply",
             dealType: "ad",
             productId: product.id,
             priceOffer: Number(priceOffer),

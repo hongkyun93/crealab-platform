@@ -164,16 +164,16 @@ export function useUnifiedProvider() {
 
         // Proposals
         campaignProposals: proposals.campaignProposals,
-        brandProposals: proposals.productApplications,
+        productApplications: proposals.productApplications,
         momentProposals: proposals.momentProposals,
         addMomentProposal: proposals.addMomentProposal,
         addProposal: proposals.addProposal,
-        createBrandProposal: proposals.createProductApplication,
+        createProductApplication: proposals.createProductApplication,
         createMomentProposal: proposals.createMomentProposal,
         updateProposal: proposals.updateProposal,
-        updateBrandProposal: proposals.updateProductApplication,
+        updateProductApplication: proposals.updateProductApplication,
         updateMomentProposal: proposals.updateMomentProposal,
-        deleteBrandProposal: proposals.deleteProductApplication,
+        deleteProductApplication: proposals.deleteProductApplication,
         deleteMomentProposal: proposals.deleteMomentProposal,
         refreshProposals: proposals.refreshProposals,
 

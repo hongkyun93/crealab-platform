@@ -26,7 +26,7 @@ export function PerformanceDialog({
     onCompleted,
 }: PerformanceDialogProps) {
     const { supabase } = useAuth();
-    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData, sendNotification } = useUnifiedProvider();
+    const { updateProductApplication, updateMomentProposal, updateProposal, refreshData, sendNotification } = useUnifiedProvider();
 
     const [performance, setPerformance] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -69,7 +69,7 @@ export function PerformanceDialog({
             let success = false;
             if (proposalType === 'moment_proposal') success = await updateMomentProposal(proposal.id, updates);
             else if (proposalType === 'campaign_application') success = await updateProposal(proposal.id, updates);
-            else success = await updateBrandProposal(proposal.id, updates);
+            else success = await updateProductApplication(proposal.id, updates);
 
             if (!success) {
                 toast.error('최종완료 처리 중 오류가 발생했습니다.');

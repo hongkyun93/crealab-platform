@@ -21,7 +21,7 @@ import { AdminChatDialog } from '../common/admin-chat-dialog';
 export function InfoPanel() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData, sendNotification, adminId } = useUnifiedProvider();
+    const { updateProductApplication, updateMomentProposal, updateProposal, refreshData, sendNotification, adminId } = useUnifiedProvider();
     const { supabase } = useAuth();
     const [trackingInput, setTrackingInput] = useState('');
     const [isShipping, setIsShipping] = useState(false);
@@ -140,7 +140,7 @@ export function InfoPanel() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, payload);
         } else {
-            success = await updateBrandProposal(proposal.id, payload);
+            success = await updateProductApplication(proposal.id, payload);
         }
 
         // Immediately update workspace store so brand UI reflects changes without refresh
@@ -160,7 +160,7 @@ export function InfoPanel() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
         } else {
-            success = await updateBrandProposal(proposal.id, updates);
+            success = await updateProductApplication(proposal.id, updates);
         }
         if (success) {
             useWorkspaceStore.getState().updateProposal(updates);
@@ -219,7 +219,7 @@ export function InfoPanel() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
         } else {
-            success = await updateBrandProposal(proposal.id, updates);
+            success = await updateProductApplication(proposal.id, updates);
         }
 
         if (success) {
@@ -263,7 +263,7 @@ export function InfoPanel() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             await updateProposal(proposal.id, updates);
         } else {
-            await updateBrandProposal(proposal.id, updates);
+            await updateProductApplication(proposal.id, updates);
         }
     };
 
@@ -281,7 +281,7 @@ export function InfoPanel() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
         } else {
-            success = await updateBrandProposal(proposal.id, updates);
+            success = await updateProductApplication(proposal.id, updates);
         }
         if (success) {
             useWorkspaceStore.getState().updateProposal(updates);
@@ -546,7 +546,7 @@ export function InfoPanel() {
                                                     } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
                                                         success = await updateProposal(proposal.id, updates);
                                                     } else {
-                                                        success = await updateBrandProposal(proposal.id, updates);
+                                                        success = await updateProductApplication(proposal.id, updates);
                                                     }
                                                     if (success) {
                                                         useWorkspaceStore.getState().updateProposal(updates);
@@ -634,7 +634,7 @@ export function InfoPanel() {
                                                     let success = false;
                                                     if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                     else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
-                                                    else success = await updateBrandProposal(proposal.id, updates);
+                                                    else success = await updateProductApplication(proposal.id, updates);
                                                     if (success) {
                                                         useWorkspaceStore.getState().updateProposal(updates);
                                                         refreshData();
@@ -665,7 +665,7 @@ export function InfoPanel() {
                                                     let success = false;
                                                     if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                     else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
-                                                    else success = await updateBrandProposal(proposal.id, updates);
+                                                    else success = await updateProductApplication(proposal.id, updates);
                                                     if (success) {
                                                         useWorkspaceStore.getState().updateProposal(updates);
                                                         refreshData();
@@ -751,7 +751,7 @@ export function InfoPanel() {
 
                                                     if ((proposal as any).moment_id || (proposal as any).moment_id) success = await updateMomentProposal(proposal.id, updates);
                                                     else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
-                                                    else success = await updateBrandProposal(proposal.id, updates);
+                                                    else success = await updateProductApplication(proposal.id, updates);
 
                                                     if (!success) return;
 

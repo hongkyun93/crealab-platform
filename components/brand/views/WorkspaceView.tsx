@@ -23,7 +23,7 @@ import { toast } from "sonner"
 
 interface WorkspaceViewProps {
     campaignProposals: any[]
-    brandProposals: any[]
+    productApplications: any[]
     momentProposals?: any[]
     workspaceTab: string
     setWorkspaceTab: (tab: string) => void
@@ -43,7 +43,7 @@ interface ConfirmDialogState {
 
 export const WorkspaceView = React.memo(function WorkspaceView({
     campaignProposals,
-    brandProposals,
+    productApplications,
     momentProposals = [],
     workspaceTab,
     setWorkspaceTab,
@@ -282,7 +282,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
             onConfirm: async () => {
                 try {
                     // Find proposal to determine table
-                    const proposal = [...campaignProposals, ...brandProposals].find((p: any) => p.id === proposalId)
+                    const proposal = [...campaignProposals, ...productApplications].find((p: any) => p.id === proposalId)
 
                     if (!proposal) {
                         toast.error('제안을 찾을 수 없습니다.')
@@ -352,7 +352,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
             variant: 'destructive',
             onConfirm: async () => {
                 try {
-                    const proposal = [...campaignProposals, ...brandProposals].find((p: any) => p.id === proposalId)
+                    const proposal = [...campaignProposals, ...productApplications].find((p: any) => p.id === proposalId)
 
                     if (!proposal) {
                         toast.error('제안을 찾을 수 없습니다.')
@@ -402,7 +402,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
             onConfirm: async () => {
                 try {
                     // Find proposal type (moment vs brand)
-                    const proposal = [...brandProposals, ...momentProposals].find((p: any) => p.id === proposalId)
+                    const proposal = [...productApplications, ...momentProposals].find((p: any) => p.id === proposalId)
                     const isMomentProposal = proposal?.moment_id || proposal?.momentId
 
                     const tableToUpdate = isMomentProposal ? 'moment_proposals' : 'product_applications'
@@ -434,18 +434,18 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     const inboundApplications = useMemo(
         () => [
             ...(campaignProposals?.filter((p: any) => p.status === 'applied' || p.status === 'pending' || p.status === 'viewed') || []),
-            ...(brandProposals?.filter((p: any) =>
+            ...(productApplications?.filter((p: any) =>
                 !p.moment_id && // moment_proposals 제외
                 (p.status === 'applied' || p.status === 'pending' || p.status === 'offered' || !p.status)
             ) || [])
         ],
-        [campaignProposals, brandProposals]
+        [campaignProposals, productApplications]
     )
 
     // 2. Outbound (Sent by Brand to Creators) - moment_proposals only
     // moment_proposals: 브랜드가 크리에이터 모먼트 보고 제안 (brand_id = 브랜드, creator_id = 크리에이터)
     const outboundOffers = useMemo(() => [
-        ...(brandProposals?.filter(p =>
+        ...(productApplications?.filter(p =>
             p.status !== 'rejected' &&
             p.status !== 'cancelled' &&
             p.status !== 'completed' &&
@@ -467,7 +467,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
             p.status !== 'signed' &&
             p.status !== 'confirmed'
         ) || [])
-    ], [brandProposals, momentProposals])
+    ], [productApplications, momentProposals])
 
     // 3. Active (In Progress) — settlement/final_complete도 진행중으로 분류
     const ACTIVE_STATUSES = ['accepted', 'signed', 'confirmed', 'settlement', 'final_complete']
@@ -478,10 +478,10 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
     const activeOutbound = useMemo(
         () => [
-            ...(brandProposals?.filter((p: any) => ACTIVE_STATUSES.includes(p.status)) || []),
+            ...(productApplications?.filter((p: any) => ACTIVE_STATUSES.includes(p.status)) || []),
             ...(momentProposals?.filter((p: any) => ACTIVE_STATUSES.includes(p.status)) || [])
         ],
-        [brandProposals, momentProposals]
+        [productApplications, momentProposals]
     )
 
     const allActive = useMemo(
@@ -499,10 +499,10 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
     const completedOutbound = useMemo(
         () => [
-            ...(brandProposals?.filter((p: any) => p.status === 'completed' || p.status === 'cancelled') || []),
+            ...(productApplications?.filter((p: any) => p.status === 'completed' || p.status === 'cancelled') || []),
             ...(momentProposals?.filter((p: any) => p.status === 'completed' || p.status === 'cancelled') || [])
         ],
-        [brandProposals, momentProposals]
+        [productApplications, momentProposals]
     )
 
     const allCompleted = useMemo(
@@ -520,10 +520,10 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
     const rejectedOutbound = useMemo(
         () => [
-            ...(brandProposals?.filter((p: any) => p.status === 'rejected') || []),
+            ...(productApplications?.filter((p: any) => p.status === 'rejected') || []),
             ...(momentProposals?.filter((p: any) => p.status === 'rejected') || [])
         ],
-        [brandProposals, momentProposals]
+        [productApplications, momentProposals]
     )
 
     const allRejected = useMemo(
@@ -1174,6 +1174,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                         secondaryUsagePeriod: editingProposal.conditions?.condition_secondary_usage_period || "",
                         secondaryUsageFee: editingProposal.conditions?.secondary_usage_fee ? String(editingProposal.conditions.secondary_usage_fee) : "",
                         proposalMessage: editingProposal.message || "",
+                        maintenancePeriod: editingProposal.conditions?.condition_maintenance_period || editingProposal.conditions?.maintenance_period || "",
                     }}
                 />
             )}

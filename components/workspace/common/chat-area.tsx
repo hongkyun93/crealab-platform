@@ -95,17 +95,15 @@ export function ChatArea({ className, overrideOtherId, isAdminChat }: ChatAreaPr
 
     // Proposal 메타데이터
     const p = proposal as any;
-    const isCampaignProposal = p?.type === 'creator_apply' || !!p?.campaignId;
-    const isMomentProposal = !!p?.moment_id;
+    const isCampaignProposal = p?.target_type === 'campaign' || p?.type === 'campaign_apply' || !!p?.campaignId;
+    const isMomentProposal = p?.target_type === 'moment' || !!p?.moment_id;
     const proposalIdStr = p?.id?.toString();
     const workspaceId: string | undefined = p?.workspace_id;
 
     const projectName = useMemo(() => {
         if (!p) return '';
-        if (isCampaignProposal) return p.campaignName || p.productName || p.campaign?.title || '캠페인';
-        if (isMomentProposal) return p.title || p.moment?.title || '모먼트';
-        return p.product_name || p.productName || '제품 제안';
-    }, [p, isCampaignProposal, isMomentProposal]);
+        return p.target_name || '협업 프로젝트';
+    }, [p]);
 
     // 상대방 user ID
     const otherId: string | undefined = useMemo(() => {

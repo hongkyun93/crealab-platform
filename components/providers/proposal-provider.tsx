@@ -121,21 +121,23 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 const mapped: Proposal[] = mergedData.map((p: any) => {
                     return {
                         id: p.id,
-                        type: 'creator_apply' as const,
+                        type: 'campaign_apply' as const,
                         dealType: 'ad',
+
+                        // [NEW] Virtual target properties
+                        target_id: p.campaign_id,
+                        target_type: 'campaign',
+                        target_name: p.campaigns?.title || p.campaigns?.product_name,
+
                         campaignId: p.campaign_id,
                         campaignName: p.campaigns?.title || p.campaigns?.product_name,
-                        productName: p.campaigns?.product_name,
-                        creatorId: p.creator_id,
-                        // If I am brand, influencer info is in p.profiles
-                        creatorName: p.profiles?.display_name,
-                        creatorAvatar: p.profiles?.avatar_url,
-                        brandId: p.campaigns?.brand_id,
-                        brandName: p.campaigns?.profiles?.display_name,
-                        brandAvatar: p.campaigns?.profiles?.avatar_url || p.campaigns?.product_image_url,
-                        // Compatibility with UI components
-                        brand_name: p.campaigns?.profiles?.display_name,
                         product_name: p.campaigns?.product_name,
+                        creator_id: p.creator_id,
+                        // If I am brand, influencer info is in p.profiles
+                        creator_name: p.profiles?.display_name,
+                        creator_avatar: p.profiles?.avatar_url,
+                        brand_id: p.campaigns?.brand_id,
+                        brand_name: p.campaigns?.profiles?.display_name,
                         brand_avatar: p.campaigns?.profiles?.avatar_url || p.campaigns?.product_image_url,
                         // [FIX] Condition fields were missing from campaign_applications mapping
                         price_offer: p.price_offer,
@@ -230,6 +232,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                             condition_upload_date, condition_product_receipt_date,
                             condition_secondary_usage_period, secondary_usage_fee,
                             brand_condition_confirmed, creator_condition_confirmed,
+                            has_incentive, incentive_detail, special_terms, product_url, product_name,
+                            channel_name, channel_subtype, video_guide, condition_maintenance_period,
                             project_title, status
                         )
                     `)
@@ -259,6 +263,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                             condition_upload_date, condition_product_receipt_date,
                             condition_secondary_usage_period, condition_maintenance_period,
                             secondary_usage_fee, brand_condition_confirmed, creator_condition_confirmed,
+                            has_incentive, incentive_detail, special_terms, product_url, product_name,
+                            channel_name, channel_subtype,
                             project_title, status
                         )
                     `)
@@ -296,16 +302,18 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
 
             const mappedBrand: ProductApplication[] = brandData.map((p: any) => ({
                 id: p.id,
-                type: 'brand_offer',
+                type: 'product_apply',
+
+                // [NEW] Virtual target properties
+                target_id: p.product_id,
+                target_type: 'product',
+                target_name: p.workspace?.product_name || p.product_name || p.products?.name,
+
                 brand_id: p.brand_id,
                 creator_id: p.creator_id,
                 moment_id: p.moment_id,
                 product_id: p.product_id,
-                product_name: p.product_name || p.products?.name,
-                product_type: p.workspace?.product_type ?? p.product_type,
-                price_offer: p.price_offer,
-                has_incentive: p.has_incentive,
-                incentive_detail: p.incentive_detail,
+                product_name: p.workspace?.product_name || p.product_name || p.products?.name,
 
                 status: p.status,
                 message: p.message,
@@ -314,16 +322,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 portfolio_links: p.portfolio_links,
                 instagram_handle: p.instagram_handle,
                 insight_screenshot: p.insight_screenshot,
-                channel_name: p.channel_name,
-                channel_subtype: p.channel_subtype,
                 created_at: p.created_at,
                 updated_at: p.updated_at,
                 brand_name: p.brand?.display_name,
-                brandAvatar: p.brand?.avatar_url,
                 creator_name: p.influencer?.display_name,
-                creatorName: p.influencer?.display_name,
                 creator_avatar: p.influencer?.avatar_url,
-                creatorAvatar: p.influencer?.avatar_url,
+                brand_avatar: p.brand?.avatar_url,
 
                 // [SOT] workspaces 우선, 없으면 product_applications 직접 컬럼 fallback
                 contract_content: p.workspace?.contract_content ?? p.contract_content,
@@ -336,7 +340,15 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 delivery_status: p.workspace?.delivery_status ?? p.delivery_status,
                 brand_condition_confirmed: p.workspace?.brand_condition_confirmed ?? p.brand_condition_confirmed,
                 creator_condition_confirmed: p.workspace?.creator_condition_confirmed ?? p.creator_condition_confirmed,
-                special_terms: p.conditions?.special_terms ?? p.special_terms,
+                price_offer: p.workspace?.price_offer ?? p.price_offer,
+                product_type: p.workspace?.product_type ?? p.product_type,
+                // [NOTE] product_applications에는 conditions JSONB 없음 → workspace 우선, 없으면 p 직접 컬럼
+                special_terms: p.workspace?.special_terms ?? p.special_terms,
+                has_incentive: p.workspace?.has_incentive ?? p.has_incentive,
+                incentive_detail: p.workspace?.incentive_detail ?? p.incentive_detail,
+                channel_name: p.workspace?.channel_name ?? p.channel_name,
+                channel_subtype: p.workspace?.channel_subtype ?? p.channel_subtype,
+                video_guide: p.workspace?.video_guide ?? p.video_guide,
                 condition_product_receipt_date: p.workspace?.condition_product_receipt_date ?? p.condition_product_receipt_date,
                 condition_draft_submission_date: p.workspace?.condition_draft_submission_date ?? p.condition_draft_submission_date,
                 condition_final_submission_date: p.workspace?.condition_final_submission_date ?? p.condition_final_submission_date,
@@ -355,7 +367,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 content_clean_url: p.workspace?.content_clean_url ?? p.content_clean_url,
                 content_final_approved_at: p.workspace?.content_final_approved_at ?? p.content_final_approved_at,
                 content_revision_requested_at: p.workspace?.content_revision_requested_at ?? p.content_revision_requested_at,
-                product_url: p.products?.image_url,
+                product_url: p.workspace?.product_url ?? p.products?.image_url,
                 product: p.products,
                 workspace_id: p.workspace_id,
                 payment_confirmed_at: p.workspace?.payment_confirmed_at ?? p.payment_confirmed_at
@@ -366,6 +378,12 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             const rawMomentProposals: MomentProposal[] = momentData.map((p: any) => ({
                 id: p.id,
                 type: 'moment_offer', // [FIX] 추가 (다이얼로그 분기에 사용)
+
+                // [NEW] Virtual target properties
+                target_id: p.moment_id,
+                target_type: 'moment',
+                target_name: p.moment?.title || p.workspace?.product_name || p.conditions?.product_name || p.product_name || "협업 제안",
+
                 brand_id: p.brand_id,
                 creator_id: p.creator_id,
                 moment_id: p.moment_id,
@@ -383,15 +401,16 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 moment_title: p.moment?.title,
                 conditions: p.conditions,
 
-                product_name: p.product_name || p.conditions?.product_name || "협업 제안",
+                product_name: p.workspace?.product_name ?? p.conditions?.product_name ?? p.product_name ?? "협업 제안",
                 product_type: p.workspace?.product_type ?? p.conditions?.product_type ?? p.product_type,
-                has_incentive: p.has_incentive || p.conditions?.has_incentive,
-                incentive_detail: p.incentive_detail || p.conditions?.incentive_detail,
-                desired_date: p.desired_date || p.conditions?.desired_date,
-                date_flexible: p.date_flexible || p.conditions?.date_flexible,
+                has_incentive: p.workspace?.has_incentive ?? p.conditions?.has_incentive ?? p.has_incentive,
+                incentive_detail: p.workspace?.incentive_detail ?? p.conditions?.incentive_detail ?? p.incentive_detail,
+                desired_date: p.workspace?.desired_date ?? p.conditions?.desired_date ?? p.desired_date,
+                date_flexible: p.workspace?.date_flexible ?? p.conditions?.date_flexible ?? p.date_flexible,
                 video_guide: p.workspace?.video_guide ?? p.conditions?.video_guide ?? p.video_guide,
 
-                special_terms: p.special_terms || p.conditions?.special_terms,
+                special_terms: p.workspace?.special_terms ?? p.conditions?.special_terms ?? p.special_terms,
+                product_url: p.workspace?.product_url ?? p.conditions?.product_url,
                 condition_product_receipt_date: p.workspace?.condition_product_receipt_date ?? p.conditions?.condition_product_receipt_date,
                 condition_draft_submission_date: p.workspace?.condition_draft_submission_date ?? p.conditions?.condition_draft_submission_date,
                 condition_final_submission_date: p.workspace?.condition_final_submission_date ?? p.conditions?.condition_final_submission_date,
@@ -409,11 +428,30 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 brand_signed_at: p.workspace?.brand_signed_at ?? p.conditions?.brand_signed_at,
                 creator_signed_at: p.workspace?.creator_signed_at ?? p.conditions?.creator_signed_at,
 
-                channel_subtype: (p.moment?.channels && p.moment.channels.length > 0)
-                    ? p.moment.channels.join(',')
-                    : null,
-                channel_name: p.moment?.channels?.[0]?.split('_')[0] || null,
-                product_url: p.moment?.title ? `모먼트: ${p.moment.title}` : undefined,
+                // [UNIFIED] life_moments.channels 파싱 → channel_name + channel_subtype
+                // ChannelSelector 값 형식: 'instagram_reels', 'youtube_shorts', 'tiktok', 'blog', 'other:텍스트'
+                channel_subtype: (() => {
+                    const ws = p.workspace?.channel_subtype
+                    const cond = p.conditions?.channel_subtype
+                    if (ws) return ws
+                    if (cond) return cond
+                    // life_moments.channels 배열에서 파싱
+                    const first = p.moment?.channels?.[0]
+                    if (!first) return null
+                    if (first.startsWith('other:')) return first.slice(6) // 'other:팟캐스트' → '팟캐스트'
+                    if (first.includes('_')) return first.split('_').slice(1).join('_') // 'instagram_reels' → 'reels'
+                    return null // 'tiktok', 'blog' 등은 subtype 없음
+                })(),
+                channel_name: (() => {
+                    const ws = p.workspace?.channel_name
+                    const cond = p.conditions?.channel_name
+                    if (ws) return ws
+                    if (cond) return cond
+                    const first = p.moment?.channels?.[0]
+                    if (!first) return null
+                    if (first.startsWith('other:')) return 'other'
+                    return first.split('_')[0] // 'instagram_reels' → 'instagram', 'tiktok' → 'tiktok'
+                })(),
 
                 content_submission_url: p.workspace?.content_submission_url ?? p.conditions?.content_submission_url,
                 content_submission_file_url: p.workspace?.content_submission_file_url ?? p.conditions?.content_submission_file_url,
@@ -500,6 +538,16 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             creator_signed_at: cond.creator_signed_at ?? existing?.creator_signed_at,
             brand_condition_confirmed: cond.brand_condition_confirmed ?? existing?.brand_condition_confirmed,
             creator_condition_confirmed: cond.creator_condition_confirmed ?? existing?.creator_condition_confirmed,
+
+            // [FIX] Map additional conditions fields that may be updated in realtime
+            channel_name: cond.channel_name ?? existing?.channel_name,
+            channel_subtype: cond.channel_subtype ?? existing?.channel_subtype,
+            has_incentive: cond.has_incentive ?? existing?.has_incentive,
+            incentive_detail: cond.incentive_detail ?? existing?.incentive_detail,
+            special_terms: cond.special_terms ?? existing?.special_terms,
+            product_url: cond.product_url ?? existing?.product_url,
+            product_name: cond.product_name ?? existing?.product_name,
+
             delivery_status: cond.delivery_status ?? existing?.delivery_status,
             tracking_number: cond.tracking_number ?? existing?.tracking_number,
             shipping_address: cond.shipping_address ?? existing?.shipping_address,
@@ -714,7 +762,6 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     .from('campaign_applications')
                     .insert({
                         campaign_id: proposal.campaignId,
-                        brand_id: proposal.toId, // [NEW] 직접 저장 — extra query 불필요
                         creator_id: targetCreatorId,
                         creator_team_id: myTeamId,
                         price_offer: proposal.price_offer,
@@ -750,6 +797,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                             type: 'application_received',
                             content: `${creatorName}님이 '${campaignTitle}' 캠페인에 지원했습니다.`,
                             reference_id: data.id.toString(),
+                            action_url: `/brand?view=my-campaigns&campaignId=${proposal.campaignId}`,
                             is_read: false
                         })
 
@@ -1276,9 +1324,27 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 payload.creator_team_id = myTeamId
             }
 
+            // [UNIFIED] product_applications에 없는 컬럼 — workspace에만 저장
+            const PA_EXCLUDED = [
+                'channel_name', 'channel_subtype', 'video_guide',
+                'price_offer', 'product_type', 'product_url', 'product_name',
+                'has_incentive', 'incentive_detail', 'special_terms',
+                'secondary_usage_fee', 'condition_maintenance_period',
+                'condition_draft_submission_date', 'condition_final_submission_date',
+                'condition_upload_date', 'condition_secondary_usage_period',
+            ]
+            const wsInitFields: Record<string, any> = {}
+            const paPayload = { ...payload }
+            for (const field of PA_EXCLUDED) {
+                if (paPayload[field] !== undefined) {
+                    wsInitFields[field] = paPayload[field]
+                    delete paPayload[field]
+                }
+            }
+
             const { data, error } = await supabase
                 .from('product_applications')
-                .insert(payload)
+                .insert(paPayload)
                 .select()
                 .single()
 
@@ -1297,7 +1363,9 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                                 creator_id: creatorId,
                                 original_proposal_type: 'product_application',
                                 original_proposal_id: data.id.toString(),
-                                project_title: payload.product_name || '브랜드 제안'
+                                project_title: payload.product_name || '브랜드 제안',
+                                // [UNIFIED] workspace-only 조건 필드 초기값
+                                ...wsInitFields,
                             })
                             .select('id')
                             .single()
@@ -1342,6 +1410,43 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 payload.creator_team_id = myTeamId
             }
 
+            // [FIX] Pack condition fields into conditions JSONB to avoid PostgREST 42703 error
+            if (!payload.conditions) {
+                payload.conditions = {
+                    product_name: payload.product_name,
+                    product_url: payload.product_url,
+                    product_type: payload.product_type,
+                    video_guide: payload.video_guide,
+                    has_incentive: payload.has_incentive,
+                    incentive_detail: payload.incentive_detail,
+                    // [UNIFIED] 진행 채널
+                    channel_name: payload.channel_name,
+                    channel_subtype: payload.channel_subtype,
+                    condition_draft_submission_date: payload.condition_draft_submission_date,
+                    condition_final_submission_date: payload.condition_final_submission_date,
+                    condition_upload_date: payload.condition_upload_date,
+                    condition_secondary_usage_period: payload.condition_secondary_usage_period,
+                    secondary_usage_fee: payload.secondary_usage_fee,
+                    condition_maintenance_period: payload.condition_maintenance_period,
+                };
+            }
+
+            // Clean up flat fields to match DB schema exactly
+            delete payload.product_name;
+            delete payload.product_url;
+            delete payload.product_type;
+            delete payload.video_guide;
+            delete payload.has_incentive;
+            delete payload.incentive_detail;
+            delete payload.channel_name;
+            delete payload.channel_subtype;
+            delete payload.condition_draft_submission_date;
+            delete payload.condition_final_submission_date;
+            delete payload.condition_upload_date;
+            delete payload.condition_secondary_usage_period;
+            delete payload.secondary_usage_fee;
+            delete payload.condition_maintenance_period;
+
             const { data, error } = await supabase
                 .from('moment_proposals')
                 .insert(payload)
@@ -1363,7 +1468,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                                 creator_id: creatorId,
                                 original_proposal_type: 'moment_proposal',
                                 original_proposal_id: data.id.toString(),
-                                project_title: payload.product_name || payload.moment_title || payload.moment_name || '모먼트 제안'
+                                project_title: payload.conditions?.product_name || payload.moment_title || payload.moment_name || '모먼트 제안'
                             })
                             .select('id')
                             .single()

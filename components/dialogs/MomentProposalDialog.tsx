@@ -50,6 +50,7 @@ export interface MomentProposalFormData {
     dateFlexible: boolean
     secondaryUsagePeriod: string
     secondaryUsageFee: string
+    maintenancePeriod: string
     proposalMessage: string
     selectedProductId?: string
 }
@@ -103,6 +104,7 @@ export function MomentProposalDialog({
 
     const [secondaryUsagePeriod, setSecondaryUsagePeriod] = useState("")
     const [secondaryUsageFee, setSecondaryUsageFee] = useState("")
+    const [maintenancePeriod, setMaintenancePeriod] = useState("")
     const [proposalMessage, setProposalMessage] = useState("")
 
     // 모달 열릴 때 초기화 (수정 모드 vs 신규 모드)
@@ -126,6 +128,7 @@ export function MomentProposalDialog({
                 setDateFlexible(initialData.dateFlexible || false)
                 setSecondaryUsagePeriod(initialData.secondaryUsagePeriod || "불가")
                 setSecondaryUsageFee(initialData.secondaryUsageFee || "")
+                setMaintenancePeriod(initialData.maintenancePeriod || "")
                 setProposalMessage(initialData.proposalMessage || "")
             } else {
                 // 신규 모드: 빈 값 또는 기본값 유지 (부모쪽에서 message 등은 prefill 가능하지만 여기선 순수 초기화)
@@ -145,6 +148,7 @@ export function MomentProposalDialog({
                 setDateFlexible(false)
                 setSecondaryUsagePeriod("")
                 setSecondaryUsageFee("")
+                setMaintenancePeriod("")
                 // proposalMessage는 부모가 띄울 때 주입하지 않으면 빈칸. 구현에 따라 부모에서 initialData.proposalMessage에 기본템플릿만 넣어 줄 수도 있음
             }
         }
@@ -230,6 +234,7 @@ export function MomentProposalDialog({
             dateFlexible,
             secondaryUsagePeriod,
             secondaryUsageFee,
+            maintenancePeriod,
             proposalMessage,
             selectedProductId
         })
@@ -516,27 +521,45 @@ export function MomentProposalDialog({
 
                     <div className="space-y-2">
                         <Label>콘텐츠 업로드일 (선택)</Label>
-                        <div className="flex items-center gap-2">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !desiredDate && "text-muted-foreground")}>
-                                        {desiredDate ? format(desiredDate, "yyyy-MM-dd", { locale: ko }) : <span>콘텐츠 업로드일 선택</span>}
-                                        <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                    <CalendarComponent mode="single" selected={desiredDate} onSelect={setDesiredDate} initialFocus />
-                                </PopoverContent>
-                            </Popover>
-                            <Button
-                                type="button"
-                                variant={dateFlexible ? "default" : "outline"}
-                                onClick={() => setDateFlexible(!dateFlexible)}
-                                className={cn("gap-1", dateFlexible && "bg-primary text-primary-foreground hover:bg-primary/90")}
-                            >
-                                {dateFlexible && <BadgeCheck className="h-4 w-4" />}
-                                (쯔음)
-                            </Button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
+                            <div className="flex items-center gap-2">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !desiredDate && "text-muted-foreground")}>
+                                            {desiredDate ? format(desiredDate, "yyyy-MM-dd", { locale: ko }) : <span>콘텐츠 업로드일 선택</span>}
+                                            <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <CalendarComponent mode="single" selected={desiredDate} onSelect={setDesiredDate} initialFocus />
+                                    </PopoverContent>
+                                </Popover>
+                                <Button
+                                    type="button"
+                                    variant={dateFlexible ? "default" : "outline"}
+                                    onClick={() => setDateFlexible(!dateFlexible)}
+                                    className={cn("gap-1", dateFlexible && "bg-primary text-primary-foreground hover:bg-primary/90")}
+                                >
+                                    {dateFlexible && <BadgeCheck className="h-4 w-4" />}
+                                    (쯔음)
+                                </Button>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">게시 유지 기간 (업로드일 기준)</Label>
+                                <select
+                                    value={maintenancePeriod}
+                                    onChange={(e) => setMaintenancePeriod(e.target.value)}
+                                    className="h-9 w-full text-sm rounded-md border border-input bg-background px-3 focus:ring-1 focus:ring-ring"
+                                >
+                                    <option value="">선택 안 함</option>
+                                    <option value="제한없음">제한 없음</option>
+                                    <option value="1개월">1개월</option>
+                                    <option value="3개월">3개월</option>
+                                    <option value="6개월">6개월</option>
+                                    <option value="1년">1년</option>
+                                    <option value="영구">영구</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 

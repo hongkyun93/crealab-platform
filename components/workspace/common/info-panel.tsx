@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { validateContentFile } from '@/lib/utils/file-validation';
-import { BarChart3, CheckCircle2, Eye, FileText, Instagram, Loader2, MapPin, Package, Pencil, Sparkles, Truck, Upload, User, Video } from 'lucide-react';
+import { BarChart3, CheckCircle2, Eye, FileText, Instagram, Loader2, MapPin, Package, Pencil, Sparkles, Truck, Upload, User, Video, MessageSquare, Download } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { compressVideo } from '@/lib/video-compressor';
@@ -18,7 +18,7 @@ import { StageCard } from '../common/stage-card';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
 import { AdminChatDialog } from '../common/admin-chat-dialog';
 
-export function CreatorInfoPanel() {
+export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
     const { updateProposal, updateMomentProposal, updateProductApplication, sendNotification, user, refreshData, adminId } = useUnifiedProvider();
@@ -43,6 +43,8 @@ export function CreatorInfoPanel() {
     const [isEditing, setIsEditing] = useState(false);
     const [isSavingShip, setIsSavingShip] = useState(false);
     const [isConfirming, setIsConfirming] = useState(false);
+    const [trackingInput, setTrackingInput] = useState('');
+    const [isShipping, setIsShipping] = useState(false);
 
     // Content upload state
     const { supabase } = useAuth();
@@ -345,11 +347,16 @@ export function CreatorInfoPanel() {
         }
     };
 
-    // 크리에이터 수락 토글 (chip 클릭)
+    // 크리에이터/브랜드 수락 토글 (chip 클릭)
     const handleToggleConfirm = async (role: 'brand' | 'creator', currentValue: boolean) => {
         if (!proposal?.id) return;
         const newValue = !currentValue;
-        const updates: any = { creator_condition_confirmed: newValue };
+        const updates: any = {};
+        if (role === 'brand') {
+            updates.brand_condition_confirmed = newValue;
+        } else {
+            updates.creator_condition_confirmed = newValue;
+        }
         let success = false;
         if ((proposal as any).moment_id || (proposal as any).momentId) {
             success = await updateMomentProposal(proposal.id, updates);
@@ -392,122 +399,40 @@ export function CreatorInfoPanel() {
             } catch (notifErr) {
                 console.warn('조건 확정 알림 발송 실패:', notifErr);
             }
+        } else {
+            toast.error('조건 상태를 변경하지 못했습니다. (서버 오류)');
         }
     };
 
-    // 크리에이터 전자서명
-    const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
-        if (!proposal?.id) return;
 
-        const updates: any = {
-            creator_signature: signatureData,
-            creator_signed_at: new Date().toISOString(),
-        };
-
-        // If brand already signed, mark as fully signed
-        if (proposal.brand_signature) {
-            updates.contract_status = 'signed';
-        } else {
-            updates.contract_status = 'partial';
-        }
-
-        let success = false;
-        if ((proposal as any).moment_id || (proposal as any).momentId) {
-            success = await updateMomentProposal(proposal.id, updates);
-        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
-            success = await updateProposal(proposal.id, updates);
-        } else {
-            success = await updateProductApplication(proposal.id, updates);
-        }
-
-        if (success) {
-            useWorkspaceStore.getState().updateProposal(updates);
-            // [입금 확인 게이트] contract_status === 'signed' 이후
-            // → payment_confirmed_at이 있을 때만 shipping, 없으면 contract 단계 유지 (입금 대기)
-            if (updates.contract_status === 'signed') {
-                const currentProposal = useWorkspaceStore.getState().proposal as any;
-                if (currentProposal?.payment_confirmed_at) {
-                    useWorkspaceStore.getState().setCurrentStage('shipping');
-                } else {
-                    useWorkspaceStore.getState().setCurrentStage('contract'); // 입금 대기
-                }
-
-                // 🔔 브랜드에게 크리에이터 서명 완료 알림
-                try {
-                    const brandId = (proposal as any)?.brand_id ||
-                        (proposal as any)?.brandId ||
-                        (proposal as any)?.campaign?.brand_id;
-                    const creatorName = user?.name || '크리에이터';
-                    if (brandId) {
-                        const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
-                        await sendNotification(
-                            brandId,
-                            `${creatorName}님이 계약서에 서명했습니다. 계약이 완료되었습니다.`,
-                            'contract_signed',
-                            proposal.id?.toString(),
-                            actionUrl,
-                            { target_tab: 'contract' }
-                        );
-                    }
-                } catch (notifErr) {
-                    console.warn('계약 서명 알림 실패 (무시):', notifErr);
-                }
-            }
-            refreshData(); // Sync archive cards + cross-user data
-        }
-    };
-
-    // 계약서 내용 저장
-    const handleSaveContract = async (content: string) => {
-        if (!proposal?.id) return;
-        const updates: any = { contract_content: content };
-        if ((proposal as any).moment_id || (proposal as any).momentId) {
-            await updateMomentProposal(proposal.id, updates);
-        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
-            await updateProposal(proposal.id, updates);
-        } else {
-            await updateProductApplication(proposal.id, updates);
-        }
-    };
-
-    // 크리에이터 서명 취소
-    const handleUndoSign = async (role: 'brand' | 'creator') => {
-        if (!proposal?.id) return;
-        const updates: any = {
-            creator_signature: null,
-            creator_signed_at: null,
-            contract_status: proposal.brand_signature ? 'partial' : 'none',
-
-        };
-        let success = false;
-        if ((proposal as any).moment_id || (proposal as any).momentId) {
-            success = await updateMomentProposal(proposal.id, updates);
-        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
-            success = await updateProposal(proposal.id, updates);
-        } else {
-            success = await updateProductApplication(proposal.id, updates);
-        }
-        if (success) {
-            useWorkspaceStore.getState().updateProposal(updates);
-            refreshData(); // Sync archive cards + cross-user data
-        }
-    };
 
     return (
         <div className="flex flex-col h-full">
             {/* 1. Workspace Header (Desktop Only, Mobile uses Layout Header) */}
             <div className="p-6 pb-2 hidden md:block">
                 <div className="flex items-center gap-3 mb-4">
-                    {/* Brand Avatar Placeholder */}
-                    <div className="w-12 h-12 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-lg font-bold text-indigo-700 overflow-hidden">
-                        {(proposal?.brandAvatar || proposal?.brand_avatar) ? (
-                            <img src={proposal.brandAvatar || proposal.brand_avatar} alt="Brand" className="w-full h-full object-cover" />
+                    <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-lg font-bold text-primary overflow-hidden">
+                        {userRole === 'brand' ? (
+                            (proposal?.creatorAvatar || (proposal as any)?.creator_avatar) ? (
+                                <img src={proposal?.creatorAvatar || (proposal as any)?.creator_avatar} alt="Creator" className="w-full h-full object-cover" />
+                            ) : (
+                                (proposal?.creatorName?.[0] || (proposal as any)?.creator_name?.[0] || 'C')
+                            )
                         ) : (
-                            (proposal?.brandName?.[0] || proposal?.brand_name?.[0] || 'B')
+                            (proposal?.brandAvatar || proposal?.brand_avatar) ? (
+                                <img src={proposal.brandAvatar || proposal.brand_avatar} alt="Brand" className="w-full h-full object-cover" />
+                            ) : (
+                                (proposal?.brandName?.[0] || proposal?.brand_name?.[0] || 'B')
+                            )
                         )}
                     </div>
                     <div>
-                        <h2 className="font-bold text-lg leading-tight">{proposal?.brandName || proposal?.brand_name || 'Brand Name'}</h2>
+                        <h2 className="font-bold text-lg leading-tight">
+                            {userRole === 'brand'
+                                ? (proposal?.creatorName || (proposal as any)?.creator_name || (proposal as any)?.influencer?.display_name || (proposal as any)?.influencer?.name || '크리에이터')
+                                : (proposal?.brandName || proposal?.brand_name || 'Brand Name')
+                            }
+                        </h2>
                         <p className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>{proposal?.target_name || 'Project Name'}</span>
                             <span className="font-mono text-[9px] text-muted-foreground/50 bg-muted/50 px-1.5 py-0.5 rounded">
@@ -551,8 +476,8 @@ export function CreatorInfoPanel() {
                         isActive={currentStage === 'negotiation'}
                     >
                         <ConditionsPanel
-                            userRole="creator"
-                            readonly={true}
+                            userRole={userRole}
+                            readonly={userRole === 'creator'}
                             onSave={handleConditionSave}
                             onToggleConfirm={handleToggleConfirm}
                         />
@@ -619,15 +544,16 @@ export function CreatorInfoPanel() {
                                 <div className="flex items-center gap-2 mb-2">
                                     <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                                     <span className="text-xs font-semibold text-muted-foreground">배송지 정보</span>
-                                    {proposal?.receiver_name && !isEditing && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' && (
+                                    {/* Show Edit Button only for Creator */}
+                                    {proposal?.receiver_name && !isEditing && userRole === 'creator' && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' && (
                                         <button onClick={() => setIsEditing(true)} className="ml-auto text-muted-foreground hover:text-foreground">
                                             <Pencil className="h-3 w-3" />
                                         </button>
                                     )}
                                 </div>
 
-                                {/* Show form if no shipping info saved yet, or editing */}
-                                {(!proposal?.receiver_name || isEditing) && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' ? (
+                                {/* Show form if Creator is editing or hasn't saved yet */}
+                                {userRole === 'creator' && (!proposal?.receiver_name || isEditing) && proposal?.delivery_status !== 'shipped' && proposal?.delivery_status !== 'delivered' ? (
                                     <div className="space-y-2">
                                         {/* Load from profile button */}
                                         <button
@@ -721,6 +647,12 @@ export function CreatorInfoPanel() {
                                             </Button>
                                         </div>
                                     </div>
+                                ) : !proposal?.receiver_name ? (
+                                    <div className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3 text-center">
+                                        {userRole === 'brand'
+                                            ? '크리에이터가 배송지 정보를 입력하기를 기다리는 중입니다.'
+                                            : '제품을 받을 배송지 정보를 입력해주세요.'}
+                                    </div>
                                 ) : (
                                     <div className="bg-muted/30 rounded-lg p-3 space-y-1.5 text-sm">
                                         <div className="flex justify-between">
@@ -759,6 +691,7 @@ export function CreatorInfoPanel() {
                                     )}
                                 </div>
 
+                                {/* Delivery Status Info / Tracking Register */}
                                 {proposal?.delivery_status === 'delivered' ? (
                                     <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3">
                                         <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium">
@@ -776,17 +709,85 @@ export function CreatorInfoPanel() {
                                                 <span className="text-xs text-muted-foreground">운송장 번호</span>
                                                 <span className="font-mono text-sm font-medium">{proposal.tracking_number}</span>
                                             </div>
+                                            {userRole === 'brand' && (
+                                                <div className="text-xs text-muted-foreground mt-2">
+                                                    크리에이터 수령 대기 중...
+                                                </div>
+                                            )}
                                         </div>
+                                        {userRole === 'creator' && (
+                                            <Button
+                                                className="w-full h-9"
+                                                disabled={isConfirming}
+                                                onClick={async () => {
+                                                    if (!proposal?.id) return;
+                                                    setIsConfirming(true);
+                                                    try {
+                                                        const updates: any = { delivery_status: 'delivered' };
+                                                        let success = false;
+                                                        if ((proposal as any).moment_id || (proposal as any).momentId) {
+                                                            success = await updateMomentProposal(proposal.id, updates);
+                                                        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                                            success = await updateProposal(proposal.id, updates);
+                                                        } else {
+                                                            success = await updateProductApplication(proposal.id, updates);
+                                                        }
+                                                        if (success) {
+                                                            useWorkspaceStore.getState().updateProposal(updates);
+                                                            useWorkspaceStore.getState().setCurrentStage('content');
+                                                            toast.success('수령이 확인되었습니다. 콘텐츠 제작을 시작하세요!');
+                                                            refreshData(); // Sync archive cards + cross-user data
+
+                                                            // Notify brand
+                                                            const brandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
+                                                            if (brandId) {
+                                                                try {
+                                                                    const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                                    await sendNotification(
+                                                                        brandId,
+                                                                        `${user?.name || '크리에이터'}님이 제품을 수령했습니다.`,
+                                                                        'delivery_confirmed',
+                                                                        proposal.id?.toString(),
+                                                                        actionUrl,
+                                                                        { target_tab: 'shipping' }
+                                                                    );
+                                                                } catch (notifErr) {
+                                                                    console.warn('Notification failed:', notifErr);
+                                                                }
+                                                            }
+                                                        }
+                                                    } catch (e) {
+                                                        console.error('Delivery confirm failed:', e);
+                                                        toast.error('오류가 발생했습니다.');
+                                                    } finally {
+                                                        setIsConfirming(false);
+                                                    }
+                                                }}
+                                            >
+                                                {isConfirming ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Package className="h-4 w-4 mr-1" />}
+                                                수령 확인
+                                            </Button>
+                                        )}
+                                    </div>
+                                ) : userRole === 'brand' && proposal?.receiver_name ? (
+                                    <div className="flex gap-2">
+                                        <Input
+                                            value={trackingInput}
+                                            onChange={(e) => setTrackingInput(e.target.value)}
+                                            placeholder="운송장 번호 입력"
+                                            className="text-sm h-9"
+                                        />
                                         <Button
-                                            className="w-full h-9"
-                                            disabled={isConfirming}
+                                            size="sm"
+                                            className="h-9 shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground"
+                                            disabled={!trackingInput.trim() || isShipping}
                                             onClick={async () => {
-                                                if (!proposal?.id) return;
-                                                setIsConfirming(true);
+                                                if (!proposal?.id || !trackingInput.trim()) return;
+                                                setIsShipping(true);
                                                 try {
-                                                    const updates: any = { delivery_status: 'delivered' };
+                                                    const updates: any = { tracking_number: trackingInput.trim(), delivery_status: 'shipped' };
                                                     let success = false;
-                                                    if ((proposal as any).moment_id || (proposal as any).momentId) {
+                                                    if ((proposal as any).moment_id || (proposal as any).moment_id) {
                                                         success = await updateMomentProposal(proposal.id, updates);
                                                     } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
                                                         success = await updateProposal(proposal.id, updates);
@@ -795,43 +796,45 @@ export function CreatorInfoPanel() {
                                                     }
                                                     if (success) {
                                                         useWorkspaceStore.getState().updateProposal(updates);
-                                                        useWorkspaceStore.getState().setCurrentStage('content');
-                                                        toast.success('수령이 확인되었습니다. 콘텐츠 제작을 시작하세요!');
+                                                        toast.success('발송 정보가 등록되었습니다.');
+                                                        setTrackingInput('');
                                                         refreshData(); // Sync archive cards + cross-user data
 
-                                                        // Notify brand
-                                                        const brandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
-                                                        if (brandId) {
-                                                            try {
-                                                                const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                        // Notify Creator
+                                                        try {
+                                                            const creatorId = (proposal as any).creator_id;
+                                                            if (creatorId) {
+                                                                const actionUrl = `/creator?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
                                                                 await sendNotification(
-                                                                    brandId,
-                                                                    `${user?.name || '크리에이터'}님이 제품을 수령했습니다.`,
-                                                                    'delivery_confirmed',
+                                                                    creatorId,
+                                                                    `제품이 발송되었습니다. 운송장 번호: ${trackingInput.trim()}`,
+                                                                    'product_shipped',
                                                                     proposal.id?.toString(),
                                                                     actionUrl,
                                                                     { target_tab: 'shipping' }
                                                                 );
-                                                            } catch (notifErr) {
-                                                                console.warn('Notification failed:', notifErr);
                                                             }
+                                                        } catch (notifErr) {
+                                                            console.warn('배송 발송 알림 실패 (무시):', notifErr);
                                                         }
                                                     }
                                                 } catch (e) {
-                                                    console.error('Delivery confirm failed:', e);
+                                                    console.error('Shipping update failed:', e);
                                                     toast.error('오류가 발생했습니다.');
                                                 } finally {
-                                                    setIsConfirming(false);
+                                                    setIsShipping(false);
                                                 }
                                             }}
                                         >
-                                            {isConfirming ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Package className="h-4 w-4 mr-1" />}
-                                            수령 확인
+                                            {isShipping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4 mr-1" />}
+                                            발송
                                         </Button>
                                     </div>
                                 ) : (
                                     <div className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3 text-center">
-                                        브랜드가 제품을 발송하면 운송장 번호가 여기에 표시됩니다.
+                                        {userRole === 'brand'
+                                            ? '크리에이터의 배송지 정보가 아직 등록되지 않았습니다.'
+                                            : '브랜드가 제품을 발송하면 운송장 번호가 여기에 표시됩니다.'}
                                     </div>
                                 )}
                             </div>
@@ -885,8 +888,8 @@ export function CreatorInfoPanel() {
                                         </div>
                                     )}
 
-                                    {/* Upload button — show if no draft yet, or revision requested (both systems) */}
-                                    {(!proposal?.content_submission_file_url && !proposal?.content_submission_url ||
+                                    {/* Upload button — show if no draft yet, or revision requested, ONLY FOR CREATOR */}
+                                    {userRole === 'creator' && (!proposal?.content_submission_file_url && !proposal?.content_submission_url ||
                                         proposal?.content_submission_status === 'revision_requested' ||
                                         !!(proposal as any)?.content_revision_requested_at) && (
                                             <div>
@@ -999,10 +1002,96 @@ export function CreatorInfoPanel() {
                                             </div>
                                         )}
 
-                                    {/* Waiting for review */}
+                                    {userRole === 'brand' && (!proposal?.content_submission_file_url && !(proposal as any)?.content_submission_url) && (
+                                        <div className="text-sm text-muted-foreground p-2 text-center bg-muted/20 rounded-lg">
+                                            크리에이터가 콘텐츠를 제출하면 여기에 표시됩니다.
+                                        </div>
+                                    )}
+
+                                    {/* Waiting for review (Creator) / Review Buttons (Brand) */}
                                     {(proposal?.content_submission_file_url || proposal?.content_submission_url) && proposal?.content_submission_status === 'submitted' && (
-                                        <div className="text-xs text-muted-foreground text-center bg-muted/20 rounded-lg p-2">
-                                            브랜드의 리뷰를 기다리고 있습니다...
+                                        <>
+                                            {userRole === 'creator' ? (
+                                                <div className="text-xs text-muted-foreground text-center bg-muted/20 rounded-lg p-2">
+                                                    브랜드의 리뷰를 기다리고 있습니다...
+                                                </div>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="flex-1 h-8 text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                                        onClick={async () => {
+                                                            if (!proposal?.id) return;
+                                                            const updates: any = {
+                                                                content_submission_status: 'revision_requested',
+                                                                content_revision_requested_at: new Date().toISOString(),
+                                                            };
+                                                            let success = false;
+                                                            if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
+                                                            else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                            else success = await updateProductApplication(proposal.id, updates);
+                                                            if (success) {
+                                                                useWorkspaceStore.getState().updateProposal(updates);
+                                                                refreshData();
+                                                                toast.success('수정 요청을 전달했습니다.');
+                                                                const creatorId = (proposal as any).creator_id || (proposal as any).creatorId || (proposal as any).influencer?.id;
+                                                                const actionUrl = `/creator?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                                if (creatorId) {
+                                                                    sendNotification(
+                                                                        creatorId,
+                                                                        '브랜드가 콘텐츠 수정을 요청했습니다.',
+                                                                        'content_revision',
+                                                                        proposal.id?.toString(),
+                                                                        actionUrl,
+                                                                        { target_tab: 'content' }
+                                                                    );
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        <MessageSquare className="h-3 w-3 mr-1" /> 수정 요청
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        className="flex-1 h-8 bg-emerald-600 hover:bg-emerald-700"
+                                                        onClick={async () => {
+                                                            if (!proposal?.id) return;
+                                                            const updates: any = { content_submission_status: 'approved' };
+                                                            let success = false;
+                                                            if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
+                                                            else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                            else success = await updateProductApplication(proposal.id, updates);
+                                                            if (success) {
+                                                                useWorkspaceStore.getState().updateProposal(updates);
+                                                                refreshData();
+                                                                toast.success('초안을 승인했습니다!');
+                                                                const creatorId = (proposal as any).creator_id || (proposal as any).creatorId || (proposal as any).influencer?.id;
+                                                                const actionUrl = `/creator?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                                if (creatorId) {
+                                                                    sendNotification(
+                                                                        creatorId,
+                                                                        '브랜드가 콘텐츠를 승인했습니다! 최종본과 클린본을 제출해주세요.',
+                                                                        'content_approved',
+                                                                        proposal.id?.toString(),
+                                                                        actionUrl,
+                                                                        { target_tab: 'content' }
+                                                                    );
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        <CheckCircle2 className="h-3 w-3 mr-1" /> 승인
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* Wait Message for Revision */}
+                                    {proposal?.content_submission_status === 'revision_requested' && userRole === 'brand' && (
+                                        <div className="text-xs text-amber-600 text-center bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2">
+                                            크리에이터에게 수정 요청을 보냈습니다. 수정본 대기 중...
                                         </div>
                                     )}
                                 </div>
@@ -1022,84 +1111,92 @@ export function CreatorInfoPanel() {
                                             <span className="text-[10px] text-muted-foreground">(자막/효과 포함)</span>
                                         </div>
                                         {proposal?.content_final_url ? (
-                                            <div className="flex items-center gap-2 bg-muted/30 rounded-lg p-2">
-                                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                                <span className="text-xs flex-1">최종본 업로드 완료</span>
+                                            <div className="flex items-center justify-between text-sm bg-muted/30 rounded-lg p-2">
+                                                <div className="flex items-center gap-2">
+                                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                                    <span className="text-xs">최종본 {userRole === 'creator' ? '업로드' : '제출'} 완료</span>
+                                                </div>
                                                 <a href={proposal.content_final_url} target="_blank" rel="noopener noreferrer"
-                                                    className="text-xs text-primary hover:underline">보기</a>
+                                                    className="flex items-center gap-1 text-xs text-primary hover:underline">
+                                                    {userRole === 'brand' ? <><Download className="h-3 w-3" /> 다운로드</> : '보기'}
+                                                </a>
                                             </div>
                                         ) : (
-                                            <div>
-                                                <input ref={finalInputRef} type="file" className="hidden"
-                                                    accept="video/mp4,video/quicktime,video/webm,image/*,application/pdf"
-                                                    onChange={async (e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (!file || !proposal?.id) return;
-                                                        const v = validateContentFile(file);
-                                                        if (!v.valid) { toast.error(v.error!); return; }
-                                                        setUploadTarget('final'); setIsUploading(true); setUploadProgress(0);
-                                                        try {
-                                                            const { data: { session } } = await supabase.auth.getSession();
-                                                            const ext = file.name.split('.').pop();
-                                                            const filePath = `content/${proposal.id}/final_${Date.now()}.${ext}`;
-                                                            const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
-                                                            const fileUrl: string = await new Promise((resolve, reject) => {
-                                                                const xhr = new XMLHttpRequest();
-                                                                xhr.upload.addEventListener('progress', (ev) => {
-                                                                    if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                                            userRole === 'creator' ? (
+                                                <div>
+                                                    <input ref={finalInputRef} type="file" className="hidden"
+                                                        accept="video/mp4,video/quicktime,video/webm,image/*,application/pdf"
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (!file || !proposal?.id) return;
+                                                            const v = validateContentFile(file);
+                                                            if (!v.valid) { toast.error(v.error!); return; }
+                                                            setUploadTarget('final'); setIsUploading(true); setUploadProgress(0);
+                                                            try {
+                                                                const { data: { session } } = await supabase.auth.getSession();
+                                                                const ext = file.name.split('.').pop();
+                                                                const filePath = `content/${proposal.id}/final_${Date.now()}.${ext}`;
+                                                                const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
+                                                                const fileUrl: string = await new Promise((resolve, reject) => {
+                                                                    const xhr = new XMLHttpRequest();
+                                                                    xhr.upload.addEventListener('progress', (ev) => {
+                                                                        if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                                                                    });
+                                                                    xhr.addEventListener('load', () => {
+                                                                        if (xhr.status >= 200 && xhr.status < 300) {
+                                                                            const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(filePath);
+                                                                            resolve(publicUrl);
+                                                                        } else reject(new Error(`업로드 실패 (${xhr.status})`));
+                                                                    });
+                                                                    xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
+                                                                    xhr.open('POST', url);
+                                                                    xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token}`);
+                                                                    xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                                                                    xhr.setRequestHeader('x-upsert', 'true');
+                                                                    xhr.send(file);
                                                                 });
-                                                                xhr.addEventListener('load', () => {
-                                                                    if (xhr.status >= 200 && xhr.status < 300) {
-                                                                        const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(filePath);
-                                                                        resolve(publicUrl);
-                                                                    } else reject(new Error(`업로드 실패 (${xhr.status})`));
-                                                                });
-                                                                xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
-                                                                xhr.open('POST', url);
-                                                                xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token}`);
-                                                                xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-                                                                xhr.setRequestHeader('x-upsert', 'true');
-                                                                xhr.send(file);
-                                                            });
-                                                            const updates: any = { content_final_url: fileUrl };
-                                                            let success = false;
-                                                            if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
-                                                            else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
-                                                            else success = await updateProductApplication(proposal.id, updates);
-                                                            if (success) {
-                                                                useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('최종본 업로드 완료!');
-                                                                // 🔔 브랜드에게 최종본 업로드 알림
-                                                                try {
-                                                                    const targetBrandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
-                                                                    const creatorName = user?.name || '크리에이터';
-                                                                    const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
-                                                                    if (targetBrandId) {
-                                                                        sendNotification(
-                                                                            targetBrandId,
-                                                                            `${creatorName}님이 최종본을 업로드했습니다. 확인해보세요.`,
-                                                                            'content_final_uploaded',
-                                                                            proposal.id?.toString(),
-                                                                            actionUrl,
-                                                                            { target_tab: 'content' }
-                                                                        );
-                                                                    }
-                                                                } catch (notifErr) { console.warn('최종본 알림 실패:', notifErr); }
-                                                            }
-                                                        } catch (err: any) { toast.error(err.message || '업로드 실패'); }
-                                                        finally { setIsUploading(false); setUploadProgress(0); if (finalInputRef.current) finalInputRef.current.value = ''; }
-                                                    }}
-                                                />
-                                                {isUploading && uploadTarget === 'final' ? (
-                                                    <div className="space-y-1">
-                                                        <div className="w-full bg-muted h-2 rounded-full"><div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
-                                                        <p className="text-xs text-muted-foreground text-center">{uploadProgress}%</p>
-                                                    </div>
-                                                ) : (
-                                                    <Button variant="outline" size="sm" className="w-full h-8" onClick={() => finalInputRef.current?.click()}>
-                                                        <Upload className="h-3 w-3 mr-1" /> 최종본 업로드
-                                                    </Button>
-                                                )}
-                                            </div>
+                                                                const updates: any = { content_final_url: fileUrl };
+                                                                let success = false;
+                                                                if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
+                                                                else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                                else success = await updateProductApplication(proposal.id, updates);
+                                                                if (success) {
+                                                                    useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('최종본 업로드 완료!');
+                                                                    // 🔔 브랜드에게 최종본 업로드 알림
+                                                                    try {
+                                                                        const targetBrandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
+                                                                        const creatorName = user?.name || '크리에이터';
+                                                                        const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                                        if (targetBrandId) {
+                                                                            sendNotification(
+                                                                                targetBrandId,
+                                                                                `${creatorName}님이 최종본을 업로드했습니다. 확인해보세요.`,
+                                                                                'content_final_uploaded',
+                                                                                proposal.id?.toString(),
+                                                                                actionUrl,
+                                                                                { target_tab: 'content' }
+                                                                            );
+                                                                        }
+                                                                    } catch (notifErr) { console.warn('최종본 알림 실패:', notifErr); }
+                                                                }
+                                                            } catch (err: any) { toast.error(err.message || '업로드 실패'); }
+                                                            finally { setIsUploading(false); setUploadProgress(0); if (finalInputRef.current) finalInputRef.current.value = ''; }
+                                                        }}
+                                                    />
+                                                    {isUploading && uploadTarget === 'final' ? (
+                                                        <div className="space-y-1">
+                                                            <div className="w-full bg-muted h-2 rounded-full"><div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                                                            <p className="text-xs text-muted-foreground text-center">{uploadProgress}%</p>
+                                                        </div>
+                                                    ) : (
+                                                        <Button variant="outline" size="sm" className="w-full h-8" onClick={() => finalInputRef.current?.click()}>
+                                                            <Upload className="h-3 w-3 mr-1" /> 최종본 업로드
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="text-[10px] text-muted-foreground bg-muted/20 p-2 rounded text-center">대기 중</div>
+                                            )
                                         )}
                                     </div>
 
@@ -1110,86 +1207,168 @@ export function CreatorInfoPanel() {
                                             <span className="text-[10px] text-muted-foreground">(2차 활용용 원본)</span>
                                         </div>
                                         {proposal?.content_clean_url ? (
-                                            <div className="flex items-center gap-2 bg-muted/30 rounded-lg p-2">
-                                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                                <span className="text-xs flex-1">클린본 업로드 완료</span>
+                                            <div className="flex items-center justify-between text-sm bg-muted/30 rounded-lg p-2">
+                                                <div className="flex items-center gap-2">
+                                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                                    <span className="text-xs">클린본 {userRole === 'creator' ? '업로드' : '제출'} 완료</span>
+                                                </div>
                                                 <a href={proposal.content_clean_url} target="_blank" rel="noopener noreferrer"
-                                                    className="text-xs text-primary hover:underline">보기</a>
+                                                    className="flex items-center gap-1 text-xs text-primary hover:underline">
+                                                    {userRole === 'brand' ? <><Download className="h-3 w-3" /> 다운로드</> : '보기'}
+                                                </a>
                                             </div>
                                         ) : (
-                                            <div>
-                                                <input ref={cleanInputRef} type="file" className="hidden"
-                                                    accept="video/mp4,video/quicktime,video/webm,image/*,application/pdf"
-                                                    onChange={async (e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (!file || !proposal?.id) return;
-                                                        const v = validateContentFile(file);
-                                                        if (!v.valid) { toast.error(v.error!); return; }
-                                                        setUploadTarget('clean'); setIsUploading(true); setUploadProgress(0);
-                                                        try {
-                                                            const { data: { session } } = await supabase.auth.getSession();
-                                                            const ext = file.name.split('.').pop();
-                                                            const filePath = `content/${proposal.id}/clean_${Date.now()}.${ext}`;
-                                                            const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
-                                                            const fileUrl: string = await new Promise((resolve, reject) => {
-                                                                const xhr = new XMLHttpRequest();
-                                                                xhr.upload.addEventListener('progress', (ev) => {
-                                                                    if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                                            userRole === 'creator' ? (
+                                                <div>
+                                                    <input ref={cleanInputRef} type="file" className="hidden"
+                                                        accept="video/mp4,video/quicktime,video/webm,image/*,application/pdf"
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (!file || !proposal?.id) return;
+                                                            const v = validateContentFile(file);
+                                                            if (!v.valid) { toast.error(v.error!); return; }
+                                                            setUploadTarget('clean'); setIsUploading(true); setUploadProgress(0);
+                                                            try {
+                                                                const { data: { session } } = await supabase.auth.getSession();
+                                                                const ext = file.name.split('.').pop();
+                                                                const filePath = `content/${proposal.id}/clean_${Date.now()}.${ext}`;
+                                                                const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/submissions/${filePath}`;
+                                                                const fileUrl: string = await new Promise((resolve, reject) => {
+                                                                    const xhr = new XMLHttpRequest();
+                                                                    xhr.upload.addEventListener('progress', (ev) => {
+                                                                        if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                                                                    });
+                                                                    xhr.addEventListener('load', () => {
+                                                                        if (xhr.status >= 200 && xhr.status < 300) {
+                                                                            const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(filePath);
+                                                                            resolve(publicUrl);
+                                                                        } else reject(new Error(`업로드 실패 (${xhr.status})`));
+                                                                    });
+                                                                    xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
+                                                                    xhr.open('POST', url);
+                                                                    xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token}`);
+                                                                    xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                                                                    xhr.setRequestHeader('x-upsert', 'true');
+                                                                    xhr.send(file);
                                                                 });
-                                                                xhr.addEventListener('load', () => {
-                                                                    if (xhr.status >= 200 && xhr.status < 300) {
-                                                                        const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(filePath);
-                                                                        resolve(publicUrl);
-                                                                    } else reject(new Error(`업로드 실패 (${xhr.status})`));
-                                                                });
-                                                                xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
-                                                                xhr.open('POST', url);
-                                                                xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token}`);
-                                                                xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-                                                                xhr.setRequestHeader('x-upsert', 'true');
-                                                                xhr.send(file);
-                                                            });
-                                                            const updates: any = { content_clean_url: fileUrl };
-                                                            let success = false;
-                                                            if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
-                                                            else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
-                                                            else success = await updateProductApplication(proposal.id, updates);
-                                                            if (success) {
-                                                                useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('클린본 업로드 완료!');
-                                                                // 🔔 브랜드에게 클린본 업로드 알림
-                                                                try {
-                                                                    const targetBrandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
-                                                                    const creatorName = user?.name || '크리에이터';
-                                                                    const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
-                                                                    if (targetBrandId) {
-                                                                        sendNotification(
-                                                                            targetBrandId,
-                                                                            `${creatorName}님이 클린본(2차 활용 원본)을 업로드했습니다. 확인해보세요.`,
-                                                                            'content_clean_uploaded',
-                                                                            proposal.id?.toString(),
-                                                                            actionUrl,
-                                                                            { target_tab: 'content' }
-                                                                        );
-                                                                    }
-                                                                } catch (notifErr) { console.warn('클린본 알림 실패:', notifErr); }
-                                                            }
-                                                        } catch (err: any) { toast.error(err.message || '업로드 실패'); }
-                                                        finally { setIsUploading(false); setUploadProgress(0); if (cleanInputRef.current) cleanInputRef.current.value = ''; }
-                                                    }}
-                                                />
-                                                {isUploading && uploadTarget === 'clean' ? (
-                                                    <div className="space-y-1">
-                                                        <div className="w-full bg-muted h-2 rounded-full"><div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
-                                                        <p className="text-xs text-muted-foreground text-center">{uploadProgress}%</p>
-                                                    </div>
-                                                ) : (
-                                                    <Button variant="outline" size="sm" className="w-full h-8" onClick={() => cleanInputRef.current?.click()}>
-                                                        <Upload className="h-3 w-3 mr-1" /> 클린본 업로드
-                                                    </Button>
-                                                )}
-                                            </div>
+                                                                const updates: any = { content_clean_url: fileUrl };
+                                                                let success = false;
+                                                                if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
+                                                                else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                                else success = await updateProductApplication(proposal.id, updates);
+                                                                if (success) {
+                                                                    useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('클린본 업로드 완료!');
+                                                                    // 🔔 브랜드에게 클린본 업로드 알림
+                                                                    try {
+                                                                        const targetBrandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
+                                                                        const creatorName = user?.name || '크리에이터';
+                                                                        const actionUrl = `/brand?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                                        if (targetBrandId) {
+                                                                            sendNotification(
+                                                                                targetBrandId,
+                                                                                `${creatorName}님이 클린본(2차 활용 원본)을 업로드했습니다. 확인해보세요.`,
+                                                                                'content_clean_uploaded',
+                                                                                proposal.id?.toString(),
+                                                                                actionUrl,
+                                                                                { target_tab: 'content' }
+                                                                            );
+                                                                        }
+                                                                    } catch (notifErr) { console.warn('클린본 알림 실패:', notifErr); }
+                                                                }
+                                                            } catch (err: any) { toast.error(err.message || '업로드 실패'); }
+                                                            finally { setIsUploading(false); setUploadProgress(0); if (cleanInputRef.current) cleanInputRef.current.value = ''; }
+                                                        }}
+                                                    />
+                                                    {isUploading && uploadTarget === 'clean' ? (
+                                                        <div className="space-y-1">
+                                                            <div className="w-full bg-muted h-2 rounded-full"><div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                                                            <p className="text-xs text-muted-foreground text-center">{uploadProgress}%</p>
+                                                        </div>
+                                                    ) : (
+                                                        <Button variant="outline" size="sm" className="w-full h-8" onClick={() => cleanInputRef.current?.click()}>
+                                                            <Upload className="h-3 w-3 mr-1" /> 클린본 업로드
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="text-[10px] text-muted-foreground bg-muted/20 p-2 rounded text-center">대기 중</div>
+                                            )
                                         )}
                                     </div>
+
+                                    {/* Complete button — both files required (Brand ONLY) */}
+                                    {userRole === 'brand' && proposal?.content_final_url && proposal?.content_clean_url && (
+                                        <div className="flex flex-col gap-2 pt-2">
+                                            <Button
+                                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold"
+                                                size="sm"
+                                                onClick={async () => {
+                                                    if (!proposal?.id) return;
+
+                                                    // 1. 제안 상태 settlement로 변경
+                                                    const updates: any = { status: 'settlement', content_submission_status: 'completed' };
+                                                    let success = false;
+                                                    const proposalType = (proposal as any).moment_id || (proposal as any).moment_id
+                                                        ? 'moment_proposal'
+                                                        : (proposal as any).campaignId || (proposal as any).campaign_id
+                                                            ? 'campaign_application'
+                                                            : 'product_application';
+
+                                                    if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
+                                                    else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                    else success = await updateProductApplication(proposal.id, updates);
+
+                                                    if (!success) return;
+
+                                                    // 2. settlements 레코드 생성
+                                                    try {
+                                                        const creatorId = (proposal as any).creator_id || (proposal as any).creatorId;
+                                                        const brandId = (proposal as any).brand_id || (proposal as any).brandId || (proposal as any).campaign?.brand_id;
+                                                        const priceOffer = (proposal as any).price_offer || 0;
+
+                                                        if (creatorId && priceOffer > 0) {
+                                                            const { error: settleErr } = await supabase.rpc('create_settlement_on_approval', {
+                                                                p_proposal_id: proposal.id.toString(),
+                                                                p_proposal_type: proposalType,
+                                                                p_brand_id: brandId || null,
+                                                                p_creator_id: creatorId,
+                                                                p_gross_amount: priceOffer,
+                                                            });
+                                                            if (settleErr) {
+                                                                console.error('[Settlement] create error:', settleErr);
+                                                            }
+                                                        }
+                                                    } catch (e) {
+                                                        console.error('[Settlement] unexpected error:', e);
+                                                    }
+
+                                                    // 3. UI 업데이트 및 알림
+                                                    useWorkspaceStore.getState().updateProposal(updates);
+                                                    useWorkspaceStore.getState().setCurrentStage('settlement');
+                                                    refreshData();
+                                                    toast.success('협업 완료 및 정산 승인되었습니다! 🎉');
+                                                    const creatorId2 = (proposal as any).creator_id || (proposal as any).creatorId;
+                                                    const actionUrl = `/creator?view=proposals&workspaceTab=active&proposalId=${proposal.id?.toString()}`;
+                                                    if (creatorId2) {
+                                                        sendNotification(
+                                                            creatorId2,
+                                                            '협업이 완료되었습니다! 3~7일 내 인사이트 성과를 제출해주세요.',
+                                                            'collaboration_complete',
+                                                            proposal.id?.toString(),
+                                                            actionUrl,
+                                                            { target_tab: 'performance' }
+                                                        );
+                                                    }
+                                                }}
+                                            >
+                                                <CheckCircle2 className="h-4 w-4 mr-1.5" /> 협업 완료 및 정산 승인
+                                            </Button>
+                                            <p className="text-[10px] text-emerald-600/70 text-center leading-relaxed">
+                                                완료 버튼을 누르면 정산이 자동 생성되며 수정이 불가능합니다.<br />
+                                                크리에이터가 성과를 제출하면 워크스페이스 카드에서 확인 가능합니다.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

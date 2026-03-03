@@ -15,7 +15,7 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
     const contractViewOpen = useWorkspaceStore((state) => state.contractViewOpen);
     const videoReviewOpen = useWorkspaceStore((state) => state.videoReviewOpen);
     const proposal = useWorkspaceStore((state) => state.proposal);
-    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
+    const { updateProductApplication, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
 
     // Sign handler for creator
     const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
@@ -35,7 +35,7 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
         } else {
-            success = await updateBrandProposal(proposal.id, updates);
+            success = await updateProductApplication(proposal.id, updates);
         }
 
         if (success) {
@@ -54,7 +54,7 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             await updateProposal(proposal.id, updates);
         } else {
-            await updateBrandProposal(proposal.id, updates);
+            await updateProductApplication(proposal.id, updates);
         }
     };
 
@@ -76,7 +76,7 @@ export function CreatorDesktopLayout({ className }: CreatorDesktopLayoutProps) {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
         } else {
-            success = await updateBrandProposal(proposal.id, updates);
+            success = await updateProductApplication(proposal.id, updates);
         }
 
         if (success) {

@@ -17,64 +17,186 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { Check, FileText, Filter, Instagram, LayoutGrid, Music, Search, Star, Table as TableIcon, Youtube } from "lucide-react"
-import React, { useState } from "react"
+import React, { useState, useMemo, useCallback } from "react"
 import { toast } from "sonner"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 
 interface DiscoverViewProps {
-    filteredEvents: any[]
-    sortOrder: string
-    setSortOrder: (order: string) => void
-    followerFilter: string[]
-    statusFilter: string
-    setStatusFilter: (status: string) => void
-    selectedTags: string[]
-    setSelectedTags: (tags: string[] | ((prev: string[]) => string[])) => void
-    handlePresetClick: (key: string) => void
-    favorites: any[]
-    toggleFavorite: (id: string, type: string) => void
-    priceFilter: string[]
-    setPriceFilter: (filter: string[] | ((prev: string[]) => string[])) => void
-    POPULAR_TAGS: readonly string[]
-    PRICE_FILTER_RANGES: any[]
-    user: any
-    deleteMoment: (id: string) => Promise<void>
-    channelFilter?: string[]
-    setChannelFilter?: (filter: string[] | ((prev: string[]) => string[])) => void
-    scheduleFilter?: string[]
-    setScheduleFilter?: (filter: string[] | ((prev: string[]) => string[])) => void
-    scheduleMonthFilter?: string
-    setScheduleMonthFilter?: (filter: string) => void
-    sentMomentIds?: Set<string>
+    // Component relies on useUnifiedProvider for state now.
 }
 
+const POPULAR_TAGS = [
+    "🏡 리빙/인테리어", "푸드", "패션", "육아", "뷰티", "여행", "일상",
+    "💻 테크/IT", "반려동물", "건강", "캠핑", "자기계발/도서"
+]
 
+const PRICE_FILTER_RANGES = [
+    { k: 'all', l: '전체', min: 0, max: Infinity },
+    { k: 'free', l: '제품협찬', s: '제품협찬', min: 0, max: 0 },
+    { k: 'under10', l: '10만원 미만', s: '~10만', min: 1, max: 99999 },
+    { k: '10to30', l: '10만원~30만원', s: '10~30만', min: 100000, max: 300000 },
+    { k: 'over30', l: '30만원 이상', s: '30만+', min: 300000, max: Infinity },
+]
 
-export const DiscoverView = React.memo(function DiscoverView({
-    filteredEvents,
-    sortOrder,
-    setSortOrder,
-    followerFilter,
-    statusFilter,
-    setStatusFilter,
-    selectedTags,
-    setSelectedTags,
-    handlePresetClick,
-    favorites,
-    toggleFavorite,
-    priceFilter,
-    setPriceFilter,
-    POPULAR_TAGS,
-    PRICE_FILTER_RANGES,
-    user,
-    deleteMoment,
-    channelFilter,
-    setChannelFilter,
-    scheduleFilter,
-    setScheduleFilter,
-    scheduleMonthFilter,
-    setScheduleMonthFilter,
-    sentMomentIds,
-}: DiscoverViewProps) {
+const FOLLOWER_RANGES: Record<string, [number, number]> = {
+    starter: [0, 1000], nano: [1000, 10000], micro: [10000, 100000],
+    growing: [100000, 300000], mid: [300000, 500000], macro: [500000, 1000000], mega: [1000000, Infinity]
+}
+
+export const DiscoverView = React.memo(function DiscoverView({ }: DiscoverViewProps) {
+    const { user, allMoments, favorites, toggleFavorite, deleteMoment, momentProposals } = useUnifiedProvider()
+
+    // Filter Query States
+    const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const [followerFilter, setFollowerFilter] = useState<string[]>(["all"])
+    const [scheduleFilter, setScheduleFilter] = useState<string[]>(["all"])
+    const [scheduleMonthFilter, setScheduleMonthFilter] = useState<string>("all")
+    const [statusFilter, setStatusFilter] = useState<string>("all")
+    const [minFollowers, setMinFollowers] = useState<string>("")
+    const [maxFollowers, setMaxFollowers] = useState<string>("")
+    const [sortOrder, setSortOrder] = useState("latest")
+    const [priceFilter, setPriceFilter] = useState<string[]>(["all"])
+    const [channelFilter, setChannelFilter] = useState<string[]>(["all"])
+
+    const sentMomentIds = useMemo(() => {
+        const ids = new Set<string>()
+        if (momentProposals) {
+            momentProposals.forEach((p: any) => {
+                if (p.moment_id && p.status !== 'cancelled' && p.status !== 'rejected') {
+                    ids.add(p.moment_id)
+                }
+            })
+        }
+        return ids
+    }, [momentProposals])
+
+    const handlePresetClick = useCallback((key: string) => {
+        if (key === 'all') {
+            setFollowerFilter(['all'])
+            setMinFollowers('')
+            setMaxFollowers('')
+            return
+        }
+        setFollowerFilter(prev => {
+            const withoutAll = prev.filter(k => k !== 'all')
+            if (withoutAll.includes(key)) {
+                const next = withoutAll.filter(k => k !== key)
+                if (next.length === 0) return ['all']
+                return next
+            } else {
+                return [...withoutAll, key]
+            }
+        })
+        setMinFollowers('')
+        setMaxFollowers('')
+    }, [])
+
+    const getFilteredAndSortedEvents = () => {
+        let result = [...(allMoments || [])]
+        if (selectedTags.length > 0) {
+            result = result.filter(e =>
+                selectedTags.some(tag =>
+                    e.category === tag ||
+                    e.tags?.some((t: string) => t.includes(tag) || tag.includes(t))
+                )
+            )
+        }
+        if (statusFilter === "upcoming") {
+            result = result.filter(e => e.status !== 'completed')
+        } else if (statusFilter === "past") {
+            result = result.filter(e => e.status === 'completed')
+        } else if (statusFilter === "favorites") {
+            result = result.filter(e => favorites?.some(f => f.target_id === e.id && f.target_type === 'moment'))
+        }
+        if (!followerFilter.includes('all') && followerFilter.length > 0) {
+            result = result.filter(e => {
+                const count = e.followers || 0
+                return followerFilter.some(key => {
+                    const range = FOLLOWER_RANGES[key]
+                    if (!range) return false
+                    return count >= range[0] && count <= range[1]
+                })
+            })
+        } else if (minFollowers !== '' || maxFollowers !== '') {
+            const min = minFollowers === '' ? 0 : parseInt(minFollowers)
+            const max = maxFollowers === '' ? Infinity : parseInt(maxFollowers)
+            result = result.filter(e => {
+                const count = e.followers || 0
+                return count >= min && count <= max
+            })
+        }
+        if (!priceFilter.includes('all') && priceFilter.length > 0) {
+            result = result.filter(e => {
+                const price = e.priceVideo || 0
+                return priceFilter.some(key => {
+                    const range = PRICE_FILTER_RANGES.find(r => r.k === key)
+                    if (!range) return false
+                    return price >= range.min && price <= range.max
+                })
+            })
+        }
+        if (scheduleMonthFilter !== 'all') {
+            result = result.filter(e => {
+                if (!e.momentStartDate) return false;
+                return e.momentStartDate.startsWith(scheduleMonthFilter);
+            });
+        }
+        if (!scheduleFilter.includes('all') && scheduleFilter.length > 0) {
+            result = result.filter(e => {
+                const getDay = (dateStr: string | null | undefined) => {
+                    if (!dateStr) return null;
+                    const d = new Date(dateStr);
+                    if (isNaN(d.getTime())) return null;
+                    return d.getDate();
+                };
+                const startDay = getDay(e.momentStartDate);
+                return scheduleFilter.some((key: string) => {
+                    if (!startDay) return false;
+                    if (key === 'early' && startDay <= 10) return true;
+                    if (key === 'mid' && startDay > 10 && startDay <= 20) return true;
+                    if (key === 'late' && startDay > 20) return true;
+                    return false;
+                });
+            });
+        }
+        if (!channelFilter.includes('all') && channelFilter.length > 0) {
+            result = result.filter(e => {
+                const channels: string[] = e.channels || []
+                return channelFilter.some(cf => channels.some(ch => ch.startsWith(cf)))
+            })
+        }
+        if (sortOrder === "deadline") result.reverse()
+        else if (sortOrder === "match") result.sort(() => Math.random() - 0.5)
+        else if (sortOrder === "verified") result = result.filter(e => (e as any).verified)
+        else if (sortOrder === "followers_high") result.sort((a, b) => (b.followers || 0) - (a.followers || 0))
+        else if (sortOrder === "followers_low") result.sort((a, b) => (a.followers || 0) - (b.followers || 0))
+        else if (sortOrder === "moment_date_asc") result.sort((a, b) => {
+            const da = new Date(a.momentDate || a.date || 0).getTime()
+            const db = new Date(b.momentDate || b.date || 0).getTime()
+            return da - db
+        })
+        else if (sortOrder === "posting_date_asc") result.sort((a, b) => {
+            const da = new Date(a.postingDate || a.momentDate || a.date || 0).getTime()
+            const db = new Date(b.postingDate || b.momentDate || b.date || 0).getTime()
+            return da - db
+        })
+        else if (sortOrder === "price_low") result.sort((a, b) => (a.priceVideo || 0) - (b.priceVideo || 0))
+        else if (sortOrder === "price_high") result.sort((a, b) => (b.priceVideo || 0) - (a.priceVideo || 0))
+        else if (sortOrder === "proposal_low") result.sort((a, b) => {
+            const aCount = (momentProposals || []).filter((p: any) => p.moment_id === a.id || p.moment_id === a.id).length
+            const bCount = (momentProposals || []).filter((p: any) => p.moment_id === b.id || p.moment_id === b.id).length
+            return aCount - bCount
+        })
+        else if (sortOrder === "favorites_high") result.sort((a, b) => {
+            const aCount = (favorites || []).filter((f: any) => f.target_id === a.id && f.target_type === 'moment').length
+            const bCount = (favorites || []).filter((f: any) => f.target_id === b.id && f.target_type === 'moment').length
+            return bCount - aCount
+        })
+        if (sortOrder === "latest") result.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
+        return result
+    }
+
+    const filteredEvents = getFilteredAndSortedEvents()
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
     const [pageSize, setPageSize] = useState<20 | 50 | 100>(50)
@@ -89,7 +211,7 @@ export const DiscoverView = React.memo(function DiscoverView({
             (item.category || "").toLowerCase().includes(q) ||
             (item.tags || []).some((t: string) => t.toLowerCase().includes(q))
         const matchesFav = !favoritesOnly ||
-            favorites.some((f: any) => f.target_id === item.id && f.target_type === 'moment')
+            (favorites || []).some((f: any) => f.target_id === item.id && f.target_type === 'moment')
         return matchesSearch && matchesFav
     })
 
@@ -439,7 +561,7 @@ export const DiscoverView = React.memo(function DiscoverView({
             {viewMode === 'grid' ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {displayedEvents.slice(0, pageSize).map((item) => {
-                        const isFavorite = favorites.some(f => f.target_id === item.id && f.target_type === 'moment')
+                        const isFavorite = (favorites || []).some((f: any) => f.target_id === item.id && f.target_type === 'moment')
                         return (
                             <MomentGridCard
                                 key={item.id}
@@ -453,7 +575,7 @@ export const DiscoverView = React.memo(function DiscoverView({
                                 }}
                                 href={`/moment/${item.id}`}
                                 isFavorite={isFavorite}
-                                toggleFavorite={toggleFavorite}
+                                toggleFavorite={toggleFavorite as any}
                                 showProfileCard={true}
                                 onAdminDelete={(id) => setConfirmDeleteId(id)}
                                 userRole={user?.role}
@@ -472,8 +594,8 @@ export const DiscoverView = React.memo(function DiscoverView({
                         followers: item.followers,
                         primaryChannel: (item as any).primaryChannel,
                     })}
-                    favorites={favorites}
-                    toggleFavorite={toggleFavorite}
+                    favorites={favorites || []}
+                    toggleFavorite={toggleFavorite as any}
                     linkToMoment={true}
                 />
             )}

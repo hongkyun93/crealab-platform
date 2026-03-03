@@ -47,7 +47,7 @@ interface VideoReviewPanelProps {
 export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
     const proposal = useWorkspaceStore((state) => state.proposal)
     const {
-        updateBrandProposal,
+        updateProductApplication,
         updateMomentProposal,
         updateProposal,
         refreshData,
@@ -110,8 +110,8 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
     const [videoError, setVideoError] = useState(false)
 
     // ── proposal helpers ──
-    const isMoment = !!(proposal as any)?.moment_id || !!(proposal as any)?.momentId
-    const isCampaign = !!(proposal as any)?.campaignId || !!(proposal as any)?.campaign_id
+    const isMoment = (proposal as any)?.target_type === 'moment' || !!(proposal as any)?.moment_id
+    const isCampaign = (proposal as any)?.target_type === 'campaign' || !!(proposal as any)?.campaign_id || !!(proposal as any)?.campaignId
     const proposalId = proposal?.id?.toString()
     const workspaceId = (proposal as any)?.workspace_id?.toString()
 
@@ -285,7 +285,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
             else if (isCampaign) { success = await updateProposal(proposalId, updates) }
-            else { success = await updateBrandProposal(proposalId, updates) }
+            else { success = await updateProductApplication(proposalId, updates) }
 
             if (success) {
                 useWorkspaceStore.getState().updateProposal(updates)
@@ -317,7 +317,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
             else if (isCampaign) { success = await updateProposal(proposalId, updates) }
-            else { success = await updateBrandProposal(proposalId, updates) }
+            else { success = await updateProductApplication(proposalId, updates) }
             if (success) {
                 useWorkspaceStore.getState().updateProposal(updates)
                 refreshData()
@@ -382,7 +382,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
             else if (isCampaign) { success = await updateProposal(proposalId, updates) }
-            else { success = await updateBrandProposal(proposalId, updates) }
+            else { success = await updateProductApplication(proposalId, updates) }
 
             if (success) {
                 useWorkspaceStore.getState().updateProposal(updates)
@@ -414,7 +414,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
             else if (isCampaign) { success = await updateProposal(proposalId, updates) }
-            else { success = await updateBrandProposal(proposalId, updates) }
+            else { success = await updateProductApplication(proposalId, updates) }
             if (success) {
                 useWorkspaceStore.getState().updateProposal(updates)
                 refreshData()
@@ -445,7 +445,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
             else if (isCampaign) { success = await updateProposal(proposalId, updates) }
-            else { success = await updateBrandProposal(proposalId, updates) }
+            else { success = await updateProductApplication(proposalId, updates) }
             if (success) {
                 useWorkspaceStore.getState().updateProposal(updates)
                 refreshData()
@@ -511,7 +511,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
             else if (isCampaign) { success = await updateProposal(proposalId, updates) }
-            else { success = await updateBrandProposal(proposalId, updates) }
+            else { success = await updateProductApplication(proposalId, updates) }
             if (success) {
                 useWorkspaceStore.getState().updateProposal(updates)
                 refreshData()
@@ -593,7 +593,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
             let success = false
             if (isMoment) { success = await updateMomentProposal(proposalId, updates) }
             else if (isCampaign) { success = await updateProposal(proposalId, updates) }
-            else { success = await updateBrandProposal(proposalId, updates) }
+            else { success = await updateProductApplication(proposalId, updates) }
 
             if (success) {
                 useWorkspaceStore.getState().updateProposal(updates)
@@ -1179,7 +1179,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                         let success = false;
                                         if (isMoment) success = await updateMomentProposal(proposalId, updates);
                                         else if (isCampaign) success = await updateProposal(proposalId, updates);
-                                        else success = await updateBrandProposal(proposalId, updates);
+                                        else success = await updateProductApplication(proposalId, updates);
                                         if (success) {
                                             useWorkspaceStore.getState().updateProposal(updates);
                                             useWorkspaceStore.getState().setCurrentStage('settlement');
@@ -1254,7 +1254,7 @@ export function VideoReviewPanel({ userType }: VideoReviewPanelProps) {
                                             let ok = false
                                             if (isMoment) ok = await updateMomentProposal(proposalId, updates)
                                             else if (isCampaign) ok = await updateProposal(proposalId, updates)
-                                            else ok = await updateBrandProposal(proposalId, updates)
+                                            else ok = await updateProductApplication(proposalId, updates)
                                             if (ok) {
                                                 useWorkspaceStore.getState().updateProposal(updates)
                                                 refreshData()

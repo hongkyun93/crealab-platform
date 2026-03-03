@@ -475,7 +475,7 @@ export default function HomeLandingPage() {
                                 <Link href="/signup">무료 가입하기 <ArrowRight className="ml-2 h-5 w-5" /></Link>
                             </Button>
                             <Button size="lg" variant="outline" asChild className="h-14 px-10 text-lg border-2 border-white/40 text-white bg-white/10 hover:bg-white/20">
-                                <Link href="/design-lab/services">서비스 더 알아보기</Link>
+                                <Link href="/services">서비스 더 알아보기</Link>
                             </Button>
                         </div>
                         <p className="text-sm text-white/50">이미 계정이 있으신가요? <Link href="/login" className="text-white/80 underline underline-offset-4 hover:text-white">로그인</Link></p>

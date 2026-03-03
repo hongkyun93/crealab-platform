@@ -569,7 +569,7 @@ export function CampaignForm({ mode, campaignId }: CampaignFormProps) {
                                         <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                                         <p>등록된 제품이 없습니다.</p>
                                         <Button variant="link" asChild className="mt-2">
-                                            <Link href="/brand?view=products">제품 등록하러 가기</Link>
+                                            <Link href="/brand?view=my-products">제품 등록하러 가기</Link>
                                         </Button>
                                     </div>
                                 ) : (

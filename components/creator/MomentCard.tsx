@@ -27,7 +27,7 @@ import { toast } from "sonner"
 
 interface MomentCardProps {
     moment: any
-    brandProposals?: any[]
+    productApplications?: any[]
     onClick: (moment: any) => void
     onDelete?: (id: string) => void
     onComplete?: (id: string) => void
@@ -36,13 +36,13 @@ interface MomentCardProps {
 
 export function MomentCard({
     moment,
-    brandProposals = [],
+    productApplications = [],
     onClick,
     onDelete,
     onComplete,
     isPast = false
 }: MomentCardProps) {
-    const offerCount = brandProposals.filter((p: any) =>
+    const offerCount = productApplications.filter((p: any) =>
         p.moment_id === moment.id &&
         (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending') &&
         p.status !== 'cancelled'

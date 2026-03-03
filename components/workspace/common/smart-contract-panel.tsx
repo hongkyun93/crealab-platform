@@ -356,7 +356,7 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
             const bAddress = brandProfile?.company_address || '';
             const cName = creatorProfile?.legal_name || creatorProfile?.display_name || p.creator_name || '크리에이터(을)';
             const cAddress = creatorProfile?.legal_address || creatorProfile?.shipping_address || '';
-            const productName = p.product_name || p.productName || '협업 제품';
+            const productName = p.target_name || p.product_name || '협업 프로젝트';
             const channelName = p.channel_name || p.channelName || 'SNS 채널';
             const channelSubtype = p.channel_subtype || p.channelSubtype || '콘텐츠';
             const priceOffer = p.price_offer ? Number(p.price_offer).toLocaleString() : '0';
@@ -572,7 +572,7 @@ body { background: #fff !important; color: #111 !important; }
         setIsPdfGenerating(true);
         try {
             const html2pdf = (await import('html2pdf.js')).default;
-            const productName = proposal.productName || proposal.product_name || '협업';
+            const productName = proposal.target_name || proposal.product_name || '협업 프로젝트';
             const filename = `CreadyPick_계약서_${productName}.pdf`;
 
             const opt = {

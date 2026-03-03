@@ -30,9 +30,10 @@ const WORKSPACE_SYNC_COLUMNS = [
     'price_offer', 'product_name', 'product_type',
     'condition_product_receipt_date', 'condition_draft_submission_date',
     'condition_final_submission_date', 'condition_upload_date',
-    'condition_secondary_usage_period', 'secondary_usage_fee',
+    'condition_secondary_usage_period', 'condition_maintenance_period', 'secondary_usage_fee',
     'brand_condition_confirmed', 'creator_condition_confirmed',
     'channel_name', 'channel_subtype', 'video_guide',
+    'has_incentive', 'incentive_detail', 'special_terms', 'product_url', 'product_name',
 ]
 
 export async function PATCH(req: NextRequest) {

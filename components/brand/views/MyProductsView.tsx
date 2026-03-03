@@ -8,7 +8,9 @@ import { Card, CardFooter } from "@/components/ui/card"
 import { EyeOff, ExternalLink, FileText, LayoutGrid, List, Pencil, Plus, ShoppingBag, Trash2, Eye } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { useProducts } from "@/components/providers/product-provider"
+import { ProductRegistrationDialog, ProductFormData } from "@/components/dialogs/ProductRegistrationDialog"
 const CHANNEL_STYLE: Record<string, string> = {
     instagram: 'bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500',
     youtube: 'bg-gradient-to-br from-red-600 to-red-700',
@@ -33,28 +35,15 @@ function ChannelIcon({ channelId }: { channelId: string }) {
 }
 
 interface MyProductsViewProps {
-    products: any[]
-    hiddenProducts: any[]
-    setProductModalOpen: (open: boolean) => void
-    handleViewGuide: (product: any) => void
-    handleEditProduct: (product: any) => void
-    deleteProduct: (id: string) => Promise<void>
-    hideProduct: (id: string) => Promise<void>
-    activateProduct: (id: string) => Promise<void>
     onViewDetail?: (productId: string) => void
 }
 
 export function MyProductsView({
-    products,
-    hiddenProducts,
-    setProductModalOpen,
-    handleViewGuide,
-    handleEditProduct,
-    deleteProduct,
-    hideProduct,
-    activateProduct,
     onViewDetail
 }: MyProductsViewProps) {
+    const { user, products, addProduct, updateProduct, deleteProduct, refreshData } = useUnifiedProvider()
+    const { hiddenProducts, hideProduct, activateProduct } = useProducts()
+    const myProducts = user?.id ? (products || []).filter((p: any) => p.brandId === user.id && !p.is_hidden) : []
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
     const [confirmHideId, setConfirmHideId] = useState<string | null>(null)
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -71,6 +60,101 @@ export function MyProductsView({
             } else {
                 toast.error(err?.message || "삭제에 실패했습니다.")
             }
+        }
+    }
+
+    const [productFormOpen, setProductFormOpen] = useState(false)
+    const [productFormStep, setProductFormStep] = useState<"form" | "preview">("form")
+    const [editingProductData, setEditingProductData] = useState<ProductFormData | null>(null)
+    const [editingProductId, setEditingProductId] = useState<string | null>(null)
+    const [isUploading, setIsUploading] = useState(false)
+
+    const handleViewGuide = (product: any) => {
+        setEditingProductId(product.id)
+        setEditingProductData({
+            name: product.name,
+            price: String(product.price),
+            category: product.category || "",
+            description: product.description || "",
+            image: product.image || "",
+            link: product.link || "",
+            points: product.points || "",
+            shots: product.shots || "",
+            contentGuide: product.contentGuide || "",
+            formatGuide: product.formatGuide || "",
+            accountTag: product.accountTag || "",
+            hashtags: product.tags?.join(", ") || "",
+            channels: product.channels || []
+        })
+        setProductFormStep("preview")
+        setProductFormOpen(true)
+    }
+
+    const handleEditProduct = (product: any) => {
+        setEditingProductId(product.id)
+        setEditingProductData({
+            name: product.name,
+            price: String(product.price),
+            category: product.category || "",
+            description: product.description || "",
+            image: product.image || "",
+            link: product.link || "",
+            points: product.points || "",
+            shots: product.shots || "",
+            contentGuide: product.contentGuide || "",
+            formatGuide: product.formatGuide || "",
+            accountTag: product.accountTag || "",
+            hashtags: product.tags?.join(", ") || "",
+            channels: product.channels || []
+        })
+        setProductFormStep("form")
+        setProductFormOpen(true)
+    }
+
+    const handleFinalSubmit = async (isDraft: boolean, data: ProductFormData) => {
+        if (isDraft && !data.name) {
+            toast.error("임시저장을 위해 최소한 '제품명'은 지정해주세요.")
+            return
+        }
+
+        setIsUploading(true)
+        try {
+            const isEditing = !!editingProductId
+            const productData = {
+                name: data.name,
+                price: parseInt(data.price) || 0,
+                category: data.category,
+                description: data.description,
+                image: data.image,
+                link: data.link,
+                points: data.points,
+                shots: data.shots,
+                contentGuide: data.contentGuide,
+                formatGuide: data.formatGuide,
+                accountTag: data.accountTag,
+                tags: data.hashtags ? data.hashtags.split(/[\s,]+/).filter((tag: string) => tag.trim() !== "") : [],
+                channels: data.channels,
+                is_draft: isDraft
+            }
+
+            if (editingProductId) {
+                await updateProduct(editingProductId, productData)
+            } else {
+                await addProduct(productData)
+            }
+
+            setProductFormOpen(false)
+            setEditingProductId(null)
+            setEditingProductData(null)
+            toast.success(isEditing ?
+                (isDraft ? "제품이 임시저장 되었습니다." : "제품이 성공적으로 수정되었습니다!") :
+                (isDraft ? "제품이 임시저장 되었습니다." : "제품이 성공적으로 등록되었습니다!"))
+            refreshData()
+        } catch (e: any) {
+            console.error(e)
+            toast.error(`제품 ${editingProductId ? '수정' : '등록'} 실패: ${e?.message || "알 수 없는 오류"}`)
+        } finally {
+            setIsUploading(false)
         }
     }
 
@@ -95,7 +179,7 @@ export function MyProductsView({
                             <EyeOff className="h-2.5 w-2.5" /> 비공개
                         </Badge>
                     )}
-                    {p.is_draft && (
+                    {(p as any).is_draft && (
                         <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 backdrop-blur-sm shadow-sm text-[10px]">
                             임시저장
                         </Badge>
@@ -200,7 +284,7 @@ export function MyProductsView({
         </Card>
     )
 
-    const displayProducts = activeTab === 'active' ? products : hiddenProducts
+    const displayProducts = activeTab === 'active' ? myProducts : hiddenProducts
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
@@ -233,7 +317,7 @@ export function MyProductsView({
                             onClick={() => setActiveTab('active')}
                             className={`px-3 h-7 rounded-md text-xs font-medium transition-colors ${activeTab === 'active' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                         >
-                            공개 ({products.length})
+                            공개 ({myProducts.length})
                         </button>
                         <button
                             onClick={() => setActiveTab('hidden')}
@@ -242,7 +326,12 @@ export function MyProductsView({
                             <EyeOff className="h-3 w-3" /> 비공개 ({hiddenProducts.length})
                         </button>
                     </div>
-                    <Button className="gap-2 h-8 text-sm" onClick={() => setProductModalOpen(true)}>
+                    <Button className="gap-2 h-8 text-sm" onClick={() => {
+                        setEditingProductId(null)
+                        setEditingProductData(null)
+                        setProductFormStep("form")
+                        setProductFormOpen(true)
+                    }}>
                         <Plus className="h-4 w-4" /> 제품 등록하기
                     </Button>
                 </div>
@@ -255,7 +344,12 @@ export function MyProductsView({
                         <>
                             <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground opacity-20 mb-4" />
                             <h3 className="text-base font-medium text-muted-foreground mb-4">등록된 제품이 없습니다.</h3>
-                            <Button onClick={() => setProductModalOpen(true)}>제품 등록하기</Button>
+                            <Button onClick={() => {
+                                setEditingProductId(null)
+                                setEditingProductData(null)
+                                setProductFormStep("form")
+                                setProductFormOpen(true)
+                            }}>제품 등록하기</Button>
                         </>
                     ) : (
                         <>
@@ -298,7 +392,7 @@ export function MyProductsView({
                                             <EyeOff className="h-2.5 w-2.5" /> 비공개
                                         </Badge>
                                     )}
-                                    {p.is_draft && (
+                                    {(p as any).is_draft && (
                                         <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] px-1.5 py-0 h-4 shrink-0">
                                             임시저장
                                         </Badge>
@@ -383,6 +477,16 @@ export function MyProductsView({
                 }}
                 confirmText="비공개 처리"
                 variant="destructive"
+            />
+            {/* Unified Product Registration / Preview Dialog */}
+            <ProductRegistrationDialog
+                open={productFormOpen}
+                onOpenChange={setProductFormOpen}
+                isEditing={!!editingProductId}
+                isSubmitting={isUploading}
+                initialData={editingProductData}
+                defaultStep={productFormStep}
+                onSubmit={handleFinalSubmit}
             />
         </div>
     )

@@ -37,7 +37,7 @@ import { toast } from "sonner"
 export default function MomentDetailPage() {
     const params = useParams()
     const router = useRouter()
-    const { moments, user, sendNotification, supabase, products, refreshData, momentProposals, addMomentProposal } = useUnifiedProvider()
+    const { moments, user, sendNotification, supabase, products, refreshData, momentProposals, addMomentProposal, createMomentProposal } = useUnifiedProvider()
     const [momentData, setMomentData] = useState<CreatorMoment | null>(null)
     const [showProposalDialog, setShowProposalDialog] = useState(false)
     const [showReadonlyDialog, setShowReadonlyDialog] = useState(false)
@@ -247,24 +247,19 @@ ${u.name}의 담당자입니다.
                     condition_upload_date: formData.desiredDate ? format(formData.desiredDate, "yyyy-MM-dd") : null,
                     condition_secondary_usage_period: formData.secondaryUsagePeriod || "불가",
                     secondary_usage_fee: formData.secondaryUsageFee ? parseInt(formData.secondaryUsageFee.replace(/[^0-9]/g, '')) : 0,
+                    condition_maintenance_period: formData.maintenancePeriod || null,
                     date_flexible: formData.dateFlexible,
                     video_guide: formData.videoGuide,
                     product_url: formData.productUrl || null,
                 }
             }
 
-            // API 라우트로 서버 측 insert (RLS 우회)
-            const res = await fetch('/api/moment-proposals', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(proposalData),
-            })
-            const json = await res.json()
-            if (!res.ok || json.error) {
-                console.error('Error creating proposal:', json.error)
-                throw new Error(json.error || "알 수 없는 오류")
+            // [REPLACED] API 라우트로 서버 측 insert (RLS 우회) -> Unified Provider 패턴 적용
+            const data = await createMomentProposal(proposalData)
+            if (!data) {
+                console.error('Error creating proposal: No data returned from provider')
+                throw new Error("알 수 없는 오류")
             }
-            const data = json.data
             const success = !!data
 
             // Optimistic Update
@@ -786,6 +781,7 @@ ${u.name}의 담당자입니다.
                         dateFlexible: false,
                         secondaryUsagePeriod: "",
                         secondaryUsageFee: "",
+                        maintenancePeriod: "",
                         proposalMessage: proposalMessage,
                     } : null
                 }

@@ -15,13 +15,11 @@ export function RealtimeWorkspaceSync() {
     useEffect(() => {
         if (!proposal?.id) return
 
-        let tableName = ""
-        if ((proposal as any).moment_id || (proposal as any).momentId) {
+        let tableName = "product_applications"
+        if ((proposal as any).target_type === 'moment' || (proposal as any).moment_id || (proposal as any).momentId) {
             tableName = "moment_proposals"
-        } else if ((proposal as any).campaign_id || (proposal as any).campaignId) {
+        } else if ((proposal as any).target_type === 'campaign' || (proposal as any).campaign_id || (proposal as any).campaignId) {
             tableName = "campaign_applications"
-        } else {
-            tableName = "product_applications"
         }
 
         console.log(`[RealtimeWorkspaceSync] Subscribing to ${tableName} id: ${proposal.id}`)

@@ -374,43 +374,77 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                         batch_count: newCount
                     };
 
+                    const updatePayload: any = {
+                        content: batchedContent,
+                        created_at: new Date().toISOString() // Bump to top
+                    };
+
+                    if (Object.keys(mergedMetadata).length > 0) {
+                        updatePayload.metadata = mergedMetadata;
+                    }
+
                     const { error: updateError } = await supabase
                         .from('notifications')
-                        .update({
-                            content: batchedContent,
-                            metadata: mergedMetadata,
-                            created_at: new Date().toISOString() // Bump to top
-                        })
+                        .update(updatePayload)
                         .eq('id', existing.id);
 
-                    if (updateError) throw updateError;
+                    if (updateError) {
+                        if (updateError.code === '42703' || updateError.code === 'PGRST204') {
+                            console.warn('[MessageProvider] Missing metadata column during debounce. Retrying without it...');
+                            delete updatePayload.metadata;
+                            const { error: retryUpdateError } = await supabase
+                                .from('notifications')
+                                .update(updatePayload)
+                                .eq('id', existing.id);
+                            if (retryUpdateError) throw retryUpdateError;
+                        } else {
+                            throw updateError;
+                        }
+                    }
                     console.log('[MessageProvider] Notification debounced/batched:', existing.id);
                     return;
                 }
             }
 
             // Normal Insert
+            const basePayload: any = {
+                recipient_id: recipientId,
+                sender_id: userId,
+                type,
+                content,
+                is_read: false
+            }
+            if (referenceId) basePayload.reference_id = referenceId
+            if (actionUrl) basePayload.action_url = actionUrl
+
+            // metadata가 명시적으로 있으면 넣고, 없으면 넣지 않음 (migration 누락 에러 방지)
+            if (metadata && Object.keys(metadata).length > 0) {
+                basePayload.metadata = metadata
+            }
+
             const { error } = await supabase
                 .from('notifications')
-                .insert({
-                    recipient_id: recipientId,
-                    sender_id: userId,
-                    type,
-                    content,
-                    reference_id: referenceId,
-                    action_url: actionUrl,
-                    metadata: metadata || {},
-                    is_read: false
-                })
+                .insert(basePayload)
 
             if (error) {
-                console.error('[MessageProvider] Notification error:', error)
-                throw error
+                if (error.code === '42703' || error.code === 'PGRST204') {
+                    console.warn('[MessageProvider] Missing newly added columns (metadata/action_url). Retrying without them...')
+                    delete basePayload.action_url
+                    delete basePayload.metadata
+                    const { error: retryError } = await supabase.from('notifications').insert(basePayload)
+                    if (retryError) {
+                        console.error('[MessageProvider] Notification retry error:', JSON.stringify(retryError), 'Payload:', JSON.stringify(basePayload))
+                        throw retryError
+                    }
+                } else {
+                    console.error('[MessageProvider] Notification error detail:', JSON.stringify(error, Object.getOwnPropertyNames(error || {})), 'Payload:', JSON.stringify(basePayload))
+                    throw error
+                }
             }
 
             console.log('[MessageProvider] Notification sent')
         } catch (error: any) {
-            console.error('[MessageProvider] Notification error:', error)
+            console.error('[MessageProvider] Notification outer catch:', JSON.stringify(error, Object.getOwnPropertyNames(error || {})))
             throw error
         }
     }

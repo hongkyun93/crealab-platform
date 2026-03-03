@@ -1,5 +1,5 @@
 // Proposal and Contract Types
-export type ProposalType = 'brand_invite' | 'brand_offer' | 'creator_apply' | 'campaign_apply'
+export type ProposalType = 'brand_invite' | 'product_apply' | 'campaign_apply'
 export type DealType = 'ad' | 'gonggu'
 export type ProposalStatus = 'applied' | 'accepted' | 'rejected' | 'negotiating' | 'pending' | 'hold' | 'offered' | 'cancelled' | 'completed'
 export type ContractStatus = 'draft' | 'sent' | 'signed' | 'negotiating' | 'rejected'
@@ -21,10 +21,10 @@ export interface Proposal {
     campaignName?: string
     productName?: string
     product_name?: string // snake_case alias
-    creatorId?: string
+    creator_id?: string // [FIX] Unified snake_case
     creatorName?: string
     creatorAvatar?: string
-    brandId?: string
+    brand_id?: string // [FIX] Unified snake_case
     brandName?: string
     brand_name?: string // snake_case alias
     brandAvatar?: string
@@ -33,8 +33,12 @@ export interface Proposal {
     commission?: number
     message?: string
 
-    // Status
     status: ProposalStatus
+
+    // Abstracted (Virtual) Target Properties for UI Unification
+    target_id?: string // [NEW] Unified ID for the target (product, campaign, moment)
+    target_name?: string // [NEW] Unified name for the target
+    target_type?: 'product' | 'campaign' | 'moment' // [NEW] Unified type indicator
 
     // Negotiation
     negotiationBase?: number
@@ -134,14 +138,11 @@ export interface Proposal {
 export interface ProductApplication {
     id: string
     brand_id: string
-    brandId?: string // camelCase alias
     creator_id: string
-    creatorId?: string // camelCase alias
     moment_id?: string
     product_id?: string
-    productId?: string // camelCase alias
     campaign_id?: string
-    campaignId?: string // camelCase alias
+
 
     // Product/Campaign Info
     product_name?: string
@@ -157,12 +158,14 @@ export interface ProductApplication {
 
     // Names and Avatars (from joins)
     brand_name?: string
-    brandName?: string // camelCase alias
     creator_name?: string
-    creatorAvatar?: string
     creator_avatar?: string // snake_case duplicate for consistency
-    brandAvatar?: string
     brand_avatar?: string // snake_case for consistency with MomentProposal
+
+    // Abstracted (Virtual) Target Properties for UI Unification
+    target_id?: string // [NEW] Unified ID for the target (product, campaign, moment)
+    target_name?: string // [NEW] Unified name for the target
+    target_type?: 'product' | 'campaign' | 'moment' // [NEW] Unified type indicator
 
     type?: string
     workspace_id?: string // [Workspaces] FK to workspaces table
@@ -178,7 +181,6 @@ export interface ProductApplication {
     // Application Fields (New)
     motivation?: string
     content_plan?: string
-    contentPlan?: string // camelCase alias
     portfolio_links?: string[]
     instagram_handle?: string
     insight_screenshot?: string

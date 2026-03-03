@@ -50,7 +50,7 @@ export function FileSharePanel() {
     const workspaceId: string | undefined = p?.workspace_id
     const proposalId: string | undefined = p?.id?.toString()
     const isMomentProposal = !!p?.moment_id
-    const isCampaignProposal = p?.type === 'creator_apply' || !!p?.campaignId
+    const isCampaignProposal = p?.type === 'campaign_apply' || !!p?.campaignId
 
     const fetchFiles = useCallback(async () => {
         if (!proposalId || !workspaceId) return

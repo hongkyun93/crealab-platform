@@ -37,7 +37,7 @@ function BrandMobileLayout() {
     const proposal = useWorkspaceStore((state) => state.proposal);
     const contractViewOpen = useWorkspaceStore((state) => state.contractViewOpen);
     const videoReviewOpen = useWorkspaceStore((state) => state.videoReviewOpen);
-    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
+    const { updateProductApplication, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
 
     // Sign handler for brand (used if signing from mobile contract view)
     const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
@@ -57,7 +57,7 @@ function BrandMobileLayout() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
         } else {
-            success = await updateBrandProposal(proposal.id, updates);
+            success = await updateProductApplication(proposal.id, updates);
         }
 
         if (success) {
@@ -76,7 +76,7 @@ function BrandMobileLayout() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             await updateProposal(proposal.id, updates);
         } else {
-            await updateBrandProposal(proposal.id, updates);
+            await updateProductApplication(proposal.id, updates);
         }
     };
 
@@ -97,7 +97,7 @@ function BrandMobileLayout() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
         } else {
-            success = await updateBrandProposal(proposal.id, updates);
+            success = await updateProductApplication(proposal.id, updates);
         }
 
         if (success) {
@@ -127,7 +127,7 @@ function BrandMobileLayout() {
                         </div>
                         <div className="min-w-0" style={{ maxWidth: 'calc(100% - 2.5rem)' }}>
                             <h2 className="text-xs font-bold leading-tight truncate">{creatorName}</h2>
-                            <span className="text-[10px] text-muted-foreground block truncate">{proposal?.product_name || proposal?.campaignName || '협업 프로젝트'}</span>
+                            <span className="text-[10px] text-muted-foreground block truncate">{proposal?.target_name || '협업 프로젝트'}</span>
                         </div>
                     </div>
 

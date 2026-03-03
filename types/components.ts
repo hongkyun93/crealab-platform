@@ -9,7 +9,7 @@ export interface Proposal {
     message: string
     cost?: number
     campaignId?: string
-    type?: 'creator_apply' | 'brand_offer'
+    type?: 'campaign_apply' | 'product_apply'
 }
 
 export interface Campaign {

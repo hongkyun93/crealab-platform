@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { useAuth } from "@/components/providers/auth-provider"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { SiteHeader } from "@/components/site-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -57,6 +58,7 @@ interface AdminWorkspace {
 
 export default function AdminPage() {
     const { user, supabase } = useAuth()
+    const { sendNotification } = useUnifiedProvider()
     const router = useRouter()
     const [activeTab, setActiveTab] = useState("moments")
 
@@ -317,21 +319,21 @@ export default function AdminPage() {
 
             // 브랜드 알림
             if (item.brand_id) {
-                await supabase.from('notifications').insert({
-                    recipient_id: item.brand_id,
-                    type: 'payment_confirmed',
-                    content: '광고비 입금이 확인되었습니다. 이제 제품을 배송해 주세요.',
-                    reference_id: item.id,
-                })
+                await sendNotification(
+                    item.brand_id,
+                    '광고비 입금이 확인되었습니다. 이제 제품을 배송해 주세요.',
+                    'payment_confirmed',
+                    item.id
+                )
             }
             // 크리에이터 알림
             if (item.creator_id) {
-                await supabase.from('notifications').insert({
-                    recipient_id: item.creator_id,
-                    type: 'payment_confirmed',
-                    content: '브랜드 광고비 입금이 확인되었습니다. 배송 준비 중입니다.',
-                    reference_id: item.id,
-                })
+                await sendNotification(
+                    item.creator_id,
+                    '브랜드 광고비 입금이 확인되었습니다. 배송 준비 중입니다.',
+                    'payment_confirmed',
+                    item.id
+                )
             }
 
             fetchPendingPayments()
@@ -364,14 +366,12 @@ export default function AdminPage() {
             if (settlement?.creator_id) {
                 try {
                     const amountText = settlement.amount ? `${Number(settlement.amount).toLocaleString()}원` : '정산금'
-                    await supabase.from('notifications').insert({
-                        recipient_id: settlement.creator_id,
-                        sender_id: null,
-                        content: `${amountText}이 정산 지급되었습니다. 확인해보세요!`,
-                        type: 'settlement_paid',
-                        reference_id: settlementId,
-                        is_read: false
-                    })
+                    await sendNotification(
+                        settlement.creator_id,
+                        `${amountText}이 정산 지급되었습니다. 확인해보세요!`,
+                        'settlement_paid',
+                        settlementId
+                    )
                 } catch (notifErr) {
                     console.warn('정산 알림 발송 실패 (무시):', notifErr)
                 }
@@ -419,12 +419,12 @@ export default function AdminPage() {
             if (rpcErr) throw rpcErr
 
             // 4. 브랜드 알림
-            await supabase.from('notifications').insert({
-                recipient_id: deposit.brand_id,
-                type: 'deposit_confirmed',
-                content: `예치금 ₩${amount.toLocaleString()} 충전이 완료되었습니다. 현재 잔액: ₩${newBalance.toLocaleString()}`,
-                reference_id: deposit.id,
-            })
+            await sendNotification(
+                deposit.brand_id,
+                `예치금 ₩${amount.toLocaleString()} 충전이 완료되었습니다. 현재 잔액: ₩${newBalance.toLocaleString()}`,
+                'deposit_confirmed',
+                deposit.id
+            )
 
             toast.success(`₩${amount.toLocaleString()} 충전 완료!`)
             fetchPendingDeposits()

@@ -28,19 +28,20 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
     const [editValues, setEditValues] = useState({
         priceOffer: 0,
         productName: '',
-        dateReceived: '',
-        dateDraft: '',
-        dateFinal: '',
-        dateUpload: '',
+        conditionProductReceiptDate: '',
+        conditionDraftDate: '',
+        conditionFinalDate: '',
+        conditionUploadDate: '',
         specialTerms: '',
         // [New] Additional Fields
-        incentive: '',
+        hasIncentive: false,     // [FIX#3] 별도 boolean — 텍스트 유무로 파생하지 않음
+        incentiveDetail: '',
         channelName: '' as string,
         channelSubtype: '' as string,
-        secondaryUsage: '',
+        conditionSecondaryUsagePeriod: '',
         secondaryUsageFee: 0,
         productType: 'gift' as 'gift' | 'loan',
-        maintenancePeriod: '' as string,
+        conditionMaintenancePeriod: '' as string,
         videoGuide: '' as string,
     });
 
@@ -91,21 +92,20 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
         if (isEditing && proposal) {
             setEditValues({
                 priceOffer: proposal.price_offer || 0,
-                productName: proposal.product_name || proposal.productName || (proposal.productId ? '제품명 로딩중...' : ''),
-                // Use stored dates if available (check both camelCase and snake_case), otherwise fallback to logic
-                dateReceived: proposal.condition_product_receipt_date || proposal.date_received || defaultDates.receipt,
-                dateDraft: proposal.condition_draft_submission_date || proposal.date_draft || defaultDates.draft,
-                dateFinal: proposal.condition_final_submission_date || proposal.date_final || defaultDates.final, // [NEW] Final Date
-                dateUpload: proposal.condition_upload_date || proposal.date_upload || defaultDates.upload,
-                specialTerms: proposal.special_terms || proposal.specialTerms || '',
-                // [New] Init Additional Fields
-                incentive: (proposal.has_incentive ? (proposal.incentive_detail || '인센티브 제공') : '') || proposal.incentive || '',
+                productName: proposal.target_name || proposal.product_name || '',
+                conditionProductReceiptDate: proposal.condition_product_receipt_date || defaultDates.receipt,
+                conditionDraftDate: proposal.condition_draft_submission_date || defaultDates.draft,
+                conditionFinalDate: proposal.condition_final_submission_date || defaultDates.final,
+                conditionUploadDate: proposal.condition_upload_date || defaultDates.upload,
+                specialTerms: proposal.special_terms || '',
+                hasIncentive: proposal.has_incentive || false, // [FIX#3] boolean 직접 초기화
+                incentiveDetail: proposal.incentive_detail || '',
                 channelName: proposal.channel_name || '',
                 channelSubtype: proposal.channel_subtype || '',
-                secondaryUsage: proposal.condition_secondary_usage_period || proposal.secondaryUsage || '',
+                conditionSecondaryUsagePeriod: proposal.condition_secondary_usage_period || '',
                 secondaryUsageFee: proposal.secondary_usage_fee || 0,
                 productType: (proposal.product_type as 'gift' | 'loan') || 'gift',
-                maintenancePeriod: proposal.condition_maintenance_period || '',
+                conditionMaintenancePeriod: proposal.condition_maintenance_period || '',
                 videoGuide: (proposal as any).video_guide || '',
             });
         }
@@ -116,20 +116,20 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
             // Map back to DB columns (snake_case)
             price_offer: editValues.priceOffer,
             product_name: editValues.productName,
-            condition_product_receipt_date: editValues.dateReceived,
-            condition_draft_submission_date: editValues.dateDraft,
-            condition_final_submission_date: editValues.dateFinal, // [NEW] Final Date Persistence
-            condition_upload_date: editValues.dateUpload,
+            condition_product_receipt_date: editValues.conditionProductReceiptDate,
+            condition_draft_submission_date: editValues.conditionDraftDate,
+            condition_final_submission_date: editValues.conditionFinalDate, // [NEW] Final Date Persistence
+            condition_upload_date: editValues.conditionUploadDate,
             special_terms: editValues.specialTerms,
             // [New] Persist Additional Fields
-            incentive_detail: editValues.incentive,
-            has_incentive: !!editValues.incentive,
+            incentive_detail: editValues.incentiveDetail,
+            has_incentive: editValues.hasIncentive, // [FIX#3] boolean 필드 직접 사용
             channel_name: editValues.channelName || undefined,
             channel_subtype: editValues.channelSubtype || undefined,
-            condition_secondary_usage_period: editValues.secondaryUsage,
+            condition_secondary_usage_period: editValues.conditionSecondaryUsagePeriod,
             secondary_usage_fee: editValues.secondaryUsageFee || 0,
             product_type: editValues.productType,
-            condition_maintenance_period: editValues.maintenancePeriod || undefined,
+            condition_maintenance_period: editValues.conditionMaintenancePeriod || undefined,
             video_guide: editValues.videoGuide || undefined,
 
 
@@ -155,7 +155,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
     };
 
     // View Data (Prioritize saved dates over calculated ones)
-    const product = proposal?.product_name || proposal?.productName || (proposal?.productId ? '제품명 로딩중...' : '협업 제품 정보 없음');
+    const product = proposal?.target_name || (proposal?.target_id ? '정보 로딩중...' : '협업 프로젝트 정보 없음');
     // [FIX] Unified Logic: price_offer is master. Fallback to parsing string if needed.
     const priceOffer = proposal?.price_offer || 0;
     const formattedCost = priceOffer > 0
@@ -163,12 +163,12 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
         : '협의 필요';
     const specialTerms = proposal?.special_terms || proposal?.specialTerms; // [FIX] Prioritize special_terms
     // [New] View Data
-    const incentive = (proposal?.has_incentive ? (proposal?.incentive_detail || '제공') : '') || proposal?.incentive;
+    const incentiveDetail = (proposal as any)?.has_incentive ? (proposal?.incentive_detail || '제공') : ((proposal as any)?.incentive || '');
     // Channel name label
     const CHANNEL_LABELS: Record<string, string> = {
         instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', blog: 'Blog', other: '기타',
     };
-    const secondaryUsage = proposal?.condition_secondary_usage_period || proposal?.secondaryUsage || '협의 필요';
+    const conditionSecondaryUsagePeriod = proposal?.condition_secondary_usage_period || (proposal as any)?.conditionSecondaryUsagePeriod || '협의 필요';
     const secondaryUsageFee = proposal?.secondary_usage_fee || 0;
 
     // [NEW] 채널 서브타입 레이블 파싱 (여러 개 지원)
@@ -248,8 +248,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                     <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">인센티브 (Incentive)</Label>
                         <Input
-                            value={editValues.incentive}
-                            onChange={(e) => setEditValues({ ...editValues, incentive: e.target.value })}
+                            value={editValues.incentiveDetail}
+                            onChange={(e) => setEditValues({ ...editValues, incentiveDetail: e.target.value })}
                             placeholder="없음"
                             className="h-8 text-xs bg-background"
                         />
@@ -307,8 +307,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                         <div className="space-y-1.5">
                             <Label className="text-xs text-muted-foreground">2차 활용</Label>
                             <select
-                                value={editValues.secondaryUsage}
-                                onChange={(e) => setEditValues({ ...editValues, secondaryUsage: e.target.value })}
+                                value={editValues.conditionSecondaryUsagePeriod}
+                                onChange={(e) => setEditValues({ ...editValues, conditionSecondaryUsagePeriod: e.target.value })}
                                 className="w-full h-8 text-xs rounded-md border border-input bg-background px-2"
                             >
                                 <option value="">기간 선택</option>
@@ -319,7 +319,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                                 <option value="영구">영구</option>
                                 <option value="협의">협의 필요</option>
                             </select>
-                            {editValues.secondaryUsage && editValues.secondaryUsage !== '불가' && (
+                            {editValues.conditionSecondaryUsagePeriod && editValues.conditionSecondaryUsagePeriod !== '불가' && (
                                 <div className="relative">
                                     <Input
                                         type="number"
@@ -335,8 +335,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                         <div className="space-y-1.5">
                             <Label className="text-xs text-muted-foreground">게시 유지 기간</Label>
                             <select
-                                value={editValues.maintenancePeriod}
-                                onChange={(e) => setEditValues({ ...editValues, maintenancePeriod: e.target.value })}
+                                value={editValues.conditionMaintenancePeriod}
+                                onChange={(e) => setEditValues({ ...editValues, conditionMaintenancePeriod: e.target.value })}
                                 className="w-full h-8 text-xs rounded-md border border-input bg-background px-2"
                             >
                                 <option value="">기간 선택</option>
@@ -399,8 +399,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                             <Label className="text-xs text-muted-foreground">제품 수령일 (Date Received)</Label>
                             <Input
                                 type="date"
-                                value={editValues.dateReceived}
-                                onChange={(e) => setEditValues({ ...editValues, dateReceived: e.target.value })}
+                                value={editValues.conditionProductReceiptDate}
+                                onChange={(e) => setEditValues({ ...editValues, conditionProductReceiptDate: e.target.value })}
                                 className="h-8 text-xs bg-background"
                             />
                         </div>
@@ -408,8 +408,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                             <Label className="text-xs text-muted-foreground">초안 제출일 (Draft Due)</Label>
                             <Input
                                 type="date"
-                                value={editValues.dateDraft}
-                                onChange={(e) => setEditValues({ ...editValues, dateDraft: e.target.value })}
+                                value={editValues.conditionDraftDate}
+                                onChange={(e) => setEditValues({ ...editValues, conditionDraftDate: e.target.value })}
                                 className="h-8 text-xs bg-background"
                             />
                         </div>
@@ -417,8 +417,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                             <Label className="text-xs text-muted-foreground">최종본 제출일 (Final Due)</Label>
                             <Input
                                 type="date"
-                                value={editValues.dateFinal}
-                                onChange={(e) => setEditValues({ ...editValues, dateFinal: e.target.value })}
+                                value={editValues.conditionFinalDate}
+                                onChange={(e) => setEditValues({ ...editValues, conditionFinalDate: e.target.value })}
                                 className="h-8 text-xs bg-background"
                             />
                         </div>
@@ -426,8 +426,8 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                             <Label className="text-xs text-muted-foreground">업로드일 (Upload Date)</Label>
                             <Input
                                 type="date"
-                                value={editValues.dateUpload}
-                                onChange={(e) => setEditValues({ ...editValues, dateUpload: e.target.value })}
+                                value={editValues.conditionUploadDate}
+                                onChange={(e) => setEditValues({ ...editValues, conditionUploadDate: e.target.value })}
                                 className="h-8 text-xs font-bold text-indigo-600 bg-background"
                             />
                         </div>
@@ -483,7 +483,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                     </div>
                     <div className="flex flex-col">
                         <span className="font-bold text-emerald-600 dark:text-emerald-400">{formattedCost}</span>
-                        {incentive && <span className="text-[10px] text-muted-foreground">+ {incentive}</span>}
+                        {incentiveDetail && <span className="text-[10px] text-muted-foreground">+ {incentiveDetail}</span>}
                     </div>
                 </div>
             </div>
@@ -508,7 +508,7 @@ export function ConditionsPanel({ userRole, readonly = false, onSave, onToggleCo
                 <div className="space-y-1">
                     <label className="text-xs text-muted-foreground font-medium">2차 활용</label>
                     <div className="p-2 bg-background rounded-md border border-border/50 text-xs font-medium truncate">
-                        {secondaryUsage}
+                        {conditionSecondaryUsagePeriod}
                         {secondaryUsageFee > 0 && (
                             <span className="ml-1 text-emerald-600">· {secondaryUsageFee.toLocaleString()}원</span>
                         )}

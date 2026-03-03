@@ -21,7 +21,8 @@ export interface CreatorMoment {
     targetProduct: string
     momentDate?: string
     postingDate?: string
-    guide?: string
+    guide?: string        // [LEGACY] kept for backward compat; new saves use video_guide
+    video_guide?: string  // [UNIFIED] DB column name after rename
     status?: 'recruiting' | 'active' | 'completed'
     isMock?: boolean
     isPrivate?: boolean

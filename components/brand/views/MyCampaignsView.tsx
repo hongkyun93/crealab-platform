@@ -40,6 +40,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
     const [confirmAcceptId, setConfirmAcceptId] = React.useState<string | null>(null)
     const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null)
     const [confirmCloseId, setConfirmCloseId] = React.useState<string | null>(null) // 이력 있어 삭제 불가 → 종료로 유도
+    const [confirmRejectId, setConfirmRejectId] = React.useState<string | null>(null)
     const supabase = createClient()
     // Reset optimistic image when selection changes
     React.useEffect(() => {
@@ -99,7 +100,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
 
     // Memoize campaign proposals filtering
     const filteredProposals = useMemo(
-        () => campaignProposals.filter(p => p.campaignId === selectedCampaign?.id && p.type === 'creator_apply'),
+        () => campaignProposals.filter(p => p.campaignId === selectedCampaign?.id && p.type === 'campaign_apply'),
         [campaignProposals, selectedCampaign?.id]
     )
 
@@ -191,13 +192,13 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                             <div className="text-[10px] text-muted-foreground">{new Date(p.date).toLocaleDateString()}</div>
                                                         </div>
                                                     </div>
-                                                    <Badge variant={p.status === 'accepted' ? 'default' : (p.status === 'viewed' ? 'outline' : 'secondary')} className="text-[10px] h-5">
-                                                        {p.status === 'accepted' ? '수락됨' : '대기중'}
+                                                    <Badge variant={p.status === 'accepted' ? 'default' : p.status === 'rejected' ? 'destructive' : (p.status === 'viewed' ? 'outline' : 'secondary')} className="text-[10px] h-5">
+                                                        {p.status === 'accepted' ? '수락됨' : p.status === 'rejected' ? '거절됨' : '대기중'}
                                                     </Badge>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-4 pt-2 space-y-2">
-                                                <div className="bg-muted/30 p-2.5 rounded text-xs text-foreground/80 italic leading-relaxed">
+                                                <div className="bg-muted/30 p-2.5 rounded text-xs text-foreground/80 italic leading-relaxed whitespace-pre-wrap">
                                                     "{p.message}"
                                                 </div>
                                                 <div className="flex justify-between items-center text-xs pt-1">
@@ -205,20 +206,39 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                     <span className="font-bold text-emerald-600">{p.price_offer || p.priceOffer ? `${(p.price_offer || p.priceOffer).toLocaleString()}원` : "협의"}</span>
                                                 </div>
                                             </CardContent>
-                                            <CardFooter className="p-2 bg-muted/5 grid grid-cols-2 gap-2">
-                                                {p.status !== 'accepted' && (
+                                            {p.status !== 'accepted' && p.status !== 'rejected' && (
+                                                <CardFooter className="p-2 bg-muted/5 flex gap-2">
                                                     <Button
                                                         size="sm"
-                                                        className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
+                                                        className="h-7 text-xs flex-1 bg-emerald-600 hover:bg-emerald-700"
                                                         onClick={() => setConfirmAcceptId(p.id.toString())}
                                                     >
                                                         수락
                                                     </Button>
-                                                )}
-                                                <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
-                                                    <Link href="/message">채팅</Link>
-                                                </Button>
-                                            </CardFooter>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-7 text-xs flex-1 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        onClick={() => setConfirmRejectId(p.id.toString())}
+                                                    >
+                                                        거절
+                                                    </Button>
+                                                </CardFooter>
+                                            )}
+                                            {p.status === 'accepted' && (
+                                                <CardFooter className="p-2 bg-muted/5 flex gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-7 text-xs flex-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                                        asChild
+                                                    >
+                                                        <Link href={`/brand?view=proposals&workspaceTab=active&proposalId=${p.id}`}>
+                                                            워크스페이스로 이동
+                                                        </Link>
+                                                    </Button>
+                                                </CardFooter>
+                                            )}
                                         </Card>
                                     ))}
                                 </div>
@@ -241,11 +261,34 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                     .eq('id', confirmAcceptId)
                                 if (error) throw error
                                 toast.success('수락되었습니다')
-                                window.location.reload()
+                                if (refreshData) await refreshData()
                             } catch (e) {
                                 toast.error('오류가 발생했습니다.')
                             }
                             setConfirmAcceptId(null)
+                        }
+                    }}
+                />
+
+                <ConfirmDialog
+                    open={!!confirmRejectId}
+                    onOpenChange={(open) => !open && setConfirmRejectId(null)}
+                    title="지원 거절"
+                    description="이 지원을 거절하시겠습니까? 한 번 거절하면 되돌릴 수 없으며, 크리에이터에게 결과가 안내됩니다."
+                    onConfirm={async () => {
+                        if (confirmRejectId) {
+                            try {
+                                const { error } = await supabase
+                                    .from('campaign_applications')
+                                    .update({ status: 'rejected' })
+                                    .eq('id', confirmRejectId)
+                                if (error) throw error
+                                toast.success('거절되었습니다')
+                                if (refreshData) await refreshData()
+                            } catch (e) {
+                                toast.error('오류가 발생했습니다.')
+                            }
+                            setConfirmRejectId(null)
                         }
                     }}
                 />
@@ -338,7 +381,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
             ) : (
                 <div className="space-y-4">
                     {filteredCampaigns.slice(0, pageSize).map((c) => {
-                        const appCount = campaignProposals.filter(p => p.campaignId === c.id && p.type === 'creator_apply').length
+                        const appCount = campaignProposals.filter(p => p.campaignId === c.id && p.type === 'campaign_apply').length
                         return (
                             <Card
                                 key={c.id}
@@ -440,7 +483,7 @@ export const MyCampaignsView = React.memo(function MyCampaignsView({
                                                 </div>
                                                 <div className="space-y-0.5 hidden md:block">
                                                     <div className="text-[10px] font-bold text-muted-foreground/70">예상 업로드</div>
-                                                    <div className="text-xs text-foreground">{formatDateToMonth(c.postingDate) || '협의'}</div>
+                                                    <div className="text-xs text-foreground">{formatDateToMonth(c.postingDate) || formatDateToMonth(c.posting_date) || '협의'}</div>
                                                 </div>
                                             </div>
                                         </div>

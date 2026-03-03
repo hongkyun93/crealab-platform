@@ -8,6 +8,7 @@ import {
     User, Wallet
 } from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { FEATURES } from "@/lib/config/features"
 
 interface BrandSidebarProps {
     className?: string
@@ -49,14 +50,16 @@ export function BrandSidebar({ className, user }: BrandSidebarProps) {
                         <Search className="mr-2 h-4 w-4" />
                         크리에이터 찾기
                     </Button>
-                    <Button
-                        variant={currentView === 'my-campaigns' ? "secondary" : "ghost"}
-                        className="w-full justify-start"
-                        onClick={() => router.push('/brand?view=my-campaigns')}
-                    >
-                        <Briefcase className="mr-2 h-4 w-4" />
-                        내 캠페인 관리
-                    </Button>
+                    {FEATURES.ENABLE_CAMPAIGNS && (
+                        <Button
+                            variant={currentView === 'my-campaigns' ? "secondary" : "ghost"}
+                            className="w-full justify-start"
+                            onClick={() => router.push('/brand?view=my-campaigns')}
+                        >
+                            <Briefcase className="mr-2 h-4 w-4" />
+                            내 캠페인 관리
+                        </Button>
+                    )}
                     <Button
                         variant={currentView === 'workspace' ? "secondary" : "ghost"}
                         className="w-full justify-start"

@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 
 export default function MessagePage() {
-    const { user, messages: allMessages, sendMessage, brandProposals } = useUnifiedProvider()
+    const { user, messages: allMessages, sendMessage, productApplications } = useUnifiedProvider()
     const { supabase } = useAuth()
     const { teamMembers, currentTeam } = useTeam()
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
@@ -65,7 +65,7 @@ export default function MessagePage() {
 
     // Helper to render Proposal Card in Chat
     const renderProposalCard = (proposalId: string) => {
-        const proposal = brandProposals?.find(p => p.id === proposalId)
+        const proposal = productApplications?.find(p => p.id === proposalId)
         if (!proposal) return null
 
         return (
@@ -126,7 +126,7 @@ export default function MessagePage() {
             const threadKey = `${otherId}-${pId}`
 
             if (!groups[threadKey]) {
-                const proposal = msg.proposalId ? brandProposals?.find(p => p.id?.toString() === msg.proposalId?.toString()) : null
+                const proposal = msg.proposalId ? productApplications?.find(p => p.id?.toString() === msg.proposalId?.toString()) : null
                 const proposalSuffix = proposal ? ` (${proposal.product_name})` : ""
 
                 groups[threadKey] = {
@@ -189,7 +189,7 @@ export default function MessagePage() {
         return result.sort((a, b) =>
             new Date(b.time).getTime() - new Date(a.time).getTime()
         )
-    }, [allMessages, displayUser, activeTab, teamMemberIds, isMCN, teamMembers, brandProposals])
+    }, [allMessages, displayUser, activeTab, teamMemberIds, isMCN, teamMembers, productApplications])
 
     // Set initial active thread if none selected
     useEffect(() => {

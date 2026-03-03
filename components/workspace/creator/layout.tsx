@@ -35,7 +35,7 @@ function CreatorMobileLayout() {
     const proposal = useWorkspaceStore((state) => state.proposal);
     const contractViewOpen = useWorkspaceStore((state) => state.contractViewOpen);
     const videoReviewOpen = useWorkspaceStore((state) => state.videoReviewOpen);
-    const { updateBrandProposal, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
+    const { updateProductApplication, updateMomentProposal, updateProposal, refreshData } = useUnifiedProvider();
 
     // Sign handler for creator
     const handleSign = async (role: 'brand' | 'creator', signatureData: string) => {
@@ -55,7 +55,7 @@ function CreatorMobileLayout() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
         } else {
-            success = await updateBrandProposal(proposal.id, updates);
+            success = await updateProductApplication(proposal.id, updates);
         }
 
         if (success) {
@@ -82,7 +82,7 @@ function CreatorMobileLayout() {
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
         } else {
-            success = await updateBrandProposal(proposal.id, updates);
+            success = await updateProductApplication(proposal.id, updates);
         }
 
         if (success) {
@@ -108,7 +108,7 @@ function CreatorMobileLayout() {
                         </div>
                         <div className="min-w-0" style={{ maxWidth: 'calc(100% - 2.5rem)' }}>
                             <h2 className="text-xs font-bold leading-tight truncate">{proposal?.brand_name || proposal?.brandName || 'Brand Name'}</h2>
-                            <span className="text-[10px] text-muted-foreground block truncate">{proposal?.product_name || proposal?.productName || proposal?.campaignName}</span>
+                            <span className="text-[10px] text-muted-foreground block truncate">{proposal?.target_name || '협업 프로젝트'}</span>
                         </div>
                     </div>
 

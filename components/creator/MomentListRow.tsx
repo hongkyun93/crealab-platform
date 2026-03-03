@@ -22,7 +22,7 @@ import { useState } from "react"
 
 interface MomentListRowProps {
     moment: any
-    brandProposals?: any[]
+    productApplications?: any[]
     onClick: (moment: any) => void
     onDelete?: (id: string) => void
     onComplete?: (id: string) => void
@@ -31,13 +31,13 @@ interface MomentListRowProps {
 
 export function MomentListRow({
     moment,
-    brandProposals = [],
+    productApplications = [],
     onClick,
     onDelete,
     onComplete,
     isPast = false
 }: MomentListRowProps) {
-    const offerCount = brandProposals.filter((p: any) => p.moment_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
+    const offerCount = productApplications.filter((p: any) => p.moment_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false)
 

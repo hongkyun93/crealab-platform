@@ -28,7 +28,8 @@ const WORKSPACE_SYNC_COLUMNS = [
     'condition_upload_date', 'condition_maintenance_period',
     'condition_secondary_usage_period',
     'brand_condition_confirmed', 'creator_condition_confirmed',
-    // 'product_name', 'channel_name', 'channel_subtype' → workspaces 테이블에 없음
+    'has_incentive', 'incentive_detail', 'special_terms', 'product_url', 'product_name',
+    'channel_name', 'channel_subtype', // 진행 채널 (workspaces 컬럼 추가 후 동기화)
 ]
 
 

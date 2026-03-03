@@ -23,7 +23,7 @@ import { useState } from "react"
 
 interface MomentGalleryCardProps {
     moment: any
-    brandProposals?: any[]
+    productApplications?: any[]
     onClick: (moment: any) => void
     onDelete?: (id: string) => void
     onComplete?: (id: string) => void
@@ -32,13 +32,13 @@ interface MomentGalleryCardProps {
 
 export function MomentGalleryCard({
     moment,
-    brandProposals = [],
+    productApplications = [],
     onClick,
     onDelete,
     onComplete,
     isPast = false
 }: MomentGalleryCardProps) {
-    const offerCount = brandProposals.filter((p: any) => p.moment_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
+    const offerCount = productApplications.filter((p: any) => p.moment_id === moment.id && (p.status === 'offered' || p.status === 'negotiating' || p.status === 'pending')).length;
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false)
 

@@ -11,70 +11,104 @@ import { Loader2 } from "lucide-react"
 import React, { useState } from "react"
 import { AddressSearchDialog } from "@/components/ui/address-search-dialog"
 
+import { toast } from "sonner"
+
 interface BrandProfileViewProps {
-    user: any
-    isSaving: boolean
-    editName: string
-    setEditName: (value: string) => void
-    editWebsite: string
-    setEditWebsite: (value: string) => void
-    editPhone: string
-    setEditPhone: (value: string) => void
-    editAddress: string
-    setEditAddress: (value: string) => void
-    editBio: string
-    setEditBio: (value: string) => void
-    // Brand Business Fields
-    editLegalName: string; setEditLegalName: (v: string) => void
-    editRepresentativeName: string; setEditRepresentativeName: (v: string) => void
-    editBusinessNumber: string; setEditBusinessNumber: (v: string) => void
-    editCompanyAddress: string; setEditCompanyAddress: (v: string) => void
-    editCompanyPhone: string; setEditCompanyPhone: (v: string) => void
-    editTaxEmail: string; setEditTaxEmail: (v: string) => void
-    editBusinessCategory: string; setEditBusinessCategory: (v: string) => void
-    editBusinessType: string; setEditBusinessType: (v: string) => void
-    editContactPersonName: string; setEditContactPersonName: (v: string) => void
-    editContactPersonPhone: string; setEditContactPersonPhone: (v: string) => void
-    editContactPersonEmail: string; setEditContactPersonEmail: (v: string) => void
-    // Bank fields (3 separate)
-    editBankName: string; setEditBankName: (v: string) => void
-    editAccountNumber: string; setEditAccountNumber: (v: string) => void
-    editAccountHolder: string; setEditAccountHolder: (v: string) => void
-    handleSaveProfile: () => void
-    updateUser: (data: any) => Promise<void>
-    switchRole: (role: string) => Promise<void>
     refreshData?: () => void
 }
 
 export const BrandProfileView = React.memo(function BrandProfileView({
-    user,
-    isSaving,
-    editName, setEditName,
-    editWebsite, setEditWebsite,
-    editPhone, setEditPhone,
-    editAddress, setEditAddress,
-    editBio, setEditBio,
-    editLegalName, setEditLegalName,
-    editRepresentativeName, setEditRepresentativeName,
-    editBusinessNumber, setEditBusinessNumber,
-    editCompanyAddress, setEditCompanyAddress,
-    editCompanyPhone, setEditCompanyPhone,
-    editTaxEmail, setEditTaxEmail,
-    editBusinessCategory, setEditBusinessCategory,
-    editBusinessType, setEditBusinessType,
-    editContactPersonName, setEditContactPersonName,
-    editContactPersonPhone, setEditContactPersonPhone,
-    editContactPersonEmail, setEditContactPersonEmail,
-    editBankName, setEditBankName,
-    editAccountNumber, setEditAccountNumber,
-    editAccountHolder, setEditAccountHolder,
-    handleSaveProfile,
-    updateUser,
-    switchRole
+    refreshData
 }: BrandProfileViewProps) {
-    const { supabase } = useUnifiedProvider()
+    const { supabase, user, updateUser, switchRole } = useUnifiedProvider()
     const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false)
     const [isCompanyAddressSearchOpen, setIsCompanyAddressSearchOpen] = useState(false)
+
+    // Settings States
+    const [editName, setEditName] = useState("")
+    const [editWebsite, setEditWebsite] = useState("")
+    const [editBio, setEditBio] = useState("")
+    const [editPhone, setEditPhone] = useState("")
+    const [editAddress, setEditAddress] = useState("")
+    const [isSaving, setIsSaving] = useState(false)
+    // Brand Business Fields
+    const [editLegalName, setEditLegalName] = useState("")
+    const [editRepresentativeName, setEditRepresentativeName] = useState("")
+    const [editBusinessNumber, setEditBusinessNumber] = useState("")
+    const [editCompanyAddress, setEditCompanyAddress] = useState("")
+    const [editCompanyPhone, setEditCompanyPhone] = useState("")
+    const [editTaxEmail, setEditTaxEmail] = useState("")
+    const [editBusinessCategory, setEditBusinessCategory] = useState("")
+    const [editBusinessType, setEditBusinessType] = useState("")
+    const [editContactPersonName, setEditContactPersonName] = useState("")
+    const [editContactPersonPhone, setEditContactPersonPhone] = useState("")
+    const [editContactPersonEmail, setEditContactPersonEmail] = useState("")
+    // Bank fields (3 separate inputs)
+    const [editBankName, setEditBankName] = useState("")
+    const [editAccountNumber, setEditAccountNumber] = useState("")
+    const [editAccountHolder, setEditAccountHolder] = useState("")
+
+    React.useEffect(() => {
+        if (user) {
+            setEditName(user.name || "")
+            setEditWebsite(user.website || "")
+            setEditBio(user.bio || "")
+            setEditPhone(user.phone || "")
+            setEditAddress(user.address || "")
+            // Brand Business Fields
+            setEditLegalName((user as any).legalName || "")
+            setEditRepresentativeName((user as any).representativeName || "")
+            setEditBusinessNumber((user as any).businessNumber || "")
+            setEditCompanyAddress((user as any).companyAddress || "")
+            setEditCompanyPhone((user as any).companyPhone || "")
+            setEditTaxEmail((user as any).taxEmail || "")
+            setEditBusinessCategory((user as any).businessCategory || "")
+            setEditBusinessType((user as any).businessType || "")
+            setEditContactPersonName((user as any).contactPersonName || "")
+            setEditContactPersonPhone((user as any).contactPersonPhone || "")
+            setEditContactPersonEmail((user as any).contactPersonEmail || "")
+            // Bank fields
+            setEditBankName((user as any).bankName || "")
+            setEditAccountNumber((user as any).accountNumber || "")
+            setEditAccountHolder((user as any).accountHolder || "")
+        }
+    }, [user])
+
+    const handleSaveProfile = async () => {
+        setIsSaving(true)
+        try {
+            await updateUser({
+                name: editName,
+                website: editWebsite,
+                bio: editBio,
+                phone: editPhone,
+                address: editAddress,
+                // Brand Business Fields
+                legalName: editLegalName, // 법인명(상호) 추가
+                representativeName: editRepresentativeName,
+                businessNumber: editBusinessNumber,
+                companyAddress: editCompanyAddress,
+                companyPhone: editCompanyPhone,
+                taxEmail: editTaxEmail,
+                businessCategory: editBusinessCategory,
+                businessType: editBusinessType,
+                contactPersonName: editContactPersonName,
+                contactPersonPhone: editContactPersonPhone,
+                contactPersonEmail: editContactPersonEmail,
+                // Bank fields (3 separate)
+                bankName: editBankName,
+                accountNumber: editAccountNumber,
+                accountHolder: editAccountHolder,
+            })
+            toast.success("프로필 정보가 저장되었습니다.")
+            if (refreshData) refreshData()
+        } catch (e: any) {
+            console.error("Save profile error:", e)
+            toast.error("저장 중 오류가 발생했습니다.")
+        } finally {
+            setIsSaving(false)
+        }
+    }
 
     // Separate base and detail address logic if editAddress is already combined
     // Or just treat the whole string and append if needed. For simplicity we will override the whole address or user can manually edit it.

@@ -20,7 +20,7 @@
 
 | 탭 (UI Tab) | 설명 | 데이터 소스 (Merged) | 필터링 로직 (Filter Logic) |
 | :--- | :--- | :--- | :--- |
-| **전체 보기 (All)** | 모든 제안 내역 | `All Sources` | `campaignProposals` + `brandProposals` |
+| **전체 보기 (All)** | 모든 제안 내역 | `All Sources` | `campaignProposals` + `productApplications` |
 | **진행중 (Active)** | 매칭되어 진행 중 | `All Sources` | `status` IN `('accepted', 'signed', 'started', 'confirmed')` |
 | **받은 제안 (Inbound)** | 크리에이터의 지원 | `campaign_proposals` | `status` IN `('applied', 'pending', 'viewed')` |
 | **보낸 제안 (Outbound)** | 나의 직접 제안<br>**(모먼트 제안 포함)** | `brand_proposals`<br>+ **`moment_proposals`** | `status` IN `('offered', 'negotiating')` |
@@ -28,7 +28,7 @@
 | **완료됨 (Completed)** | 종료된 협업 | `All Sources` | `status` == `'completed'` |
 
 ### 모먼트 제안 통합 로직 (Moment Integration)
-*   `moment_proposals` 데이터는 **`brandProposals`** 배열에 병합되어 **"보낸 제안 (Outbound)"** 탭에 표시됩니다.
+*   `moment_proposals` 데이터는 **`productApplications`** 배열에 병합되어 **"보낸 제안 (Outbound)"** 탭에 표시됩니다.
 *   **구분:** `type: 'moment_offer'`로 식별됩니다.
 
 ---
@@ -39,7 +39,7 @@
 
 | 탭 (UI Tab) | 설명 | 데이터 소스 (Merged) | 필터링 로직 (Filter Logic) |
 | :--- | :--- | :--- | :--- |
-| **전체 보기 (All)** | 모든 제안 내역 | `All Sources` | `campaignProposals` + `brandProposals` |
+| **전체 보기 (All)** | 모든 제안 내역 | `All Sources` | `campaignProposals` + `productApplications` |
 | **진행중 (Active)** | 매칭되어 진행 중 | `All Sources` | `status` IN `('accepted', 'signed', 'started', 'confirmed')` |
 | **받은 제안 (Inbound)** | 브랜드의 직접 제안<br>**(모먼트 제안 포함)** | `brand_proposals`<br>+ **`moment_proposals`** | `status` IN `('offered', 'negotiating', 'pending')` |
 | **보낸 지원 (Outbound)** | 나의 캠페인 지원 | `campaign_proposals` | `status` IN `('applied', 'pending', 'viewed')` |
@@ -47,7 +47,7 @@
 | **완료됨 (Completed)** | 종료된 협업 | `All Sources` | `status` == `'completed'` |
 
 ### 모먼트 제안 통합 로직 (Moment Integration)
-*   `moment_proposals` 데이터는 **`brandProposals`** 배열에 병합되어 **"받은 제안 (Inbound)"** 탭에 표시됩니다.
+*   `moment_proposals` 데이터는 **`productApplications`** 배열에 병합되어 **"받은 제안 (Inbound)"** 탭에 표시됩니다.
 *   **구분:** `type: 'moment_offer'`로 식별됩니다.
 
 ---

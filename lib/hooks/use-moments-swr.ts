@@ -34,7 +34,7 @@ const mapMoments = (data: any[]): CreatorMoment[] => {
             targetProduct: e.target_product || '',
             momentDate: e.moment_start_date || '',
             postingDate: e.posting_date_exact || '',
-            guide: e.guide,
+            guide: e.video_guide,
             status: e.status || 'active',
             isPrivate: e.is_private || false,
             dateFlexible: e.date_flexible || false,
@@ -55,7 +55,7 @@ const mapMoments = (data: any[]): CreatorMoment[] => {
             // Exact dates (private — creator/MCN only)
             momentStartDate: e.moment_start_date || null,
             momentEndDate: e.moment_end_date || null,
-            postingDateExact: e.posting_date_exact || null,
+            postingDateExact: e.condition_upload_date || null,
         }
     })
 }
@@ -284,10 +284,11 @@ export const eventMutations = {
                     is_private: newEvent.isPrivate || false,
                     schedule: newEvent.schedule,
                     channels: newEvent.channels || [],
-                    // Exact dates (private)
+                    // [UNIFIED] Renamed columns: posting_date_exact→condition_upload_date, guide→video_guide
                     moment_start_date: newEvent.momentStartDate || null,
                     moment_end_date: newEvent.momentEndDate || null,
-                    posting_date_exact: newEvent.postingDateExact || null,
+                    condition_upload_date: newEvent.postingDateExact || null,
+                    video_guide: newEvent.guide || null,
                 })
                 .select()
                 .single()
@@ -333,16 +334,16 @@ export const eventMutations = {
             if (updates.tags) dbUpdates.tags = updates.tags
             if (updates.targetProduct !== undefined) dbUpdates.target_product = updates.targetProduct
             if (updates.dateFlexible !== undefined) dbUpdates.date_flexible = updates.dateFlexible
-            if (updates.guide !== undefined) dbUpdates.guide = updates.guide
+            if (updates.guide !== undefined) dbUpdates.video_guide = updates.guide
             if (updates.category !== undefined) dbUpdates.category = updates.category
             if (updates.status) dbUpdates.status = updates.status
             if (updates.isPrivate !== undefined) dbUpdates.is_private = updates.isPrivate
             if (updates.schedule) dbUpdates.schedule = updates.schedule
             if (updates.channels !== undefined) dbUpdates.channels = updates.channels
-            // Exact dates (private)
+            // [UNIFIED] Renamed columns
             if (updates.momentStartDate !== undefined) dbUpdates.moment_start_date = updates.momentStartDate || null
             if (updates.momentEndDate !== undefined) dbUpdates.moment_end_date = updates.momentEndDate || null
-            if (updates.postingDateExact !== undefined) dbUpdates.posting_date_exact = updates.postingDateExact || null
+            if (updates.postingDateExact !== undefined) dbUpdates.condition_upload_date = updates.postingDateExact || null
 
             const { error } = await supabase
                 .from('life_moments')

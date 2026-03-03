@@ -190,9 +190,9 @@ export function BrandProductDetailView({ productId, onBack }: BrandProductDetail
                                         if (!product || !user) return;
                                         await addProposal({
                                             toId: product.brandId,
-                                            creatorId: user.id,
+                                            creator_id: user.id,
                                             productId: String(product.id),
-                                            productName: product.name,
+                                            product_name: product.name,
                                             message: data.appealMessage || data.motivation,
                                             status: 'applied',
                                             instagramHandle: data.channelUrl,

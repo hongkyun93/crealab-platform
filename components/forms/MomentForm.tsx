@@ -56,7 +56,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
     const [momentStartDate, setEventStartDate] = useState("")
     const [momentEndDate, setEventEndDate] = useState("")
     const [isMultiDay, setIsMultiDay] = useState(false)
-    const [postingDateExact, setPostingDateExact] = useState("")
+    const [conditionUploadDate, setConditionUploadDate] = useState("")
     const [isDateFlexible, setIsDateFlexible] = useState(false)
     const [description, setDescription] = useState("")
     const [guide, setGuide] = useState("")
@@ -169,14 +169,14 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
 
             if (event.dateFlexible) {
                 setIsDateFlexible(true)
-            } else if (event.postingDateExact) {
-                setPostingDateExact(event.postingDateExact)
+            } else if ((event as any).conditionUploadDate) {
+                setConditionUploadDate((event as any).conditionUploadDate)
             } else if (
                 event.postingDate &&
                 event.postingDate.match(/^\d{4}-\d{2}-\d{2}$/) &&
                 event.postingDate !== '1993-01-06'
             ) {
-                setPostingDateExact(event.postingDate)
+                setConditionUploadDate(event.postingDate)
             }
         }
     }, [mode, eventId, moments, user, router])
@@ -234,7 +234,7 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
             toast.error("모먼트 이벤트 날짜를 선택해주세요.")
             return false
         }
-        if (!postingDateExact && !isDateFlexible) {
+        if (!conditionUploadDate && !isDateFlexible) {
             toast.error("업로드 예정일을 선택해주세요.")
             return false
         }
@@ -273,12 +273,12 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
             title: title,
             date: momentStartDate || new Date().toISOString().split('T')[0],
             description: description || "",
-            guide: guide || "",
+            video_guide: guide || "",
             tags: tags,
             targetProduct: targetProduct || "미정",
             momentStartDate: momentStartDate,
             momentEndDate: isMultiDay && momentEndDate ? momentEndDate : undefined,
-            postingDateExact: isDateFlexible ? undefined : postingDateExact,
+            conditionUploadDate: isDateFlexible ? undefined : conditionUploadDate,
             dateFlexible: isDateFlexible,
             isPrivate: true, // Draft는 기본적으로 무조건 Private 처리
             channels: selectedChannels,
@@ -344,13 +344,13 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                     title: title,
                     date: momentStartDate,
                     description: description,
-                    guide: guide,
+                    video_guide: guide,
                     tags: tags,
                     targetProduct: targetProduct || "미정",
                     // Exact dates (private)
                     momentStartDate: momentStartDate,
                     momentEndDate: isMultiDay && momentEndDate ? momentEndDate : undefined,
-                    postingDateExact: isDateFlexible ? undefined : postingDateExact,
+                    postingDate: isDateFlexible ? undefined : conditionUploadDate,
                     dateFlexible: isDateFlexible,
                     isPrivate: isDraftStatus ? false : isPrivate, // 임시저장 본 제출 시 자동으로 공개 전환
                     status: isDraftStatus ? 'active' : undefined, // 임시저장 본 제출 시 draft 상태 해제
@@ -386,13 +386,13 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                 title: title,
                 date: momentStartDate,
                 description: description,
-                guide: guide,
+                video_guide: guide,
                 tags: tags,
                 targetProduct: targetProduct || "미정",
                 // Exact dates (private)
                 momentStartDate: momentStartDate,
                 momentEndDate: isMultiDay && momentEndDate ? momentEndDate : undefined,
-                postingDateExact: isDateFlexible ? undefined : postingDateExact,
+                postingDate: isDateFlexible ? undefined : conditionUploadDate,
                 isPrivate: isPrivate,
                 dateFlexible: isDateFlexible,
                 channels: selectedChannels,
@@ -601,8 +601,8 @@ export function MomentForm({ mode, eventId }: MomentFormProps) {
                                 </Label>
                                 <Input
                                     type="date"
-                                    value={postingDateExact}
-                                    onChange={e => setPostingDateExact(e.target.value)}
+                                    value={conditionUploadDate}
+                                    onChange={e => setConditionUploadDate(e.target.value)}
                                     className={`h-10 ${isDateFlexible ? 'opacity-40 pointer-events-none' : ''}`}
                                     disabled={isDateFlexible}
                                     min="2024-01-01"
