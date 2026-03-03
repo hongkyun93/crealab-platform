@@ -11,7 +11,7 @@ interface MessageContextType {
     adminId: string | undefined
     isLoading: boolean
     sendMessage: (receiverId: string, content: string, file?: { url: string; name: string; size: number; type: string }, workspaceId?: string, projectName?: string) => Promise<void>
-    sendNotification: (recipientId: string, content: string, type: string, referenceId?: string) => Promise<void>
+    sendNotification: (recipientId: string, content: string, type: string, referenceId?: string, actionUrl?: string, metadata?: any) => Promise<void>
     sendSubmissionFeedback: (workspaceId: string | undefined, content: string, videoTimestamp?: number | null) => Promise<void>
     fetchSubmissionFeedback: (workspaceId?: string) => Promise<SubmissionFeedback[]>
     markAsRead: (notificationId: string) => Promise<void>
