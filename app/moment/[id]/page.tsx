@@ -428,26 +428,33 @@ ${u.name}의 담당자입니다.
                                             {momentData.influencer?.[0]?.toUpperCase() || 'C'}
                                         </div>
                                     )}
-                                    <div className="flex items-center justify-center gap-1.5 mb-2">
+                                    <div className="flex items-center justify-center gap-1.5 mb-1.5">
                                         <span className="font-bold text-xl">{momentData.influencer}</span>
                                         {momentData.verified && <BadgeCheck className="h-5 w-5 text-blue-500" />}
                                     </div>
 
-                                    {/* [Item 2] Creator Info Placeholder (To be filled from CreaPlanet) */}
-                                    <div className="flex flex-wrap items-center justify-center gap-2 mt-2 pt-3 border-t border-border/50 text-xs text-muted-foreground w-full">
-                                        <div className="flex flex-col items-center px-2 border-r border-border/50 last:border-0">
-                                            <span className="block text-[10px] text-muted-foreground/70 mb-0.5">팔로워</span>
-                                            <span className="font-semibold text-foreground">{formatFollowers(momentData.followers || 0)}</span>
+                                    {momentData.verified && (
+                                        <div className="flex justify-center mb-2">
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm" style={{ background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)', color: 'white' }}>
+                                                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none">
+                                                    <rect x="2" y="2" width="20" height="20" rx="5.5" stroke="white" strokeWidth="1.5" />
+                                                    <circle cx="12" cy="12" r="3.5" stroke="white" strokeWidth="1.5" />
+                                                    <circle cx="17" cy="7" r="1" fill="white" />
+                                                </svg>
+                                                인스타그램 연동 확인됨
+                                            </span>
                                         </div>
-                                        <div className="flex flex-col items-center px-2 border-r border-border/50 last:border-0">
-                                            <span className="block text-[10px] text-muted-foreground/70 mb-0.5">주요 연령대</span>
-                                            <span className="font-semibold text-foreground">-</span>
+                                    )}
+
+                                    {/* [Item 2] Creator Info Placeholder (Conditional) */}
+                                    {momentData.followers && momentData.followers > 0 ? (
+                                        <div className="flex flex-wrap items-center justify-center gap-2 mt-2 pt-3 border-t border-border/50 text-xs text-muted-foreground w-full">
+                                            <div className="flex flex-col items-center px-4 last:border-0">
+                                                <span className="block text-[10px] text-muted-foreground/70 mb-0.5">총 팔로워</span>
+                                                <span className="font-semibold text-foreground">{formatFollowers(momentData.followers)}</span>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col items-center px-2 last:border-0">
-                                            <span className="block text-[10px] text-muted-foreground/70 mb-0.5">평균 인게이지먼트</span>
-                                            <span className="font-semibold text-foreground">-</span>
-                                        </div>
-                                    </div>
+                                    ) : null}
                                 </div>
                             }
                         />

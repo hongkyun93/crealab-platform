@@ -28,9 +28,9 @@ export function formatDateToMonthWithPeriod(dateStr: string | Date | undefined |
     const day = date.getDate()
 
     let period = ""
-    if (day <= 10) period = "초순 (1-10일)"
-    else if (day <= 20) period = "중순 (11-20일)"
-    else period = "하순 (21-30일)"
+    if (day <= 10) period = "초순"
+    else if (day <= 20) period = "중순"
+    else period = "하순"
 
     return `${year}년 ${month}월 ${period}`
   } catch (e) {

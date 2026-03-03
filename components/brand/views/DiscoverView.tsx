@@ -42,6 +42,8 @@ interface DiscoverViewProps {
     setChannelFilter?: (filter: string[] | ((prev: string[]) => string[])) => void
     scheduleFilter?: string[]
     setScheduleFilter?: (filter: string[] | ((prev: string[]) => string[])) => void
+    scheduleMonthFilter?: string
+    setScheduleMonthFilter?: (filter: string) => void
     sentMomentIds?: Set<string>
 }
 
@@ -69,6 +71,8 @@ export const DiscoverView = React.memo(function DiscoverView({
     setChannelFilter,
     scheduleFilter,
     setScheduleFilter,
+    scheduleMonthFilter,
+    setScheduleMonthFilter,
     sentMomentIds,
 }: DiscoverViewProps) {
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
@@ -312,19 +316,24 @@ export const DiscoverView = React.memo(function DiscoverView({
                             ))}
                         </div>
                     </div>
-                    {/* [Item 4] Schedule Filter */}
+                    {/* [Item 4-1] Schedule Filter (Moment Date Only & Year/Month) */}
                     <div className="flex flex-col md:flex-row gap-2 md:items-start pt-1 border-t border-border/40">
-                        <span className="text-sm font-semibold md:w-24 pt-1">일정(작업/업로드)</span>
-                        <div className="grid grid-cols-4 gap-1 md:flex md:flex-wrap md:gap-2 flex-1">
+                        <span className="text-sm font-semibold md:w-24 mt-1">모먼트 일정</span>
+                        <div className="grid grid-cols-4 gap-1 md:flex md:flex-wrap md:gap-2 flex-1 items-center">
+                            <Input
+                                type="month"
+                                className="h-8 md:w-auto text-xs w-[130px] font-medium col-span-4 md:col-span-1"
+                                value={scheduleMonthFilter === 'all' ? '' : scheduleMonthFilter}
+                                onChange={(e) => setScheduleMonthFilter?.(e.target.value || 'all')}
+                            />
                             {[
-                                { k: 'all', l: '전체', s: '전체' },
-                                { k: 'early', l: '초순 (1~10일)', s: '초순' },
-                                { k: 'mid', l: '중순 (11~20일)', s: '중순' },
-                                { k: 'late', l: '하순 (21~말일)', s: '하순' },
-                                { k: 'flex', l: '협의 가능', s: '협의가' },
+                                { k: 'all', l: '시기 전체', s: '전체' },
+                                { k: 'early', l: '초순', s: '초순' },
+                                { k: 'mid', l: '중순', s: '중순' },
+                                { k: 'late', l: '하순', s: '하순' },
                             ].map(opt => (
                                 <Button key={opt.k} variant="ghost" size="sm"
-                                    onClick={() => setScheduleFilter && toggleMulti(setScheduleFilter as any, opt.k, ['early', 'mid', 'late', 'flex'])}
+                                    onClick={() => setScheduleFilter && toggleMulti(setScheduleFilter as any, opt.k, ['early', 'mid', 'late'])}
                                     className={cn('gap-1.5 w-full md:w-auto justify-start', scheduleFilter?.includes(opt.k) && 'bg-primary/10 text-primary font-medium')}>
                                     <span className="md:hidden">{opt.s}</span>
                                     <span className="hidden md:inline">{opt.l}</span>

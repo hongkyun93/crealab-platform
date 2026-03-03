@@ -154,6 +154,7 @@ function BrandDashboardContent() {
     const [selectedTags, setSelectedTags] = useState<string[]>([])
     const [followerFilter, setFollowerFilter] = useState<string[]>(["all"])
     const [scheduleFilter, setScheduleFilter] = useState<string[]>(["all"]) // [Item 4]
+    const [scheduleMonthFilter, setScheduleMonthFilter] = useState<string>("all") // [Item 4-1]
     const [statusFilter, setStatusFilter] = useState<string>("all") // all, upcoming, past, favorites
     const [minFollowers, setMinFollowers] = useState<string>("")
     const [maxFollowers, setMaxFollowers] = useState<string>("")
@@ -916,11 +917,17 @@ function BrandDashboardContent() {
                 })
             })
         }
-        // [Item 4] Schedule filter
+        // [Item 4-1] Schedule Month filter
+        if (scheduleMonthFilter !== 'all') {
+            result = result.filter(e => {
+                if (!e.momentStartDate) return false;
+                return e.momentStartDate.startsWith(scheduleMonthFilter);
+            });
+        }
+
+        // [Item 4] Schedule filter (Period strictly by momentStartDate)
         if (!scheduleFilter.includes('all') && scheduleFilter.length > 0) {
             result = result.filter(e => {
-                if (scheduleFilter.includes('flex') && e.dateFlexible) return true;
-
                 const getDay = (dateStr: string | null | undefined) => {
                     if (!dateStr) return null;
                     const d = new Date(dateStr);
@@ -929,17 +936,13 @@ function BrandDashboardContent() {
                 };
 
                 const startDay = getDay(e.momentStartDate);
-                const postDay = getDay(e.postingDateExact);
 
                 return scheduleFilter.some((key: string) => {
-                    const checkDay = (day: number | null) => {
-                        if (!day) return false;
-                        if (key === 'early' && day <= 10) return true;
-                        if (key === 'mid' && day > 10 && day <= 20) return true;
-                        if (key === 'late' && day > 20) return true;
-                        return false;
-                    };
-                    return checkDay(startDay) || checkDay(postDay);
+                    if (!startDay) return false;
+                    if (key === 'early' && startDay <= 10) return true;
+                    if (key === 'mid' && startDay > 10 && startDay <= 20) return true;
+                    if (key === 'late' && startDay > 20) return true;
+                    return false;
                 });
             });
         }
@@ -1355,6 +1358,8 @@ function BrandDashboardContent() {
                         setPriceFilter={setPriceFilter}
                         scheduleFilter={scheduleFilter}
                         setScheduleFilter={setScheduleFilter}
+                        scheduleMonthFilter={scheduleMonthFilter}
+                        setScheduleMonthFilter={setScheduleMonthFilter}
                         POPULAR_TAGS={POPULAR_TAGS}
                         PRICE_FILTER_RANGES={PRICE_FILTER_RANGES}
                         user={user}
