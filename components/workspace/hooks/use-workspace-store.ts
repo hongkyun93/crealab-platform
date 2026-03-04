@@ -1,7 +1,7 @@
 
 // This is the core store for managing the workspace state
 import { Proposal } from '@/lib/types';
-import { WorkspaceStage } from '@/lib/compute-workspace-stage';
+import { WorkspaceStage, computeWorkspaceStage } from '@/lib/compute-workspace-stage';
 import { create } from 'zustand';
 
 interface WorkspaceState {
@@ -42,11 +42,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     videoReviewOpen: false,
 
     // Actions
-    setProposal: (proposal) => set({ proposal }),
+    setProposal: (proposal) => set({ proposal, currentStage: computeWorkspaceStage(proposal) }),
     updateProposal: (fields) =>
-        set((state) => ({
-            proposal: state.proposal ? { ...state.proposal, ...fields } : null,
-        })),
+        set((state) => {
+            const nextProposal = state.proposal ? { ...state.proposal, ...fields } : null;
+            return {
+                proposal: nextProposal,
+                currentStage: computeWorkspaceStage(nextProposal),
+            };
+        }),
     setCurrentStage: (stage) => set({ currentStage: stage }),
     setStageMap: (map) => set((state) => ({ stageMap: { ...state.stageMap, ...map } })),
     setIsChatOpen: (isOpen) => set({ isChatOpen: isOpen }),

@@ -165,7 +165,7 @@ export function useUnifiedProvider() {
         // Proposals
         campaignProposals: proposals.campaignProposals,
         productApplications: proposals.productApplications,
-        momentProposals: proposals.momentProposals,
+        contestApplications: proposals.contestApplications,
         addMomentProposal: proposals.addMomentProposal,
         addProposal: proposals.addProposal,
         createProductApplication: proposals.createProductApplication,
@@ -173,6 +173,7 @@ export function useUnifiedProvider() {
         updateProposal: proposals.updateProposal,
         updateProductApplication: proposals.updateProductApplication,
         updateMomentProposal: proposals.updateMomentProposal,
+        updateContestApplication: proposals.updateContestApplication,
         deleteProductApplication: proposals.deleteProductApplication,
         deleteMomentProposal: proposals.deleteMomentProposal,
         refreshProposals: proposals.refreshProposals,
@@ -239,7 +240,7 @@ export function useUnifiedProvider() {
         campaigns.campaigns, campaigns.isLoading,
         events.moments, events.isLoading,
         products.products, products.isLoading,
-        proposals.campaignProposals, proposals.productApplications, proposals.momentProposals, proposals.isLoading,
+        proposals.campaignProposals, proposals.productApplications, proposals.momentProposals, proposals.contestApplications, proposals.isLoading,
         messages.messages, messages.notifications, messages.isLoading,
         favorites.favorites, favorites.isLoading,
         team.teams, team.currentTeam

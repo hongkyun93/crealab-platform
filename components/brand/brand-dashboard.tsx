@@ -43,10 +43,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { WorkspaceLayout } from "@/components/workspace/common/workspace-layout"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
 import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
-import { Search, MapPin, Grid, List as ListIcon, X, Megaphone, AlertCircle, TrendingUp, Filter, Users, Calendar, Sparkles, Building2, HelpCircle, FileText, ChevronRight, Share2, Heart, MessageCircle, Wallet, LogOut, Link2, Download, ExternalLink, RefreshCw, Send, CheckCircle2, ChevronLeft, CalendarPlus, Receipt, ArrowRight, Package, Image as ImageIcon, Briefcase, Hash, Star, Edit, Trash2, Camera, Bell, Loader2, ShoppingBag, Settings, Info } from "lucide-react"
+import { Search, MapPin, Grid, List as ListIcon, X, Megaphone, AlertCircle, TrendingUp, Filter, Users, Calendar, Sparkles, Building2, HelpCircle, FileText, ChevronRight, Share2, Heart, MessageCircle, Wallet, LogOut, Link2, Download, ExternalLink, RefreshCw, Send, CheckCircle2, ChevronLeft, CalendarPlus, Receipt, ArrowRight, Package, Image as ImageIcon, Briefcase, Hash, Star, Edit, Trash2, Camera, Bell, Loader2, ShoppingBag, Settings, Info, Trophy } from "lucide-react"
 import { FEATURES } from "@/lib/config/features"
 import { MomentProposalDialog, MomentProposalFormData } from "@/components/dialogs/MomentProposalDialog"
 import { ProductRegistrationDialog, ProductFormData } from "@/components/dialogs/ProductRegistrationDialog"
+import { ContestBuilderView } from "@/components/brand/views/ContestBuilderView"
+import { ContestManagerView } from "@/components/brand/views/ContestManagerView"
+import { ContestAwardView } from "@/components/brand/views/ContestAwardView"
+import { ContestDiscoverView } from "@/components/creator/views/ContestDiscoverView"
 import dynamic from 'next/dynamic'
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -117,6 +121,7 @@ export function BrandDashboard() {
     }
 
     const [currentView, setCurrentView] = useState(initialView)
+    const [viewParams, setViewParams] = useState<any>(null)
     // Default Sorting extracted to views
 
     // [딥링크] URL의 view 및 campaignId 파라미터 변경 시 동기화 (알림 클릭 시 필요)
@@ -889,6 +894,11 @@ export function BrandDashboard() {
     // if (isLoading) { return <Loader...> } - REMOVED to prevent infinite lock
 
     const renderContent = () => {
+        const handleViewNavigate = (v: string, params?: any) => {
+            setViewParams(params || null);
+            setCurrentView(v);
+        };
+
         switch (currentView) {
             case "discover":
                 return (
@@ -906,6 +916,14 @@ export function BrandDashboard() {
                         refreshData={refreshData}
                     />
                 )
+            case "ad-contests":
+                return <ContestManagerView onNavigate={handleViewNavigate} />
+            case "discover-ad-contests":
+                return <ContestDiscoverView />
+            case "ad-contest-builder":
+                return <ContestBuilderView onNavigate={handleViewNavigate} initialParams={viewParams} />
+            case "ad-contest-award":
+                return <ContestAwardView onNavigate={handleViewNavigate} />
 
             case "browse-campaigns":
                 return (
@@ -1137,6 +1155,20 @@ export function BrandDashboard() {
                             <Search className="mr-2 h-4 w-4" /> 캠페인 둘러보기
                         </Button>
                     )}
+                    <Button
+                        variant={(currentView === "ad-contests" || currentView === "ad-contest-builder" || currentView === "ad-contest-award") ? "secondary" : "ghost"}
+                        className="w-full justify-start text-primary font-medium"
+                        onClick={() => handleNavClick("ad-contests")}
+                    >
+                        <Trophy className="mr-2 h-4 w-4" /> 내 콘테스트 관리
+                    </Button>
+                    <Button
+                        variant={currentView === "discover-ad-contests" ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => handleNavClick("discover-ad-contests")}
+                    >
+                        <Search className="mr-2 h-4 w-4" /> 콘테스트 둘러보기
+                    </Button>
                     <Button
                         variant={currentView === "my-products" ? "secondary" : "ghost"}
                         className="w-full justify-start"

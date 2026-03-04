@@ -9,12 +9,14 @@ interface ProposalContextType {
     campaignProposals: Proposal[]
     productApplications: ProductApplication[]
     momentProposals: MomentProposal[] // [NEW]
+    contestApplications: any[] // [NEW] Contest sub-tab support
     addMomentProposal: (proposal: MomentProposal) => void // [NEW] Optimistic Add
     isLoading: boolean
     addProposal: (proposal: Partial<Proposal>) => Promise<void>
     updateProposal: (id: string | number, updates: Partial<Proposal>) => Promise<boolean>
     updateProductApplication: (id: string | number, updates: Partial<ProductApplication>) => Promise<boolean>
     updateMomentProposal: (id: string | number, updates: Partial<MomentProposal>) => Promise<boolean> // [NEW]
+    updateContestApplication: (id: string | number, updates: any) => Promise<boolean> // [NEW]
     deleteProductApplication: (id: string | number) => Promise<void>
     deleteMomentProposal: (id: string | number) => Promise<void> // [NEW]
     createProductApplication: (proposal: any) => Promise<any> // [NEW]
@@ -43,6 +45,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
     const [campaignProposals, setCampaignProposals] = useState<Proposal[]>([])
     const [productApplications, setProductApplications] = useState<ProductApplication[]>([])
     const [momentProposals, setMomentProposals] = useState<MomentProposal[]>([]) // [NEW] // FIXED
+    const [contestApplications, setContestApplications] = useState<any[]>([]) // [NEW]
     const [isLoading, setIsLoading] = useState(false)
     const isFetching = useRef(false)
 
@@ -77,7 +80,19 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 .select(`
                     *,
                     campaigns(id, title, product_name, product_image_url, category, budget, brand_id, profiles(display_name, avatar_url)),
-                    profiles!creator_id(display_name, avatar_url)
+                    profiles!creator_id(display_name, avatar_url),
+                    workspace:workspaces!workspace_id(
+                        brand_condition_confirmed, creator_condition_confirmed,
+                        contract_status, contract_content,
+                        brand_signature, creator_signature, brand_signed_at, creator_signed_at,
+                        shipping_phone, shipping_address, tracking_number, delivery_status,
+                        content_submission_status, content_submission_url, content_submission_file_url,
+                        content_submission_date, content_submission_version,
+                        content_final_url, content_clean_url,
+                        content_final_approved_at, content_revision_requested_at,
+                        payment_confirmed_at, price_offer, product_type,
+                        project_title, status
+                    )
                 `)
                 .eq('creator_id', id)
                 .order('created_at', { ascending: false })
@@ -89,7 +104,19 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                 .select(`
                     *,
                     campaigns!inner(id, title, product_name, product_image_url, category, budget, brand_id, profiles(display_name, avatar_url)),
-                    profiles!creator_id(display_name, avatar_url)
+                    profiles!creator_id(display_name, avatar_url),
+                    workspace:workspaces!workspace_id(
+                        brand_condition_confirmed, creator_condition_confirmed,
+                        contract_status, contract_content,
+                        brand_signature, creator_signature, brand_signed_at, creator_signed_at,
+                        shipping_phone, shipping_address, tracking_number, delivery_status,
+                        content_submission_status, content_submission_url, content_submission_file_url,
+                        content_submission_date, content_submission_version,
+                        content_final_url, content_clean_url,
+                        content_final_approved_at, content_revision_requested_at,
+                        payment_confirmed_at, price_offer, product_type,
+                        project_title, status
+                    )
                 `)
                 .eq('campaigns.brand_id', id)
                 .order('created_at', { ascending: false })
@@ -139,11 +166,11 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                         brand_id: p.campaigns?.brand_id,
                         brand_name: p.campaigns?.profiles?.display_name,
                         brand_avatar: p.campaigns?.profiles?.avatar_url || p.campaigns?.product_image_url,
-                        // [FIX] Condition fields were missing from campaign_applications mapping
-                        price_offer: p.price_offer,
+                        // [FIX] Priority mapping from workspace
+                        price_offer: p.workspace?.price_offer ?? p.price_offer,
                         special_terms: p.special_terms,
-                        brand_condition_confirmed: p.brand_condition_confirmed,
-                        creator_condition_confirmed: p.creator_condition_confirmed,
+                        brand_condition_confirmed: p.workspace?.brand_condition_confirmed ?? p.brand_condition_confirmed,
+                        creator_condition_confirmed: p.workspace?.creator_condition_confirmed ?? p.creator_condition_confirmed,
                         condition_product_receipt_date: p.condition_product_receipt_date,
                         condition_draft_submission_date: p.condition_draft_submission_date,
                         condition_final_submission_date: p.condition_final_submission_date,
@@ -200,6 +227,92 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             }
         } catch (err) {
             console.error('[ProposalProvider] Exception:', err)
+        }
+    }
+
+    const fetchContestApplications = async (targetUserId?: string, signal?: AbortSignal) => {
+        const id = targetUserId || userId
+        if (!id) return
+
+        try {
+            console.log(`[ProposalProvider] Fetching contest applications for user: ${id}`)
+
+            const { data, error } = await supabase
+                .from('ad_contest_applications')
+                .select(`
+                    *,
+                    contest:ad_contests(id, title, brand_id, product_name, product_image_url, profiles(display_name, avatar_url)),
+                    workspace:workspaces!workspace_id(
+                        contract_status, contract_content,
+                        brand_signature, creator_signature, brand_signed_at, creator_signed_at,
+                        shipping_phone, shipping_address, tracking_number, delivery_status,
+                        content_submission_status, content_submission_url, content_submission_file_url,
+                        content_submission_date, content_submission_version,
+                        content_final_url, content_clean_url,
+                        content_final_approved_at, content_revision_requested_at,
+                        payment_confirmed_at, price_offer, product_type,
+                        project_title, status, brand_condition_confirmed, creator_condition_confirmed
+                    )
+                `)
+                .eq('creator_id', id)
+                .order('created_at', { ascending: false })
+                .abortSignal(signal || null as any)
+
+            if (error && !isIgnorableError(error)) {
+                console.error('[ProposalProvider] Contest applications query error:', error)
+                return
+            }
+
+            const mapped = (data || []).map((p: any) => ({
+                id: p.id,
+                type: 'contest_apply',
+
+                // [NEW] Virtual target properties
+                target_id: p.contest_id,
+                target_type: 'contest',
+                target_name: p.contest?.title || "콘테스트",
+
+                contest_id: p.contest_id,
+                creator_id: p.creator_id,
+                brand_id: p.contest?.brand_id,
+                brand_name: p.contest?.profiles?.display_name,
+                brand_avatar: p.contest?.profiles?.avatar_url || p.contest?.product_image_url,
+                product_name: p.contest?.product_name,
+
+                status: p.status,
+                created_at: p.created_at,
+                updated_at: p.updated_at,
+
+                workspace_id: p.workspace_id,
+
+                // SOT: workspace 우선
+                contract_status: p.workspace?.contract_status || 'applied',
+                contract_content: p.workspace?.contract_content,
+                brand_signature: p.workspace?.brand_signature,
+                creator_signature: p.workspace?.creator_signature,
+                brand_signed_at: p.workspace?.brand_signed_at,
+                creator_signed_at: p.workspace?.creator_signed_at,
+
+                delivery_status: p.workspace?.delivery_status,
+                tracking_number: p.workspace?.tracking_number,
+                shipping_address: p.workspace?.shipping_address || p.shipping_address,
+
+                content_submission_status: p.workspace?.content_submission_status,
+                content_submission_url: p.workspace?.content_submission_url || p.final_video_link,
+                content_final_url: p.workspace?.content_final_url || p.final_video_link,
+
+                payment_confirmed_at: p.workspace?.payment_confirmed_at,
+                price_offer: p.workspace?.price_offer || p.price_offer,
+
+                brand_condition_confirmed: p.workspace?.brand_condition_confirmed ?? p.brand_condition_confirmed,
+                creator_condition_confirmed: p.workspace?.creator_condition_confirmed ?? p.creator_condition_confirmed,
+
+                contest: p.contest
+            }))
+
+            setContestApplications(mapped)
+        } catch (err) {
+            console.error('[ProposalProvider] fetchContestApplications Exception:', err)
         }
     }
 
@@ -498,7 +611,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             setIsLoading(true)
             Promise.all([
                 fetchCampaignProposals(userId, signal),
-                fetchProductApplications(userId, signal)
+                fetchProductApplications(userId, signal),
+                fetchContestApplications(userId, signal)
             ]).finally(() => {
                 if (!signal.aborted) {
                     setIsLoading(false)
@@ -508,6 +622,7 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
             setCampaignProposals([])
             setProductApplications([])
             setMomentProposals([])
+            setContestApplications([])
             setIsLoading(false)
         }
 
@@ -631,6 +746,30 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     }
                 }
             )
+            // [NEW] Listen to workspaces explicitly (SOT for conditions)
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'workspaces',
+                    filter: `creator_id=eq.${userId}`
+                },
+                (payload: any) => {
+                    console.log('[ProposalProvider] Realtime workspaces update (creator):', payload.new.id)
+                    // Update all states where workspace_id matches
+                    const remapper = (p: any) => p.workspace_id === payload.new.id ? { ...p, ...payload.new } : p;
+                    setProductApplications(prev => prev.map(remapper))
+                    setMomentProposals(prev => prev.map(remapper))
+                    setCampaignProposals(prev => prev.map(remapper))
+                    setContestApplications(prev => prev.map(remapper))
+
+                    const currentProposal = useWorkspaceStore.getState().proposal
+                    if (currentProposal && currentProposal.workspace_id === payload.new.id) {
+                        useWorkspaceStore.getState().updateProposal(payload.new)
+                    }
+                }
+            )
             .subscribe((status) => {
                 console.log('[ProposalProvider] Realtime subscription status:', status)
             })
@@ -712,6 +851,30 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
                     }
                 }
             )
+            // [NEW] Listen to workspaces explicitly (SOT for conditions)
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'workspaces',
+                    filter: `brand_id=eq.${userId}`
+                },
+                (payload: any) => {
+                    console.log('[ProposalProvider] Realtime workspaces update (brand):', payload.new.id)
+                    // Update all states where workspace_id matches
+                    const remapper = (p: any) => p.workspace_id === payload.new.id ? { ...p, ...payload.new } : p;
+                    setProductApplications(prev => prev.map(remapper))
+                    setMomentProposals(prev => prev.map(remapper))
+                    setCampaignProposals(prev => prev.map(remapper))
+                    setContestApplications(prev => prev.map(remapper))
+
+                    const currentProposal = useWorkspaceStore.getState().proposal
+                    if (currentProposal && currentProposal.workspace_id === payload.new.id) {
+                        useWorkspaceStore.getState().updateProposal(payload.new)
+                    }
+                }
+            )
             .subscribe((status) => {
                 console.log('[ProposalProvider] Brand-side realtime status:', status)
             })
@@ -730,7 +893,8 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         try {
             await Promise.all([
                 fetchCampaignProposals(id),
-                fetchProductApplications(id)
+                fetchProductApplications(id),
+                fetchContestApplications(id)
             ])
         } finally {
             setIsLoading(false)
@@ -1493,22 +1657,38 @@ export function ProposalProvider({ children, userId, userType }: { children: Rea
         }
     }
 
+    const updateContestApplication = async (id: string | number, updates: any) => {
+        try {
+            const { error } = await supabase
+                .from('ad_contest_applications')
+                .update(updates)
+                .eq('id', id)
+            if (error) throw error
+            return true
+        } catch (err) {
+            console.error('[ProposalProvider] updateContestApplication error:', err)
+            return false
+        }
+    }
+
     return (
         <ProposalContext.Provider value={{
             campaignProposals,
             productApplications,
-            momentProposals, // [NEW]
-            addMomentProposal, // [NEW]
+            momentProposals,
+            contestApplications,
             isLoading,
+            addMomentProposal,
             addProposal,
             updateProposal,
             updateProductApplication,
-            updateMomentProposal, // [NEW]
+            updateMomentProposal,
+            updateContestApplication,
             deleteProductApplication,
-            deleteMomentProposal, // [NEW]
-            createProductApplication, // [NEW]
-            createMomentProposal, // [NEW]
-            refreshProposals
+            deleteMomentProposal,
+            createProductApplication,
+            createMomentProposal,
+            refreshProposals,
         }}>
             {children}
         </ProposalContext.Provider>

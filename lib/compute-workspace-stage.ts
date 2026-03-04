@@ -15,6 +15,8 @@ export function computeWorkspaceStage(proposal: any): WorkspaceStage {
     const paymentConfirmed = !!(proposal as any).payment_confirmed_at;
     const brandSigned = !!(proposal as any).brand_signature;
     const influencerSigned = !!(proposal as any).creator_signature;
+    const brandConditionConfirmed = !!(proposal as any).brand_condition_confirmed;
+    const creatorConditionConfirmed = !!(proposal as any).creator_condition_confirmed;
 
     // 최종 완료
     if (status === 'final_complete') return 'final_complete';
@@ -35,11 +37,14 @@ export function computeWorkspaceStage(proposal: any): WorkspaceStage {
     // 계약 단계 — 양측 서명 완료 or contract_status='signed'
     if (contractStatus === 'signed' || (brandSigned && influencerSigned)) return 'contract';
 
+    // 조건 협의 완료 시 계약 단계로 이동 (Source of Truth 기반)
+    if (brandConditionConfirmed && creatorConditionConfirmed) return 'contract';
+
     // 계약 단계 — status 기반 fallback
-    if (['signed', 'confirmed', 'started', 'completed'].includes(status)) return 'contract';
+    if (['signed', 'confirmed', 'started', 'completed', 'contract'].includes(status)) return 'contract';
 
     // 조건 협의 단계
-    if (['accepted', 'negotiating', 'offered', 'pending', 'applied', 'active', 'in_progress'].includes(status)) return 'negotiation';
+    if (['accepted', 'negotiating', 'offered', 'pending', 'applied', 'active', 'in_progress', 'selected'].includes(status)) return 'negotiation';
 
     return 'negotiation';
 }

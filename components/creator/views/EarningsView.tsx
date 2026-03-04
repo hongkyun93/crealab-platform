@@ -69,10 +69,20 @@ const STATUS_CONFIG = {
     void: { label: '무효 처리됨', className: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
 }
 
+/**
+ * [베타 테스트 이후 구현 예정 로직]
+ * 영상 유지 정책에 따른 리워드 지급 보류(Pending) 로직:
+ * 1. 콘테스트 설정에 상응하는 '최소 영상 유지 기간(maintenance_period)' 정보를 가져옵니다.
+ * 2. 영상 업로드 완료(uploaded) 시점으로부터 'maintenance_period / 2' 기간이 경과하기 전까지는
+ *    해당 정산 건의 상태를 'escrow' 또는 보류 상태로 유지합니다.
+ * 3. 기한이 충족되면 자동으로 'pending(출금 가능)' 상태로 전환하여 크리에이터가 출금 신청을 할 수 있게 합니다.
+ */
+
 const TYPE_LABEL: Record<string, string> = {
     moment_proposal: '모먼트',
     campaign_application: '캠페인',
     product_application: '브랜드 제안',
+    contest_apply: '콘테스트',
 }
 
 export function EarningsView() {
@@ -151,6 +161,11 @@ export function EarningsView() {
     const totalWH = settlements
         .filter(s => s.status !== 'void' && s.status !== 'cancelled')
         .reduce((s, r) => s + (r.withholding_amount ?? Math.round((r.creator_amount ?? 0) * 0.033)), 0)
+
+    // TODO: 영상 유지 기간 정책 연동 (베타 이후)
+    // if (r.maintenance_period && !isMaintenanceHalfPassed(r)) {
+    //   return '입금 대기 (유지 기간 미달)' 
+    // }
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 max-w-2xl">
@@ -293,6 +308,14 @@ export function EarningsView() {
                                                     관리번호 : #{String(s.workspace_id || s.proposal_id).replace(/-/g, '').slice(-6).toUpperCase()}
                                                 </span>
                                             </p>
+                                            {s.note && (
+                                                <div className="mt-2 flex items-start gap-1 p-2 bg-amber-50 dark:bg-amber-950/20 rounded border border-amber-100 dark:border-amber-900/30">
+                                                    <AlertCircle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
+                                                    <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-tight">
+                                                        {s.note}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="text-right shrink-0 flex items-center gap-2">

@@ -1,5 +1,5 @@
 // Proposal and Contract Types
-export type ProposalType = 'brand_invite' | 'product_apply' | 'campaign_apply'
+export type ProposalType = 'brand_invite' | 'product_apply' | 'campaign_apply' | 'contest_apply'
 export type DealType = 'ad' | 'gonggu'
 export type ProposalStatus = 'applied' | 'accepted' | 'rejected' | 'negotiating' | 'pending' | 'hold' | 'offered' | 'cancelled' | 'completed'
 export type ContractStatus = 'draft' | 'sent' | 'signed' | 'negotiating' | 'rejected'

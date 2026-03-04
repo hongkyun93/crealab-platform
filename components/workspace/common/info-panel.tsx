@@ -366,15 +366,17 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
             success = await updateProductApplication(proposal.id, updates);
         }
         if (success) {
+            // DB 기반 Source of Truth 업데이트
+            const updatedProposal = { ...proposal, ...updates };
             useWorkspaceStore.getState().updateProposal(updates);
 
-            // 양쪽 다 확정됐으면 즉시 계약 단계로 전환
-            const bothConfirmed = newValue && !!proposal.brand_condition_confirmed;
-            if (bothConfirmed) {
-                useWorkspaceStore.getState().setCurrentStage('contract');
-            }
+            // 알림 발송 로직은 유지하되, UI 제어(setCurrentStage)는 제거
+            // 상태 전환은 computeWorkspaceStage 등 데이터 파이프라인이 자동 처리하도록 위임.
+            const brandOk = role === 'brand' ? newValue : !!updatedProposal.brand_condition_confirmed;
+            const creatorOk = role === 'creator' ? newValue : !!updatedProposal.creator_condition_confirmed;
+            const bothConfirmed = brandOk && creatorOk;
 
-            // 🔔 알림 전송 로직 (Item 12)
+            // 🔔 알림 전송 로직
             try {
                 const brandId = (proposal as any).brand_id ||
                     (proposal as any).brandId ||
@@ -402,6 +404,7 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
         } else {
             toast.error('조건 상태를 변경하지 못했습니다. (서버 오류)');
         }
+
     };
 
 

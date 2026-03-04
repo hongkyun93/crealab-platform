@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Star, List, LayoutGrid, FileText, ChevronRight, Pencil, Package } from 'lucide-react'
+import { Search, Star, List, LayoutGrid, FileText, ChevronRight, Pencil, Package, Trophy } from 'lucide-react'
 import { FavoriteButton } from "@/components/ui/favorite-button"
 import { Table as TableIcon } from 'lucide-react'
 import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
@@ -15,8 +15,8 @@ import { toast } from "sonner"
 interface WorkspaceViewProps {
     workspaceTab: string
     setWorkspaceTab: (v: string) => void
-    workspaceSubTab: 'all' | 'moment' | 'campaign' | 'brand'
-    setWorkspaceSubTab: (v: 'all' | 'moment' | 'campaign' | 'brand') => void
+    workspaceSubTab: 'all' | 'moment' | 'campaign' | 'contest' | 'brand'
+    setWorkspaceSubTab: (v: 'all' | 'moment' | 'campaign' | 'contest' | 'brand') => void
     workspaceFavoritesOnly: boolean
     setWorkspaceFavoritesOnly: (v: boolean) => void
     workspaceSearchQuery: string
@@ -98,21 +98,24 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     }
 
     // Filter items by type (moment/campaign/brand)
-    const filterByType = (items: any[], type: 'all' | 'moment' | 'campaign' | 'brand') => {
+    const filterByType = (items: any[], type: 'all' | 'moment' | 'campaign' | 'contest' | 'brand') => {
         if (type === 'all') return items
 
         return items.filter(item => {
             if (type === 'moment') {
                 return !!item.moment_id // 1. Moment has highest priority
             }
+            if (type === 'contest') {
+                // [NEW] Contest sub-tab
+                return item.type === 'contest' || !!item.contest_id
+            }
             if (type === 'campaign') {
                 // 2. Campaign has second priority
-                return (!!item.campaign_id || !!item.campaignId) && !item.moment_id
+                return ((!!item.campaign_id || !!item.campaignId) && !item.moment_id && item.type !== 'contest')
             }
             if (type === 'brand') {
-                // 3. Brand is the fallback (contains brand_id but no moment/campaign id)
-                // Note: brand_id exists in almost all proposals, so we check for absence of others
-                return !!item.brand_id && !item.moment_id && !item.campaign_id
+                // 3. Brand is the fallback
+                return !!item.brand_id && !item.moment_id && !item.campaign_id && item.type !== 'contest'
             }
             return false
         })
@@ -121,19 +124,29 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     // --- SUB-TAB RENDERING HELPER ---
     const renderSubTabs = (items: any[]) => {
         const momentCount = filterByType(items, 'moment').length
+        const contestCount = filterByType(items, 'contest').length
         const campaignCount = filterByType(items, 'campaign').length
         const brandCount = filterByType(items, 'brand').length
 
         return (
-            <div className="grid grid-cols-4 gap-2 mb-4 md:flex md:flex-wrap">
+            <div className="grid grid-cols-5 gap-2 mb-4 md:flex md:flex-wrap">
                 <button
                     onClick={() => setWorkspaceSubTab('all')}
-                    className={`w-full md:w-auto md:min-w-[90px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
+                    className={`w-full md:w-auto md:min-w-[80px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'all'
                         ? 'bg-slate-900 text-white'
                         : 'bg-background border border-border text-foreground/90 hover:bg-accent'
                         }`}
                 >
                     전체 <span className="hidden md:inline ml-1.5 text-xs opacity-70">{items.length}</span>
+                </button>
+                <button
+                    onClick={() => setWorkspaceSubTab('contest')}
+                    className={`w-full md:w-auto md:min-w-[100px] px-2 md:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${workspaceSubTab === 'contest'
+                        ? 'bg-slate-900 text-white shadow-[0_0_15px_rgba(0,0,0,0.1)]'
+                        : 'bg-background border border-border text-foreground/90 hover:bg-accent'
+                        }`}
+                >
+                    콘테스트 <span className="hidden md:inline ml-1.5 text-xs opacity-70">{contestCount}</span>
                 </button>
                 <button
                     onClick={() => setWorkspaceSubTab('moment')}
@@ -235,18 +248,26 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                     }
                                 }}>
                                     <TableCell>
-                                        <Badge variant="outline" className={`
-                                            ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30' :
-                                                item.status === 'completed' ? 'text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' :
-                                                    item.status === 'rejected' ? 'text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30' :
-                                                        'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/30'}
-                                        `}>
-                                            {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' :
-                                                item.status === 'settlement' ? '성과 대기' :
-                                                    item.status === 'final_complete' ? '완료 대기' :
-                                                        item.status === 'completed' ? '완료됨' :
-                                                            item.status === 'rejected' ? '거절됨' : '대기중'}
-                                        </Badge>
+                                        {item.type === 'contest' ? (
+                                            <Badge variant="outline" className="text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/30">
+                                                {item.status === 'selected' || item.status === 'contract' ? '챌린저 활동 중' :
+                                                    item.status === 'settlement' ? '상금 정산 대기' :
+                                                        item.status === 'completed' || item.status === 'final_complete' ? '수상 완료' : '대기중'}
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline" className={`
+                                                    ${item.status === 'accepted' || item.status === 'signed' || item.status === 'started' ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30' :
+                                                    item.status === 'completed' ? 'text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' :
+                                                        item.status === 'rejected' ? 'text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30' :
+                                                            'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/30'}
+                                                `}>
+                                                {item.status === 'accepted' || item.status === 'signed' || item.status === 'started' || item.status === 'confirmed' ? '진행중' :
+                                                    item.status === 'settlement' ? '성과 대기' :
+                                                        item.status === 'final_complete' ? '완료 대기' :
+                                                            item.status === 'completed' ? '완료됨' :
+                                                                item.status === 'rejected' ? '거절됨' : '대기중'}
+                                            </Badge>
+                                        )}
                                     </TableCell>
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
@@ -364,7 +385,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                 `}>
                                     {(item.brandAvatar || item.brand_avatar)
                                         ? <img src={item.brandAvatar || item.brand_avatar} alt="Brand" className="h-full w-full object-cover" />
-                                        : (item.brand_name?.[0] || "W")}
+                                        : item.type === 'contest' ? <Trophy className="h-5 w-5 text-amber-500" /> : (item.brand_name?.[0] || "W")}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h4 className="font-bold truncate text-sm">{item.brand_name}</h4>
@@ -485,7 +506,9 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-muted/50 border border-border overflow-hidden">
                                 {(proposal.brandAvatar || proposal.brand_avatar)
                                     ? <img src={proposal.brandAvatar || proposal.brand_avatar} alt="Brand" className="h-full w-full object-cover" />
-                                    : <span className="font-bold text-lg text-muted-foreground">{proposal.brand_name?.[0] || "W"}</span>}
+                                    : proposal.type === 'contest'
+                                        ? <Trophy className="h-8 w-8 text-amber-500" />
+                                        : <span className="font-bold text-lg text-muted-foreground">{proposal.brand_name?.[0] || "W"}</span>}
                             </div>
                             <div className="flex-1 space-y-2">
                                 <div className="flex justify-between items-start">

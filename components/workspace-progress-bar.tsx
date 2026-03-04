@@ -58,11 +58,20 @@ export function WorkspaceProgressBar({ proposal, className }: Props) {
                         : isActive ? 'bg-amber-400'
                             : 'bg-slate-200';
 
+                    let label = step.label;
+                    if (proposal?.type === 'contest') {
+                        if (step.id === 'negotiation') label = '챌린저 선발';
+                        if (step.id === 'shipping') label = '제품 수령';
+                        if (step.id === 'content') label = '영상 제출';
+                        if (step.id === 'settlement') label = '상금 정산';
+                        if (step.id === 'final_complete') label = '수상 완료';
+                    }
+
                     return (
                         <React.Fragment key={step.id}>
                             <div className="flex flex-col items-center flex-1 gap-1.5 min-w-0">
                                 <span className={cn("text-[10px] md:text-[11px] font-bold transition-colors truncate w-full text-center", colorClass)}>
-                                    {step.label}
+                                    {label}
                                 </span>
                                 <div className={cn("h-1.5 w-[90%] rounded-full transition-all", barClass)} />
                             </div>

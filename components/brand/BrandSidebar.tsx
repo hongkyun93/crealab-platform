@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import {
     Briefcase, FileText, LayoutDashboard, Package,
     Search,
-    User, Wallet
+    User, Wallet, Trophy
 } from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { FEATURES } from "@/lib/config/features"
@@ -60,6 +60,14 @@ export function BrandSidebar({ className, user }: BrandSidebarProps) {
                             내 캠페인 관리
                         </Button>
                     )}
+                    <Button
+                        variant={(currentView === 'ad-contests' || currentView === 'ad-contest-builder') ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => router.push('/brand?view=ad-contests')}
+                    >
+                        <Trophy className="mr-2 h-4 w-4" />
+                        광고 콘테스트
+                    </Button>
                     <Button
                         variant={currentView === 'workspace' ? "secondary" : "ghost"}
                         className="w-full justify-start"

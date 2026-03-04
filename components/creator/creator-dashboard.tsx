@@ -29,7 +29,7 @@ import { WorkspaceProgressBar } from "@/components/workspace-progress-bar"
 import { WorkspaceLayout } from "@/components/workspace/common/workspace-layout"
 import { useWorkspaceStore } from "@/components/workspace/hooks/use-workspace-store"
 import { formatDateToMonth, formatPriceRange } from "@/lib/utils"
-import { AlertCircle, ArrowRight, BadgeCheck, Banknote, Bell, Briefcase, Building2, Calendar, CheckCircle2, ChevronRight, DollarSign, ExternalLink, FileText, Filter, Gift, Image as ImageIcon, LayoutGrid, List, Megaphone, Menu, MessageSquare, Package, Pencil, Plus, Rocket, Search, Send, Settings, Shield, ShoppingBag, Sparkles, Star, Table as TableIcon, X } from "lucide-react"
+import { AlertCircle, ArrowRight, BadgeCheck, Banknote, Bell, Briefcase, Building2, Calendar, CheckCircle2, ChevronRight, DollarSign, ExternalLink, FileText, Filter, Gift, Image as ImageIcon, LayoutGrid, List, Megaphone, Menu, MessageSquare, Package, Pencil, Plus, Rocket, Search, Send, Settings, Shield, ShoppingBag, Sparkles, Star, Table as TableIcon, X, Trophy } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { FEATURES } from "@/lib/config/features"
@@ -43,6 +43,7 @@ import {
     SheetTitle,
     SheetTrigger
 } from "@/components/ui/sheet"
+import { ContestDiscoverView } from "@/components/creator/views/ContestDiscoverView"
 import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
 
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
@@ -138,7 +139,7 @@ function AIPlanModal({ isOpen, onOpenChange, planContent }: { isOpen: boolean; o
 export function CreatorDashboard() {
     const {
         user, updateUser, campaigns, moments, isLoading, notifications,
-        productApplications, momentProposals, updateProductApplication, // [NEW] Added momentProposals
+        productApplications, momentProposals, contestApplications, updateProductApplication,
         sendNotification,
         submissionFeedback: contextSubmissionFeedback, fetchSubmissionFeedback, sendSubmissionFeedback,
         messages, sendMessage,
@@ -238,7 +239,7 @@ export function CreatorDashboard() {
     const [relatedProposals, setRelatedProposals] = useState<any[]>([])
     const [workspaceTab, setWorkspaceTab] = useState("active")
     const [workspaceViewMode, setWorkspaceViewMode] = useState<'list' | 'grid' | 'table'>('list')
-    const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'brand'>('all')
+    const [workspaceSubTab, setWorkspaceSubTab] = useState<'all' | 'moment' | 'campaign' | 'contest' | 'brand'>('all')
 
     // [Badge] 탭별 새 이벤트 여부 계산
     const workspaceTabBadges = useMemo(() => {
@@ -246,6 +247,7 @@ export function CreatorDashboard() {
             ...(productApplications || []),
             ...(campaignProposals || []),
             ...(momentProposals || []),
+            ...(contestApplications || []),
         ]
         const unreadWorkspaceIds = new Set(
             (messages || [])
@@ -375,6 +377,7 @@ export function CreatorDashboard() {
             ...(productApplications || []),
             ...(campaignProposals || []),
             ...(momentProposals as any[] || []),
+            ...(contestApplications as any[] || []),
         ]
         const target = allProposals.find((p: any) => p.workspace_id?.toString() === proposalId || p.id?.toString() === proposalId)
         if (target) {
@@ -473,6 +476,7 @@ export function CreatorDashboard() {
 
         const proposal = productApplications.find((p: any) => p.id === proposalId) ||
             momentProposals.find((p: any) => p.id === proposalId) ||
+            contestApplications.find((p: any) => p.id === proposalId) ||
             campaignProposals.find((p: any) => p.id === proposalId);
 
         if (proposal) {
@@ -497,6 +501,7 @@ export function CreatorDashboard() {
                     // Find the proposal to determine its type
                     const proposal = productApplications.find((p: any) => p.id === proposalId) ||
                         momentProposals.find((p: any) => p.id === proposalId) ||
+                        contestApplications.find((p: any) => p.id === proposalId) ||
                         campaignProposals.find((p: any) => p.id === proposalId)
 
                     if (!proposal) {
@@ -696,7 +701,7 @@ export function CreatorDashboard() {
                 setChatProposal((prev: any) => prev?.id === targetProposal.id ? prev : targetProposal)
             }
         }
-    }, [searchParams, productApplications])
+    }, [searchParams, productApplications, contestApplications])
 
     // [SYNC] Sync chatProposal when productApplications/campaignProposals/momentProposals updates
     // (e.g., when brand updates conditions, creator workspace reflects changes in real-time)
@@ -705,17 +710,18 @@ export function CreatorDashboard() {
             const updatedBrand = productApplications?.find((p: any) => p.id === chatProposal.id);
             const updatedCampaign = campaignProposals?.find((p: any) => p.id === chatProposal.id);
             const updatedMoment = (momentProposals as any[])?.find((p: any) => p.id === chatProposal.id);
+            const updatedContest = (contestApplications as any[])?.find((p: any) => p.id === chatProposal.id);
             // [FIX] moment proposal은 productApplications(mappedMoment)에도 포함되지만
             // Realtime 업데이트 시 momentProposals(rawMomentProposals)만 갱신됨.
             // updatedMoment가 있으면 최신 content 필드들을 brandProposal 위에 merge하여 사용.
             const updated = updatedMoment
                 ? { ...(updatedBrand || updatedMoment), ...updatedMoment }
-                : updatedBrand || updatedCampaign;
+                : updatedContest || updatedBrand || updatedCampaign;
             if (updated) {
                 setChatProposal(updated);
             }
         }
-    }, [productApplications, campaignProposals, momentProposals]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [productApplications, campaignProposals, momentProposals, contestApplications]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Reset sub-tab when main tab changes
     // Reset sub-tab when main tab changes
@@ -934,11 +940,13 @@ export function CreatorDashboard() {
 
     // 2. Outbound (Applied to Campaigns + Brand Products) - Waiting
     const campaignApplications = campaignProposals?.filter((p: any) => p.type === 'campaign_apply' && (p.status === 'draft' || p.status === 'applied' || p.status === 'pending' || p.status === 'viewed')) || []
+    const contestOutboundApplications = contestApplications?.filter((p: any) => p.status === 'applied' || p.status === 'pending' || p.status === 'viewed') || []
 
-    // Combine Campaign Applications + Brand Applications
+    // Combine Campaign Applications + Brand Applications + Contest Applications
     const outboundApplications = [
         ...campaignApplications,
-        ...brandApplications
+        ...brandApplications,
+        ...contestOutboundApplications
     ].sort((a, b) => {
         // [NEW] draft 상태가 항상 맨 위로 오도록 정렬
         if (a.status === 'draft' && b.status !== 'draft') return -1
@@ -949,7 +957,10 @@ export function CreatorDashboard() {
     // 3. Active (In Progress) - Both sources (deduplicated)
     const CREATOR_ACTIVE_STATUSES = ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete']
     const activeInbound = allInboundProposals.filter((p: any) => CREATOR_ACTIVE_STATUSES.includes(p.status)) || []
-    const activeOutbound = campaignProposals?.filter((p: any) => CREATOR_ACTIVE_STATUSES.includes(p.status)) || []
+    const activeOutbound = [
+        ...(campaignProposals?.filter((p: any) => CREATOR_ACTIVE_STATUSES.includes(p.status)) || []),
+        ...(contestApplications?.filter((p: any) => CREATOR_ACTIVE_STATUSES.includes(p.status)) || [])
+    ]
     const allActive = deduplicateById([...activeInbound, ...activeOutbound]).sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
 
     // [FIX] Inbound (Waiting for Action): pure brand offers (brand→creator) + moment proposals (brand→creator)
@@ -968,12 +979,18 @@ export function CreatorDashboard() {
 
     // New Rejected List - Both Inbound (Brand Offers) and Outbound (Campaign Apps) (deduplicated)
     const rejectedInbound = allInboundProposals.filter((p: any) => p.status === 'rejected') || []
-    const rejectedOutbound = campaignProposals?.filter((p: any) => p.status === 'rejected') || []
+    const rejectedOutbound = [
+        ...(campaignProposals?.filter((p: any) => p.status === 'rejected') || []),
+        ...(contestApplications?.filter((p: any) => p.status === 'rejected') || [])
+    ]
     const rejectedProposals = deduplicateById([...rejectedInbound, ...rejectedOutbound]).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
 
     // 4. Completed - Both sources (deduplicated)
     const completedInbound = allInboundProposals.filter((p: any) => p.status === 'completed') || []
-    const completedOutbound = campaignProposals?.filter((p: any) => p.status === 'completed') || []
+    const completedOutbound = [
+        ...(campaignProposals?.filter((p: any) => p.status === 'completed') || []),
+        ...(contestApplications?.filter((p: any) => p.status === 'completed') || [])
+    ]
     const allCompleted = deduplicateById([...completedInbound, ...completedOutbound]).sort((a, b) => new Date(b.completed_at || b.created_at || 0).getTime() - new Date(a.completed_at || a.created_at || 0).getTime())
 
     // 5. All Items (Deduplicated)
@@ -2678,6 +2695,8 @@ export function CreatorDashboard() {
                         description="브랜드가 등록한 쳪페인을 확인하고 지원해보세요."
                     />
                 )
+            case "discover-contests":
+                return <ContestDiscoverView />
             default:
                 return null
         }
@@ -2888,6 +2907,16 @@ export function CreatorDashboard() {
                                                 </Button>
                                             )}
                                             <Button
+                                                variant={currentView === "discover-contests" ? "secondary" : "ghost"}
+                                                className="w-full justify-start text-primary font-medium"
+                                                onClick={() => {
+                                                    setCurrentView("discover-contests")
+                                                    setIsMobileSidebarOpen(false)
+                                                }}
+                                            >
+                                                <Trophy className="mr-2 h-4 w-4" /> 광고 콘테스트 둘러보기
+                                            </Button>
+                                            <Button
                                                 variant={currentView === "discover-products" ? "secondary" : "ghost"}
                                                 className="w-full justify-start text-primary font-medium"
                                                 onClick={() => {
@@ -3057,6 +3086,13 @@ export function CreatorDashboard() {
                                             <Megaphone className="mr-2 h-4 w-4" /> 브랜드 캠페인 둘러보기
                                         </Button>
                                     )}
+                                    <Button
+                                        variant={currentView === "discover-contests" ? "secondary" : "ghost"}
+                                        className="w-full justify-start text-primary font-medium"
+                                        onClick={() => setCurrentView("discover-contests")}
+                                    >
+                                        <Trophy className="mr-2 h-4 w-4" /> 광고 콘테스트 둘러보기
+                                    </Button>
                                     <Button
                                         variant={currentView === "discover-products" ? "secondary" : "ghost"}
                                         className="w-full justify-start text-primary font-medium"
