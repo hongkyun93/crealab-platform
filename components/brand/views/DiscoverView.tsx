@@ -192,7 +192,7 @@ export const DiscoverView = React.memo(function DiscoverView({ }: DiscoverViewPr
             const bCount = (favorites || []).filter((f: any) => f.target_id === b.id && f.target_type === 'moment').length
             return bCount - aCount
         })
-        if (sortOrder === "latest") result.sort((a, b) => new Date(b.created_at || b.createdAt || b.date || 0).getTime() - new Date(a.created_at || a.createdAt || a.date || 0).getTime())
+        if (sortOrder === "latest") result.sort((a, b) => new Date((b as any).created_at || (b as any).createdAt || (b as any).date || 0).getTime() - new Date((a as any).created_at || (a as any).createdAt || (a as any).date || 0).getTime())
         return result
     }
 
