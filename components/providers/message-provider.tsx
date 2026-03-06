@@ -53,31 +53,14 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 .order('created_at', { ascending: true })
 
             if (error) {
-                // Ignore AbortError (happens when component unmounts during fetch)
-                if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-                    return
-                }
+                if (error.name === 'AbortError' || error.message?.includes('aborted')) return
+                if (error.message === 'Failed to fetch' || error.message === 'Load failed') return
+                // Suppress empty/malformed errors (cancelled Supabase requests)
+                if (!error.code && !error.message) return
+                if (error.code === '42P01') { console.warn('[MessageProvider] messages table missing — skipping'); return }
+                if (error.code === '42501') { console.warn('[MessageProvider] Permission denied for messages'); return }
 
-                // Handle network errors gracefully
-                if (error.message === 'Failed to fetch' || error.message === 'Load failed') {
-                    // console.warn('[MessageProvider] Network error fetching messages (likely transient)')
-                    return
-                }
-
-                console.error('[MessageProvider] Fetch error:', error.message)
-
-                // Handle known error codes gracefully
-                if (error.code === '42P01') {
-                    console.warn('[MessageProvider] The "messages" table is missing')
-                    return
-                }
-                if (error.code === '42501') {
-                    console.warn('[MessageProvider] Permission denied for messages')
-                    return
-                }
-
-                // For unexpected errors, log details
-                console.error('[MessageProvider] Unexpected error:', { code: error.code, details: error.details })
+                console.error('[MessageProvider] Fetch error:', error.message, { code: error.code })
                 return
             }
 

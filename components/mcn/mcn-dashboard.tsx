@@ -193,19 +193,20 @@ export function McnDashboard() {
                     <McnQuickDashboardView summaryData={summaryData} />
                 </TabsContent>
 
-                <TabsContent value="proposals-dev">
+                {/* forceMount: 탭 전환 시 언마운트 방지 → 첫 로드 이후 스피너 없음 */}
+                <TabsContent value="proposals-dev" forceMount className={activeTab !== 'proposals-dev' ? 'hidden' : ''}>
                     <TeamProposalsTableDev teamId={currentTeam?.id || ''} />
                 </TabsContent>
 
-                <TabsContent value="calendar">
+                <TabsContent value="calendar" forceMount className={activeTab !== 'calendar' ? 'hidden' : ''}>
                     <TeamCalendar teamId={currentTeam?.id || ''} />
                 </TabsContent>
 
-                <TabsContent value="settlement">
+                <TabsContent value="settlement" forceMount className={activeTab !== 'settlement' ? 'hidden' : ''}>
                     <SettlementTab teamId={currentTeam?.id || ''} mcnName={currentTeam?.name || 'MCN'} />
                 </TabsContent>
 
-                <TabsContent value="settings" className="space-y-6">
+                <TabsContent value="settings" forceMount className={`space-y-6 ${activeTab !== 'settings' ? 'hidden' : ''}`}>
                     <McnSettingsView
                         teamId={currentTeam?.id || ''}
                         summaryData={summaryData}
