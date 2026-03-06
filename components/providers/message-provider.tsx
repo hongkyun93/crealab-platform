@@ -57,7 +57,11 @@ export function MessageProvider({ children, userId }: { children: React.ReactNod
                 if (error.message === 'Failed to fetch' || error.message === 'Load failed') return
                 // Suppress empty/malformed errors (cancelled Supabase requests)
                 if (!error.code && !error.message) return
-                if (error.code === '42P01') { console.warn('[MessageProvider] messages table missing — skipping'); return }
+                // Handle missing table or schema cache issues gracefully
+                if (error.code === '42P01' || error.message?.toLowerCase().includes('schema cache')) {
+                    console.warn('[MessageProvider] messages table missing or not in schema cache — skipping');
+                    return
+                }
                 if (error.code === '42501') { console.warn('[MessageProvider] Permission denied for messages'); return }
 
                 console.error('[MessageProvider] Fetch error:', error.message, { code: error.code })
