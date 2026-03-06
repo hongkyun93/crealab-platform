@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { Building2, CheckCircle2, Clock, DollarSign, Download, FileText, Loader2, Receipt, Search, Users, Wallet } from "lucide-react"
+import { ArrowRight, Building2, CheckCircle2, Clock, DollarSign, Download, FileText, Loader2, Minus, Receipt, Search, Users, Wallet } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
@@ -568,117 +568,160 @@ export function SettlementTab({ teamId, mcnName = 'MCN' }: SettlementTabProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="rounded-md border bg-card">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-muted/50">
-                                <TableHead className="w-[180px]">크리에이터</TableHead>
-                                <TableHead className="w-[160px]">프로젝트</TableHead>
-                                <TableHead className="text-right">총액 (Gross)</TableHead>
-                                <TableHead className="text-center">배분율</TableHead>
-                                <TableHead className="text-right">실지급 (Net)</TableHead>
-                                <TableHead className="text-center">상태</TableHead>
-                                <TableHead className="text-right">관리</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredSettlements.map(s => {
-                                const ratio = revenueSplits[s.creator_id] ?? 0.70;
-                                const cfg = STATUS_CONFIG[s.status as keyof typeof STATUS_CONFIG] || { label: s.status, color: '' };
-                                const typeLabel = PROPOSAL_TYPE_LABELS[s.proposal_type] || s.proposal_type;
-                                const withholding = s.withholding_amount || Math.round(s.creator_amount * 0.033);
-                                const netAmount = s.net_creator_amount || (s.creator_amount - withholding);
-                                const hasPending = s.status === 'pending';
+                <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+                    {/* Waterfall Header */}
+                    <div className="grid grid-cols-[220px_1fr_auto] gap-0 border-b bg-muted/40 px-4 py-2.5">
+                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">크리에이터 · 프로젝트</span>
+                        <div className="flex items-center gap-0">
+                            <span className="w-[130px] text-[11px] font-semibold text-muted-foreground uppercase tracking-wide text-right pr-3">Gross</span>
+                            <span className="w-5" />
+                            <span className="w-[130px] text-[11px] font-semibold text-violet-500 uppercase tracking-wide text-right pr-3">MCN 수수료</span>
+                            <span className="w-5" />
+                            <span className="w-[130px] text-[11px] font-semibold text-orange-400 uppercase tracking-wide text-right pr-3">원천징수 3.3%</span>
+                            <span className="w-5" />
+                            <span className="w-[140px] text-[11px] font-semibold text-emerald-600 uppercase tracking-wide text-right pr-3">실수령 Net</span>
+                        </div>
+                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide text-right">상태 · 관리</span>
+                    </div>
 
-                                return (
-                                    <TableRow key={s.id} className="group hover:bg-muted/30">
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-8 w-8 border">
-                                                    <AvatarImage src={s.creator_avatar || ''} />
-                                                    <AvatarFallback className="text-xs font-bold">{s.creator_name[0]}</AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex flex-col">
-                                                    <span className="font-semibold text-sm">{s.creator_name}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{new Date(s.created_at).toLocaleDateString('ko-KR')}</span>
+                    {/* Waterfall Rows */}
+                    <div className="divide-y divide-border/60">
+                        {filteredSettlements.map(s => {
+                            const ratio = revenueSplits[s.creator_id] ?? 0.70;
+                            const cfg = STATUS_CONFIG[s.status as keyof typeof STATUS_CONFIG] || { label: s.status, color: '' };
+                            const typeLabel = PROPOSAL_TYPE_LABELS[s.proposal_type] || s.proposal_type;
+                            const mcnFee = s.mcn_amount || Math.round(s.gross_amount * (1 - ratio));
+                            const creatorGross = s.creator_amount || Math.round(s.gross_amount * ratio);
+                            const withholding = s.withholding_amount || Math.round(creatorGross * 0.033);
+                            const netAmount = s.net_creator_amount || (creatorGross - withholding);
+                            const hasPending = s.status === 'pending';
+
+                            return (
+                                <div
+                                    key={s.id}
+                                    className="grid grid-cols-[220px_1fr_auto] gap-0 px-4 py-3.5 hover:bg-muted/20 transition-colors group items-center"
+                                >
+                                    {/* Left: Creator + Project */}
+                                    <div className="flex items-center gap-3 min-w-0 pr-4">
+                                        <Avatar className="h-9 w-9 border-2 border-border shrink-0">
+                                            <AvatarImage src={s.creator_avatar || ''} />
+                                            <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">{s.creator_name[0]}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="font-semibold text-sm truncate">{s.creator_name}</span>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded truncate max-w-[100px]">{s.brand_name || '브랜드'}</span>
+                                                <span className="text-[10px] text-muted-foreground/60">{typeLabel}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Center: Waterfall Formula */}
+                                    <div className="flex items-center gap-0">
+                                        {/* GROSS */}
+                                        <div className="w-[130px] flex flex-col items-end pr-3">
+                                            <span className="text-[10px] text-muted-foreground font-medium mb-0.5">총 협찬금</span>
+                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200 tabular-nums">
+                                                ₩{s.gross_amount.toLocaleString()}
+                                            </span>
+                                        </div>
+
+                                        {/* Arrow + MCN Fee */}
+                                        <div className="flex items-center">
+                                            <div className="flex items-center justify-center w-5">
+                                                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                            </div>
+                                            <div className="w-[130px] flex flex-col items-end pr-3">
+                                                <div className="flex items-center gap-1 mb-0.5">
+                                                    <span className="text-[10px] text-violet-500 font-medium">MCN</span>
+                                                    <span
+                                                        className="text-[10px] text-violet-400 bg-violet-50 dark:bg-violet-950/40 px-1 py-0.5 rounded cursor-pointer hover:bg-violet-100 dark:hover:bg-violet-950/60 transition-colors"
+                                                        onClick={() => handleOpenSplitEditor(s.creator_id, s.creator_name, s.creator_avatar)}
+                                                        title="배분율 수정"
+                                                    >
+                                                        {Math.round((1 - ratio) * 100)}%
+                                                    </span>
                                                 </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col gap-1 mt-0.5">
-                                                <span className="text-sm font-medium">{s.brand_name || '브랜드'} 협업</span>
-                                                <span className="text-[10px] text-muted-foreground bg-muted w-fit px-1.5 py-0.5 rounded">{typeLabel}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">₩{s.gross_amount.toLocaleString()}</span>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div
-                                                className="flex flex-col items-center gap-0.5 relative group/split cursor-pointer"
-                                                onClick={() => handleOpenSplitEditor(s.creator_id, s.creator_name, s.creator_avatar)}
-                                            >
-                                                <span className="text-[11px] font-medium bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground group-hover/split:bg-primary/10 group-hover/split:text-primary transition-colors">
-                                                    C {Math.round(ratio * 100)}% / M {Math.round((1 - ratio) * 100)}%
+                                                <span className="text-sm font-semibold text-violet-600 dark:text-violet-400 tabular-nums">
+                                                    −₩{mcnFee.toLocaleString()}
                                                 </span>
                                             </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-sm font-semibold text-emerald-600">₩{netAmount.toLocaleString()}</span>
-                                                <span className="text-[10px] text-orange-500 mt-0.5">-₩{withholding.toLocaleString()} (원천세)</span>
+                                        </div>
+
+                                        {/* Arrow + Withholding */}
+                                        <div className="flex items-center">
+                                            <div className="flex items-center justify-center w-5">
+                                                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40" />
                                             </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", cfg.color)}>
-                                                {cfg.label}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end items-center gap-1.5">
+                                            <div className="w-[130px] flex flex-col items-end pr-3">
+                                                <span className="text-[10px] text-orange-400 font-medium mb-0.5">원천징수</span>
+                                                <span className="text-sm font-semibold text-orange-500 dark:text-orange-400 tabular-nums">
+                                                    −₩{withholding.toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Arrow + NET */}
+                                        <div className="flex items-center">
+                                            <div className="flex items-center justify-center w-5">
+                                                <ArrowRight className="h-3.5 w-3.5 text-emerald-400/70" strokeWidth={2.5} />
+                                            </div>
+                                            <div className="w-[140px] flex flex-col items-end pr-3">
+                                                <span className="text-[10px] text-emerald-600 font-semibold mb-0.5">🏦 실수령</span>
+                                                <span className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
+                                                    ₩{netAmount.toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Status + Actions */}
+                                    <div className="flex items-center gap-2 pl-4 border-l border-border/40">
+                                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap", cfg.color)}>
+                                            {cfg.label}
+                                        </Badge>
+                                        <div className="flex items-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                                onClick={() => handleOpenStatement(s.creator_id, s.creator_name, s.creator_avatar, [s])}
+                                                title="명세서 발급"
+                                            >
+                                                <Receipt className="h-3.5 w-3.5" />
+                                            </Button>
+                                            {s.status === 'pending' && (!s.tax_invoice_status || s.tax_invoice_status === 'none') && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                                    onClick={() => handleOpenStatement(s.creator_id, s.creator_name, s.creator_avatar, [s])}
-                                                    title="명세서 발급"
+                                                    className="h-7 w-7 text-muted-foreground hover:text-blue-600"
+                                                    onClick={() => handleRequestTaxInvoice(s.id)}
+                                                    title="세금계산서 요청"
                                                 >
-                                                    <Receipt className="h-4 w-4" />
+                                                    <FileText className="h-3.5 w-3.5" />
                                                 </Button>
-                                                {s.status === 'pending' && (!s.tax_invoice_status || s.tax_invoice_status === 'none') && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                                        onClick={() => handleRequestTaxInvoice(s.id)}
-                                                        title="세금계산서 요청"
-                                                    >
-                                                        <FileText className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {hasPending && (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-8 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200 shadow-sm"
-                                                        onClick={() => handlePayClick(s)}
-                                                    >
-                                                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                                                        지급 처리
-                                                    </Button>
-                                                )}
-                                                {s.status === 'paid' && s.paid_at && (
-                                                    <span className="text-[10px] text-emerald-600 font-medium px-2 py-1.5 whitespace-nowrap">
-                                                        {new Date(s.paid_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })} 완료
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
+                                            )}
+                                            {hasPending && (
+                                                <Button
+                                                    size="sm"
+                                                    className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 shadow-sm"
+                                                    onClick={() => handlePayClick(s)}
+                                                >
+                                                    <CheckCircle2 className="h-3 w-3" />
+                                                    지급
+                                                </Button>
+                                            )}
+                                            {s.status === 'paid' && s.paid_at && (
+                                                <span className="text-[10px] text-emerald-600 font-semibold whitespace-nowrap">
+                                                    ✓ {new Date(s.paid_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
 
