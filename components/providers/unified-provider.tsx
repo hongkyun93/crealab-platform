@@ -164,6 +164,7 @@ export function useUnifiedProvider() {
 
         // Proposals
         campaignProposals: proposals.campaignProposals,
+        momentProposals: proposals.momentProposals,
         productApplications: proposals.productApplications,
         contestApplications: proposals.contestApplications,
         addMomentProposal: proposals.addMomentProposal,
