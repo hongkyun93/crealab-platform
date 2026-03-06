@@ -1,20 +1,17 @@
 /**
- * 데모용 협업 풀체인 시딩 (v3 — 실제 DB 스키마 기준)
+ * 전체 데모 데이터 초기화 + 5건 초고퀄리티 재생성
  *
  * 실행:  npx tsx scripts/seed-demo-collabs.ts
  * 삭제:  npx tsx scripts/seed-demo-collabs.ts --delete
  *
- * 생성 체인 (pg_catalog로 확인한 실제 스키마 기준):
- *  1. life_moments      (NOT NULL 없음 — 가장 단순)
- *  2. moment_proposals  (brand_id, creator_id, moment_id NOT NULL)
- *  3. workspaces        (brand_id, creator_id, project_title NOT NULL)
- *  4. settlements       (creator_id NOT NULL, 나머지 nullable)
+ * 삭제 순서: settlements → workspaces → moment_proposals → life_moments
+ * 생성 체인: life_moments → moment_proposals → workspaces → settlements
  *
- * 결과:
- *  → 마스터 트래커: moment_proposals 기반 (get_team_proposals RPC)
- *  → 캘린더:       moment_proposals.created_at + life_moments.moment_start_date
- *  → 크리에이터 관리: moment_proposals 카운트 (get_team_dashboard_summary)
- *  → 정산 탭:      settlements.workspace_id 연결
+ * 실제 DB 컬럼 기준 (2026-03-06 get_table_columns RPC 확인):
+ *  - life_moments:    NOT NULL 없음
+ *  - moment_proposals: brand_id, creator_id, moment_id NOT NULL
+ *  - workspaces:      brand_id, creator_id, project_title NOT NULL
+ *  - settlements:     creator_id NOT NULL
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -28,71 +25,46 @@ const sb = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// ─── 실제 ID (2026-03-06 pg_catalog 확인) ─────────────────────────────────────
+// ─── 실제 ID 맵 (2026-03-06 DB 조회 확인) ─────────────────────────────────────
 const TEAM_ID = '8c998fdd-1f3b-47e0-8711-79a760460089'
 
-const CREATORS = {
-    서연스킨: { id: '1a673318-ed79-4643-9e5b-9a5df91ba993', handle: '서연스킨' },
-    채린글로우: { id: 'cfc58f55-ed06-4aba-af2c-3b8aa5c10523', handle: '채린글로우' },
+const C = {
+    서연스킨: '1a673318-ed79-4643-9e5b-9a5df91ba993',
+    채린글로우: 'cfc58f55-ed06-4aba-af2c-3b8aa5c10523',
+    소미스킨랩: '2d874986-4dba-4acc-b4e5-1b52f974ba8e',
+    수빈OOTD: 'e346ee84-3b6f-4b46-9462-064ee9e52520',
+    예진네일즈: '575a6a17-7045-4867-bc22-08472b058030',
 }
 
-const BRANDS = {
-    올리브영: { id: '6b8cedf0-1548-42fc-ba3f-ed434ace5bb9' },
-    아모레유스랩: { id: '2ce9d5bb-0421-49a9-8850-c117101b2f1c' },
+const B = {
+    올리브영: '6b8cedf0-1548-42fc-ba3f-ed434ace5bb9',
+    아모레유스랩: '2ce9d5bb-0421-49a9-8850-c117101b2f1c',
+    선스크린랩: 'b63d56e4-1009-4330-8420-b6dc73b1622e',
+    보이브: '3293e5f8-bff5-4292-b3ef-7104537c8575',
+    네일스튜디오N: '52f01d28-92ab-40ee-86b0-8e85e5c9d887',
 }
 
-// ─── 데모 협업 2건 ──────────────────────────────────────────────────────────────
-interface CollabDef {
-    label: string
-    creator: { id: string; handle: string }
-    brand: { id: string }
-    lifeMonument: {
-        title: string
-        description: string
-        category: string
-        moment_start_date: string
-    }
-    workspace: {
-        project_title: string
-        product_name: string
-        price_offer: number
-        status: string
-        channel_name: string
-        channel_subtype: string
-        brand_condition_confirmed: boolean
-        creator_condition_confirmed: boolean
-        contract_status: string
-        delivery_status: string
-    }
-    momentProposal: {
-        message: string
-        status: string
-        created_at: string
-    }
-    settlement: {
-        gross_amount: number
-        split_ratio: number
-        settlement_month: string
-        status: string
-        paid_at: string | null
-        note: string
-    }
-}
-
-const DEMO_COLLABS: CollabDef[] = [
+// ─── 5건 초고퀄리티 협업 정의 ──────────────────────────────────────────────────
+const DEMO = [
     {
-        label: '올리브영 × 서연스킨 — 선크림 SPF50+ 릴스 (완료/정산완료)',
-        creator: CREATORS.서연스킨,
-        brand: BRANDS.올리브영,
-        lifeMonument: {
-            title: '자외선 차단제 집중 비교 리뷰',
-            description: '일상 보습 + 자외선 차단을 동시에 잡는 제품 비교. 발림감·백탁·지속력 3종 테스트.',
+        // ① 올리브영 × 서연스킨 — 선케어 릴스 (완료 + 정산 완료)
+        label: '올리브영 × 서연스킨',
+        creator_id: C.서연스킨,
+        brand_id: B.올리브영,
+        life_moment: {
+            title: '자외선 차단제 3종 7일 착용 착용테스트',
+            description: '올리브영 PB 선크림 vs 해외직구 vs 피부과 선크림. 발림감·지속력·백탁 없음 3개 기준 실사용 7일 비교 리뷰.',
             category: '뷰티',
             moment_start_date: '2026-01-20',
         },
+        moment_proposal: {
+            message: '안녕하세요 올리브영 마케팅팀입니다. 신규 PB 선크림 출시에 맞춰 피부 타입별 7일 착용 비교 콘텐츠 제안드립니다. 피드 1건 + 릴스 1건, 인플루언서 재량껏 스타일링 자유롭게 진행하시면 됩니다.',
+            status: 'completed',
+            created_at: new Date('2026-01-12T10:30:00+09:00').toISOString(),
+        },
         workspace: {
-            project_title: '올리브영 선크림 SPF50+ 릴스 리뷰 협업',
-            product_name: '선크림 SPF50+ 올데이프로텍션 50ml',
+            project_title: '올리브영 PB선크림 SPF50+ 7일 비교 릴스',
+            product_name: '올리브영 선크림 SPF50+ 올데이프로텍션 50ml',
             price_offer: 1_500_000,
             status: 'settlement',
             channel_name: 'instagram',
@@ -102,32 +74,33 @@ const DEMO_COLLABS: CollabDef[] = [
             contract_status: 'signed',
             delivery_status: 'delivered',
         },
-        momentProposal: {
-            message: '올리브영 PB선크림 신제품 출시에 맞춰 피부결 중심 릴스(피드 1건+릴스 1건) 제안드립니다. 발림감·지속력 중심 7일 사용 후기 형식입니다.',
-            status: 'completed',
-            created_at: new Date('2026-01-15T09:30:00Z').toISOString(),
-        },
         settlement: {
             gross_amount: 1_500_000,
             split_ratio: 0.75,
             settlement_month: '2026-02',
             status: 'paid',
-            paid_at: new Date('2026-02-20T14:00:00Z').toISOString(),
-            note: '올리브영 선크림 SPF50+ 릴스 리뷰 정산',
+            paid_at: new Date('2026-02-18T14:00:00+09:00').toISOString(),
+            note: '올리브영 PB선크림 7일 착용 비교 릴스 — 1월 콘텐츠 정산',
         },
     },
     {
-        label: '아모레유스랩 × 채린글로우 — 앰플 세럼 피드+스토리 (진행 중)',
-        creator: CREATORS.채린글로우,
-        brand: BRANDS.아모레유스랩,
-        lifeMonument: {
-            title: '봄 스킨케어 루틴 뷰티 컨텐츠',
-            description: '봄철 환절기 피부 대비 스킨케어 루틴 공유. 앰플·세럼 집중 수분 루틴 Before/After.',
+        // ② 아모레유스랩 × 채린글로우 — 앰플 세럼 피드+스토리 (계약 완료, 콘텐츠 제작 중)
+        label: '아모레유스랩 × 채린글로우',
+        creator_id: C.채린글로우,
+        brand_id: B.아모레유스랩,
+        life_moment: {
+            title: '봄 환절기 수분 폭탄 스킨케어 루틴',
+            description: '환절기 건조함 대비 집중 수분 앰플·세럼 루틴. 아침/저녁 2단계 비교 3주 테스트.',
             category: '뷰티',
             moment_start_date: '2026-02-25',
         },
+        moment_proposal: {
+            message: '채린글로우님 안녕하세요. 아모레퍼시픽 유스랩 신제품 유스 액티브 앰플 세럼 론칭 캠페인입니다. 봄 스킨케어 루틴 콘텐츠로 피드 2장 + 스토리 3장 구성 제안드립니다. 제품 7일 사용 후 글로우 스킨 결 비포/애프터 형식으로 부탁드립니다.',
+            status: 'accepted',
+            created_at: new Date('2026-02-18T15:00:00+09:00').toISOString(),
+        },
         workspace: {
-            project_title: '아모레유스랩 유스 액티브 앰플 세럼 피드+스토리 협업',
+            project_title: '아모레유스랩 유스 액티브 앰플 세럼 봄 루틴 피드+스토리',
             product_name: '유스 액티브 앰플 세럼 30ml',
             price_offer: 2_200_000,
             status: 'in_progress',
@@ -138,107 +111,241 @@ const DEMO_COLLABS: CollabDef[] = [
             contract_status: 'signed',
             delivery_status: 'pending',
         },
-        momentProposal: {
-            message: '아모레퍼시픽 유스랩 신규 앰플 론칭 캠페인. 7일 사용 Before/After 피드 2장 + 스토리 3장. 글로우 스킨 결 중심 구성.',
-            status: 'accepted',
-            created_at: new Date('2026-02-20T15:00:00Z').toISOString(),
-        },
         settlement: {
             gross_amount: 2_200_000,
             split_ratio: 0.75,
             settlement_month: '2026-03',
             status: 'escrow',
             paid_at: null,
-            note: '아모레유스랩 앰플 세럼 피드+스토리 정산 (진행 중)',
+            note: '아모레유스랩 유스 액티브 앰플 세럼 피드+스토리 — 3월 정산 예정',
+        },
+    },
+    {
+        // ③ 선스크린랩 × 소미스킨랩 — 선케어 전문 유튜브 콘텐츠 (계약 서명 완료, 촬영 대기)
+        label: '선스크린랩 × 소미스킨랩',
+        creator_id: C.소미스킨랩,
+        brand_id: B.선스크린랩,
+        life_moment: {
+            title: '2026 봄 선케어 성분 파헤치기 ☀️',
+            description: '성분 덕후 관점에서 SPF/PA 등급별 차이, 자외선 A/B 차단 원리, 올바른 선크림 사용법까지 총망라. 선케어 입문자부터 고수까지 필수 영상.',
+            category: '뷰티',
+            moment_start_date: '2026-03-05',
+        },
+        moment_proposal: {
+            message: '소미스킨랩님, 피부과 전문의와 협업한 선케어 성분 분석 유튜브 영상 제안드립니다. 저희 선스크린랩 제품 3종을 성분 관점에서 비교 분석해주시는 20분 분량 영상입니다. 영상 제작비 전액 지원 및 PPL 형태로 진행합니다.',
+            status: 'accepted',
+            created_at: new Date('2026-02-28T09:00:00+09:00').toISOString(),
+        },
+        workspace: {
+            project_title: '선스크린랩 선케어 성분 분석 유튜브 콘텐츠',
+            product_name: '선스크린랩 더마 선크림 SPF50+ PA++++  50g × 3종 세트',
+            price_offer: 3_500_000,
+            status: 'in_progress',
+            channel_name: 'youtube',
+            channel_subtype: 'long_form',
+            brand_condition_confirmed: true,
+            creator_condition_confirmed: true,
+            contract_status: 'signed',
+            delivery_status: 'pending',
+        },
+        settlement: {
+            gross_amount: 3_500_000,
+            split_ratio: 0.70,
+            settlement_month: '2026-03',
+            status: 'pending',
+            paid_at: null,
+            note: '선스크린랩 유튜브 선케어 성분 분석 영상 — 3월 정산 예정',
+        },
+    },
+    {
+        // ④ 보이브 × 수빈OOTD — 봄 신상 코디 릴스 시리즈 (제안 수락, 계약중)
+        label: '보이브 × 수빈OOTD',
+        creator_id: C.수빈OOTD,
+        brand_id: B.보이브,
+        life_moment: {
+            title: '보이브 봄 시즌 하울 & 코디 챌린지 🌸',
+            description: '2026 봄/SS 신상 아이템으로 7일간 다른 코디 시리즈. 미니멀 시티룩 / 캐주얼 데일리 / 오피스 세미포멀 3가지 무드.',
+            category: '패션',
+            moment_start_date: '2026-03-15',
+        },
+        moment_proposal: {
+            message: '수빈OOTD님 안녕하세요! 보이브 2026 SS 컬렉션 런칭 캠페인 파트너 제안드립니다. 7일 코디 챌린지 릴스 시리즈(1일 1코디 × 7편) 협업으로, 각 영상마다 QR코드 링크 삽입 및 할인코드 제공 방식입니다. 피팅용 의류 전 시즌 세트 제공해드립니다.',
+            status: 'offered',
+            created_at: new Date('2026-03-01T11:00:00+09:00').toISOString(),
+        },
+        workspace: {
+            project_title: '보이브 2026 SS 7일 코디 챌린지 릴스 시리즈',
+            product_name: '보이브 2026 SS 컬렉션 스타터 세트 (상의 3종 + 하의 2종)',
+            price_offer: 4_000_000,
+            status: 'active',
+            channel_name: 'instagram',
+            channel_subtype: 'reels',
+            brand_condition_confirmed: true,
+            creator_condition_confirmed: false,
+            contract_status: 'pending',
+            delivery_status: 'pending',
+        },
+        settlement: {
+            gross_amount: 4_000_000,
+            split_ratio: 0.75,
+            settlement_month: '2026-04',
+            status: 'pending',
+            paid_at: null,
+            note: '보이브 SS 7일 코디 챌린지 릴스 시리즈 — 4월 정산 예정 (협의 중)',
+        },
+    },
+    {
+        // ⑤ 네일스튜디오N × 예진네일즈 — 젤네일 튜토리얼 시리즈 (제안 단계)
+        label: '네일스튜디오N × 예진네일즈',
+        creator_id: C.예진네일즈,
+        brand_id: B.네일스튜디오N,
+        life_moment: {
+            title: '봄 젤네일 컬러 트렌드 TOP 5 셀프 튜토리얼',
+            description: '2026 봄 팬톤 컬러 기반 젤네일 디자인 5종. 초보도 따라할 수 있는 단계별 영상. 네일 도구 추천 포함.',
+            category: '뷰티',
+            moment_start_date: '2026-03-20',
+        },
+        moment_proposal: {
+            message: '안녕하세요 예진네일즈님, 네일스튜디오 N입니다. 저희 2026 봄 신상 젤네일 키트 출시에 맞춰 셀프 네일 튜토리얼 숏폼 시리즈 협업 제안드립니다. 5가지 봄 컬러 각 영상 5분 내외 틱톡/릴스 동시 업로드 방식이며 키트 전 컬러 무상 제공 + 협찬비 별도입니다.',
+            status: 'offered',
+            created_at: new Date('2026-03-04T14:00:00+09:00').toISOString(),
+        },
+        workspace: {
+            project_title: '네일스튜디오 N 봄 젤네일 키트 셀프 튜토리얼 숏폼 시리즈',
+            product_name: '네일스튜디오 N 봄 컬렉션 젤네일 키트 5종 세트',
+            price_offer: 1_800_000,
+            status: 'active',
+            channel_name: 'tiktok',
+            channel_subtype: 'short_form',
+            brand_condition_confirmed: false,
+            creator_condition_confirmed: false,
+            contract_status: 'none',
+            delivery_status: 'pending',
+        },
+        settlement: {
+            gross_amount: 1_800_000,
+            split_ratio: 0.70,
+            settlement_month: '2026-04',
+            status: 'pending',
+            paid_at: null,
+            note: '네일스튜디오 N 봄 젤네일 튜토리얼 시리즈 — 협의 진행 중',
         },
     },
 ]
 
-function calcSettlement(gross: number, ratio: number) {
-    const creatorAmount = Math.round(gross * ratio)
-    const mcnAmount = gross - creatorAmount
-    const withholdingAmount = Math.round(creatorAmount * 0.033)
-    const netCreatorAmount = creatorAmount - withholdingAmount
-    return { creatorAmount, mcnAmount, withholdingAmount, netCreatorAmount }
+function calc(gross: number, ratio: number) {
+    const c = Math.round(gross * ratio)
+    const m = gross - c
+    const w = Math.round(c * 0.033)
+    return { creatorAmount: c, mcnAmount: m, withholdingAmount: w, netCreatorAmount: c - w }
+}
+
+async function deleteAll() {
+    console.log('🗑️  전체 삭제 시작...\n')
+
+    // 1. 모든 settlements 삭제 (creator FK가 NOT NULL이라서 workspaces 먼저 가면 안 됨)
+    const { error: sErr, count: sCount } = await sb.from('settlements').delete({ count: 'exact' }).neq('id', '00000000-0000-0000-0000-000000000000')
+    console.log(`  settlements: ${sErr ? '❌ ' + sErr.message : '✅ 삭제 완료'}`)
+
+    // 2. 모든 workspaces 삭제
+    const { data: allWs } = await sb.from('workspaces').select('id, original_proposal_id, original_proposal_type').order('created_at')
+    const wsIds = (allWs || []).map((w: any) => w.id)
+
+    if (wsIds.length) {
+        // moment_proposals.workspace_id = null로 초기화 (FK 정합성)
+        await sb.from('moment_proposals').update({ workspace_id: null }).in('workspace_id', wsIds)
+
+        const { error: wErr } = await sb.from('workspaces').delete().in('id', wsIds)
+        console.log(`  workspaces (${wsIds.length}건): ${wErr ? '❌ ' + wErr.message : '✅ 삭제 완료'}`)
+    }
+
+    // 3. 우리 팀의 moment_proposals 삭제 (team_id 기준)
+    const { data: mps } = await sb.from('moment_proposals').select('id, moment_id').eq('creator_team_id', TEAM_ID)
+    if (!mps?.length) {
+        // creator_team_id가 없으면 team_members 기준
+        const { data: memberIds } = await sb.from('team_members').select('user_id').eq('team_id', TEAM_ID)
+        const ids = (memberIds || []).map((m: any) => m.user_id)
+        const { data: mpsAll } = await sb.from('moment_proposals').select('id, moment_id').in('creator_id', ids)
+        const mpIds = (mpsAll || []).map((m: any) => m.id)
+        const momentIds = (mpsAll || []).map((m: any) => m.moment_id).filter(Boolean)
+
+        if (mpIds.length) {
+            await sb.from('moment_proposals').delete().in('id', mpIds)
+            console.log(`  moment_proposals (${mpIds.length}건): ✅ 삭제 완료`)
+        }
+        if (momentIds.length) {
+            await sb.from('life_moments').delete().in('id', momentIds)
+            console.log(`  life_moments (${momentIds.length}건): ✅ 삭제 완료`)
+        }
+    } else {
+        const mpIds = mps.map((m: any) => m.id)
+        const momentIds = mps.map((m: any) => m.moment_id).filter(Boolean)
+        await sb.from('moment_proposals').delete().in('id', mpIds)
+        console.log(`  moment_proposals (${mpIds.length}건): ✅ 삭제 완료`)
+        if (momentIds.length) {
+            await sb.from('life_moments').delete().in('id', momentIds)
+            console.log(`  life_moments (${momentIds.length}건): ✅ 삭제 완료`)
+        }
+    }
+
+    console.log('\n✅ 전체 삭제 완료\n')
 }
 
 async function main() {
     const isDelete = process.argv.includes('--delete')
 
     if (isDelete) {
-        console.log('🗑️  데모 데이터 삭제 중...')
-        for (const c of DEMO_COLLABS) {
-            const cid = c.creator.id
-            const bid = c.brand.id
-            await sb.from('settlements').delete().eq('creator_id', cid).eq('brand_id', bid).eq('team_id', TEAM_ID)
-            console.log(`  ✅ settlement 삭제 (${c.label})`)
-            // workspace 삭제 (creator+brand 기준)
-            const { data: ws } = await sb.from('workspaces').select('id').eq('creator_id', cid).eq('brand_id', bid).eq('project_title', c.workspace.project_title)
-            if (ws?.length) {
-                await sb.from('workspaces').delete().in('id', ws.map((w: any) => w.id))
-                console.log(`  ✅ workspace 삭제 (${c.label})`)
-            }
-            const { data: mp } = await sb.from('moment_proposals').select('id').eq('creator_id', cid).eq('brand_id', bid)
-            if (mp?.length) {
-                const mpIds = mp.map((m: any) => m.id)
-                // life_moments 삭제 (moment_proposals → moment_id)
-                const { data: mps } = await sb.from('moment_proposals').select('moment_id').in('id', mpIds)
-                const momentIds = mps?.map((m: any) => m.moment_id).filter(Boolean) || []
-                await sb.from('moment_proposals').delete().in('id', mpIds)
-                if (momentIds.length) await sb.from('life_moments').delete().in('id', momentIds)
-                console.log(`  ✅ moment_proposals + life_moments 삭제 (${c.label})`)
-            }
-        }
-        console.log('\n🎉 삭제 완료')
+        await deleteAll()
         return
     }
 
-    // ─── INSERT ────────────────────────────────────────────────────────────────
-    for (const collab of DEMO_COLLABS) {
-        console.log(`\n📦 생성 중: ${collab.label}`)
+    // 삭제부터
+    await deleteAll()
 
-        // 1. life_moments (NOT NULL 없음 — 안전)
+    // ─── 5건 생성 ─────────────────────────────────────────────────────────────
+    console.log('🚀 5건 초고퀄리티 데모 협업 생성 시작...\n')
+
+    for (const [i, collab] of DEMO.entries()) {
+        console.log(`[${i + 1}/5] 📦 ${collab.label}`)
+
+        // 1. life_moments
         const { data: lm, error: lmErr } = await sb
             .from('life_moments')
             .insert({
-                creator_id: collab.creator.id,
+                creator_id: collab.creator_id,
                 team_id: TEAM_ID,
-                title: collab.lifeMonument.title,
-                description: collab.lifeMonument.description,
-                category: collab.lifeMonument.category,
-                moment_start_date: collab.lifeMonument.moment_start_date,
+                title: collab.life_moment.title,
+                description: collab.life_moment.description,
+                category: collab.life_moment.category,
+                moment_start_date: collab.life_moment.moment_start_date,
                 status: 'completed',
             })
-            .select('id')
-            .single()
+            .select('id').single()
 
         if (lmErr) { console.error(`  ❌ life_moments: ${lmErr.message}`); continue }
-        console.log(`  ✅ life_moments: ${lm.id}`)
 
-        // 2. moment_proposals (brand_id, creator_id, moment_id NOT NULL)
+        // 2. moment_proposals
         const { data: mp, error: mpErr } = await sb
             .from('moment_proposals')
             .insert({
-                brand_id: collab.brand.id,
-                creator_id: collab.creator.id,
+                brand_id: collab.brand_id,
+                creator_id: collab.creator_id,
                 moment_id: lm.id,
-                message: collab.momentProposal.message,
-                status: collab.momentProposal.status,
+                message: collab.moment_proposal.message,
+                status: collab.moment_proposal.status,
                 creator_team_id: TEAM_ID,
-                created_at: collab.momentProposal.created_at,
+                created_at: collab.moment_proposal.created_at,
             })
-            .select('id')
-            .single()
+            .select('id').single()
 
         if (mpErr) { console.error(`  ❌ moment_proposals: ${mpErr.message}`); continue }
-        console.log(`  ✅ moment_proposals: ${mp.id}`)
 
-        // 3. workspaces (brand_id, creator_id, project_title NOT NULL)
+        // 3. workspaces
         const { data: ws, error: wsErr } = await sb
             .from('workspaces')
             .insert({
-                brand_id: collab.brand.id,
-                creator_id: collab.creator.id,
+                brand_id: collab.brand_id,
+                creator_id: collab.creator_id,
                 project_title: collab.workspace.project_title,
                 product_name: collab.workspace.product_name,
                 price_offer: collab.workspace.price_offer,
@@ -252,23 +359,21 @@ async function main() {
                 original_proposal_id: mp.id,
                 original_proposal_type: 'moment_proposal',
             })
-            .select('id')
-            .single()
+            .select('id').single()
 
         if (wsErr) { console.error(`  ❌ workspaces: ${wsErr.message}`); continue }
-        console.log(`  ✅ workspaces: ${ws.id}`)
 
-        // workspace_id를 moment_proposals에 역참조 업데이트
+        // workspace_id 역참조 업데이트
         await sb.from('moment_proposals').update({ workspace_id: ws.id }).eq('id', mp.id)
 
-        // 4. settlements (creator_id NOT NULL, 나머지 nullable)
-        const { gross_amount, split_ratio } = collab.settlement
-        const { creatorAmount, mcnAmount, withholdingAmount, netCreatorAmount } = calcSettlement(gross_amount, split_ratio)
+        // 4. settlement
+        const { gross_amount, split_ratio, settlement_month, status, paid_at, note } = collab.settlement
+        const { creatorAmount, mcnAmount, withholdingAmount, netCreatorAmount } = calc(gross_amount, split_ratio)
 
         const { error: sErr } = await sb.from('settlements').insert({
             team_id: TEAM_ID,
-            creator_id: collab.creator.id,
-            brand_id: collab.brand.id,
+            creator_id: collab.creator_id,
+            brand_id: collab.brand_id,
             workspace_id: ws.id,
             proposal_id: mp.id,
             proposal_type: 'moment_proposal',
@@ -279,31 +384,40 @@ async function main() {
             withholding_rate: 0.033,
             withholding_amount: withholdingAmount,
             net_creator_amount: netCreatorAmount,
-            status: collab.settlement.status,
-            settlement_month: collab.settlement.settlement_month,
-            paid_at: collab.settlement.paid_at,
-            note: collab.settlement.note,
+            status,
+            settlement_month,
+            paid_at,
+            note,
         })
 
         if (sErr) {
             console.error(`  ❌ settlements: ${sErr.message}`)
         } else {
-            console.log(`  ✅ settlements (${collab.settlement.status})`)
-            console.log(`     Gross ₩${gross_amount.toLocaleString()} → 크리에이터 ₩${creatorAmount.toLocaleString()} / MCN ₩${mcnAmount.toLocaleString()} / 실지급 ₩${netCreatorAmount.toLocaleString()}`)
+            const statusEmoji = { paid: '✅', escrow: '🔒', pending: '⏳' }[status] || '⏳'
+            console.log(`  ✅ 생성 완료 | ${statusEmoji} ${status} | ₩${gross_amount.toLocaleString()} Gross → 크리에이터 ₩${creatorAmount.toLocaleString()} / MCN ₩${mcnAmount.toLocaleString()}`)
         }
     }
 
-    // 5. mcn_revenue_splits
-    const splits = Object.values(CREATORS).map(c => ({ team_id: TEAM_ID, creator_id: c.id, split_ratio: 0.75 }))
-    const { error: splitErr } = await sb.from('mcn_revenue_splits').upsert(splits, { onConflict: 'team_id,creator_id' })
-    if (splitErr) console.warn('⚠️  배분율 UPSERT 실패:', splitErr.message)
-    else console.log('\n✅ 배분율(75%) 설정 완료')
+    // 5. mcn_revenue_splits UPSERT
+    const splits = Object.values(C).map(id => ({ team_id: TEAM_ID, creator_id: id, split_ratio: 0.75 }))
+    await sb.from('mcn_revenue_splits').upsert(splits, { onConflict: 'team_id,creator_id' })
 
-    console.log('\n🎉 완료!')
-    console.log('   마스터 트래커: moment_proposals → (get_team_proposals RPC 업데이트 필요)')
-    console.log('   캘린더:        life_moments.moment_start_date + moment_proposals.created_at')
-    console.log('   크리에이터관리: moment_proposals 카운트 반영')
-    console.log('   정산 탭:       settlements → workspaces 연결 완료')
+    console.log(`
+═══════════════════════════════════════════════════════
+🎉 완료! 5건 초고퀄리티 데모 협업 생성
+
+① 올리브영 × 서연스킨      ₩1,500,000  → paid ✅ (2월)
+② 아모레유스랩 × 채린글로우  ₩2,200,000  → escrow 🔒 (3월)
+③ 선스크린랩 × 소미스킨랩   ₩3,500,000  → pending ⏳ (3월)
+④ 보이브 × 수빈OOTD        ₩4,000,000  → pending ⏳ (4월)
+⑤ 네일스튜디오N × 예진네일즈 ₩1,800,000  → pending ⏳ (4월)
+
+마스터트래커: moment_proposals 5건 ✅
+캘린더:       life_moments 날짜 이벤트 5건 ✅
+크리에이터관리: 5명 proposal 카운트 반영 ✅
+정산탭:       settlements 5건 (2·3·4월 분산) ✅
+═══════════════════════════════════════════════════════
+`)
 }
 
 main().catch(e => { console.error(e); process.exit(1) })
