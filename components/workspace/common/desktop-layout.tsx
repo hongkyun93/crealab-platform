@@ -39,6 +39,8 @@ export function DesktopLayout({ className, userRole }: DesktopLayoutProps) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
             success = await updateProposal(proposal.id, updates);
+        } else if ((proposal as any).type === 'contest') {
+            success = await updateProposal(proposal.id, updates);
         } else {
             success = await updateProductApplication(proposal.id, updates);
         }
@@ -53,6 +55,8 @@ export function DesktopLayout({ className, userRole }: DesktopLayoutProps) {
         if ((proposal as any).moment_id || (proposal as any).momentId) {
             await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            await updateProposal(proposal.id, updates);
+        } else if ((proposal as any).type === 'contest') {
             await updateProposal(proposal.id, updates);
         } else {
             await updateProductApplication(proposal.id, updates);
@@ -79,6 +83,8 @@ export function DesktopLayout({ className, userRole }: DesktopLayoutProps) {
         if ((proposal as any).moment_id || (proposal as any).momentId) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            success = await updateProposal(proposal.id, updates);
+        } else if ((proposal as any).type === 'contest') {
             success = await updateProposal(proposal.id, updates);
         } else {
             success = await updateProductApplication(proposal.id, updates);

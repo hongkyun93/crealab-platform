@@ -79,9 +79,11 @@ export function ContestCard({ contest, onClick, mode = 'creator' }: ContestCardP
             {/* 콘텐츠 영역 */}
             <div className="p-7 flex-1 flex flex-col">
                 <div className="flex items-center gap-2 mb-3">
-                    <span className="text-[10px] font-black tracking-widest uppercase text-primary bg-primary/5 px-2 py-0.5 rounded">
-                        {contest.brand?.display_name || "OFFICIAL"}
-                    </span>
+                    {contest.brand?.display_name && (
+                        <span className="text-[10px] font-black tracking-widest uppercase text-primary bg-primary/5 px-2 py-0.5 rounded">
+                            {contest.brand.display_name}
+                        </span>
+                    )}
                     <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
                         <ShoppingBag className="w-3 h-3" /> {contest.product_name}
                     </span>
@@ -109,6 +111,7 @@ export function ContestCard({ contest, onClick, mode = 'creator' }: ContestCardP
 
                     <div className="flex items-center justify-between py-3 px-4 bg-slate-50 rounded-2xl">
                         <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-400">모집일정</span>
                             <Calendar className="w-4 h-4 text-slate-400" />
                             <span className="text-xs font-bold text-slate-600">
                                 {formatDateRange(contest.recruit_start_date, contest.recruit_end_date || contest.application_end_date)}

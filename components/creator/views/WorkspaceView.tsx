@@ -218,7 +218,8 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                         <TableBody>
                             {items.map((item) => (
                                 <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => {
-                                    if (type === 'active' || ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete'].includes(item.status)) {
+                                    const isContestActive = item.type === 'contest' && ['selected', 'contract', 'active', 'accepted', 'in_progress'].includes(item.status);
+                                    if (isContestActive || type === 'active' || ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete'].includes(item.status)) {
                                         setChatProposal(item);
                                         setIsChatOpen(true);
                                     } else {
@@ -338,13 +339,16 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                         ? 'border-l-blue-500'
                                         : type === 'outbound'
                                             ? 'border-l-purple-500'
-                                            : type === 'rejected'
-                                                ? 'border-l-red-500'
-                                                : type === 'completed'
-                                                    ? 'border-l-slate-400'
-                                                    : 'border-l-emerald-500'}
+                                            : type === 'outbound'
+                                                ? 'border-l-purple-500'
+                                                : type === 'rejected'
+                                                    ? 'border-l-red-500'
+                                                    : type === 'completed'
+                                                        ? 'border-l-slate-400'
+                                                        : 'border-l-emerald-500'}
                         `} onClick={() => {
-                                if (type === 'active' || ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete'].includes(item.status)) {
+                                const isContestActive = item.type === 'contest' && ['selected', 'contract', 'active', 'accepted', 'in_progress'].includes(item.status);
+                                if (isContestActive || type === 'active' || ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete'].includes(item.status)) {
                                     setChatProposal(item);
                                     setIsChatOpen(true);
                                 } else {
@@ -465,7 +469,8 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                                 ? 'border-l-slate-400'
                                                 : 'border-l-emerald-500'}
                     `} onClick={() => {
-                            if (type === 'active' || ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete'].includes(proposal.status)) {
+                            const isContestActive = proposal.type === 'contest' && ['selected', 'contract', 'active', 'accepted', 'in_progress'].includes(proposal.status);
+                            if (isContestActive || type === 'active' || ['accepted', 'signed', 'started', 'confirmed', 'settlement', 'final_complete'].includes(proposal.status)) {
                                 setChatProposal(proposal);
                                 setIsChatOpen(true);
                             } else {
@@ -516,12 +521,17 @@ export const WorkspaceView = React.memo(function WorkspaceView({
                                         <h3 className="font-bold text-base md:text-xl flex items-center gap-2 text-foreground">
                                             {proposal.product_name || proposal.brand_name}
                                             <Badge variant="outline" className={`text-xs font-medium border-2 rounded-full px-3 py-0.5 transition-all bg-background
-                                                ${proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
-                                                    proposal.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
-                                                        proposal.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
-                                                            'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.3)]'}
+                                                ${proposal.type === 'contest' ? 'text-amber-700 dark:text-amber-400 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]' :
+                                                    proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed' ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' :
+                                                        proposal.status === 'completed' ? 'text-slate-700 dark:text-slate-300 border-slate-400/50 shadow-[0_0_12px_rgba(148,163,184,0.3)]' :
+                                                            proposal.status === 'rejected' ? 'text-red-700 dark:text-red-400 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)]' :
+                                                                'text-orange-700 dark:text-orange-400 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.3)]'}
                                             hidden md:inline-flex`}>
-                                                {proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed' ? '진행중' :
+                                                {proposal.type === 'contest' ? (
+                                                    proposal.status === 'settlement' ? '상금 정산 대기' :
+                                                        proposal.status === 'final_complete' || proposal.status === 'completed' ? '수상 완료' :
+                                                            ['selected', 'contract', 'active', 'accepted', 'in_progress'].includes(proposal.status) ? '챌린저 활동 중' : '대기중'
+                                                ) : proposal.status === 'accepted' || proposal.status === 'signed' || proposal.status === 'started' || proposal.status === 'confirmed' ? '진행중' :
                                                     proposal.status === 'settlement' ? '성과 대기' :
                                                         proposal.status === 'final_complete' ? '완료 대기' :
                                                             proposal.status === 'completed' ? '완료됨' :

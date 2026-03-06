@@ -33,6 +33,8 @@ export function DepositView({ userId, depositBalance = 0, onBalanceRefresh }: De
     const [loading, setLoading] = useState(true)
     const [showChargeInfo, setShowChargeInfo] = useState(false)
     const [balance, setBalance] = useState(depositBalance)
+    const [requestAmount, setRequestAmount] = useState('')
+    const [requestNote, setRequestNote] = useState('')
 
     const fetchTransactions = useCallback(async () => {
         setLoading(true)
@@ -65,20 +67,26 @@ export function DepositView({ userId, depositBalance = 0, onBalanceRefresh }: De
     }, [fetchTransactions, fetchBalance])
 
     const handleRequestCharge = async () => {
-        // 충전 요청 레코드 생성 (pending 상태)
+        const parsedAmount = parseInt(requestAmount.replace(/,/g, ''), 10)
+        if (!parsedAmount || parsedAmount <= 0) {
+            toast.error('충전 희망 금액을 입력해 주세요.')
+            return
+        }
         const { error } = await supabase.from('brand_deposits').insert({
             brand_id: userId,
             type: 'charge',
-            amount: 1,    // placeholder — 관리자가 실제 금액 확인 후 덮어씀
+            amount: parsedAmount,
             balance_after: balance,
             status: 'pending',
-            note: '충전 요청 (계좌이체 대기)',
+            note: requestNote.trim() || `충전 요청 ₩${parsedAmount.toLocaleString()} (계좌이체 대기)`,
         })
         if (error) {
             toast.error('충전 요청 등록에 실패했습니다.')
         } else {
             toast.success('충전 요청이 등록되었습니다. 아래 계좌로 입금해 주세요.')
             setShowChargeInfo(true)
+            setRequestAmount('')
+            setRequestNote('')
             fetchTransactions()
         }
     }
@@ -139,6 +147,26 @@ export function DepositView({ userId, depositBalance = 0, onBalanceRefresh }: De
                                 아래 계좌로 입금하시면 관리자 확인 후 잔액이 자동 반영됩니다.<br />
                                 입금 확인은 영업일 기준 2~4시간 내 처리됩니다.
                             </p>
+                            {/* 희망 충전 금액 + 메모 */}
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        placeholder="충전 희망 금액"
+                                        value={requestAmount}
+                                        onChange={e => setRequestAmount(e.target.value)}
+                                        className="flex-1 h-9 rounded-md border border-orange-300 px-3 text-sm font-mono text-right"
+                                    />
+                                    <span className="text-sm text-orange-700 font-bold shrink-0">원</span>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="메모 (선택, 예: OO 캠페인 충전)"
+                                    value={requestNote}
+                                    onChange={e => setRequestNote(e.target.value)}
+                                    className="w-full h-9 rounded-md border border-orange-300 px-3 text-sm"
+                                />
+                            </div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-orange-700/70">은행</span>
@@ -181,6 +209,7 @@ export function DepositView({ userId, depositBalance = 0, onBalanceRefresh }: De
                             </Button>
                         </div>
                     )}
+
                 </CardContent>
             </Card>
 

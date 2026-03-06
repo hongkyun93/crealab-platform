@@ -1,0 +1,12 @@
+const targetCount = 30;
+const baseReward = 10000;
+const rank1Reward = 100000;
+const rank2Reward = 50000;
+const rank3Reward = 10000;
+const rank1Count = 1;
+const rank2Count = 1;
+const rank3Count = 3;
+const totalBase = targetCount * baseReward;
+const totalRank = (rank1Reward * rank1Count) + (rank2Reward * rank2Count) + (rank3Reward * rank3Count);
+const pureBudget = totalBase + totalRank;
+console.log(pureBudget);

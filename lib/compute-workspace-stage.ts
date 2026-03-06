@@ -2,11 +2,17 @@
 export type WorkspaceStage = 'negotiation' | 'contract' | 'shipping' | 'content' | 'settlement' | 'final_complete';
 
 /**
- * 모든 proposal 타입(moment_proposals, product_applications, campaign_applications)을 동일 로직으로 처리.
+ * 모든 proposal 타입(moment_proposals, product_applications, campaign_applications, contest)을 동일 로직으로 처리.
  * info-panel.tsx의 stage 계산과 동일 기준 → store stageMap에 공유 사용.
+ *
+ * [콘테스트 특이사항]
+ * type === 'contest' 이면 negotiation(조건협의) 단계를 건너뛰고 바로 contract 단계에서 시작.
+ * 브랜드가 챌린저를 선발하는 순간 브랜드 서명이 포함된 계약서가 생성되므로 협의 단계가 없음.
  */
 export function computeWorkspaceStage(proposal: any): WorkspaceStage {
     if (!proposal) return 'negotiation';
+
+    const isContest = proposal.type === 'contest' || proposal.original_proposal_type === 'contest_application';
 
     const status = proposal.status ?? '';
     const contractStatus = proposal.contract_status ?? '';
@@ -42,6 +48,9 @@ export function computeWorkspaceStage(proposal: any): WorkspaceStage {
 
     // 계약 단계 — status 기반 fallback
     if (['signed', 'confirmed', 'started', 'completed', 'contract'].includes(status)) return 'contract';
+
+    // [콘테스트] 조건협의 단계 없음 — selected/active 상태이면 바로 계약 단계
+    if (isContest && ['selected', 'active', 'applied', 'accepted', 'in_progress'].includes(status)) return 'contract';
 
     // 조건 협의 단계
     if (['accepted', 'negotiating', 'offered', 'pending', 'applied', 'active', 'in_progress', 'selected'].includes(status)) return 'negotiation';

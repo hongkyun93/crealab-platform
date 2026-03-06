@@ -193,6 +193,14 @@ export function SmartContractPanel({ proposal, userType, onSign, onSaveContract,
     const updateProposal = useWorkspaceStore((state) => state.updateProposal);
     const setContractViewOpen = useWorkspaceStore((state) => state.setContractViewOpen);
 
+    // ── [FIX] proposal.contract_content가 나중에 로드될 때 state 동기화 ──
+    // useState 초기값은 최초 마운트에만 적용되므로, proposal prop 변경 시 명시적으로 업데이트
+    useEffect(() => {
+        if (proposal.contract_content && !contractContent) {
+            setContractContent(proposal.contract_content);
+        }
+    }, [proposal.contract_content]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // ── 예치금 잔액 (브랜드 뷰에서만 사용) ──
     const [depositBalance, setDepositBalance] = useState<number | null>(null);
     const [isPayingDeposit, setIsPayingDeposit] = useState(false);

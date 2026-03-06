@@ -580,11 +580,11 @@ ${u.name}의 담당자입니다.
                                 <div className="rounded-xl border bg-card p-5 space-y-4 shadow-sm border-primary/20">
                                     <h3 className="text-base font-bold flex items-center gap-2 pb-3 border-b border-primary/10">
                                         <MessageCircle className="h-5 w-5 text-primary" />
-                                        도착한 제안 ({momentProposals.filter(p => p.moment_id === momentData.id).length})
+                                        도착한 제안 ({(momentProposals ?? []).filter(p => p.moment_id === momentData.id).length})
                                     </h3>
-                                    {momentProposals.filter(p => p.moment_id === momentData.id).length > 0 ? (
+                                    {(momentProposals ?? []).filter(p => p.moment_id === momentData.id).length > 0 ? (
                                         <div className="space-y-3">
-                                            {momentProposals.filter(p => p.moment_id === momentData.id).map(prop => (
+                                            {(momentProposals ?? []).filter(p => p.moment_id === momentData.id).map(prop => (
                                                 <div key={prop.id} className="bg-background border border-border/80 rounded-xl p-3.5 space-y-3 hover:border-primary/30 transition-all shadow-sm">
                                                     <div className="flex items-center gap-3">
                                                         {prop.brand_avatar ? (
@@ -701,7 +701,7 @@ ${u.name}의 담당자입니다.
                                     {/* CTA & Proposal Status */}
                                     <div className="space-y-2">
                                         {(() => {
-                                            const activeProp = momentProposals.find(p =>
+                                            const activeProp = (momentProposals ?? []).find(p =>
                                                 p.moment_id === momentData.id &&
                                                 (user?.role === 'brand' ? p.brand_id === user.id : p.creator_id === user?.id) &&
                                                 p.status !== 'cancelled' && p.status !== 'rejected'

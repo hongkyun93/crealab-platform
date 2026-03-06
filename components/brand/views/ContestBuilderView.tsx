@@ -64,7 +64,6 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
     const [videoLength, setVideoLength] = useState("15초 내외");
     const [videoRatio, setVideoRatio] = useState("9:16 세로형 (숏폼 최적화)");
     const [videoResolution, setVideoResolution] = useState("1080p 이상");
-    const [allowMirroring, setAllowMirroring] = useState(false);
 
     const [sellingPoints, setSellingPoints] = useState("");
     const [requiredCuts, setRequiredCuts] = useState("");
@@ -128,7 +127,10 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
 
     // Added Submission Logic
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
+    const [isEscrowModalOpen, setIsEscrowModalOpen] = useState(false);
     const [draftId, setDraftId] = useState<string | null>(null);
+    const [creditBalance, setCreditBalance] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchDraft = async () => {
@@ -173,7 +175,6 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
                     setVideoLength(data.video_length || "15초 내외");
                     setVideoRatio(data.video_ratio || "9:16 세로형 (숏폼 최적화)");
                     setVideoResolution(data.video_resolution || "1080p 이상");
-                    setAllowMirroring(data.allow_mirroring || false);
 
                     if (data.selling_points && Array.isArray(data.selling_points)) {
                         setSellingPoints(data.selling_points.join('\n'));
@@ -280,12 +281,10 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
                 selling_points: sellingPoints.split('\n').filter(s => s.trim().length > 0),
                 required_cuts: requiredCuts.split('\n').filter(s => s.trim().length > 0),
                 forbidden_rules: forbiddenRules.split('\n').filter(s => s.trim().length > 0),
-                caution_notes: [], // Placeholder since it's not in UI yet
                 required_hashtags: parsedHashtags,
                 video_length: videoLength,
                 video_ratio: videoRatio,
                 video_resolution: videoResolution,
-                allow_mirroring: allowMirroring,
                 platforms: selectedChannels,
                 total_budget: budgetSummary.pureBudget,
                 target_challenger_count: targetCount,
@@ -310,7 +309,7 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
                 award_end_date: awardEndDate || null,
                 product_name: productName,
                 product_link: productLink,
-                status: isFinal ? 'published' : 'draft', // assuming draft unless final, though escrow handles status typically
+                status: 'draft', // 에스크로 결제 완료 후 RPC가 'published'로 변경
                 maintenance_period: maintenancePeriod,
                 ...(thumbnailUrl && { thumbnail_url: thumbnailUrl })
             };
@@ -322,7 +321,7 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
                     window.alert("업데이트 중 오류가 발생했습니다: " + (error.message || JSON.stringify(error)));
                     throw error;
                 }
-                toast.success(isFinal ? "결제 및 발행이 완료되었습니다." : "임시저장이 완료되었습니다.");
+                toast.success(isFinal ? "콘테스트 정보가 저장되었습니다. 결제를 진행해주세요." : "임시저장이 완료되었습니다.");
             } else {
                 console.log("[Save Draft] Attempting insert with payload:", payload);
                 const { data, error } = await supabase.from('ad_contests').insert(payload).select().single();
@@ -334,11 +333,22 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
                 }
                 console.log("[Save Draft] Insert success, data:", data);
                 setDraftId(data.id);
-                toast.success(isFinal ? "결제 및 발행이 완료되었습니다." : "임시저장이 완료되었습니다.");
+                toast.success(isFinal ? "콘테스트 정보가 저장되었습니다. 결제를 진행해주세요." : "임시저장이 완료되었습니다.");
             }
 
             if (isFinal) {
-                onNavigate('ad-contests');
+                // 예치금 잔액 조회 후 에스크로 모달 오픈
+                try {
+                    const { data: profileData } = await supabase
+                        .from('profiles')
+                        .select('deposit_balance')
+                        .eq('id', user?.id)
+                        .single();
+                    setCreditBalance(profileData?.deposit_balance ?? 0);
+                } catch {
+                    setCreditBalance(null);
+                }
+                setIsEscrowModalOpen(true);
             }
         } catch (error: any) {
             console.error("Error creating/updating contest:", error);
@@ -346,6 +356,37 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
             toast.error(error?.message || "오류가 발생했습니다.");
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    // 에스크로 결제 실행
+    const handlePublish = async () => {
+        if (!draftId || !user?.id) return;
+        setIsPublishing(true);
+        try {
+            const { data, error } = await supabase.rpc('create_contest_escrow', {
+                p_contest_id: draftId,
+                p_brand_id: user.id,
+                p_total_amount: budgetSummary.totalAmount
+            });
+
+            if (error) throw error;
+            if (!data?.success) {
+                if (data?.error === 'Insufficient balance.') {
+                    toast.error(`크레딧이 부족합니다. 필요: ${data.required?.toLocaleString()}원 / 현재: ${data.current?.toLocaleString()}원`);
+                } else {
+                    toast.error(data?.error || '결제 처리 중 오류가 발생했습니다.');
+                }
+                return;
+            }
+
+            toast.success('🎉 콘테스트가 성공적으로 발행되었습니다!');
+            setIsEscrowModalOpen(false);
+            onNavigate('ad-contests');
+        } catch (err: any) {
+            toast.error(err?.message || '에스크로 결제 중 오류가 발생했습니다.');
+        } finally {
+            setIsPublishing(false);
         }
     };
 
@@ -681,26 +722,6 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
                                                     className="min-h-[120px] bg-slate-50 border-dashed resize-none"
                                                 />
                                             </div>
-                                            <div className="flex items-center justify-between p-4 border rounded-lg bg-slate-50">
-                                                <div className="space-y-0.5">
-                                                    <Label className="text-sm font-semibold text-slate-700">미러링 영상 허용 여부</Label>
-                                                    <p className="text-xs text-muted-foreground">크리에이터가 다른 영상에서 사용한 소스를 재가공하여 제출하는 것을 허용할까요?</p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-sm font-bold ${allowMirroring ? 'text-primary' : 'text-slate-400'}`}>
-                                                        {allowMirroring ? '허용함' : '불가 (신규 촬영)'}
-                                                    </span>
-                                                    <Button
-                                                        type="button"
-                                                        variant={allowMirroring ? "default" : "outline"}
-                                                        size="sm"
-                                                        onClick={() => setAllowMirroring(!allowMirroring)}
-                                                        className={allowMirroring ? 'bg-primary' : ''}
-                                                    >
-                                                        {allowMirroring ? 'ON' : 'OFF'}
-                                                    </Button>
-                                                </div>
-                                            </div>
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-semibold text-red-600 flex justify-between">
                                                     절대 금지 사항 / 주의 사항
@@ -973,6 +994,71 @@ export function ContestBuilderView({ onNavigate, initialParams }: ContestBuilder
                             </div>
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* 에스크로 결제 확인 모달 */}
+            <Dialog open={isEscrowModalOpen} onOpenChange={(open) => !open && setIsEscrowModalOpen(false)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-xl">
+                            <Trophy className="w-5 h-5 text-amber-500" />
+                            콘테스트 발행 및 에스크로 결제
+                        </DialogTitle>
+                        <DialogDescription>
+                            상금이 안전하게 보호되도록 크레딧으로 미리 예치합니다. 크리에이터들이 신뢰하고 참여할 수 있습니다.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        {/* 예치금 내역 */}
+                        <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm border border-slate-100">
+                            <div className="flex justify-between text-slate-600">
+                                <span>기본 참가 보상 ({targetCount}명 × {baseReward.toLocaleString()}원)</span>
+                                <span className="font-semibold">{budgetSummary.totalBase.toLocaleString()}원</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                                <span>수상 상금 (1/2/3등 합계)</span>
+                                <span className="font-semibold">{budgetSummary.totalRank.toLocaleString()}원</span>
+                            </div>
+                            <div className="flex justify-between text-slate-500 text-xs">
+                                <span>플랫폼 수수료 (5%)</span>
+                                <span>{budgetSummary.platformFee.toLocaleString()}원</span>
+                            </div>
+                            <div className="flex justify-between text-slate-500 text-xs">
+                                <span>VAT (10%)</span>
+                                <span>{budgetSummary.vat.toLocaleString()}원</span>
+                            </div>
+                            <div className="border-t border-slate-200 pt-2 flex justify-between font-black text-slate-900">
+                                <span>총 예치금</span>
+                                <span className="text-primary">{budgetSummary.totalAmount.toLocaleString()}원</span>
+                            </div>
+                        </div>
+
+                        {/* 크레딧 잔액 */}
+                        <div className={`rounded-xl p-4 border text-sm ${creditBalance !== null && creditBalance < budgetSummary.totalAmount ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                            <div className="flex justify-between font-semibold">
+                                <span>현재 크레딧 잔액</span>
+                                <span>{creditBalance !== null ? `${creditBalance.toLocaleString()}원` : '조회 중...'}</span>
+                            </div>
+                            {creditBalance !== null && creditBalance < budgetSummary.totalAmount && (
+                                <p className="text-xs mt-1 text-red-600 font-medium">
+                                    ⚠️ 크레딧이 {(budgetSummary.totalAmount - creditBalance).toLocaleString()}원 부족합니다. 관리자에게 충전을 요청해주세요.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setIsEscrowModalOpen(false)} disabled={isPublishing}>
+                            취소
+                        </Button>
+                        <Button
+                            onClick={handlePublish}
+                            disabled={isPublishing || (creditBalance !== null && creditBalance < budgetSummary.totalAmount)}
+                            className="bg-primary hover:bg-primary/90"
+                        >
+                            {isPublishing ? '결제 중...' : `${budgetSummary.totalAmount.toLocaleString()}원 결제하고 발행`}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>

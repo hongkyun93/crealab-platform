@@ -88,6 +88,11 @@ export default function AdminPage() {
     const [confirmingId, setConfirmingId] = useState<string | null>(null)
     const [payingId, setPayingId] = useState<string | null>(null)
 
+    // ── 금액 누적 로그 ─────────────────────────────────────────────
+    const [financeLog, setFinanceLog] = useState<any[]>([])
+    const [loadingFinanceLog, setLoadingFinanceLog] = useState(false)
+    const [financeSearch, setFinanceSearch] = useState('')
+
     // ── 접근 제어 ─────────────────────────────────────────────────
     useEffect(() => {
         if (user && user.role !== 'admin') router.push('/')
@@ -276,6 +281,63 @@ export default function AdminPage() {
     }, [supabase])
 
     // ── Tab 전환 시 로드 ──────────────────────────────────────────
+    const fetchFinanceLog = useCallback(async () => {
+        setLoadingFinanceLog(true)
+        try {
+            // 1. 입금 확인 완료 (product/moment/campaign)
+            const fields = 'id, price_offer, payment_confirmed_at, created_at, brand_id, creator_id'
+            const [{ data: pa }, { data: mp }, { data: ca }] = await Promise.all([
+                supabase.from('product_applications').select(fields).not('payment_confirmed_at', 'is', null).order('payment_confirmed_at', { ascending: false }).limit(200),
+                supabase.from('moment_proposals').select(fields).not('payment_confirmed_at', 'is', null).order('payment_confirmed_at', { ascending: false }).limit(200),
+                supabase.from('campaign_applications').select(fields).not('payment_confirmed_at', 'is', null).order('payment_confirmed_at', { ascending: false }).limit(200),
+            ])
+
+            // 2. 예치금 충전 완료
+            const { data: deposits } = await supabase
+                .from('brand_deposits')
+                .select('id, amount, created_at, confirmed_at, brand_id, note, brand:profiles!brand_id(display_name)')
+                .eq('status', 'confirmed')
+                .order('confirmed_at', { ascending: false })
+                .limit(200)
+
+            // 3. 정산 지급
+            const { data: settlementsData } = await supabase
+                .from('settlements')
+                .select('id, gross_amount, creator_amount, created_at, paid_at, creator_id, proposal_type, status')
+                .order('created_at', { ascending: false })
+                .limit(200)
+
+            // 프로필 배치 조회
+            const allBrandIds = [...new Set([
+                ...(pa ?? []).map((r: any) => r.brand_id),
+                ...(mp ?? []).map((r: any) => r.brand_id),
+                ...(ca ?? []).map((r: any) => r.brand_id),
+            ].filter(Boolean))]
+            const allCreatorIds = [...new Set([
+                ...(pa ?? []).map((r: any) => r.creator_id),
+                ...(mp ?? []).map((r: any) => r.creator_id),
+                ...(settlementsData ?? []).map((r: any) => r.creator_id),
+            ].filter(Boolean))]
+
+            const profileMap: Record<string, string> = {}
+            if (allBrandIds.length + allCreatorIds.length > 0) {
+                const { data: profiles } = await supabase.from('profiles').select('id, display_name').in('id', [...allBrandIds, ...allCreatorIds])
+                profiles?.forEach((p: any) => { profileMap[p.id] = p.display_name })
+            }
+
+            const log: any[] = [
+                ...(pa ?? []).map((r: any) => ({ id: r.id, type: 'payment', label: '광고비 입금 확인', amount: r.price_offer, brand: profileMap[r.brand_id] || r.brand_id?.slice(0, 8), creator: profileMap[r.creator_id] || r.creator_id?.slice(0, 8), at: r.payment_confirmed_at, subtype: '제품지원' })),
+                ...(mp ?? []).map((r: any) => ({ id: r.id, type: 'payment', label: '광고비 입금 확인', amount: r.price_offer, brand: profileMap[r.brand_id] || r.brand_id?.slice(0, 8), creator: profileMap[r.creator_id] || r.creator_id?.slice(0, 8), at: r.payment_confirmed_at, subtype: '모먼트제안' })),
+                ...(ca ?? []).map((r: any) => ({ id: r.id, type: 'payment', label: '광고비 입금 확인', amount: r.price_offer, brand: profileMap[r.brand_id] || r.brand_id?.slice(0, 8), creator: profileMap[r.creator_id] || r.creator_id?.slice(0, 8), at: r.payment_confirmed_at, subtype: '캠페인지원' })),
+                ...(deposits ?? []).map((r: any) => ({ id: r.id, type: 'deposit', label: '예치금 충전', amount: r.amount, brand: (r.brand as any)?.display_name || r.brand_id?.slice(0, 8), creator: null, at: r.confirmed_at || r.created_at, subtype: '예치금' })),
+                ...(settlementsData ?? []).map((r: any) => ({ id: r.id, type: 'settlement', label: '정산 지급', amount: r.creator_amount, brand: null, creator: profileMap[r.creator_id] || r.creator_id?.slice(0, 8), at: r.paid_at || r.created_at, subtype: r.proposal_type, status: r.status })),
+            ].sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
+
+            setFinanceLog(log)
+        } catch (e) { console.error('[Admin] fetchFinanceLog error:', e) }
+        finally { setLoadingFinanceLog(false) }
+    }, [supabase])
+
     useEffect(() => {
         if (activeTab === 'moments') fetchMoments()
         if (activeTab === 'proposals') fetchProposals()
@@ -284,6 +346,7 @@ export default function AdminPage() {
         if (activeTab === 'payments_done') fetchConfirmedPayments()
         if (activeTab === 'settlements') fetchSettlements()
         if (activeTab === 'deposits') fetchPendingDeposits()
+        if (activeTab === 'finance_log') fetchFinanceLog()
     }, [activeTab]) // eslint-disable-line
 
     // ── 액션 ──────────────────────────────────────────────────────
@@ -471,6 +534,7 @@ export default function AdminPage() {
                         <TabsTrigger value="payments_done" className="gap-1.5 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> 입금완료 ({confirmedPayments.length})</TabsTrigger>
                         <TabsTrigger value="deposits" className="gap-1.5 text-orange-600"><Wallet className="h-3.5 w-3.5" /> 예치금 충전 ({pendingDeposits.length})</TabsTrigger>
                         <TabsTrigger value="settlements" className="gap-1.5 text-emerald-600"><Wallet className="h-3.5 w-3.5" /> 정산 관리 ({settlements.length})</TabsTrigger>
+                        <TabsTrigger value="finance_log" className="gap-1.5 text-violet-600"><Wallet className="h-3.5 w-3.5" /> 금액 로그 ({financeLog.length})</TabsTrigger>
                     </TabsList>
 
                     {/* ── 모먼트 ── */}
@@ -683,18 +747,26 @@ export default function AdminPage() {
                                     <Card key={d.id} className="flex items-center justify-between p-4">
                                         <div className="space-y-1">
                                             <p className="text-sm font-bold">{(d.brand as any)?.display_name ? `${(d.brand as any).display_name}_DEPOSIT` : d.brand_id?.slice(0, 8)}</p>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-muted-foreground">요청금액:</span>
+                                                <span className="text-sm font-black text-orange-600">{d.amount > 1 ? `₩${Number(d.amount).toLocaleString()}` : '미입력'}</span>
+                                            </div>
                                             <p className="text-xs text-muted-foreground">노트: {d.note ?? '-'}</p>
                                             <p className="text-[10px] text-muted-foreground">요청일시: {new Date(d.created_at).toLocaleString('ko-KR')}</p>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="number"
-                                                    placeholder="충전 금액"
-                                                    className="w-36 h-8 rounded-md border border-input px-2 text-xs text-right font-mono"
-                                                    id={`deposit-amount-${d.id}`}
-                                                />
-                                                <span className="text-xs text-muted-foreground">원</span>
+                                            <div className="text-right">
+                                                <p className="text-[10px] text-muted-foreground mb-1">실제 입금액 입력 (관리자)</p>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        placeholder={d.amount > 1 ? String(d.amount) : '충전 금액'}
+                                                        className="w-36 h-8 rounded-md border border-input px-2 text-xs text-right font-mono"
+                                                        id={`deposit-amount-${d.id}`}
+                                                        defaultValue={d.amount > 1 ? d.amount : ''}
+                                                    />
+                                                    <span className="text-xs text-muted-foreground">원</span>
+                                                </div>
                                             </div>
                                             <Button
                                                 size="sm"
@@ -714,6 +786,66 @@ export default function AdminPage() {
                                 ))}
                             </div>
                         )}
+                    </TabsContent>
+
+                    {/* ── 금액 누적 로그 ── */}
+                    <TabsContent value="finance_log" className="space-y-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <p className="text-sm text-muted-foreground">모든 금액 관련 액션 누적 기록 (입금확인 · 예치금충전 · 정산지급)</p>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="브랜드명, 크리에이터명, 유형 검색..."
+                                    value={financeSearch}
+                                    onChange={e => setFinanceSearch(e.target.value)}
+                                    className="h-8 rounded-md border border-input px-3 text-xs w-52"
+                                />
+                                <Button size="sm" variant="outline" onClick={fetchFinanceLog}>새로고침</Button>
+                            </div>
+                        </div>
+                        {loadingFinanceLog ? <p className="text-sm text-muted-foreground">로딩 중...</p> : (() => {
+                            const q = financeSearch.trim().toLowerCase()
+                            const filtered = financeLog.filter(r =>
+                                !q ||
+                                r.brand?.toLowerCase().includes(q) ||
+                                r.creator?.toLowerCase().includes(q) ||
+                                r.label?.toLowerCase().includes(q) ||
+                                r.subtype?.toLowerCase().includes(q)
+                            )
+                            const typeColor: Record<string, string> = {
+                                payment: 'bg-amber-100 text-amber-700',
+                                deposit: 'bg-orange-100 text-orange-700',
+                                settlement: 'bg-emerald-100 text-emerald-700',
+                            }
+                            return filtered.length === 0 ? (
+                                <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">금액 로그가 없습니다.</CardContent></Card>
+                            ) : (
+                                <div className="grid gap-2">
+                                    {filtered.map((r, i) => (
+                                        <Card key={`${r.type}-${r.id}-${i}`} className="flex items-center justify-between p-4">
+                                            <div className="space-y-1 flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', typeColor[r.type] ?? 'bg-muted')}>{r.label}</span>
+                                                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{r.subtype}</span>
+                                                    {r.type === 'settlement' && r.status && (
+                                                        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', r.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')}>{r.status === 'paid' ? '지급완료' : '지급대기'}</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm font-bold">
+                                                    {r.brand && `🏢 ${r.brand}`}
+                                                    {r.brand && r.creator && ' → '}
+                                                    {r.creator && `🎨 ${r.creator}`}
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground">{r.at ? new Date(r.at).toLocaleString('ko-KR') : '-'}</p>
+                                            </div>
+                                            <div className="text-right shrink-0 ml-4">
+                                                <p className="text-base font-black text-slate-900">{r.amount ? `${Number(r.amount).toLocaleString()}원` : '-'}</p>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            )
+                        })()}
                     </TabsContent>
 
                 </Tabs>

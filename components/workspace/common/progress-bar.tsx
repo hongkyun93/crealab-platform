@@ -4,7 +4,7 @@ import { Check, CreditCard } from 'lucide-react';
 import React from 'react';
 import { useWorkspaceStore } from '../hooks/use-workspace-store';
 
-const STAGES = [
+const DEFAULT_STAGES = [
     { id: 'negotiation', label: '조건협의' },
     { id: 'contract', label: '계약서' },
     { id: 'shipping', label: '제품발송' },
@@ -13,20 +13,31 @@ const STAGES = [
     { id: 'final_complete', label: '최종완료' },
 ] as const;
 
+const CONTEST_STAGES = [
+    { id: 'contract', label: '서명/가이드' },
+    { id: 'shipping', label: '제품/준비' },
+    { id: 'content', label: '콘텐츠 제출' },
+    { id: 'settlement', label: '시상/정산' },
+    { id: 'final_complete', label: '콘테스트 완료' },
+] as const;
+
 export function ProgressBar() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
 
-    const currentStepIndex = STAGES.findIndex((s) => s.id === currentStage);
+    const isContest = proposal?.type === 'contest' || proposal?.original_proposal_type === 'contest_application';
+    const stages = isContest ? CONTEST_STAGES : DEFAULT_STAGES;
+
+    const currentStepIndex = stages.findIndex((s) => s.id === currentStage);
 
     // 결제 마이크로 도트: 계약서 서명 완료 + 결제 미확인일 때만 표시
     const isFullySigned = !!(proposal?.brand_signature && proposal?.creator_signature);
     const isPaid = !!(proposal as any)?.payment_confirmed_at;
-    const showPaymentDot = isFullySigned && !isPaid;
+    const showPaymentDot = isFullySigned && !isPaid && !isContest; // 콘테스트는 결제 절차가 다름
 
     return (
         <div className="w-full flex items-center justify-between px-2 py-4">
-            {STAGES.map((stage, index) => {
+            {stages.map((stage, index) => {
                 const isCompleted = index < currentStepIndex || currentStage === 'final_complete';
                 const isCurrent = stage.id === currentStage;
 
@@ -77,8 +88,8 @@ export function ProgressBar() {
                             </span>
                         </div>
 
-                        {/* ── 결제 마이크로 도트: 계약서(index=1)와 제품발송(index=2) 사이 ── */}
-                        {index === 1 && showPaymentDot && (
+                        {/* ── 결제 마이크로 도트: 계약(contract)과 배송(shipping) 사이 ── */}
+                        {stage.id === 'contract' && showPaymentDot && (
                             <div className="flex flex-col items-center shrink-0 mx-1 z-10 relative">
                                 {/* 연결선 위에 오버레이되는 작은 도트 */}
                                 <div className="relative flex items-center justify-center">

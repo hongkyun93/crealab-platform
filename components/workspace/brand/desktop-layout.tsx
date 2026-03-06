@@ -29,12 +29,14 @@ export function BrandDesktopLayout({ className }: BrandDesktopLayoutProps) {
         // Optimistic UI update
         useWorkspaceStore.getState().updateProposal(updates);
 
+        const type = (proposal as any).original_proposal_type;
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).moment_id) {
+        if (type === 'moment_proposal') {
             success = await updateMomentProposal(proposal.id, updates);
-        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+        } else if (type === 'campaign_application') {
             success = await updateProposal(proposal.id, updates);
         } else {
+            // product_application (기본)
             success = await updateProductApplication(proposal.id, updates);
         }
 
@@ -49,9 +51,10 @@ export function BrandDesktopLayout({ className }: BrandDesktopLayoutProps) {
     const handleSaveContract = async (content: string) => {
         if (!proposal?.id) return;
         const updates: any = { contract_content: content };
-        if ((proposal as any).moment_id || (proposal as any).moment_id) {
+        const type = (proposal as any).original_proposal_type;
+        if (type === 'moment_proposal') {
             await updateMomentProposal(proposal.id, updates);
-        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+        } else if (type === 'campaign_application') {
             await updateProposal(proposal.id, updates);
         } else {
             await updateProductApplication(proposal.id, updates);
@@ -70,10 +73,11 @@ export function BrandDesktopLayout({ className }: BrandDesktopLayoutProps) {
         // Optimistic UI update
         useWorkspaceStore.getState().updateProposal(updates);
 
+        const type = (proposal as any).original_proposal_type;
         let success = false;
-        if ((proposal as any).moment_id || (proposal as any).moment_id) {
+        if (type === 'moment_proposal') {
             success = await updateMomentProposal(proposal.id, updates);
-        } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+        } else if (type === 'campaign_application') {
             success = await updateProposal(proposal.id, updates);
         } else {
             success = await updateProductApplication(proposal.id, updates);

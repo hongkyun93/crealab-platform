@@ -44,6 +44,8 @@ import {
     SheetTrigger
 } from "@/components/ui/sheet"
 import { ContestDiscoverView } from "@/components/creator/views/ContestDiscoverView"
+import { CreatorContestStatusView } from "@/components/creator/views/CreatorContestStatusView"
+
 import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
 
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog"
@@ -2697,6 +2699,16 @@ export function CreatorDashboard() {
                 )
             case "discover-contests":
                 return <ContestDiscoverView />
+            case "contest-status":
+                return (
+                    <CreatorContestStatusView
+                        onNavigate={setCurrentView}
+                        onOpenWorkspace={(proposal) => {
+                            setChatProposal(proposal);
+                            setCurrentView('proposals');
+                        }}
+                    />
+                )
             default:
                 return null
         }
@@ -2760,7 +2772,8 @@ export function CreatorDashboard() {
 
 
 
-    if (!displayUser || isLoading) {
+    // 콘테스트 뷰는 자체 데이터를 직접 fetch하므로 isLoading이 true여도 전체 레이아웃 렌더
+    if ((!displayUser || isLoading) && currentView !== 'discover-contests' && currentView !== 'contest-status') {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -2915,6 +2928,16 @@ export function CreatorDashboard() {
                                                 }}
                                             >
                                                 <Trophy className="mr-2 h-4 w-4" /> 광고 콘테스트 둘러보기
+                                            </Button>
+                                            <Button
+                                                variant={currentView === "contest-status" ? "secondary" : "ghost"}
+                                                className="w-full justify-start font-medium"
+                                                onClick={() => {
+                                                    setCurrentView("contest-status")
+                                                    setIsMobileSidebarOpen(false)
+                                                }}
+                                            >
+                                                <Trophy className="mr-2 h-4 w-4 text-amber-500" /> 내 콘테스트 현황
                                             </Button>
                                             <Button
                                                 variant={currentView === "discover-products" ? "secondary" : "ghost"}
@@ -3092,6 +3115,13 @@ export function CreatorDashboard() {
                                         onClick={() => setCurrentView("discover-contests")}
                                     >
                                         <Trophy className="mr-2 h-4 w-4" /> 광고 콘테스트 둘러보기
+                                    </Button>
+                                    <Button
+                                        variant={currentView === "contest-status" ? "secondary" : "ghost"}
+                                        className="w-full justify-start font-medium"
+                                        onClick={() => setCurrentView("contest-status")}
+                                    >
+                                        <Trophy className="mr-2 h-4 w-4 text-amber-500" /> 내 콘테스트 현황
                                     </Button>
                                     <Button
                                         variant={currentView === "discover-products" ? "secondary" : "ghost"}

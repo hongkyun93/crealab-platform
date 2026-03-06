@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react"
 import { Loader2, Trophy } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
 import { toast } from "sonner"
 import { ContestCard } from "@/components/cards/ContestCard"
 import { ContestDetailDialog } from "@/components/dialogs/ContestDetailDialog"
 import { ContestApplyDialog } from "@/components/dialogs/ContestApplyDialog"
 
 export function ContestDiscoverView() {
+    const { user } = useUnifiedProvider();
+    const isBrand = user?.role === 'brand';
     const [isApplyOpen, setIsApplyOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedContest, setSelectedContest] = useState<any>(null);
@@ -23,7 +26,7 @@ export function ContestDiscoverView() {
                 .from('ad_contests')
                 .select(`
                     *,
-                    brand:profiles!ad_contests_brand_id_fkey(display_name),
+                    brand:profiles!brand_id(display_name, avatar_url),
                     applications:ad_contest_applications(count)
                 `)
                 .eq('status', 'published')
@@ -134,15 +137,15 @@ export function ContestDiscoverView() {
                         setSelectedContest(null);
                     }}
                     contest={selectedContest}
-                    onApply={() => {
+                    onApply={isBrand ? undefined : () => {
                         setIsDetailOpen(false);
                         setIsApplyOpen(true);
                     }}
                 />
             )}
 
-            {/* 참가 신청 다이얼로그 */}
-            {selectedContest && (
+            {/* 참가 신청 다이얼로그 — 브랜드는 표시 안 함 */}
+            {selectedContest && !isBrand && (
                 <ContestApplyDialog
                     isOpen={isApplyOpen}
                     onClose={() => {
@@ -164,6 +167,14 @@ export function ContestDiscoverView() {
 
                             const formattedMessage = `[${data.channel}] ${data.appealMessage}`;
 
+                            // profiles FK 방어: auth user가 있어도 profiles 레코드 없으면 upsert
+                            await supabase.from('profiles').upsert({
+                                id: user.id,
+                                email: user.email ?? '',
+                                display_name: user.user_metadata?.name || user.email?.split('@')[0] || '크리에이터',
+                                role: 'creator',
+                            }, { onConflict: 'id', ignoreDuplicates: true });
+
                             const { error } = await supabase.from('ad_contest_applications').insert({
                                 contest_id: selectedContest.id,
                                 creator_id: user.id,
@@ -173,9 +184,15 @@ export function ContestDiscoverView() {
                                 status: 'applied'
                             });
 
+
                             if (error) {
                                 if (error.code === '23505') {
                                     toast.error("이미 지원한 콘테스트입니다.");
+                                    return;
+                                }
+                                if (error.code === '23503') {
+                                    toast.error("크리에이터 프로필이 등록되지 않았습니다. 프로필 설정 후 다시 시도해 주세요.");
+                                    console.error("[ContestApply] FK violation:", JSON.stringify(error));
                                     return;
                                 }
                                 throw error;
@@ -186,16 +203,11 @@ export function ContestDiscoverView() {
                             setSelectedContest(null);
                             fetchContests(); // 실시간 지원자 수 갱신
                         } catch (err: any) {
-                            console.error("Apply Error Detail:", {
-                                message: err.message,
-                                code: err.code,
-                                details: err.details,
-                                hint: err.hint,
-                                stack: err.stack,
-                                error: err
-                            });
-                            toast.error(err.message || "참가 신청 중 오류가 발생했습니다.");
+                            // Supabase PostgrestError는 non-enumerable 속성이므로 JSON.stringify로 직렬화
+                            console.error("Apply Error Detail:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
+                            toast.error(err?.message || "참가 신청 중 오류가 발생했습니다.");
                         }
+
                     }}
                 />
             )}

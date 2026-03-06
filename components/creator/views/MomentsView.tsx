@@ -74,10 +74,10 @@ export const MomentsView = React.memo(function MomentsView({
     }
 
     const getProposalsForMoment = (momentId: string) =>
-        momentProposals.filter((p: any) => p.moment_id === momentId && p.status !== 'cancelled')
+        (momentProposals ?? []).filter((p: any) => p.moment_id === momentId && p.status !== 'cancelled')
 
     const getActiveProposalCount = (momentId: string) =>
-        momentProposals.filter((p: any) => p.moment_id === momentId && p.status !== 'cancelled').length
+        (momentProposals ?? []).filter((p: any) => p.moment_id === momentId && p.status !== 'cancelled').length
 
     // ─── Render proposal footer for cards ─────────────────────
     const renderProposalFooter = (momentId: string) => {
@@ -377,7 +377,7 @@ export const MomentsView = React.memo(function MomentsView({
                         <MomentTableView
                             items={upcomingMoments}
                             getCreator={() => creatorProfile}
-                            momentProposals={momentProposals}
+                            momentProposals={momentProposals ?? []}
                             onClick={(m) => m.status === 'draft' ? router.push(`/creator/edit/${m.id}`) : router.push(`/moment/${m.id}`)}
                             onEdit={(id) => router.push(`/creator/edit/${id}`)}
                             onDelete={deleteMoment}

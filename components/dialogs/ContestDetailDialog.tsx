@@ -7,9 +7,10 @@ import {
     DialogFooter
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Trophy, Calendar, Video, FileText, ShoppingBag, ExternalLink, CheckCircle2, AlertTriangle, Hash, Clock, Monitor } from "lucide-react"
+import { Trophy, Calendar, Video, FileText, ShoppingBag, ExternalLink, CheckCircle2, AlertTriangle, Hash, Clock, Monitor, Users } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { ko } from "date-fns/locale"
+import { toast } from "sonner"
 
 interface ContestDetailDialogProps {
     isOpen: boolean;
@@ -129,6 +130,13 @@ export function ContestDetailDialog({
                                     <div className="text-2xl font-black text-slate-900">{formatPrice(contest.base_reward || 0)}</div>
                                     <div className="text-[10px] text-slate-500 mt-1 font-bold">선발된 모든 챌린저 지급</div>
                                 </div>
+                                <div className="col-span-2 bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center justify-between">
+                                    <div className="text-sm font-bold text-slate-600 flex items-center gap-2">
+                                        <Users className="w-4 h-4 text-slate-400" />
+                                        목표 챌린저 수
+                                    </div>
+                                    <div className="text-lg font-black text-slate-900">{contest.target_challenger_count || '-'}명</div>
+                                </div>
                             </div>
                             <div className="mt-5 space-y-2.5">
                                 <div className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-amber-200 transition-colors">
@@ -210,7 +218,7 @@ export function ContestDetailDialog({
                                         { title: "영상 검수", start: contest.video_review_start_date, end: contest.video_review_end_date },
                                         { title: "최종 영상 업로드", start: contest.video_upload_start_date, end: contest.video_upload_end_date },
                                         { title: "반응 추이 테스트", start: contest.reaction_test_start_date, end: contest.reaction_test_end_date },
-                                        { title: "최종 수상자 시상", date: contest.award_start_date }
+                                        { title: "최종 수상자 시상", start: contest.award_start_date, end: contest.award_end_date }
                                     ].map((item, idx) => (
                                         <div key={idx} className="relative">
                                             <div className={`absolute -left-[35px] top-1 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm ${idx === 0 ? 'bg-primary ring-4 ring-primary/10' : 'bg-slate-200'}`} />
@@ -292,7 +300,13 @@ export function ContestDetailDialog({
                     ) : (
                         <Button
                             className="w-full sm:max-w-md h-14 text-xl font-black rounded-2xl shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300 active:scale-95"
-                            onClick={onApply}
+                            onClick={() => {
+                                if (!onApply) {
+                                    toast.error('브랜드 계정은 콘테스트에 참가할 수 없습니다.')
+                                    return
+                                }
+                                onApply()
+                            }}
                         >
                             지금 바로 도전하기
                         </Button>

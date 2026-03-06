@@ -65,6 +65,25 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
     const [perfSubmitted, setPerfSubmitted] = useState<any>(null);
     const [perfLoading, setPerfLoading] = useState(false);
 
+    // [콘테스트] SNS 최종 게시 링크 제출
+    const [contestSnsLink, setContestSnsLink] = useState('');
+    const [isSavingSnsLink, setIsSavingSnsLink] = useState(false);
+
+    // [콘테스트] 일정 타임라인 데이터
+    const [contestSchedule, setContestSchedule] = useState<any>(null);
+
+    // [콘테스트] 일정 fetch
+    useEffect(() => {
+        const contestId = (proposal as any)?.contest_id;
+        if (!contestId || (proposal as any)?.type !== 'contest') return;
+        supabase
+            .from('ad_contests')
+            .select('title, recruit_end_date, winner_announce_date, award_start_date, application_end_date')
+            .eq('id', contestId)
+            .single()
+            .then(({ data }) => { if (data) setContestSchedule(data); });
+    }, [(proposal as any)?.contest_id]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Instagram 자동 성과 수집 상태
     const [igTab, setIgTab] = useState<'instagram' | 'screenshot'>('instagram');
     const [igMediaList, setIgMediaList] = useState<any[]>([]);
@@ -337,10 +356,12 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
         if ((updates as any).secondary_usage_fee !== undefined) payload.secondary_usage_fee = (updates as any).secondary_usage_fee;
         if (updates.product_type !== undefined) payload.product_type = updates.product_type;
 
-        // [FIX] 3-way proposal type routing
+        // [FIX] 4-way proposal type routing (moment / campaign / contest / product)
         if ((proposal as any).moment_id || (proposal as any).momentId) {
             await updateMomentProposal(proposal.id, payload);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            await updateProposal(proposal.id, payload);
+        } else if ((proposal as any).type === 'contest') {
             await updateProposal(proposal.id, payload);
         } else {
             await updateProductApplication(proposal.id, payload);
@@ -361,6 +382,8 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
         if ((proposal as any).moment_id || (proposal as any).momentId) {
             success = await updateMomentProposal(proposal.id, updates);
         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+            success = await updateProposal(proposal.id, updates);
+        } else if ((proposal as any).type === 'contest') {
             success = await updateProposal(proposal.id, updates);
         } else {
             success = await updateProductApplication(proposal.id, updates);
@@ -467,6 +490,37 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                     </p>
                 </div>
             </div>
+
+            {/* [4-B] 콘테스트 일정 타임라인 배너 */}
+            {(proposal as any)?.type === 'contest' && contestSchedule && (() => {
+                const now = new Date();
+                const phases = [
+                    { label: '지원 마감', date: contestSchedule.application_end_date || contestSchedule.recruit_end_date },
+                    { label: '수상자 발표', date: contestSchedule.winner_announce_date },
+                    { label: '콘텐츠 업로드', date: contestSchedule.award_start_date },
+                ].filter(p => p.date);
+                if (phases.length === 0) return null;
+                const fmt = (d: string) => { try { const dt = new Date(d); return `${dt.getMonth() + 1}/${dt.getDate()}`; } catch { return d; } };
+                const isPast = (d: string) => new Date(d) < now;
+                const isNear = (d: string) => { const diff = new Date(d).getTime() - now.getTime(); return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000; };
+                return (
+                    <div className="mx-4 mb-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                        <p className="text-[10px] font-bold text-amber-700 mb-2">🏆 {contestSchedule.title || '콘테스트'} 일정</p>
+                        <div className="flex items-center">
+                            {phases.map((phase, i) => (
+                                <React.Fragment key={i}>
+                                    <div className="flex flex-col items-center min-w-0">
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold ${isPast(phase.date) ? 'bg-slate-400' : isNear(phase.date) ? 'bg-amber-500 animate-pulse' : 'bg-amber-300'}`}>{i + 1}</div>
+                                        <p className={`text-[9px] font-semibold mt-0.5 text-center ${isNear(phase.date) ? 'text-amber-600' : isPast(phase.date) ? 'text-slate-400' : 'text-slate-600'}`}>{phase.label}</p>
+                                        <p className={`text-[9px] font-bold ${isPast(phase.date) ? 'text-slate-400' : 'text-amber-600'}`}>{fmt(phase.date)}</p>
+                                    </div>
+                                    {i < phases.length - 1 && <div className={`flex-1 h-[1.5px] mb-5 mx-1 ${isPast(phase.date) ? 'bg-slate-300' : 'bg-amber-200'}`} />}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* 4. Stage Cards List (Scrollable) */}
             <ScrollArea className="flex-1 px-6 pb-6">
@@ -607,6 +661,8 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                                             success = await updateMomentProposal(proposal.id, updates);
                                                         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
                                                             success = await updateProposal(proposal.id, updates);
+                                                        } else if ((proposal as any).type === 'contest') {
+                                                            success = await updateProposal(proposal.id, updates);
                                                         } else {
                                                             success = await updateProductApplication(proposal.id, updates);
                                                         }
@@ -732,6 +788,8 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                                             success = await updateMomentProposal(proposal.id, updates);
                                                         } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
                                                             success = await updateProposal(proposal.id, updates);
+                                                        } else if ((proposal as any).type === 'contest') {
+                                                            success = await updateProposal(proposal.id, updates);
                                                         } else {
                                                             success = await updateProductApplication(proposal.id, updates);
                                                         }
@@ -790,9 +848,11 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                                 try {
                                                     const updates: any = { tracking_number: trackingInput.trim(), delivery_status: 'shipped' };
                                                     let success = false;
-                                                    if ((proposal as any).moment_id || (proposal as any).moment_id) {
+                                                    if ((proposal as any).moment_id || (proposal as any).momentId) {
                                                         success = await updateMomentProposal(proposal.id, updates);
                                                     } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
+                                                        success = await updateProposal(proposal.id, updates);
+                                                    } else if ((proposal as any).type === 'contest') {
                                                         success = await updateProposal(proposal.id, updates);
                                                     } else {
                                                         success = await updateProductApplication(proposal.id, updates);
@@ -864,6 +924,12 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                     <div className="flex items-center gap-2 mb-2">
                                         <Video className="h-3.5 w-3.5 text-muted-foreground" />
                                         <span className="text-xs font-semibold text-muted-foreground">초안 제출</span>
+                                        {/* [4-A] 수정 요청 횟수 배지 */}
+                                        {(proposal as any)?.content_submission_version > 1 && (
+                                            <span className="ml-1 text-[10px] font-bold text-amber-600 bg-amber-100 border border-amber-200 rounded-full px-1.5 py-0.5">
+                                                수정 {((proposal as any)?.content_submission_version || 1) - 1}회
+                                            </span>
+                                        )}
                                         {proposal?.content_submission_status && (
                                             <Badge variant="outline" className={`text-[10px] h-5 ml-auto ${proposal.content_submission_status === 'submitted' ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20' :
                                                 proposal.content_submission_status === 'revision_requested' ? 'text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20' :
@@ -958,6 +1024,8 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                                                 success = await updateMomentProposal(proposal.id, updates);
                                                             } else if ((proposal as any).campaignId || (proposal as any).campaign_id) {
                                                                 success = await updateProposal(proposal.id, updates);
+                                                            } else if ((proposal as any).type === 'contest') {
+                                                                success = await updateProposal(proposal.id, updates);
                                                             } else {
                                                                 success = await updateProductApplication(proposal.id, updates);
                                                             }
@@ -1033,6 +1101,7 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                                             let success = false;
                                                             if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                             else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                            else if ((proposal as any).type === 'contest') success = await updateProposal(proposal.id, updates);
                                                             else success = await updateProductApplication(proposal.id, updates);
                                                             if (success) {
                                                                 useWorkspaceStore.getState().updateProposal(updates);
@@ -1064,6 +1133,7 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                                             let success = false;
                                                             if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                             else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                            else if ((proposal as any).type === 'contest') success = await updateProposal(proposal.id, updates);
                                                             else success = await updateProductApplication(proposal.id, updates);
                                                             if (success) {
                                                                 useWorkspaceStore.getState().updateProposal(updates);
@@ -1081,8 +1151,26 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                                                         { target_tab: 'content' }
                                                                     );
                                                                 }
+
+                                                                // [콘테스트] 초안 승인 시 Pending 정산 자동 생성
+                                                                if ((proposal as any).type === 'contest' && (proposal as any).workspace_id) {
+                                                                    try {
+                                                                        await fetch('/api/contest-settlement', {
+                                                                            method: 'POST',
+                                                                            headers: { 'Content-Type': 'application/json' },
+                                                                            body: JSON.stringify({
+                                                                                workspaceId: (proposal as any).workspace_id,
+                                                                                creatorId,
+                                                                                brandId: (proposal as any).brand_id,
+                                                                            })
+                                                                        });
+                                                                    } catch (e) {
+                                                                        console.warn('[contest-settlement] Failed to create pending settlement (ignored):', e);
+                                                                    }
+                                                                }
                                                             }
                                                         }}
+
                                                     >
                                                         <CheckCircle2 className="h-3 w-3 mr-1" /> 승인
                                                     </Button>
@@ -1162,6 +1250,7 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                                                 let success = false;
                                                                 if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                                 else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                                else if ((proposal as any).type === 'contest') success = await updateProposal(proposal.id, updates);
                                                                 else success = await updateProductApplication(proposal.id, updates);
                                                                 if (success) {
                                                                     useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('최종본 업로드 완료!');
@@ -1258,6 +1347,7 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                                                 let success = false;
                                                                 if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                                 else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                                else if ((proposal as any).type === 'contest') success = await updateProposal(proposal.id, updates);
                                                                 else success = await updateProductApplication(proposal.id, updates);
                                                                 if (success) {
                                                                     useWorkspaceStore.getState().updateProposal(updates); refreshData(); toast.success('클린본 업로드 완료!');
@@ -1299,6 +1389,70 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
                                         )}
                                     </div>
 
+                                    {/* [콘테스트 전용] 크리에이터 SNS 최종 게시 링크 제출 */}
+                                    {(proposal as any).type === 'contest' && userRole === 'creator' && proposal?.content_final_url && (
+                                        <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                                            <p className="text-xs font-bold text-amber-700">📱 SNS 게시 링크 제출</p>
+                                            <p className="text-[10px] text-amber-600 leading-relaxed">
+                                                영상을 SNS에 게시한 후 링크를 제출해주세요. 브랜드가 실제 게시물을 확인합니다.
+                                            </p>
+                                            {(proposal as any).final_video_link ? (
+                                                <div className="flex items-center gap-2">
+                                                    <a
+                                                        href={(proposal as any).final_video_link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-primary hover:underline truncate flex-1"
+                                                    >
+                                                        ✅ {(proposal as any).final_video_link}
+                                                    </a>
+                                                    <button
+                                                        className="text-[10px] text-slate-400 hover:text-slate-600 shrink-0"
+                                                        onClick={() => setContestSnsLink((proposal as any).final_video_link)}
+                                                    >
+                                                        수정
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="url"
+                                                        className="flex-1 text-xs border border-amber-200 bg-white rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-amber-400"
+                                                        placeholder="https://www.instagram.com/reel/..."
+                                                        value={contestSnsLink}
+                                                        onChange={e => setContestSnsLink(e.target.value)}
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        className="h-8 text-xs bg-amber-600 hover:bg-amber-700 shrink-0"
+                                                        disabled={!contestSnsLink.trim() || isSavingSnsLink}
+                                                        onClick={async () => {
+                                                            if (!contestSnsLink.trim() || !proposal?.id) return;
+                                                            setIsSavingSnsLink(true);
+                                                            try {
+                                                                const supabase = (await import('@/lib/supabase/client')).createClient();
+                                                                const { error } = await supabase
+                                                                    .from('ad_contest_applications')
+                                                                    .update({ final_video_link: contestSnsLink.trim(), status: 'uploaded' })
+                                                                    .eq('workspace_id', (proposal as any).workspace_id || proposal.id)
+                                                                    .eq('creator_id', user?.id || '');
+                                                                if (error) throw error;
+                                                                toast.success('SNS 링크가 제출되었습니다!');
+                                                                refreshData();
+                                                            } catch (e: any) {
+                                                                toast.error(e.message || 'SNS 링크 저장 중 오류가 발생했습니다.');
+                                                            } finally {
+                                                                setIsSavingSnsLink(false);
+                                                            }
+                                                        }}
+                                                    >
+                                                        {isSavingSnsLink ? <Loader2 className="w-3 h-3 animate-spin" /> : '제출'}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Complete button — both files required (Brand ONLY) */}
                                     {userRole === 'brand' && proposal?.content_final_url && proposal?.content_clean_url && (
                                         <div className="flex flex-col gap-2 pt-2">
@@ -1319,6 +1473,7 @@ export function InfoPanel({ userRole }: { userRole: 'brand' | 'creator' }) {
 
                                                     if ((proposal as any).moment_id || (proposal as any).momentId) success = await updateMomentProposal(proposal.id, updates);
                                                     else if ((proposal as any).campaignId || (proposal as any).campaign_id) success = await updateProposal(proposal.id, updates);
+                                                    else if ((proposal as any).type === 'contest') success = await updateProposal(proposal.id, updates);
                                                     else success = await updateProductApplication(proposal.id, updates);
 
                                                     if (!success) return;

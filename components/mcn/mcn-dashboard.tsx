@@ -26,6 +26,7 @@ import { SettlementTab } from "./settlement-tab"
 import { TeamCalendar } from "./team-calendar"
 import { TeamProposalsTable } from "./team-proposals-table"
 import { TeamStatistics } from "./team-statistics"
+import { McnPortfolioView } from "./views/mcn-portfolio-view"
 import { useMobileSidebar } from "@/lib/hooks/use-mobile-sidebar"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
@@ -382,6 +383,20 @@ export function McnDashboard() {
                                         <BarChart3 className="mr-2 h-4 w-4" />대시보드
                                     </Button>
                                     <Button
+                                        variant={activeTab === "portfolio" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => { setActiveTab("portfolio"); setIsMobileSidebarOpen(false); }}
+                                    >
+                                        <LayoutGrid className="mr-2 h-4 w-4" />포트폴리오
+                                    </Button>
+                                    <Button
+                                        variant={activeTab === "proposals-dev" ? "secondary" : "ghost"}
+                                        className="w-full justify-start"
+                                        onClick={() => { setActiveTab("proposals-dev"); setIsMobileSidebarOpen(false); }}
+                                    >
+                                        <TableIcon className="mr-2 h-4 w-4" />마스터 트래커
+                                    </Button>
+                                    <Button
                                         variant={activeTab === "proposals" ? "secondary" : "ghost"}
                                         className="w-full justify-start"
                                         onClick={() => { setActiveTab("proposals"); setIsMobileSidebarOpen(false); }}
@@ -417,7 +432,19 @@ export function McnDashboard() {
                         </SheetContent>
                     </Sheet>
 
-                    <TabsList className="hidden md:grid grid-cols-5 h-auto">
+                    <TabsList className="hidden md:grid grid-cols-7 h-auto">
+                        <TabsTrigger value="portfolio" className="gap-2 px-4">
+                            <LayoutGrid className="h-4 w-4" />포트폴리오
+                        </TabsTrigger>
+                        <TabsTrigger value="proposals-dev" className="gap-2 px-4">
+                            <TableIcon className="h-4 w-4" />마스터 트래커
+                        </TabsTrigger>
+                        <TabsTrigger value="settlement" className="gap-2 px-4">
+                            <Wallet className="h-4 w-4" />정산
+                        </TabsTrigger>
+                        <TabsTrigger value="calendar" className="gap-2 px-4">
+                            <Calendar className="h-4 w-4" />캘린더
+                        </TabsTrigger>
                         <TabsTrigger value="dashboard" className="gap-2 px-4">
                             <BarChart3 className="h-4 w-4" />대시보드
                         </TabsTrigger>
@@ -428,12 +455,6 @@ export function McnDashboard() {
                                     {aggregateStats.pendingProposals}
                                 </Badge>
                             )}
-                        </TabsTrigger>
-                        <TabsTrigger value="calendar" className="gap-2 px-4">
-                            <Calendar className="h-4 w-4" />캘린더
-                        </TabsTrigger>
-                        <TabsTrigger value="settlement" className="gap-2 px-4">
-                            <Wallet className="h-4 w-4" />정산
                         </TabsTrigger>
                         <TabsTrigger value="settings" className="gap-2 px-4">
                             <Users className="h-4 w-4" />팀 관리
@@ -732,6 +753,19 @@ export function McnDashboard() {
                             </div>
                         )}
                     </div>
+                </TabsContent>
+
+                {/* Portfolio Tab */}
+                <TabsContent value="portfolio">
+                    <McnPortfolioView
+                        teamId={currentTeam?.id || ''}
+                        summaryData={summaryData}
+                    />
+                </TabsContent>
+
+                {/* Master Tracker Tab */}
+                <TabsContent value="proposals-dev">
+                    <TeamProposalsTable teamId={currentTeam?.id || ''} />
                 </TabsContent>
 
                 {/* Proposals Tab */}

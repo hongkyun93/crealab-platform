@@ -923,7 +923,7 @@ export function BrandDashboard() {
             case "ad-contest-builder":
                 return <ContestBuilderView onNavigate={handleViewNavigate} initialParams={viewParams} />
             case "ad-contest-award":
-                return <ContestAwardView onNavigate={handleViewNavigate} />
+                return <ContestAwardView onNavigate={handleViewNavigate} contestId={viewParams?.contestId} />
 
             case "browse-campaigns":
                 return (

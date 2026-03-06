@@ -1,124 +1,271 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Trophy, Medal, AlertTriangle, CheckCircle } from "lucide-react"
+import { Trophy, ArrowLeft, Loader2, ExternalLink } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { createClient } from "@/lib/supabase/client"
+import { useUnifiedProvider } from "@/components/providers/unified-provider"
+import { toast } from "sonner"
 
 interface ContestAwardViewProps {
-    onNavigate: (view: string) => void;
+    onNavigate: (view: string, params?: any) => void;
+    contestId?: string;
 }
 
-export function ContestAwardView({ onNavigate }: ContestAwardViewProps) {
-    const [selectedRank1, setSelectedRank1] = useState<string | null>(null);
-    const [selectedRank2, setSelectedRank2] = useState<string | null>(null);
-    const [selectedRank3, setSelectedRank3] = useState<string[]>([]);
+export function ContestAwardView({ onNavigate, contestId }: ContestAwardViewProps) {
+    const { user } = useUnifiedProvider();
+    const supabase = createClient();
 
-    // Mock candidates who finished the contest (video approved)
-    const candidates = [
-        { id: '1', name: '뷰티유튜버 A', videoUrl: '#' },
-        { id: '2', name: '트렌드세터 B', videoUrl: '#' },
-        { id: '3', name: '크리에이터 C', videoUrl: '#' },
-        { id: '4', name: '숏폼장인 D', videoUrl: '#' },
-        { id: '5', name: '인플루언서 E', videoUrl: '#' },
-    ];
+    const [contest, setContest] = useState<any>(null);
+    const [candidates, setCandidates] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isFinalizing, setIsFinalizing] = useState(false);
 
-    const canFinalize = selectedRank1 && selectedRank2 && selectedRank3.length === 3; // Example rules: 1st, 2nd, and 3x 3rd
+    // 각 rank slot에 선택된 applicationId
+    const [selections, setSelections] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (!contestId) return;
+        loadData();
+    }, [contestId]);
+
+    const loadData = async () => {
+        if (!contestId) return;
+        setIsLoading(true);
+        try {
+            // 콘테스트 정보 조회
+            const { data: contestData, error: cErr } = await supabase
+                .from('ad_contests')
+                .select('*')
+                .eq('id', contestId)
+                .single();
+            if (cErr) throw cErr;
+            setContest(contestData);
+
+            // 업로드 완료된 챌린저 목록 조회 (video_approved, uploaded, selected 중 final_video_link 있는)
+            const { data: apps, error: aErr } = await supabase
+                .from('ad_contest_applications')
+                .select(`
+                    *,
+                    creator:profiles!ad_contest_applications_creator_id_fkey(id, name, avatar_url)
+                `)
+                .eq('contest_id', contestId)
+                .in('status', ['uploaded', 'video_approved', 'selected'])
+                .order('updated_at', { ascending: false });
+            if (aErr) throw aErr;
+            setCandidates(apps || []);
+        } catch (err: any) {
+            toast.error('데이터를 불러오는데 실패했습니다.');
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const formatPrice = (n: number) =>
+        new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(n);
+
+    // 동적으로 rank 슬롯 생성 (rank_rewards 기반)
+    const rankSlots = contest?.rank_rewards ? [
+        { key: 'rank1', label: '🥇 1등', count: contest.rank_rewards.rank1?.count || 1, reward: contest.rank_rewards.rank1?.reward || 0 },
+        { key: 'rank2', label: '🥈 2등', count: contest.rank_rewards.rank2?.count || 1, reward: contest.rank_rewards.rank2?.reward || 0 },
+        { key: 'rank3', label: '🥉 3등', count: contest.rank_rewards.rank3?.count || 1, reward: contest.rank_rewards.rank3?.reward || 0 },
+    ] : [];
+
+    const handleSelectWinner = (rankKey: string, applicationId: string) => {
+        setSelections(prev => ({ ...prev, [rankKey]: applicationId }));
+    };
+
+    const handleFinalize = async () => {
+        if (!contestId) return;
+
+        const selectedCount = Object.keys(selections).length;
+        if (selectedCount === 0) {
+            toast.error('최소 1명 이상의 수상자를 선택해주세요.');
+            return;
+        }
+
+        setIsFinalizing(true);
+        try {
+            // 각 rank별로 awarded_rank 및 status 업데이트
+            const rankMap: Record<string, number> = { rank1: 1, rank2: 2, rank3: 3 };
+
+            for (const [rankKey, applicationId] of Object.entries(selections)) {
+                const rankNum = rankMap[rankKey];
+                const { error } = await supabase
+                    .from('ad_contest_applications')
+                    .update({ awarded_rank: rankNum, status: 'completed' })
+                    .eq('id', applicationId);
+                if (error) throw error;
+            }
+
+            // 수상하지 못한 챌린저들도 completed 처리 (기본 참가비 정산)
+            const winnerIds = Object.values(selections);
+            const nonWinnerCandidates = candidates.filter(c => !winnerIds.includes(c.id));
+            for (const app of nonWinnerCandidates) {
+                const { error } = await supabase
+                    .from('ad_contest_applications')
+                    .update({ status: 'completed' })
+                    .eq('id', app.id);
+                if (error) console.warn('[AwardView] Non-winner completion failed silently:', error);
+            }
+
+            // 콘테스트 자체도 completed 처리
+            await supabase
+                .from('ad_contests')
+                .update({ status: 'completed' })
+                .eq('id', contestId);
+
+            toast.success('🎉 시상이 확정되었습니다! 수상자별 정산이 자동 처리됩니다.');
+            onNavigate('ad-contests');
+        } catch (err: any) {
+            toast.error(err.message || '시상 처리 중 오류가 발생했습니다.');
+        } finally {
+            setIsFinalizing(false);
+        }
+    };
+
+    if (!contestId) {
+        return (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <p>콘테스트를 선택해주세요.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 overflow-y-auto w-full bg-slate-50/50">
-            <div className="container max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                            <Trophy className="w-6 h-6 text-yellow-500" />
-                            최종 시상식 (Award Center)
-                        </h1>
-                        <p className="text-muted-foreground mt-1 text-sm">
-                            모든 영상이 승인되었습니다. 약속한 상금을 지급할 우승 대상을 지정해주세요.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                    <div className="text-sm text-amber-900">
-                        <strong className="block mb-1">시상 지정은 필수입니다. (거부 불가)</strong>
-                        목표 인원에 맞춰 각 등수별 당선자를 모두 지정해야 에스크로 정산이 완료되고 콘테스트가 종료됩니다.
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Rank 1 */}
-                    <div className="bg-white border rounded-2xl p-6 shadow-sm flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mb-4">
-                            <span className="text-3xl">🥇</span>
-                        </div>
-                        <h3 className="font-bold text-lg mb-1">1등상 (1명)</h3>
-                        <p className="text-sm text-muted-foreground mb-4">상금 1,000,000원</p>
-                        <select
-                            className="w-full h-10 border rounded-md px-3 text-sm focus:ring-2 focus:ring-primary"
-                            value={selectedRank1 || ''}
-                            onChange={(e) => setSelectedRank1(e.target.value)}
-                        >
-                            <option value="">우승자를 선택하세요</option>
-                            {candidates.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                    </div>
-
-                    {/* Rank 2 */}
-                    <div className="bg-white border rounded-2xl p-6 shadow-sm flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                            <span className="text-3xl">🥈</span>
-                        </div>
-                        <h3 className="font-bold text-lg mb-1">2등상 (1명)</h3>
-                        <p className="text-sm text-muted-foreground mb-4">상금 500,000원</p>
-                        <select
-                            className="w-full h-10 border rounded-md px-3 text-sm focus:ring-2 focus:ring-primary"
-                            value={selectedRank2 || ''}
-                            onChange={(e) => setSelectedRank2(e.target.value)}
-                        >
-                            <option value="">우승자를 선택하세요</option>
-                            {candidates.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                    </div>
-
-                    {/* Rank 3 */}
-                    <div className="bg-white border rounded-2xl p-6 shadow-sm flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
-                            <span className="text-3xl">🥉</span>
-                        </div>
-                        <h3 className="font-bold text-lg mb-1">3등상 (3명)</h3>
-                        <p className="text-sm text-muted-foreground mb-4">상금 각 200,000원</p>
-                        <div className="w-full space-y-2">
-                            {[0, 1, 2].map(idx => (
-                                <select
-                                    key={idx}
-                                    className="w-full h-10 border rounded-md px-3 text-sm focus:ring-2 focus:ring-primary"
-                                    value={selectedRank3[idx] || ''}
-                                    onChange={(e) => {
-                                        const newArr = [...selectedRank3];
-                                        newArr[idx] = e.target.value;
-                                        setSelectedRank3(newArr);
-                                    }}
-                                >
-                                    <option value="">우승자를 선택하세요</option>
-                                    {candidates.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex justify-end pt-6 border-t mt-8">
-                    <Button
-                        size="lg"
-                        className="h-12 px-8 text-base"
-                        disabled={!canFinalize}
-                        onClick={() => onNavigate('ad-contests')}
-                    >
-                        <CheckCircle className="w-5 h-5 mr-2" />
-                        시상 확정 및 정산 실행
+            <div className="container max-w-5xl mx-auto p-4 md:p-8">
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-8">
+                    <Button variant="ghost" size="icon" onClick={() => onNavigate('ad-contests')} className="bg-white">
+                        <ArrowLeft className="w-4 h-4" />
                     </Button>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <Trophy className="w-5 h-5 text-amber-500" />
+                            <h1 className="text-2xl font-bold text-slate-900">수상자 시상</h1>
+                        </div>
+                        {contest && (
+                            <p className="text-sm text-muted-foreground mt-0.5">{contest.title}</p>
+                        )}
+                    </div>
                 </div>
+
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    </div>
+                ) : candidates.length === 0 ? (
+                    <div className="text-center py-20 text-muted-foreground">
+                        <Trophy className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                        <p className="font-semibold">영상을 업로드한 챌린저가 없습니다.</p>
+                        <p className="text-sm mt-1">챌린저들이 최종 영상을 업로드한 후 시상할 수 있습니다.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-8">
+                        {/* 수상 등수별 선정 */}
+                        {rankSlots.map((slot) => (
+                            <div key={slot.key} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                                <div className="p-5 border-b bg-slate-50/50 flex items-center justify-between">
+                                    <div>
+                                        <h3 className="font-black text-lg">{slot.label}</h3>
+                                        <p className="text-sm text-slate-500">상금: {formatPrice(slot.reward)}</p>
+                                    </div>
+                                    {selections[slot.key] && (
+                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                                            선정 완료
+                                        </Badge>
+                                    )}
+                                </div>
+                                <div className="p-5 space-y-3">
+                                    {candidates.map((app) => (
+                                        <div
+                                            key={app.id}
+                                            className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${selections[slot.key] === app.id
+                                                    ? 'border-primary bg-primary/5 shadow-sm'
+                                                    : 'border-slate-100 hover:border-slate-200 bg-white'
+                                                }`}
+                                            onClick={() => handleSelectWinner(slot.key, app.id)}
+                                        >
+                                            {/* 아바타 */}
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                                                {app.creator?.avatar_url ? (
+                                                    <img src={app.creator.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-sm font-bold text-slate-400">
+                                                        {app.creator?.name?.[0] || '?'}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* 이름 & 링크 */}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-slate-900 truncate">{app.creator?.name || '크리에이터'}</p>
+                                                {app.final_video_link && (
+                                                    <a
+                                                        href={app.final_video_link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        최종 영상 보기 <ExternalLink className="w-3 h-3" />
+                                                    </a>
+                                                )}
+                                            </div>
+
+                                            {/* 성과 지표 */}
+                                            {app.performance_metrics && (
+                                                <div className="text-right text-xs text-slate-500 hidden sm:block">
+                                                    {app.performance_metrics.likes && <div>❤️ {app.performance_metrics.likes?.toLocaleString()}</div>}
+                                                    {app.performance_metrics.views && <div>👁️ {app.performance_metrics.views?.toLocaleString()}</div>}
+                                                </div>
+                                            )}
+
+                                            {/* 선택 인디케이터 */}
+                                            <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${selections[slot.key] === app.id
+                                                    ? 'border-primary bg-primary'
+                                                    : 'border-slate-200'
+                                                }`}>
+                                                {selections[slot.key] === app.id && (
+                                                    <div className="w-2 h-2 rounded-full bg-white" />
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* 시상 확정 버튼 */}
+                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-bold text-slate-900">시상 확정 및 정산 실행</p>
+                                    <p className="text-sm text-slate-500 mt-0.5">
+                                        확정 후에는 수정이 불가능합니다. 수상자별 정산이 자동으로 처리됩니다.
+                                    </p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        ・ 선정된 수상자: {Object.keys(selections).length}명 /
+                                        미선정 챌린저 {candidates.length - Object.keys(selections).length}명은 기본 참가비로 정산됩니다.
+                                    </p>
+                                </div>
+                                <Button
+                                    className="bg-amber-500 hover:bg-amber-600 text-white font-black px-8 h-12 rounded-xl shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:-translate-y-0.5 transition-all"
+                                    onClick={handleFinalize}
+                                    disabled={isFinalizing || Object.keys(selections).length === 0}
+                                >
+                                    {isFinalizing ? (
+                                        <><Loader2 className="w-4 h-4 animate-spin mr-2" /> 처리 중...</>
+                                    ) : (
+                                        <><Trophy className="w-4 h-4 mr-2" /> 시상 확정</>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
-    )
+    );
 }
