@@ -240,6 +240,12 @@ export function SettlementTab({ teamId, mcnName = 'MCN' }: SettlementTabProps) {
     const [creatorFilter, setCreatorFilter] = useState("all")
     const [statusFilter, setStatusFilter] = useState("all")
 
+    // Per-row manual deductions (local state — Phase 2: persist to DB)
+    const [rowDeductions, setRowDeductions] = useState<Record<string, { deduction: number; recoup: number }>>({})
+    const handleDeductionChange = useCallback((id: string, field: 'deduction' | 'recoup', val: number) => {
+        setRowDeductions(prev => ({ ...prev, [id]: { ...prev[id], [field]: val } }))
+    }, [])
+
     // Bank confirm modal state
     const [bankConfirm, setBankConfirm] = useState<{
         settlementId: string
@@ -577,7 +583,11 @@ export function SettlementTab({ teamId, mcnName = 'MCN' }: SettlementTabProps) {
                             <span className="w-5" />
                             <span className="w-[130px] text-[11px] font-semibold text-violet-500 uppercase tracking-wide text-right pr-3">MCN 수수료</span>
                             <span className="w-5" />
-                            <span className="w-[130px] text-[11px] font-semibold text-orange-400 uppercase tracking-wide text-right pr-3">원천징수 3.3%</span>
+                            <span className="w-[120px] text-[11px] font-semibold text-rose-400 uppercase tracking-wide text-right pr-3">제작비 공제</span>
+                            <span className="w-5" />
+                            <span className="w-[120px] text-[11px] font-semibold text-rose-500 uppercase tracking-wide text-right pr-3">선급금 회수</span>
+                            <span className="w-5" />
+                            <span className="w-[120px] text-[11px] font-semibold text-orange-400 uppercase tracking-wide text-right pr-3">원천징수 3.3%</span>
                             <span className="w-5" />
                             <span className="w-[140px] text-[11px] font-semibold text-emerald-600 uppercase tracking-wide text-right pr-3">실수령 Net</span>
                         </div>
@@ -592,8 +602,12 @@ export function SettlementTab({ teamId, mcnName = 'MCN' }: SettlementTabProps) {
                             const typeLabel = PROPOSAL_TYPE_LABELS[s.proposal_type] || s.proposal_type;
                             const mcnFee = s.mcn_amount || Math.round(s.gross_amount * (1 - ratio));
                             const creatorGross = s.creator_amount || Math.round(s.gross_amount * ratio);
-                            const withholding = s.withholding_amount || Math.round(creatorGross * 0.033);
-                            const netAmount = s.net_creator_amount || (creatorGross - withholding);
+                            // Manual deductions
+                            const deduction = rowDeductions[s.id]?.deduction || 0;
+                            const recoup = rowDeductions[s.id]?.recoup || 0;
+                            const adjustedBase = Math.max(0, creatorGross - deduction - recoup);
+                            const withholding = Math.round(adjustedBase * 0.033);
+                            const netAmount = Math.max(0, adjustedBase - withholding);
                             const hasPending = s.status === 'pending';
 
                             return (
@@ -648,12 +662,56 @@ export function SettlementTab({ teamId, mcnName = 'MCN' }: SettlementTabProps) {
                                             </div>
                                         </div>
 
-                                        {/* Arrow + Withholding */}
+                                        {/* Arrow + 제작비 공제 (editable) */}
                                         <div className="flex items-center">
                                             <div className="flex items-center justify-center w-5">
                                                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40" />
                                             </div>
-                                            <div className="w-[130px] flex flex-col items-end pr-3">
+                                            <div className="w-[120px] flex flex-col items-end pr-3">
+                                                <span className="text-[10px] text-rose-400 font-medium mb-0.5">제작비 공제</span>
+                                                <div className="flex items-center gap-0.5">
+                                                    <span className="text-sm font-semibold text-rose-500">−₩</span>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        className="w-16 text-sm font-semibold text-rose-500 bg-transparent border-b border-rose-200 dark:border-rose-800 focus:outline-none focus:border-rose-400 text-right tabular-nums"
+                                                        value={deduction || ''}
+                                                        placeholder="0"
+                                                        onChange={e => handleDeductionChange(s.id, 'deduction', Number(e.target.value) || 0)}
+                                                        onClick={e => e.stopPropagation()}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Arrow + 선급금 회수 (editable) */}
+                                        <div className="flex items-center">
+                                            <div className="flex items-center justify-center w-5">
+                                                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                            </div>
+                                            <div className="w-[120px] flex flex-col items-end pr-3">
+                                                <span className="text-[10px] text-rose-600 font-medium mb-0.5">선급금 회수</span>
+                                                <div className="flex items-center gap-0.5">
+                                                    <span className="text-sm font-semibold text-rose-600">−₩</span>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        className="w-16 text-sm font-semibold text-rose-600 bg-transparent border-b border-rose-300 dark:border-rose-700 focus:outline-none focus:border-rose-500 text-right tabular-nums"
+                                                        value={recoup || ''}
+                                                        placeholder="0"
+                                                        onChange={e => handleDeductionChange(s.id, 'recoup', Number(e.target.value) || 0)}
+                                                        onClick={e => e.stopPropagation()}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Arrow + Withholding (recalculated) */}
+                                        <div className="flex items-center">
+                                            <div className="flex items-center justify-center w-5">
+                                                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                            </div>
+                                            <div className="w-[120px] flex flex-col items-end pr-3">
                                                 <span className="text-[10px] text-orange-400 font-medium mb-0.5">원천징수</span>
                                                 <span className="text-sm font-semibold text-orange-500 dark:text-orange-400 tabular-nums">
                                                     −₩{withholding.toLocaleString()}
