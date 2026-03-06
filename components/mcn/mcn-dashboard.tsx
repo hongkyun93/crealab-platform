@@ -124,7 +124,8 @@ export function McnDashboard() {
         setEditingProfileId(userId)
     }
 
-    if (isTeamLoading || isLoadingSummary) {
+    // Only block render on truly initial load (no data yet)
+    if (isLoadingSummary && summaryData.length === 0) {
         return (
             <main className="min-h-screen p-6 max-w-7xl mx-auto">
                 <div className="flex items-center justify-center h-64">
