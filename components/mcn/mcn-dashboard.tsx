@@ -29,7 +29,7 @@ import { InviteLinkGenerator } from "./invite-link-generator"
 import { RevenueSplitEditor } from "./revenue-split-editor"
 import { SettlementTab } from "./settlement-tab"
 import { TeamCalendar } from "./team-calendar"
-import { TeamProposalsTable } from "./team-proposals-table"
+
 import { TeamProposalsTableDev } from "./team-proposals-table-dev"
 import { TeamStatistics } from "./team-statistics"
 import { SettingsView } from "@/components/creator/views/SettingsView"
@@ -433,11 +433,11 @@ export function McnDashboard() {
                                         <LayoutDashboard className="mr-2 h-4 w-4" />크리에이터 관리
                                     </Button>
                                     <Button
-                                        variant={activeTab === "proposals" ? "secondary" : "ghost"}
+                                        variant={activeTab === "proposals-dev" ? "secondary" : "ghost"}
                                         className="w-full justify-start"
-                                        onClick={() => { setActiveTab("proposals"); setIsMobileSidebarOpen(false); }}
+                                        onClick={() => { setActiveTab("proposals-dev"); setIsMobileSidebarOpen(false); }}
                                     >
-                                        <FileText className="mr-2 h-4 w-4" />제안서
+                                        <FileText className="mr-2 h-4 w-4" />마스터 트래커
                                         {aggregateStats.pendingProposals > 0 && (
                                             <Badge variant="destructive" className="ml-auto min-w-5 h-5 text-[10px] px-1.5">{aggregateStats.pendingProposals}</Badge>
                                         )}

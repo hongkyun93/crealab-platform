@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { Building2, CheckCircle2, ChevronDown, ChevronRight, Clock, DollarSign, Download, FileText, Loader2, Receipt, Search, Settings2, Users, Wallet } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Building2, CheckCircle2, Clock, DollarSign, Download, FileText, Loader2, Receipt, Search, Users, Wallet } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
+import useSWR from "swr"
 import { toast } from "sonner"
 import { BankConfirmModal } from "./bank-confirm-modal"
 import { PaymentStatementModal, type McnBusinessInfo } from "./payment-statement-modal"
@@ -128,17 +129,109 @@ function exportSettlementsToCSV(settlements: Settlement[], month: string) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: SettlementTabProps) {
+export function SettlementTab({ teamId, mcnName = 'MCN' }: SettlementTabProps) {
     const { user, supabase } = useAuth()
-    const [settlements, setSettlements] = useState<Settlement[]>([])
-    const [revenueSplits, setRevenueSplits] = useState<Record<string, number>>({})
-    const [bankInfoMap, setBankInfoMap] = useState<Record<string, CreatorBankInfo>>({})
-    const [mcnBusinessInfo, setMcnBusinessInfo] = useState<McnBusinessInfo>({ name: mcnName })
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
         const now = new Date()
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     })
-    const [isLoading, setIsLoading] = useState(true)
+
+    const fetchSettlements = async () => {
+        if (!teamId) return null;
+
+        // 1. Settlements
+        const { data: rawSettlements, error: err1 } = await supabase
+            .from('settlements')
+            .select(`
+                id, creator_id, brand_id, workspace_id,
+                proposal_type, proposal_id,
+                gross_amount, split_ratio, creator_amount, mcn_amount,
+                withholding_rate, withholding_amount, net_creator_amount,
+                status, paid_at, settlement_month, note, created_at,
+                tax_invoice_status, tax_invoice_requested_at, statement_number,
+                creator:profiles!settlements_creator_id_fkey (display_name, avatar_url),
+                brand:profiles!settlements_brand_id_fkey (display_name)
+            `)
+            .eq('team_id', teamId)
+            .eq('settlement_month', selectedMonth)
+            .order('created_at', { ascending: false });
+
+        if (err1) throw err1;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mappedSettlements = (rawSettlements || []).map((r: any) => ({
+            ...r,
+            creator_name: r.creator?.display_name || '크리에이터',
+            creator_avatar: r.creator?.avatar_url || null,
+            brand_name: r.brand?.display_name || null,
+        }));
+
+        // 2. Revenue Splits
+        const { data: splitsData } = await supabase
+            .from('mcn_revenue_splits')
+            .select('creator_id, split_ratio')
+            .eq('team_id', teamId);
+
+        const splitsMap: Record<string, number> = {};
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (splitsData || []).forEach((r: any) => { splitsMap[r.creator_id] = r.split_ratio; });
+
+        // 3. Bank Info
+        const { data: members } = await supabase
+            .from('team_members')
+            .select('user_id, profile:profiles(bank_name, account_number, account_holder)')
+            .eq('team_id', teamId);
+
+        const bankMap: Record<string, CreatorBankInfo> = {};
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const m of (members as any[] || [])) {
+            bankMap[m.user_id] = {
+                bank_name: m.profile?.bank_name || null,
+                account_number: m.profile?.account_number || null,
+                account_holder: m.profile?.account_holder || null,
+            };
+        }
+
+        // 4. MCN Biz Info
+        const { data: teamData } = await supabase
+            .from('teams')
+            .select('name, business_registration_number, representative_name, business_address, stamp_url')
+            .eq('id', teamId)
+            .single();
+
+        return {
+            settlements: mappedSettlements,
+            revenueSplits: splitsMap,
+            bankInfoMap: bankMap,
+            mcnBusinessInfo: teamData ? {
+                name: teamData.name || mcnName,
+                business_registration_number: teamData.business_registration_number,
+                representative_name: teamData.representative_name,
+                business_address: teamData.business_address,
+                stamp_url: teamData.stamp_url,
+            } : null
+        };
+    };
+
+    const { data: swrData, error: swrError, mutate } = useSWR(
+        teamId ? `settlements-${teamId}-${selectedMonth}` : null,
+        fetchSettlements,
+        {
+            revalidateOnFocus: true,     // Instant refresh across tabs
+            revalidateOnMount: true,     // Always fetch latest
+            dedupingInterval: 2000       // Prevent spam
+        }
+    );
+
+    const isLoading = !swrData && !swrError && !!teamId;
+    const EMPTY_ARRAY: any[] = [];
+    const settlements = swrData?.settlements || EMPTY_ARRAY;
+    const revenueSplits = swrData?.revenueSplits || {};
+    const bankInfoMap = swrData?.bankInfoMap || {};
+    const mcnBusinessInfo = swrData?.mcnBusinessInfo || {
+        name: mcnName,
+    };
+
     const [splitEditorOpen, setSplitEditorOpen] = useState(false)
     const [editingCreator, setEditingCreator] = useState<{ id: string; name: string; avatar: string | null; currentRatio: number } | null>(null)
 
@@ -168,22 +261,6 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
 
     const monthOptions = getMonthOptions()
 
-    // If in proxy creator mode, show CreatorSettlementHistory instead
-    if (proxyCreatorId) {
-        return (
-            <div className="space-y-4">
-                <div>
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                        <Wallet className="h-5 w-5 text-primary" />
-                        정산 내역
-                    </h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">이 크리에이터의 정산 수령 내역입니다</p>
-                </div>
-                <CreatorSettlementHistory />
-            </div>
-        )
-    }
-
     // Generate sequential statement number: YYYYMM-XXXXX
     const generateStatementNumber = useCallback((month: string, existingItems: Settlement[]) => {
         const monthKey = month.replace('-', '')
@@ -192,110 +269,6 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
         const seq = existingCount + 1
         return `${monthKey}-${String(seq).padStart(5, '0')}`
     }, [])
-
-    useEffect(() => {
-        if (!teamId) return
-
-        let mounted = true
-        setIsLoading(true)
-
-        const loadAll = async () => {
-            try {
-                // 1. Settlements (querying real table DIRECTLY to avoid slow 600ms+ RPC)
-                const p1 = (async () => {
-                    const { data, error } = await supabase
-                        .from('settlements')
-                        .select(`
-                            id, creator_id, brand_id, workspace_id,
-                            proposal_type, proposal_id,
-                            gross_amount, split_ratio, creator_amount, mcn_amount,
-                            withholding_rate, withholding_amount, net_creator_amount,
-                            status, paid_at, settlement_month, note, created_at,
-                            tax_invoice_status, tax_invoice_requested_at, statement_number,
-                            creator:profiles!settlements_creator_id_fkey (display_name, avatar_url),
-                            brand:profiles!settlements_brand_id_fkey (display_name)
-                        `)
-                        .eq('team_id', teamId)
-                        .eq('settlement_month', selectedMonth)
-                        .order('created_at', { ascending: false })
-
-                    if (error) {
-                        console.error('[Settlements] Direct query error:', error);
-                        if (mounted) setSettlements([])
-                    } else {
-                        const mapped = (data || []).map((r: any) => ({
-                            ...r,
-                            creator_name: r.creator?.display_name || '크리에이터',
-                            creator_avatar: r.creator?.avatar_url || null,
-                            brand_name: r.brand?.display_name || null,
-                        }))
-                        if (mounted) setSettlements(mapped)
-                    }
-                })()
-
-                // 2. Revenue Splits
-                const p2 = (async () => {
-                    const { data } = await supabase
-                        .from('mcn_revenue_splits')
-                        .select('creator_id, split_ratio')
-                        .eq('team_id', teamId)
-                    if (data && mounted) {
-                        const map: Record<string, number> = {}
-                        data.forEach((r: RevenueSplit) => { map[r.creator_id] = r.split_ratio })
-                        setRevenueSplits(map)
-                    }
-                })()
-
-                // 3. Bank Info
-                const p3 = (async () => {
-                    const { data: members } = await supabase
-                        .from('team_members')
-                        .select('user_id, profile:profiles(bank_name, account_number, account_holder)')
-                        .eq('team_id', teamId)
-                    if (members && mounted) {
-                        const map: Record<string, CreatorBankInfo> = {}
-                        for (const m of members as any[]) {
-                            map[m.user_id] = {
-                                bank_name: m.profile?.bank_name || null,
-                                account_number: m.profile?.account_number || null,
-                                account_holder: m.profile?.account_holder || null,
-                            }
-                        }
-                        setBankInfoMap(map)
-                    }
-                })()
-
-                // 4. MCN Business Info
-                const p4 = (async () => {
-                    const { data } = await supabase
-                        .from('teams')
-                        .select('name, business_registration_number, representative_name, business_address, stamp_url')
-                        .eq('id', teamId)
-                        .single()
-                    if (data && mounted) {
-                        setMcnBusinessInfo({
-                            name: data.name || mcnName,
-                            business_registration_number: data.business_registration_number,
-                            representative_name: data.representative_name,
-                            business_address: data.business_address,
-                            stamp_url: data.stamp_url,
-                        })
-                    }
-                })()
-
-                await Promise.all([p1, p2, p3, p4])
-            } catch (err) {
-                console.error('[Settlement] loadAll error:', err)
-            } finally {
-                if (mounted) setIsLoading(false)
-            }
-        }
-
-        loadAll()
-
-        return () => { mounted = false }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [teamId, selectedMonth, mcnName])
 
     // Unique creators for filter
     const uniqueCreators = useMemo(() => Array.from(
@@ -372,10 +345,10 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
             return
         }
 
-        // Update local state
-        setSettlements(prev => prev.map(s =>
-            s.id === settlementId ? { ...s, status: 'paid', paid_at: new Date().toISOString() } : s
-        ))
+        // Optimistic SWR Update
+        if (swrData) {
+            mutate({ ...swrData, settlements: swrData.settlements.map(s => s.id === settlementId ? { ...s, status: 'paid', paid_at: new Date().toISOString() } : s) }, false);
+        }
 
         // Insert notification to creator
         await supabase.from('notifications').insert({
@@ -397,7 +370,7 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
     }
 
     const handleSplitSaved = (creatorId: string, newRatio: number) => {
-        setRevenueSplits(prev => ({ ...prev, [creatorId]: newRatio }))
+        if (swrData) mutate({ ...swrData, revenueSplits: { ...swrData.revenueSplits, [creatorId]: newRatio } }, false);
         setSplitEditorOpen(false)
         setEditingCreator(null)
     }
@@ -421,9 +394,17 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
             return
         }
 
-        setSettlements(prev => prev.map(s =>
-            s.id === settlementId ? { ...s, tax_invoice_status: 'requested', tax_invoice_requested_at: new Date().toISOString() } : s
-        ))
+        // Optimistic update via SWR mutate
+        if (swrData) {
+            mutate({
+                ...swrData,
+                settlements: swrData.settlements.map(s =>
+                    s.id === settlementId
+                        ? { ...s, tax_invoice_status: 'requested', tax_invoice_requested_at: new Date().toISOString() }
+                        : s
+                )
+            }, false)
+        }
         toast.success(`플랫폼에 세금계산서 발행을 요청했습니다.`)
     }
 
@@ -587,22 +568,117 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {Object.entries(byCreator).map(([creatorId, group]) => (
-                        <CreatorSettlementGroup
-                            key={creatorId}
-                            creatorId={creatorId}
-                            name={group.name}
-                            avatar={group.avatar}
-                            totalNetAmount={group.total}
-                            splitRatio={revenueSplits[creatorId] ?? 0.70}
-                            items={group.items}
-                            onPayClick={handlePayClick}
-                            onRequestTaxInvoice={handleRequestTaxInvoice}
-                            onEditSplit={() => handleOpenSplitEditor(creatorId, group.name, group.avatar)}
-                            onViewStatement={() => handleOpenStatement(creatorId, group.name, group.avatar, group.items)}
-                        />
-                    ))}
+                <div className="rounded-md border bg-card">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/50">
+                                <TableHead className="w-[180px]">크리에이터</TableHead>
+                                <TableHead className="w-[160px]">프로젝트</TableHead>
+                                <TableHead className="text-right">총액 (Gross)</TableHead>
+                                <TableHead className="text-center">배분율</TableHead>
+                                <TableHead className="text-right">실지급 (Net)</TableHead>
+                                <TableHead className="text-center">상태</TableHead>
+                                <TableHead className="text-right">관리</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredSettlements.map(s => {
+                                const ratio = revenueSplits[s.creator_id] ?? 0.70;
+                                const cfg = STATUS_CONFIG[s.status as keyof typeof STATUS_CONFIG] || { label: s.status, color: '' };
+                                const typeLabel = PROPOSAL_TYPE_LABELS[s.proposal_type] || s.proposal_type;
+                                const withholding = s.withholding_amount || Math.round(s.creator_amount * 0.033);
+                                const netAmount = s.net_creator_amount || (s.creator_amount - withholding);
+                                const hasPending = s.status === 'pending';
+
+                                return (
+                                    <TableRow key={s.id} className="group hover:bg-muted/30">
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-8 w-8 border">
+                                                    <AvatarImage src={s.creator_avatar || ''} />
+                                                    <AvatarFallback className="text-xs font-bold">{s.creator_name[0]}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex flex-col">
+                                                    <span className="font-semibold text-sm">{s.creator_name}</span>
+                                                    <span className="text-[10px] text-muted-foreground">{new Date(s.created_at).toLocaleDateString('ko-KR')}</span>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-1 mt-0.5">
+                                                <span className="text-sm font-medium">{s.brand_name || '브랜드'} 협업</span>
+                                                <span className="text-[10px] text-muted-foreground bg-muted w-fit px-1.5 py-0.5 rounded">{typeLabel}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">₩{s.gross_amount.toLocaleString()}</span>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <div
+                                                className="flex flex-col items-center gap-0.5 relative group/split cursor-pointer"
+                                                onClick={() => handleOpenSplitEditor(s.creator_id, s.creator_name, s.creator_avatar)}
+                                            >
+                                                <span className="text-[11px] font-medium bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground group-hover/split:bg-primary/10 group-hover/split:text-primary transition-colors">
+                                                    C {Math.round(ratio * 100)}% / M {Math.round((1 - ratio) * 100)}%
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-sm font-semibold text-emerald-600">₩{netAmount.toLocaleString()}</span>
+                                                <span className="text-[10px] text-orange-500 mt-0.5">-₩{withholding.toLocaleString()} (원천세)</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", cfg.color)}>
+                                                {cfg.label}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end items-center gap-1.5">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                    onClick={() => handleOpenStatement(s.creator_id, s.creator_name, s.creator_avatar, [s])}
+                                                    title="명세서 발급"
+                                                >
+                                                    <Receipt className="h-4 w-4" />
+                                                </Button>
+                                                {s.status === 'pending' && (!s.tax_invoice_status || s.tax_invoice_status === 'none') && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                        onClick={() => handleRequestTaxInvoice(s.id)}
+                                                        title="세금계산서 요청"
+                                                    >
+                                                        <FileText className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                                {hasPending && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200 shadow-sm"
+                                                        onClick={() => handlePayClick(s)}
+                                                    >
+                                                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                                        지급 처리
+                                                    </Button>
+                                                )}
+                                                {s.status === 'paid' && s.paid_at && (
+                                                    <span className="text-[10px] text-emerald-600 font-medium px-2 py-1.5 whitespace-nowrap">
+                                                        {new Date(s.paid_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })} 완료
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
                 </div>
             )}
 
@@ -656,184 +732,3 @@ export function SettlementTab({ teamId, proxyCreatorId, mcnName = 'MCN' }: Settl
     )
 }
 
-// ─────────────────────────────────────────────────────
-// Sub-component: Creator Settlement Group (collapsible)
-// ─────────────────────────────────────────────────────
-interface CreatorSettlementGroupProps {
-    creatorId: string
-    name: string
-    avatar: string | null
-    totalNetAmount: number
-    splitRatio: number
-    items: Settlement[]
-    onPayClick: (s: Settlement) => void
-    onRequestTaxInvoice: (id: string) => void
-    onEditSplit: () => void
-    onViewStatement: () => void
-}
-
-function CreatorSettlementGroup({
-    name, avatar, totalNetAmount, splitRatio, items, onPayClick, onRequestTaxInvoice, onEditSplit, onViewStatement
-}: CreatorSettlementGroupProps) {
-    const [expanded, setExpanded] = useState(true)
-    const hasPending = items.some(i => i.status === 'pending')
-
-    return (
-        <Card className={cn("overflow-hidden", hasPending && "ring-1 ring-amber-200 dark:ring-amber-800")}>
-            {/* Creator header row */}
-            <div
-                className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/40 transition-colors"
-                onClick={() => setExpanded(e => !e)}
-            >
-                <Avatar className="h-10 w-10 border">
-                    <AvatarImage src={avatar || ''} />
-                    <AvatarFallback className="font-bold">{name[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm">{name}</span>
-                        <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
-                            배분율 {Math.round(splitRatio * 100)}%
-                        </span>
-                        {hasPending && (
-                            <Badge variant="outline" className="text-[10px] h-5 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400">
-                                지급 대기
-                            </Badge>
-                        )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                        {items.length}건 · 실수령 예정 ₩{totalNetAmount.toLocaleString()}
-                    </p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs gap-1 no-print"
-                        onClick={e => { e.stopPropagation(); onViewStatement() }}
-                        title="지급명세서"
-                    >
-                        <Receipt className="h-3 w-3" />
-                        명세서
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs gap-1 no-print"
-                        onClick={e => { e.stopPropagation(); onEditSplit() }}
-                    >
-                        <Settings2 className="h-3 w-3" />
-                        배분율
-                    </Button>
-                    {expanded
-                        ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        : <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    }
-                </div>
-            </div>
-
-            {expanded && (
-                <>
-                    <Separator />
-                    <div className="divide-y divide-border">
-                        {items.map(s => (
-                            <SettlementRow
-                                key={s.id}
-                                settlement={s}
-                                onPayClick={() => onPayClick(s)}
-                                onRequestTaxInvoice={() => onRequestTaxInvoice(s.id)}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
-        </Card>
-    )
-}
-
-// ─────────────────────────────────────────────────────
-// Sub-component: Individual Settlement Row
-// ─────────────────────────────────────────────────────
-interface SettlementRowProps {
-    settlement: Settlement
-    onPayClick: () => void
-    onRequestTaxInvoice: () => void
-}
-
-function SettlementRow({ settlement, onPayClick, onRequestTaxInvoice }: SettlementRowProps) {
-    const cfg = STATUS_CONFIG[settlement.status]
-    const typeLabel = PROPOSAL_TYPE_LABELS[settlement.proposal_type] || settlement.proposal_type
-    const withholding = settlement.withholding_amount || Math.round(settlement.creator_amount * 0.033)
-    const netAmount = settlement.net_creator_amount || (settlement.creator_amount - withholding)
-
-    return (
-        <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium truncate">
-                        {settlement.brand_name || '브랜드'} 협업
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                        {typeLabel}
-                    </span>
-                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium", cfg.color)}>
-                        {cfg.label}
-                    </span>
-                </div>
-                {/* Amount breakdown 2-line */}
-                <div className="mt-1.5 text-xs space-y-0.5">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <span>총 ₩{settlement.gross_amount.toLocaleString()}</span>
-                        <span>→</span>
-                        <span className="text-blue-600 font-medium">크리에이터 ₩{settlement.creator_amount.toLocaleString()}</span>
-                        <span className="hidden sm:inline text-violet-600">MCN ₩{settlement.mcn_amount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-orange-500">원천징수 -₩{withholding.toLocaleString()}</span>
-                        <span className="text-muted-foreground">→</span>
-                        <span className="text-emerald-600 font-semibold">실수령 ₩{netAmount.toLocaleString()}</span>
-                        <span className="text-muted-foreground ml-auto">
-                            {new Date(settlement.created_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-2 shrink-0 items-end">
-                {settlement.status === 'pending' && (!settlement.tax_invoice_status || settlement.tax_invoice_status === 'none') && (
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-7 text-xs bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
-                        onClick={onRequestTaxInvoice}
-                    >
-                        <FileText className="h-3 w-3 mr-1" />
-                        세금계산서 발행 요청
-                    </Button>
-                )}
-                {settlement.status === 'pending' && settlement.tax_invoice_status === 'requested' && (
-                    <Badge variant="outline" className="text-[10px] h-6 bg-slate-50 text-slate-500 border-slate-200 flex items-center gap-1 font-medium">
-                        <Clock className="h-3 w-3" />
-                        계산서 요청됨 (입금 대기중)
-                    </Badge>
-                )}
-                {settlement.status === 'pending' && (
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition-colors w-full"
-                        onClick={onPayClick}
-                    >
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        정산 지급하기
-                    </Button>
-                )}
-                {settlement.status === 'paid' && settlement.paid_at && (
-                    <span className="text-xs text-emerald-600 font-medium">
-                        {new Date(settlement.paid_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })} 지급완료
-                    </span>
-                )}
-            </div>
-        </div>
-    )
-}
