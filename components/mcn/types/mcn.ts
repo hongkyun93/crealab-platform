@@ -1,6 +1,24 @@
 // ─── Creator Status & Summary ──────────────────────────────────────────────────
 export type CreatorStatus = 'urgent' | 'active' | 'idle' | 'normal'
 
+export function getCreatorStatus(c: CreatorSummary): CreatorStatus {
+    const totalPending = c.pending_product_applications + c.pending_moment_proposals
+    const totalActive = c.active_product_applications + c.active_moment_proposals + c.active_campaign_applications
+    const hasAnyActivity = c.total_moments > 0 || c.total_product_applications > 0 ||
+        c.total_moment_proposals > 0 || c.total_campaign_applications > 0
+    if (totalPending > 0) return 'urgent'
+    if (totalActive > 0) return 'active'
+    if (!hasAnyActivity) return 'idle'
+    return 'normal'
+}
+
+export interface AggregateStats {
+    totalMembers: number
+    pendingProposals: number
+    activeCollabs: number
+    totalRevenue: number
+}
+
 export interface CreatorSummary {
     user_id: string
     display_name: string
@@ -26,11 +44,17 @@ export interface CreatorSummary {
     active_campaign_applications: number
 }
 
-// ─── Filter / Sort / View ──────────────────────────────────────────────────────
 export type FilterStatus = 'all' | 'urgent' | 'active' | 'idle'
 export type SortOrder = 'urgent' | 'revenue' | 'followers' | 'moments' | 'name'
 export type ViewMode = 'grid' | 'table'
 export type PriceRange = 'all' | 'under30' | '30to100' | 'over100'
+
+export const PRICE_RANGE_LABELS: Record<PriceRange, string> = {
+    all: '단가 전체',
+    under30: '30만 미만',
+    '30to100': '30~100만',
+    over100: '100만 이상',
+}
 
 export const FILTER_CHIPS: { value: FilterStatus; label: string; color: string }[] = [
     { value: 'all', label: '전체', color: 'default' },
