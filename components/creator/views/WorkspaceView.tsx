@@ -50,6 +50,7 @@ interface WorkspaceViewProps {
     handleAcceptProposal: (e: any, id: string) => void
     handleRejectClick: (p: any) => void
     handleOpenEditApplication: (p: any) => void
+    setCurrentView?: (v: string) => void
 }
 
 export const WorkspaceView = React.memo(function WorkspaceView({
@@ -68,7 +69,7 @@ export const WorkspaceView = React.memo(function WorkspaceView({
     setSelectedProposal, setShowReadonlyDialog,
     fetchProductGuide, setGuideProduct, setIsProductGuideOpen,
     setPerfSubmitProposal, setPerfSubmitOpen,
-    handleAcceptProposal, handleRejectClick, handleOpenEditApplication
+    handleAcceptProposal, handleRejectClick, handleOpenEditApplication, setCurrentView
 }: WorkspaceViewProps) {
 
     const { updateProductApplication, updateProposal, refreshData, sendMessage, sendNotification } = useUnifiedProvider();
@@ -653,6 +654,14 @@ export const WorkspaceView = React.memo(function WorkspaceView({
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+            {setCurrentView && (
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" onClick={() => setCurrentView('dashboard')} className="gap-2">
+                        <ChevronRight className="h-4 w-4 rotate-180" />
+                        돌아가기
+                    </Button>
+                </div>
+            )}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">워크스페이스 아카이브</h1>

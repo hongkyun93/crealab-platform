@@ -7,6 +7,18 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'cdn.imweb.me',
+      },
+      {
+        protocol: 'https',
+        hostname: 'wbeyxjoqcwjbcuwvjrsa.supabase.co',
+      },
+    ],
+  },
 };
 
 export default withSentryConfig(nextConfig, {

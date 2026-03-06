@@ -25,7 +25,7 @@ export function ProgressBar() {
     const currentStage = useWorkspaceStore((state) => state.currentStage);
     const proposal = useWorkspaceStore((state) => state.proposal);
 
-    const isContest = proposal?.type === 'contest' || proposal?.original_proposal_type === 'contest_application';
+    const isContest = (proposal as any)?.type === 'contest' || (proposal as any)?.original_proposal_type === 'contest_application';
     const stages = isContest ? CONTEST_STAGES : DEFAULT_STAGES;
 
     const currentStepIndex = stages.findIndex((s) => s.id === currentStage);

@@ -82,7 +82,7 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
                     .eq('team_id', teamId)
 
                 for (const m of (moments || []) as any[]) {
-                    const dateStr = m.moment_start_date || m.posting_date_exact
+                    const dateStr = m.moment_start_date || m.posting_date_exact || m.created_at
                     if (!dateStr) continue
                     allMoments.push({
                         id: `m-${m.id}`,
@@ -108,55 +108,55 @@ export function TeamCalendar({ teamId }: TeamCalendarProps) {
                     return
                 }
 
-                // 3. Moment Proposals (desired_date)
+                // 3. Moment Proposals (created_at fallback)
                 const { data: mps } = await supabase
                     .from('moment_proposals')
                     .select(`
-                        id, desired_date, product_name, status, creator_id,
+                        id, created_at, product_id, status, creator_id, brand_id,
                         profiles!creator_id ( display_name ),
                         brand:profiles!brand_id ( display_name )
                     `)
                     .in('creator_id', memberIds)
-                    .not('desired_date', 'is', null)
+                    .not('created_at', 'is', null)
 
                 for (const mp of (mps || []) as any[]) {
-                    if (!mp.desired_date) continue
+                    if (!mp.created_at) continue
                     allMoments.push({
                         id: `mp-${mp.id}`,
-                        title: mp.product_name || '모먼트 제안',
-                        date: mp.desired_date.split('T')[0],
+                        title: '모먼트 제안',
+                        date: mp.created_at.split('T')[0],
                         type: 'moment_proposal',
                         creatorName: mp.profiles?.display_name || 'Unknown',
                         creatorId: mp.creator_id,
                         status: mp.status,
                         brandName: mp.brand?.display_name,
-                        productName: mp.product_name,
+                        productName: '모먼트 제안',
                     })
                 }
 
-                // 4. Brand Proposals (desired_date)
+                // 4. Brand Proposals (created_at fallback)
                 const { data: bps } = await supabase
                     .from('product_applications')
                     .select(`
-                        id, desired_date, product_name, status, creator_id,
+                        id, created_at, product_id, status, creator_id, brand_id,
                         profiles!creator_id ( display_name ),
                         brand:profiles!brand_id ( display_name )
                     `)
                     .in('creator_id', memberIds)
-                    .not('desired_date', 'is', null)
+                    .not('created_at', 'is', null)
 
                 for (const bp of (bps || []) as any[]) {
-                    if (!bp.desired_date) continue
+                    if (!bp.created_at) continue
                     allMoments.push({
                         id: `bp-${bp.id}`,
-                        title: bp.product_name || '브랜드 제안',
-                        date: bp.desired_date.split('T')[0],
+                        title: '브랜드 제안',
+                        date: bp.created_at.split('T')[0],
                         type: 'product_application',
                         creatorName: bp.profiles?.display_name || 'Unknown',
                         creatorId: bp.creator_id,
                         status: bp.status,
                         brandName: bp.brand?.display_name,
-                        productName: bp.product_name,
+                        productName: '브랜드 제안',
                     })
                 }
 

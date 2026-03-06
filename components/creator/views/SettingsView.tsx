@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useEffectiveUser } from "@/lib/hooks/use-effective-user"
 import { cn } from "@/lib/utils"
-import { BookOpen, Instagram, Loader2, Lock, Music2, Plus, Save, Trash2, TrendingUp, Youtube, ChevronDown, Copy } from "lucide-react"
+import { BookOpen, Building2, Instagram, Loader2, Lock, LogOut, Music2, Plus, Save, Trash2, TrendingUp, Youtube, ChevronDown, Copy } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -231,6 +231,10 @@ export function SettingsView() {
     const [calcHighProduction, setCalcHighProduction] = useState(false)
     const [calcSeason, setCalcSeason] = useState(false)
 
+    // 소속 MCN 팀 상태
+    const [mcnTeam, setMcnTeam] = useState<{ id: string, slug: string, name: string | null } | null>(null)
+    const [isLeavingTeam, setIsLeavingTeam] = useState(false)
+
 
 
     // Initialize state from effectiveUser
@@ -302,6 +306,43 @@ export function SettingsView() {
             fetchChannels(effectiveUserId)
         }
     }, [effectiveUserId, fetchChannels])
+
+    // 소속 MCN 팀 조회 (크리에이터 본인 계정만, 프록시 모드 제외)
+    useEffect(() => {
+        if (!user?.id || isProxyMode) return
+        const supabase = createClient()
+        supabase
+            .from('team_members')
+            .select('teams(id, slug, name)')
+            .eq('user_id', user.id)
+            .maybeSingle()
+            .then(({ data }) => {
+                const teams = (data as any)?.teams
+                if (teams) setMcnTeam({ id: teams.id, slug: teams.slug, name: teams.name })
+                else setMcnTeam(null)
+            })
+    }, [user?.id, isProxyMode])
+
+    const handleLeaveTeam = async () => {
+        if (!user?.id || !mcnTeam) return
+        if (!window.confirm(`정말 ${mcnTeam.name || mcnTeam.slug} 팀에서 탈퇴하시겠습니까?`)) return
+        setIsLeavingTeam(true)
+        try {
+            const supabase = createClient()
+            const { error } = await supabase
+                .from('team_members')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('team_id', mcnTeam.id)
+            if (error) throw error
+            setMcnTeam(null)
+            toast.success('팀 탈퇴 완료. 이제 독립 크리에이터로 활동합니다.')
+        } catch (err: any) {
+            toast.error(err.message || '탈퇴 중 오류가 발생했습니다.')
+        } finally {
+            setIsLeavingTeam(false)
+        }
+    }
 
     // Instagram OAuth 결과 처리
     const searchParams = useSearchParams()
@@ -1084,6 +1125,42 @@ export function SettingsView() {
                 </>
             )
             }
+
+            {/* 소속 MCN - 크리에이터 본인이고 팀이 있을 때만 표시 */}
+            {!isProxyMode && mcnTeam && (
+                <Card className="border-indigo-200/60 bg-indigo-50/30 dark:bg-indigo-950/10 dark:border-indigo-800/30">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-indigo-600" />
+                            소속 MCN
+                        </CardTitle>
+                        <CardDescription>현재 소속된 MCN/에이전시 정보입니다.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center justify-between p-4 bg-background rounded-xl border">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                    <Building2 className="h-5 w-5 text-indigo-600" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-sm">{mcnTeam.name || mcnTeam.slug}</p>
+                                    <p className="text-xs text-muted-foreground">@{mcnTeam.slug}</p>
+                                </div>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
+                                onClick={handleLeaveTeam}
+                                disabled={isLeavingTeam}
+                            >
+                                {isLeavingTeam ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+                                탈퇴하기
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* 위험 구역 - 프록시 모드에서는 숨김 */}
             {

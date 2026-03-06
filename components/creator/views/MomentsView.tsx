@@ -8,6 +8,7 @@ import { ArrowLeft, BadgeCheck, Calendar, ChevronRight, Clock, Info, LayoutGrid,
 import { useRouter } from "next/navigation"
 import React from "react"
 import { useSocialChannels } from "@/components/providers/social-channels-provider"
+import { CreatorContestStatusView } from "@/components/creator/views/CreatorContestStatusView"
 
 const CHANNEL_LABELS: Record<string, string> = {
     instagram_reels: '🎞️ 릴스', instagram_feed: '📷 피드', instagram_story: '⭕ 스토리',
@@ -309,22 +310,21 @@ export const MomentsView = React.memo(function MomentsView({
                     돌아가기
                 </Button>
                 <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-bold">내 모먼트 아카이브</h1>
+                    <h1 className="text-2xl font-bold">나의 활동 아카이브</h1>
                     <div className="group relative flex items-center">
                         <Info className="h-5 w-5 text-slate-400 cursor-help" />
                         <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-80 p-3 bg-popover text-popover-foreground text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-border">
-                            💡 브랜드에게 보이는 것과 동일한 카드 UI입니다.<br />
-                            내 모먼트가 브랜드에게 어떻게 보이는지 확인하세요.
+                            💡 활동 중인 모먼트 상품들과 지원한 콘테스트 현황을 한 곳에서 모아볼 수 있습니다.
                         </div>
                     </div>
                 </div>
             </div>
 
-            <Tabs defaultValue="upcoming" className="w-full">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                    <TabsList className="w-full md:w-auto grid grid-cols-2">
-                        <TabsTrigger value="upcoming">나의 모먼트 ({activeMoments.length + myMoments.length})</TabsTrigger>
-                        <TabsTrigger value="past">완료된 모먼트 ({pastMoments.length})</TabsTrigger>
+            <Tabs defaultValue="moment" className="w-full space-y-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <TabsList className="grid grid-cols-2 w-full md:w-[340px] bg-slate-100 p-1.5 rounded-xl h-12 shadow-inner">
+                        <TabsTrigger value="moment" className="rounded-lg font-bold data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow">⚡ 모먼트 현황</TabsTrigger>
+                        <TabsTrigger value="contest" className="rounded-lg font-bold data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow">🏆 콘테스트 현황</TabsTrigger>
                     </TabsList>
 
                     <div className="hidden md:flex items-center gap-1 bg-muted p-1 rounded-lg">
@@ -349,75 +349,72 @@ export const MomentsView = React.memo(function MomentsView({
                     </div>
                 </div>
 
-                {/* ─── 나의 모먼트 Tab ──────────────────────────────── */}
-                <TabsContent value="upcoming" className="space-y-4">
-                    {viewMode === 'grid' ? (
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {upcomingMoments.length > 0 ? (
-                                upcomingMoments.map((moment: any) => (
-                                    <MomentGridCard
-                                        key={moment.id}
-                                        item={moment}
-                                        creator={creatorProfile}
-                                        isPast={false}
-                                        offerCount={getActiveProposalCount(moment.id)}
-                                        onClick={() => moment.status === 'draft' ? router.push(`/creator/edit/${moment.id}`) : router.push(`/moment/${moment.id}`)}
+                <TabsContent value="moment" className="m-0 border-none p-0 outline-none mt-4">
+                    <Tabs defaultValue="all" className="w-full">
+                        <TabsList className="w-full md:w-auto flex bg-transparent justify-start gap-4 mb-6 border-b pb-0 mt-2">
+                            <TabsTrigger value="all" className="bg-transparent data-[state=active]:bg-transparent shadow-none px-2 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600">
+                                전체 ({upcomingMoments.length + pastMoments.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="active" className="bg-transparent data-[state=active]:bg-transparent shadow-none px-2 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600">
+                                진행중 ({upcomingMoments.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="past" className="bg-transparent data-[state=active]:bg-transparent shadow-none px-2 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600">
+                                완료됨 ({pastMoments.length})
+                            </TabsTrigger>
+                        </TabsList>
+
+                        {[
+                            { val: 'all', data: [...upcomingMoments, ...pastMoments] },
+                            { val: 'active', data: upcomingMoments },
+                            { val: 'past', data: pastMoments }
+                        ].map(tab => (
+                            <TabsContent key={tab.val} value={tab.val} className="space-y-4">
+                                {viewMode === 'grid' ? (
+                                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                        {tab.data.length > 0 ? (
+                                            tab.data.map((moment: any) => (
+                                                <MomentGridCard
+                                                    key={moment.id}
+                                                    item={moment}
+                                                    creator={creatorProfile}
+                                                    isPast={moment.status === 'completed'}
+                                                    offerCount={getActiveProposalCount(moment.id)}
+                                                    onClick={() => moment.status === 'draft' ? router.push(`/creator/edit/${moment.id}`) : router.push(`/moment/${moment.id}`)}
+                                                    onEdit={(id) => router.push(`/creator/edit/${id}`)}
+                                                    onDelete={deleteMoment}
+                                                    onComplete={(id) => updateMoment(id, { status: 'completed' })}
+                                                />
+                                            ))
+                                        ) : (
+                                            <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
+                                                모먼트가 없습니다.
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <MomentTableView
+                                        items={tab.data}
+                                        getCreator={() => creatorProfile}
+                                        momentProposals={momentProposals ?? []}
+                                        isPast={tab.val === 'past'}
+                                        onClick={(m) => m.status === 'draft' ? router.push(`/creator/edit/${m.id}`) : router.push(`/moment/${m.id}`)}
                                         onEdit={(id) => router.push(`/creator/edit/${id}`)}
                                         onDelete={deleteMoment}
-                                        onComplete={(id) => updateMoment(id, { status: 'completed' })}
                                     />
-                                ))
-                            ) : (
-                                <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                    나의 모먼트가 없습니다.
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <MomentTableView
-                            items={upcomingMoments}
-                            getCreator={() => creatorProfile}
-                            momentProposals={momentProposals ?? []}
-                            onClick={(m) => m.status === 'draft' ? router.push(`/creator/edit/${m.id}`) : router.push(`/moment/${m.id}`)}
-                            onEdit={(id) => router.push(`/creator/edit/${id}`)}
-                            onDelete={deleteMoment}
-                        />
-                    )}
+                                )}
+                            </TabsContent>
+                        ))}
+                    </Tabs>
                 </TabsContent>
 
-                {/* ─── 완료된 모먼트 Tab ──────────────────────────────── */}
-                <TabsContent value="past" className="space-y-4">
-                    {viewMode === 'grid' ? (
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {pastMoments.length > 0 ? (
-                                pastMoments.map((moment: any) => (
-                                    <MomentGridCard
-                                        key={moment.id}
-                                        item={moment}
-                                        creator={creatorProfile}
-                                        isPast={true}
-                                        offerCount={getActiveProposalCount(moment.id)}
-                                        onClick={() => moment.status === 'draft' ? router.push(`/creator/edit/${moment.id}`) : router.push(`/moment/${moment.id}`)}
-                                        onEdit={(id) => router.push(`/creator/edit/${id}`)}
-                                        onDelete={deleteMoment}
-                                    />
-                                ))
-                            ) : (
-                                <div className="col-span-full text-center py-12 border rounded-lg border-dashed text-muted-foreground">
-                                    완료된 모먼트가 없습니다.
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <MomentTableView
-                            items={pastMoments}
-                            getCreator={() => creatorProfile}
-                            isPast={true}
-                            onClick={(m) => m.status === 'draft' ? router.push(`/creator/edit/${m.id}`) : router.push(`/moment/${m.id}`)}
-                            onEdit={(id) => router.push(`/creator/edit/${id}`)}
-                            onDelete={deleteMoment}
-                        />
-                    )}
+                <TabsContent value="contest" className="m-0 border-none p-0 outline-none">
+                    <CreatorContestStatusView
+                        hideHeader={true}
+                        onNavigate={setCurrentView}
+                        // Note: To match how Contest apps fetch their workspaces, pass them appropriately if needed
+                        // `onOpenWorkspace` goes directly to parent's handler
+                        onOpenWorkspace={(proposal) => handleOpenDetails(proposal, 'campaign')}
+                    />
                 </TabsContent>
             </Tabs>
         </div>

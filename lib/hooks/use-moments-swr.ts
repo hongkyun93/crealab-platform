@@ -201,9 +201,10 @@ async function fetchPublicMoments(): Promise<CreatorMoment[]> {
  */
 export function useUserMoments(teamId?: string, userId?: string, fetchMode: 'team' | 'user' = 'team') {
     // Determine key based on context (Team > User) AND Mode
-    const keyId = teamId || userId
-    // Include fetchMode in SWR key to separate cache
-    const swrKey = keyId ? [SWR_KEYS.EVENTS_USER(keyId), fetchMode] : null
+    // If we are strictly fetching by user (Creator/Proxy mode), the cache key MUST include the user ID to prevent cross-creator pollution
+    const keyId = (fetchMode === 'user' && userId) ? userId : (teamId || userId)
+    // Include the actual targeted userId in the SWR array key to force a re-fetch when MCN clicks a different creator
+    const swrKey = keyId ? [SWR_KEYS.EVENTS_USER(keyId), fetchMode, userId] : null
 
     const { data, error, isLoading, mutate: revalidate } = useSWR(
         swrKey,
@@ -300,10 +301,20 @@ export const eventMutations = {
                 return false
             }
 
-            // Revalidate caches
-            const cacheKeyId = teamId || userId
-            if (cacheKeyId) {
-                await mutate(SWR_KEYS.EVENTS_USER(cacheKeyId))
+            // Revalidate caches matches team and user prefixes
+            if (teamId) {
+                await mutate(
+                    (key: any) => Array.isArray(key) && key[0] === SWR_KEYS.EVENTS_USER(teamId),
+                    undefined,
+                    { revalidate: true }
+                )
+            }
+            if (userId) {
+                await mutate(
+                    (key: any) => Array.isArray(key) && key[0] === SWR_KEYS.EVENTS_USER(userId),
+                    undefined,
+                    { revalidate: true }
+                )
             }
             await mutate(SWR_KEYS.EVENTS_PUBLIC)
 
@@ -355,10 +366,20 @@ export const eventMutations = {
                 return false
             }
 
-            // Revalidate caches
-            const cacheKeyId = teamId || userId
-            if (cacheKeyId) {
-                await mutate(SWR_KEYS.EVENTS_USER(cacheKeyId))
+            // Revalidate caches matches team and user prefixes
+            if (teamId) {
+                await mutate(
+                    (key: any) => Array.isArray(key) && key[0] === SWR_KEYS.EVENTS_USER(teamId),
+                    undefined,
+                    { revalidate: true }
+                )
+            }
+            if (userId) {
+                await mutate(
+                    (key: any) => Array.isArray(key) && key[0] === SWR_KEYS.EVENTS_USER(userId),
+                    undefined,
+                    { revalidate: true }
+                )
             }
             await mutate(SWR_KEYS.EVENTS_PUBLIC)
 
@@ -411,10 +432,20 @@ export const eventMutations = {
                 throw new Error('삭제 권한이 없거나, 이미 삭제된 모먼트입니다.')
             }
 
-            // Revalidate caches
-            const cacheKeyId = teamId || userId
-            if (cacheKeyId) {
-                await mutate(SWR_KEYS.EVENTS_USER(cacheKeyId))
+            // Revalidate caches matches team and user prefixes
+            if (teamId) {
+                await mutate(
+                    (key: any) => Array.isArray(key) && key[0] === SWR_KEYS.EVENTS_USER(teamId),
+                    undefined,
+                    { revalidate: true }
+                )
+            }
+            if (userId) {
+                await mutate(
+                    (key: any) => Array.isArray(key) && key[0] === SWR_KEYS.EVENTS_USER(userId),
+                    undefined,
+                    { revalidate: true }
+                )
             }
             await mutate(SWR_KEYS.EVENTS_PUBLIC)
 

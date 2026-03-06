@@ -131,12 +131,6 @@ export function SiteHeader() {
                         <span className="hidden md:inline-block text-[10px] font-bold text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full dark:text-primary dark:bg-primary/20">V6.0.0</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-                        <Link
-                            href="/services"
-                            className={`transition-colors hover:text-foreground/80 ${isActive('/services') ? 'text-foreground font-semibold' : 'text-foreground/60'}`}
-                        >
-                            서비스 소개
-                        </Link>
 
                         {(!user || user.role === 'brand' || user.role === 'admin') && (
                             <Link
@@ -184,9 +178,6 @@ export function SiteHeader() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="start" className="w-[200px]">
-                                    <DropdownMenuItem asChild>
-                                        <Link href="/services" className="w-full">서비스 소개</Link>
-                                    </DropdownMenuItem>
                                     {(!user || user.role === 'brand' || user.role === 'admin') && (
                                         <DropdownMenuItem asChild>
                                             <Link href="/brand" className="w-full">브랜드</Link>
@@ -319,7 +310,13 @@ export function SiteHeader() {
                                                         <div
                                                             key={n.id}
                                                             className={`p-4 text-sm hover:bg-muted/50 cursor-pointer transition-colors flex gap-3 ${!n.is_read ? style.bg : ''} ${style.border}`}
-                                                            onClick={() => routeNotification(n)}
+                                                            onClick={() => {
+                                                                if (n.type === 'team_invite') {
+                                                                    router.push('/creator?view=notifications')
+                                                                } else {
+                                                                    routeNotification(n)
+                                                                }
+                                                            }}
                                                         >
                                                             <div className="mt-0.5 shrink-0">
                                                                 {style.icon}

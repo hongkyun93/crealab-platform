@@ -12,26 +12,8 @@ import { ArrowUpDown, Calendar, Check, ChevronRight, FileText, Filter, Loader2, 
 import React, { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { MagicLinkGeneratorModal } from "./magic-link-generator-modal"
+import type { TeamProposal } from "./types/mcn"
 
-interface TeamProposal {
-    id: string
-    proposal_type: 'product_application' | 'moment_proposal' | 'campaign_application'
-    status: string
-    product_name: string
-    price_offer: number | null
-    message: string | null
-    created_at: string
-    creator_id: string
-    creator_name: string
-    creator_avatar: string | null
-    brand_name: string
-    brand_avatar: string | null
-    content_type?: string | null
-    brand_condition_confirmed?: boolean | null
-    creator_condition_confirmed?: boolean | null
-    contract_status?: string | null
-    delivery_status?: string | null
-}
 
 interface TeamProposalsTableProps {
     teamId: string
@@ -172,8 +154,21 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
                 : proposal.proposal_type === 'moment_proposal' ? 'moment_proposals'
                     : 'campaign_applications'
 
-            const { error } = await supabase.from(table).update({ status: 'accepted' }).eq('id', proposal.id)
+            const { error } = await supabase.from(table).update({
+                status: 'accepted',
+                accepted_by_mcn_admin: user?.id
+            }).eq('id', proposal.id)
             if (error) throw error
+
+            // Create Audit/Notification for the creator
+            await supabase.from('notifications').insert({
+                user_id: proposal.creator_id,
+                title: '소속 MCN 대리 수락 안내',
+                content: `소속 MCN에서 브랜드 제안(${proposal.product_name})을 대리 수락했습니다. 워크스페이스를 확인해보세요.`,
+                type: 'proposal_status_change',
+                link: '/creator?view=workspace'
+            })
+
             toast.success(`${proposal.creator_name}의 제안을 수락했습니다`)
             fetchProposals()
         } catch (err: any) {
@@ -193,6 +188,16 @@ export function TeamProposalsTable({ teamId }: TeamProposalsTableProps) {
 
             const { error } = await supabase.from(table).update({ status: 'rejected' }).eq('id', proposal.id)
             if (error) throw error
+
+            // Create Audit/Notification for the creator
+            await supabase.from('notifications').insert({
+                user_id: proposal.creator_id,
+                title: '소속 MCN 대리 거절 안내',
+                content: `소속 MCN에서 브랜드 제안(${proposal.product_name})을 정리(거절)했습니다.`,
+                type: 'proposal_status_change',
+                link: '/creator?view=workspace'
+            })
+
             toast.success(`${proposal.creator_name}의 제안을 거절했습니다`)
             fetchProposals()
         } catch (err: any) {

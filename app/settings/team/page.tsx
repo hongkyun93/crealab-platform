@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { TeamInvitation, TeamMember, TeamRole } from "@/lib/types/team"
-import { ArrowLeft, Loader2, Mail, Pencil, Trash2, UserPlus, Users, X } from "lucide-react"
+import { ArrowLeft, Loader2, Mail, Pencil, Search, Trash2, UserPlus, Users, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -56,6 +56,12 @@ export default function TeamSettingsPage() {
     // Invite Member Form State
     const [inviteEmail, setInviteEmail] = useState("")
     const [inviteRole, setInviteRole] = useState<TeamRole>("member")
+
+    // 이메일 검색 기반 초대 State
+    const [searchEmail, setSearchEmail] = useState("")
+    const [searchResult, setSearchResult] = useState<any | null>(null)
+    const [isSearching, setIsSearching] = useState(false)
+    const [isSendingInvite, setIsSendingInvite] = useState(false)
 
     // Load members and invitations
     useEffect(() => {
@@ -119,6 +125,44 @@ export default function TeamSettingsPage() {
             loadTeamData()
         } else {
             toast.error("초대에 실패했습니다.")
+        }
+    }
+
+    const handleSearchCreator = async () => {
+        if (!searchEmail.trim()) { toast.error('이메일을 입력해주세요.'); return }
+        setIsSearching(true)
+        setSearchResult(null)
+        try {
+            const { data, error } = await supabase.rpc('search_creator_by_email', { search_email: searchEmail.trim() })
+            if (error) throw error
+            const result = data as any
+            if (result.success) setSearchResult(result)
+            else toast.error(result.message)
+        } catch (err: any) {
+            toast.error(err.message || '검색 중 오류가 발생했습니다.')
+        } finally {
+            setIsSearching(false)
+        }
+    }
+
+    const handleSendInvite = async () => {
+        if (!searchResult?.user_id) return
+        setIsSendingInvite(true)
+        try {
+            const { data, error } = await supabase.rpc('send_team_invite_notification', { target_user_id: searchResult.user_id })
+            if (error) throw error
+            const result = data as any
+            if (result.success) {
+                toast.success(result.message)
+                setSearchEmail('')
+                setSearchResult(null)
+            } else {
+                toast.error(result.message)
+            }
+        } catch (err: any) {
+            toast.error(err.message || '초대 발송 중 오류가 발생했습니다.')
+        } finally {
+            setIsSendingInvite(false)
         }
     }
 
@@ -307,82 +351,69 @@ export default function TeamSettingsPage() {
                             </CardContent>
                         </Card>
                     )}
-                    {/* Invite Section */}
+                    {/* 이메일 검색 기반 초대 섹션 */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <UserPlus className="h-5 w-5" />
-                                멤버 초대
+                                크리에이터 초대
                             </CardTitle>
                             <CardDescription>
-                                새로운 멤버를 팀에 초대하고 역할을 부여하세요.
+                                이메일로 크리에이터를 검색하고 앱 내 알림으로 초대하세요.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <div className="flex flex-col md:flex-row gap-4 items-end">
-                                <div className="grid gap-2 flex-1 w-full">
-                                    <Label htmlFor="email">이메일 주소</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="colleague@example.com"
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                    />
-                                </div>
-                                <div className="grid gap-2 w-full md:w-[200px]">
-                                    <Label htmlFor="role">역할</Label>
-                                    <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as TeamRole)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="member">Member (일반)</SelectItem>
-                                            <SelectItem value="employee">Employee (직원)</SelectItem>
-                                            <SelectItem value="creator">Creator (크리에이터)</SelectItem>
-                                            <SelectItem value="manager">Manager (관리자)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex gap-2 w-full md:w-auto">
-                                    <Button onClick={handleInviteMember} className="flex-1 md:flex-none" variant="outline">
-                                        초대 링크 보내기
-                                    </Button>
-                                    <Button
-                                        onClick={async () => {
-                                            if (!inviteEmail) {
-                                                toast.error("이메일을 입력해주세요")
-                                                return
-                                            }
-
-                                            try {
-                                                const { data, error } = await supabase.rpc('add_team_member_direct', {
-                                                    target_email: inviteEmail,
-                                                    target_role: inviteRole
-                                                })
-
-                                                if (error) throw error
-
-                                                const result = data as any
-                                                if (result.success) {
-                                                    toast.success(result.message || "팀원이 추가되었습니다!")
-                                                    setInviteEmail("")
-                                                    loadTeamData()
-                                                } else {
-                                                    toast.error(result.message || "추가 실패")
-                                                }
-                                            } catch (err: any) {
-                                                console.error('Direct add error:', err)
-                                                toast.error("팀원 추가 중 오류가 발생했습니다")
-                                            }
-                                        }}
-                                        disabled={!inviteEmail}
-                                        className="flex-1 md:flex-none bg-green-600 hover:bg-green-700"
-                                    >
-                                        바로 추가 ⚡
-                                    </Button>
-                                </div>
+                        <CardContent className="space-y-4">
+                            {/* 이메일 검색 */}
+                            <div className="flex gap-2">
+                                <Input
+                                    type="email"
+                                    placeholder="크리에이터 이메일 입력"
+                                    value={searchEmail}
+                                    onChange={(e) => setSearchEmail(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearchCreator()}
+                                    className="flex-1"
+                                />
+                                <Button
+                                    onClick={handleSearchCreator}
+                                    disabled={isSearching}
+                                    variant="outline"
+                                    className="shrink-0"
+                                >
+                                    {isSearching
+                                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                                        : <Search className="h-4 w-4" />}
+                                    검색
+                                </Button>
                             </div>
+
+                            {/* 검색 결과 */}
+                            {searchResult && (
+                                <div className="border rounded-xl p-4 flex items-center gap-4 bg-muted/30">
+                                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-xl shrink-0 overflow-hidden">
+                                        {searchResult.avatar_url
+                                            ? <img src={searchResult.avatar_url} alt="" className="w-full h-full object-cover" />
+                                            : (searchResult.display_name?.[0] || '?')}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-sm">{searchResult.display_name || '이름 없음'}</p>
+                                        <p className="text-xs text-muted-foreground">{searchResult.email}</p>
+                                        {searchResult.current_team_name && (
+                                            <p className="text-xs text-amber-600 mt-0.5">현재 소속: {searchResult.current_team_name}</p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        onClick={handleSendInvite}
+                                        disabled={isSendingInvite}
+                                        size="sm"
+                                        className="shrink-0"
+                                    >
+                                        {isSendingInvite
+                                            ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                                            : <Mail className="h-3.5 w-3.5 mr-1" />}
+                                        초대 알림 보내기
+                                    </Button>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

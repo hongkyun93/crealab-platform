@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { AlertCircle, CheckCircle2, Download, RefreshCw, TrendingUp, Wallet } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Download, RefreshCw, TrendingUp, Wallet, ChevronRight } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 interface Settlement {
@@ -85,7 +85,11 @@ const TYPE_LABEL: Record<string, string> = {
     contest_apply: '콘테스트',
 }
 
-export function EarningsView() {
+interface EarningsViewProps {
+    setCurrentView?: (v: string) => void;
+}
+
+export function EarningsView({ setCurrentView }: EarningsViewProps = {}) {
     const { supabase, user } = useAuth()
     const userId = user?.id
     const [settlements, setSettlements] = useState<Settlement[]>([])
@@ -169,6 +173,14 @@ export function EarningsView() {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 max-w-2xl">
+            {setCurrentView && (
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" onClick={() => setCurrentView('dashboard')} className="gap-2">
+                        <ChevronRight className="h-4 w-4 rotate-180" />
+                        돌아가기
+                    </Button>
+                </div>
+            )}
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">수익 관리</h1>
                 <p className="text-muted-foreground text-sm mt-1">

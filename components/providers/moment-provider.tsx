@@ -64,11 +64,19 @@ export function EventProvider({ children, userId, teamId, isProxyMode = false, u
                     table: 'life_moments'
                 },
                 (payload) => {
-                    // Revalidate all event caches
+                    // Revalidate all event caches matching team or user
                     if (teamId) {
-                        mutate(SWR_KEYS.EVENTS_USER(teamId))
+                        mutate(
+                            (key: any) => Array.isArray(key) && key[0] === SWR_KEYS.EVENTS_USER(teamId),
+                            undefined,
+                            { revalidate: true }
+                        )
                     } else if (userId) {
-                        mutate(SWR_KEYS.EVENTS_USER(userId))
+                        mutate(
+                            (key: any) => Array.isArray(key) && key[0] === SWR_KEYS.EVENTS_USER(userId),
+                            undefined,
+                            { revalidate: true }
+                        )
                     }
                     mutate(SWR_KEYS.EVENTS_PUBLIC)
                 }

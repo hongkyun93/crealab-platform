@@ -10,6 +10,7 @@ import { ko } from "date-fns/locale"
 interface CreatorContestStatusViewProps {
     onNavigate?: (view: string, params?: any) => void;
     onOpenWorkspace?: (proposal: any) => void;
+    hideHeader?: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
@@ -21,7 +22,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
     video_approved: { label: '영상 승인됨', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: CheckCircle2 },
 };
 
-export function CreatorContestStatusView({ onNavigate, onOpenWorkspace }: CreatorContestStatusViewProps) {
+export function CreatorContestStatusView({ onNavigate, onOpenWorkspace, hideHeader = false }: CreatorContestStatusViewProps) {
     const { user } = useUnifiedProvider();
     const supabase = createClient();
 
@@ -89,28 +90,30 @@ export function CreatorContestStatusView({ onNavigate, onOpenWorkspace }: Creato
     };
 
     return (
-        <div className="flex-1 overflow-y-auto pb-20">
-            <div className="container max-w-3xl mx-auto px-4 pt-6">
+        <div className={`flex-1 overflow-y-auto ${hideHeader ? '' : 'pb-20'}`}>
+            <div className={`container max-w-3xl mx-auto px-4 ${hideHeader ? 'pt-0' : 'pt-6'}`}>
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                            <Trophy className="w-5 h-5 text-amber-500" />
-                            내 콘테스트
-                        </h1>
-                        <p className="text-sm text-muted-foreground mt-0.5">지원한 콘테스트 목록과 선발 현황</p>
+                {!hideHeader && (
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                                <Trophy className="w-5 h-5 text-amber-500" />
+                                내 콘테스트
+                            </h1>
+                            <p className="text-sm text-muted-foreground mt-0.5">지원한 콘테스트 목록과 선발 현황</p>
+                        </div>
+                        {onNavigate && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-8"
+                                onClick={() => onNavigate('discover-contests')}
+                            >
+                                더 많은 콘테스트 보기 <ArrowRight className="w-3 h-3 ml-1" />
+                            </Button>
+                        )}
                     </div>
-                    {onNavigate && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-8"
-                            onClick={() => onNavigate('discover-contests')}
-                        >
-                            더 많은 콘테스트 보기 <ArrowRight className="w-3 h-3 ml-1" />
-                        </Button>
-                    )}
-                </div>
+                )}
 
                 {/* Filter Tabs */}
                 <div className="flex gap-2 mb-5 flex-wrap">

@@ -1,20 +1,47 @@
 import { useUnifiedProvider } from "@/components/providers/unified-provider"
-import { AlertCircle, Bell, CheckCircle2, MessageSquare } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { AlertCircle, Bell, Building2, CheckCircle2, MessageSquare } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useNotificationRouter } from "@/hooks/use-notification-router"
 import React, { useState } from "react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 
 export const NotificationsView = React.memo(function NotificationsView() {
-    const { notifications, markAsRead } = useUnifiedProvider() as any
+    const { notifications, markAsRead, refreshData } = useUnifiedProvider() as any
     const router = useRouter()
     const { routeNotification } = useNotificationRouter()
     const [notificationFilter, setNotificationFilter] = useState<'all' | 'action' | 'update' | 'message'>('action')
+    const [acceptingId, setAcceptingId] = useState<string | null>(null)
+
+    const handleAcceptTeamInvite = async (e: React.MouseEvent, notifId: string) => {
+        e.stopPropagation()
+        setAcceptingId(notifId)
+        try {
+            const supabase = createClient()
+            const { data, error } = await supabase.rpc('accept_team_invite', { notification_id: notifId })
+            if (error) throw error
+            const result = data as any
+            if (result.success) {
+                toast.success(result.message)
+                await refreshData()
+            } else {
+                toast.error(result.message)
+            }
+        } catch (err: any) {
+            toast.error(err.message || '수락 중 오류가 발생했습니다.')
+        } finally {
+            setAcceptingId(null)
+        }
+    }
 
     const getCreatorNotificationStyle = (type: string) => {
-        const actionTypes = ['contract_negotiating', 'content_revision', 'proposal_update', 'application_received', 'shipping_address_saved', 'shipping_started', 'condition_confirmed']
+        const actionTypes = ['contract_negotiating', 'content_revision', 'proposal_update', 'application_received', 'shipping_address_saved', 'shipping_started', 'condition_confirmed', 'team_invite']
         const successTypes = ['contract_signed', 'proposal_accepted', 'collaboration_complete', 'collaboration_final_complete', 'content_approved', 'payment_confirmed', 'settlement_paid', 'delivery_confirmed']
 
-        if (actionTypes.includes(type)) {
+        if (type === 'team_invite') {
+            return { icon: <Building2 className="w-5 h-5 text-indigo-500" />, bg: "bg-indigo-50/50 dark:bg-indigo-900/10", border: "border-l-4 border-indigo-500" }
+        } else if (actionTypes.includes(type)) {
             return { icon: <AlertCircle className="w-5 h-5 text-red-500" />, bg: "bg-red-50/50 dark:bg-red-900/10", border: "border-l-4 border-red-500" }
         } else if (successTypes.includes(type)) {
             return { icon: <CheckCircle2 className="w-5 h-5 text-green-500" />, bg: "bg-green-50/50 dark:bg-green-900/10", border: "border-l-4 border-green-500" }
@@ -26,7 +53,7 @@ export const NotificationsView = React.memo(function NotificationsView() {
         'proposal_received', 'moment_proposal',
         'proposal_update', 'contract_signed', 'shipping_started',
         'delivery_confirmed', 'content_revision', 'content_approved',
-        'collaboration_complete'
+        'collaboration_complete', 'team_invite'
     ];
 
     const isCreatorAction = (type: string) => creatorActionTypes.includes(type);
@@ -90,18 +117,30 @@ export const NotificationsView = React.memo(function NotificationsView() {
                 {filteredNotifs.length > 0 ? (
                     filteredNotifs.map((notif: any) => {
                         const style = getCreatorNotificationStyle(notif.type)
+                        const isTeamInvite = notif.type === 'team_invite' && !notif.is_read
                         return (
                             <div
                                 key={notif.id}
-                                className={`p-4 bg-card rounded-2xl flex items-start gap-4 cursor-pointer hover:shadow-md transition-all group ${!notif.is_read ? 'ring-2 ring-primary/20' : 'border opacity-70'} ${style.bg} ${style.border}`}
-                                onClick={() => routeNotification(notif)}
+                                className={`p-4 bg-card rounded-2xl flex items-start gap-4 transition-all group ${!notif.is_read ? 'ring-2 ring-primary/20' : 'border opacity-70'} ${style.bg} ${style.border} ${!isTeamInvite ? 'cursor-pointer hover:shadow-md' : ''}`}
+                                onClick={() => !isTeamInvite && routeNotification(notif)}
                             >
                                 <div className="mt-1 shrink-0">
                                     {style.icon}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className={`text-sm group-hover:text-primary transition-colors ${!notif.is_read ? 'font-bold text-foreground' : 'font-medium'}`}>{notif.content}</p>
+                                    <p className={`text-sm ${!notif.is_read ? 'font-bold text-foreground' : 'font-medium'} ${!isTeamInvite ? 'group-hover:text-primary transition-colors' : ''}`}>{notif.content}</p>
                                     <p className="text-xs text-muted-foreground mt-1">{new Date(notif.created_at).toLocaleDateString()}</p>
+                                    {/* MCN 팀 초대 수락 버튼 */}
+                                    {isTeamInvite && (
+                                        <Button
+                                            size="sm"
+                                            className="mt-3 h-8 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
+                                            onClick={(e) => handleAcceptTeamInvite(e, notif.id)}
+                                            disabled={acceptingId === notif.id}
+                                        >
+                                            {acceptingId === notif.id ? '처리 중...' : '✅ 팀 합류 수락하기'}
+                                        </Button>
+                                    )}
                                 </div>
                                 {!notif.is_read && (
                                     <div className="shrink-0 mt-2">

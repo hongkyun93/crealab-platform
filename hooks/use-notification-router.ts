@@ -47,6 +47,9 @@ export function useNotificationRouter() {
         const role = user?.role || 'creator' // fallback
         const rolePrefix = `/${role}?view=`
 
+        // team_invite는 수락 버튼으로만 처리 — 라우팅하지 않음
+        if (type === 'team_invite') return
+
         // --- 그룹별 분기 처리 ---
 
         // 1️⃣ [브랜드 수신] 크리에이터 지원서 (캠페인/제품) -> 캠페인/제품 관리 페이지

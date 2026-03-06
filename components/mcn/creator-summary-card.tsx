@@ -5,32 +5,9 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar, ChevronRight, FileText, Instagram, TrendingUp } from "lucide-react"
 
-export type CreatorStatus = 'urgent' | 'active' | 'idle' | 'normal'
-
-export interface CreatorSummary {
-    user_id: string
-    display_name: string
-    avatar_url: string | null
-    instagram_handle: string | null
-    followers_count: number
-    tier: string | null
-    tags: string[] | null
-    price_video: number
-    price_feed: number
-    total_moments: number
-    active_moments: number
-    total_product_applications: number
-    pending_product_applications: number
-    active_product_applications: number
-    product_revenue: number
-    total_moment_proposals: number
-    pending_moment_proposals: number
-    active_moment_proposals: number
-    moment_revenue: number
-    total_campaign_applications: number
-    pending_campaign_applications: number
-    active_campaign_applications: number
-}
+// Re-export from shared types so existing imports keep working
+export type { CreatorStatus, CreatorSummary } from "./types/mcn"
+import type { CreatorStatus, CreatorSummary } from "./types/mcn"
 
 interface CreatorSummaryCardProps {
     creator: CreatorSummary
@@ -49,7 +26,6 @@ export function CreatorSummaryCard({ creator, status, onViewDashboard }: Creator
     const totalPending = creator.pending_product_applications + creator.pending_moment_proposals
     const totalActive = creator.active_product_applications + creator.active_moment_proposals + creator.active_campaign_applications
     const totalRevenue = creator.product_revenue + creator.moment_revenue
-
     const statusCfg = STATUS_CONFIG[status]
 
     const formatFollowers = (count: number) => {

@@ -12,6 +12,25 @@ export async function GET(req: NextRequest) {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
+    // 0. Mock 크리에이터 fallback
+    const { data: mockProfile } = await supabase
+        .from('profiles')
+        .select('is_mock')
+        .eq('id', userId)
+        .maybeSingle()
+
+    if (mockProfile?.is_mock) {
+        const { data: mockChannel } = await supabase
+            .from('social_channels')
+            .select('ig_portfolio_snapshot')
+            .eq('user_id', userId)
+            .eq('platform', 'instagram')
+            .maybeSingle()
+
+        const posts = (mockChannel?.ig_portfolio_snapshot as any)?.posts ?? []
+        return NextResponse.json({ data: posts })
+    }
+
     // social_channels에서 IG 자격증명 조회
     const { data: channel, error: channelError } = await supabase
         .from('social_channels')
